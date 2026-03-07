@@ -1,0 +1,359 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useAuth as useSession } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { trpc } from '@/utils/trpc';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, User, Briefcase, GraduationCap, FolderOpen, Award, Eye, ArrowLeft } from 'lucide-react';
+import BasicInfoCard from '@/components/profile-editor/BasicInfoCard';
+import EducationCard from '@/components/profile-editor/EducationCard';
+import ExperienceCard from '@/components/profile-editor/ExperienceCard';
+import PortfolioCard from '@/components/profile-editor/PortfolioCard';
+import CertificationCard from '@/components/profile-editor/CertificationCard';
+import {
+  calculateBasicInfoStrength,
+  calculateExperienceStrength,
+  calculateEducationStrength,
+  calculatePortfolioStrength,
+  calculateCertificationStrength,
+} from '@/lib/profile-editor-helpers';
+
+const STEPS = [
+  { id: 1, title: 'Basic Info', icon: User, description: 'Tell us about yourself' },
+  { id: 2, title: 'Experience', icon: Briefcase, description: 'Your work history' },
+  { id: 3, title: 'Education', icon: GraduationCap, description: 'Your qualifications' },
+  { id: 4, title: 'Portfolio', icon: FolderOpen, description: 'Showcase your work' },
+  { id: 5, title: 'Certifications (Optional)', icon: Award, description: 'Professional credentials' },
+];
+
+export default function ProfileEditorPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Google Maps script is loaded by BasicInfoCard component
+
+  const sessionUserId = session?.session?.user?.id;
+
+  // Fetch full profile with all sections
+  const profileQuery = trpc.publicProfile.getMyFullProfile.useQuery(undefined, {
+    enabled: !!session?.session?.user,
+  });
+
+  // Fetch profile completeness
+  const completenessQuery = trpc.publicProfile.getCompleteness.useQuery(undefined, {
+    enabled: !!session?.session?.user,
+  });
+
+  const publicProfileUrl = profileQuery.data?.slug
+    ? `/freelancers/${profileQuery.data.slug}`
+    : '/freelancers';
+
+  // Publish mutation
+  const togglePublishMutation = trpc.publicProfile.togglePublish.useMutation({
+    onSuccess: () => {
+      profileQuery.refetch();
+      toast.success('Profile published successfully!');
+      // Redirect to public profile after successful publish
+      setTimeout(() => {
+        router.push(publicProfileUrl);
+      }, 1000);
+    },
+    onError: (error) => {
+      toast.error('Failed to publish profile', {
+        description: error.message,
+      });
+    },
+  });
+
+  const handlePublishToggle = () => {
+    // Check if profile has minimum required entries before allowing publish
+    if (profileQuery.data) {
+      const experienceCount = profileQuery.data.experienceItems?.length ?? 0;
+      const educationCount = profileQuery.data.educationItems?.length ?? 0;
+      const portfolioCount = profileQuery.data.portfolioItems?.length ?? 0;
+
+      if (experienceCount < 1 || educationCount < 1 || portfolioCount < 1) {
+        toast.error('Profile incomplete', {
+          description: 'Please add at least one entry to each required section: Experience, Education, and Portfolio.',
+        });
+        return;
+      }
+    }
+
+    // Always publish (set to true)
+    togglePublishMutation.mutate({ isPublished: true });
+  };
+
+  // Calculate section strength based on current step
+  const getSectionStrength = (step: number) => {
+    if (!profileQuery.data) return null;
+
+    switch (step) {
+      case 1:
+        return calculateBasicInfoStrength(profileQuery.data);
+      case 2:
+        return calculateExperienceStrength(profileQuery.data.experienceItems);
+      case 3:
+        return calculateEducationStrength(profileQuery.data.educationItems);
+      case 4:
+        return calculatePortfolioStrength(profileQuery.data.portfolioItems);
+      case 5:
+        return calculateCertificationStrength(profileQuery.data.certifications);
+      default:
+        return null;
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep < STEPS.length) {
+      setCurrentStep(currentStep + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Show loading state while authentication is being determined
+  if (status === 'loading' || profileQuery.isLoading || completenessQuery.isLoading) {
+    return (
+      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+        <div className="glass-card p-8 rounded-3xl">
+          <div className="text-lg">Loading your profile...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check authentication and role after loading is complete
+  if (status === 'unauthenticated' || !session?.session?.user) {
+    return (
+      <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
+        <div className="glass-card p-8 rounded-3xl text-center max-w-md">
+          <AlertCircle className="h-12 w-12 text-chart-4 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
+          <p className="text-muted-foreground">Please sign in to access the profile editor.</p>
+          <Button 
+            onClick={() => router.push('/auth/signin')}
+            className="mt-4 glass-button hover-lift"
+          >
+            Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (session.session.user.role !== 'FREELANCER') {
+    return (
+      <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
+        <div className="glass-card p-8 rounded-3xl text-center max-w-md">
+          <AlertCircle className="h-12 w-12 text-chart-4 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
+          <p className="text-muted-foreground">Public profile editor is only available for freelancers.</p>
+          <Button 
+            onClick={() => router.push('/dashboard')}
+            className="mt-4 glass-button hover-lift"
+          >
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const completeness = completenessQuery.data || { percentage: 0, missingFields: [], completed: 0, total: 10 };
+  const isPublished = profileQuery.data?.isPublished || false;
+  const currentStepData = STEPS[currentStep - 1];
+
+  return (
+    <div className="min-h-screen gradient-mesh">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-primary/5 blur-3xl animate-float" />
+          <div className="absolute top-1/2 right-1/4 w-80 h-80 rounded-full bg-chart-1/10 blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+          <div className="absolute bottom-1/4 left-1/3 w-64 h-64 rounded-full bg-chart-2/8 blur-3xl animate-float" style={{ animationDelay: '4s' }} />
+        </div>
+
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          {/* Back Button */}
+          <div className="mb-6">
+            <Button
+              onClick={() => router.push('/dashboard')}
+              variant="ghost"
+              size="sm"
+              className="glass-button hover-lift"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-2 text-gradient">
+              Build Your Profile
+            </h1>
+            <p className="text-muted-foreground text-lg">Stand out to clients with a complete professional profile</p>
+          </div>
+
+          {/* Step Indicators - Modern Timeline */}
+          <div className="mb-8 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center min-w-max px-2 pb-2">
+              {STEPS.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = step.id === currentStep;
+                const isCompleted = step.id < currentStep;
+
+                return (
+                  <React.Fragment key={`step-${step.id}`}>
+                    <button
+                      onClick={() => setCurrentStep(step.id)}
+                      className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-300 group ${
+                        isActive
+                          ? 'glass-card scale-105'
+                          : 'hover:glass-card'
+                      }`}
+                    >
+                      <div
+                        className={`relative p-3 rounded-xl transition-all duration-300 ${
+                          isActive
+                            ? 'bg-primary shadow-lg shadow-primary/20'
+                            : isCompleted
+                            ? 'bg-chart-2/20 border border-chart-2/50'
+                            : 'bg-muted/50'
+                        }`}
+                      >
+                        {isCompleted && (
+                          <CheckCircle2 className="absolute -top-1 -right-1 h-4 w-4 text-chart-2 bg-background rounded-full" />
+                        )}
+                        <Icon className={`h-6 w-6 transition-colors ${isActive ? 'text-white' : isCompleted ? 'text-chart-2' : 'text-muted-foreground'}`} />
+                      </div>
+                      <div className="text-center">
+                        <span className={`text-sm font-medium whitespace-nowrap block transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                          {step.title}
+                        </span>
+                        <span className={`text-xs hidden sm:block ${isActive ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
+                          {step.description}
+                        </span>
+                      </div>
+                    </button>
+                    {index < STEPS.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-2 transition-all duration-300 ${
+                        isCompleted ? 'bg-chart-2/50' : 'bg-border'
+                      }`} style={{ minWidth: '40px', maxWidth: '80px' }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Current Step Content */}
+          <div className="glass-card p-6 sm:p-8 rounded-3xl mb-6 hover-lift">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">{currentStepData.title}</h2>
+                <p className="text-muted-foreground">{currentStepData.description}</p>
+              </div>
+
+              {/* Section Strength Badge - Hidden on mobile */}
+              {getSectionStrength(currentStep) && (
+                <div className="hidden sm:flex flex-col items-end gap-1">
+                  <span className="text-xs text-muted-foreground">Section Strength</span>
+                  <Badge
+                    className={
+                      getSectionStrength(currentStep)!.label === 'Strong'
+                        ? 'bg-chart-2/20 text-chart-2 border-chart-2/50'
+                        : getSectionStrength(currentStep)!.label === 'Good'
+                        ? 'bg-amber-500/20 text-amber-500 border-amber-500/50'
+                        : 'bg-muted/20 text-muted-foreground border-muted/50'
+                    }
+                  >
+                    {getSectionStrength(currentStep)!.label}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            <div className="min-h-[400px]">
+              {currentStep === 1 && (
+                <BasicInfoCard profile={profileQuery.data} onUpdate={profileQuery.refetch} />
+              )}
+              {currentStep === 2 && (
+                <ExperienceCard
+                  items={profileQuery.data?.experienceItems || []}
+                  onUpdate={profileQuery.refetch}
+                />
+              )}
+              {currentStep === 3 && (
+                <EducationCard
+                  items={profileQuery.data?.educationItems || []}
+                  onUpdate={profileQuery.refetch}
+                />
+              )}
+              {currentStep === 4 && (
+                <PortfolioCard
+                  items={profileQuery.data?.portfolioItems || []}
+                  onUpdate={profileQuery.refetch}
+                />
+              )}
+              {currentStep === 5 && (
+                <CertificationCard
+                  items={profileQuery.data?.certifications || []}
+                  onUpdate={profileQuery.refetch}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Navigation Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <Button
+              onClick={handlePrevious}
+              disabled={currentStep === 1}
+              variant="outline"
+              size="lg"
+              className="glass-button hover-lift interactive-scale w-full sm:w-auto"
+            >
+              <ChevronLeft className="h-5 w-5 mr-2" />
+              Previous
+            </Button>
+
+            <Button
+              onClick={currentStep === STEPS.length ? handlePublishToggle : handleNext}
+              disabled={currentStep === STEPS.length ? togglePublishMutation.isPending : false}
+              size="lg"
+              className="glass-button hover-lift interactive-scale w-full sm:w-auto"
+            >
+              {currentStep === STEPS.length ? (
+                togglePublishMutation.isPending ? (
+                  'Publishing...'
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 mr-2" />
+                    Publish Profile
+                  </>
+                )
+              ) : (
+                <>
+                  Next
+                  <ChevronRight className="h-5 w-5 ml-2" />
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,127 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { CheckCircle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+
+export default function AuthCodeErrorPage() {
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [message, setMessage] = useState('');
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      try {
+        // Check if we have auth tokens in the URL hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const type = hashParams.get('type');
+
+        if (accessToken && refreshToken) {
+          const supabase = createClient();
+
+          // Set the session with the tokens from URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            setMessage('Failed to verify email. Please try again.');
+            return;
+          }
+
+          if (data.session) {
+            setStatus('success');
+            setMessage('Email verified successfully!');
+
+            // Redirect to dashboard after 2 seconds
+            setTimeout(() => {
+              router.push('/dashboard');
+            }, 2000);
+            return;
+          }
+        }
+
+        // No tokens found, show error
+        setStatus('error');
+        setMessage('Invalid verification link. Please request a new verification email.');
+      } catch (error) {
+        setMessage('Something went wrong. Please try again.');
+      }
+    };
+
+    handleAuthCallback();
+  }, [router]);
+
+  return (
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl text-center">
+          {status === 'loading' && (
+            <>
+              <Loader2 className="h-16 w-16 text-white mx-auto mb-4 animate-spin" />
+              <h1 className="text-2xl font-semibold text-white mb-2">
+                Verifying your email...
+              </h1>
+              <p className="text-gray-400">Please wait a moment</p>
+            </>
+          )}
+
+          {status === 'success' && (
+            <>
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h1 className="text-2xl font-semibold text-white mb-2">
+                Email verified successfully!
+              </h1>
+              <p className="text-gray-400 mb-6">{message}</p>
+              <p className="text-sm text-gray-400">
+                Redirecting to your dashboard...
+              </p>
+            </>
+          )}
+
+          {status === 'error' && (
+            <>
+              <div className="h-16 w-16 text-red-500 mx-auto mb-4 flex items-center justify-center">
+                <svg
+                  className="w-16 h-16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-semibold text-white mb-2">
+                Verification Failed
+              </h1>
+              <p className="text-gray-400 mb-6">{message}</p>
+              <div className="space-y-3">
+                <Link href="/auth/verify-email">
+                  <Button className="w-full bg-white text-gray-900 hover:bg-gray-100 font-medium rounded-lg transition-colors">
+                    Request New Verification Email
+                  </Button>
+                </Link>
+                <Link href="/auth/signin">
+                  <Button variant="outline" className="w-full border-white/10 text-white hover:bg-white/5">
+                    Back to Sign In
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

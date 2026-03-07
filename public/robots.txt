@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+
+# Block admin and auth pages from indexing
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /profile/edit
+Disallow: /billing/
+Disallow: /contracts/
+Disallow: /messages/
+Disallow: /notifications/
+
+# Allow public pages
+Allow: /jobs
+Allow: /freelancers
+Allow: /pricing
+Allow: /how-it-works
+Allow: /about
+Allow: /support
+
+# Sitemap location
+Sitemap: https://yourdomain.com/sitemap.xml
