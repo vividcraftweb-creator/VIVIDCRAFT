@@ -93,6 +93,10 @@ export default function RegisterForm() {
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
             role: 'artist',
+            user_type: 'artist',
+            role_name: 'artist',
+            userRole: 'artist',
+            account_type: 'artist',
             company: formData.company?.trim() || '',
             country: userCountry,
           },
@@ -100,9 +104,45 @@ export default function RegisterForm() {
       });
 
       if (authError) {
+        if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already exists')) {
+          try {
+            await supabase.auth.resend({
+              type: 'signup',
+              email: formData.email.trim(),
+              options: {
+                emailRedirectTo: `${origin}/auth/callback?role=artist`,
+              },
+            });
+          } catch (e) {}
+
+          setSuccessMessage('Account already registered. A new verification link has been sent to your email.');
+          toast.success('Verification link sent!', {
+            description: 'Please check your email inbox to confirm your account.',
+          });
+          return;
+        }
+
         console.error("SUPABASE SIGNUP ERROR:", authError.message, authError);
         setErrorMessage(authError.message);
         toast.error(`Sign up failed: ${authError.message}`);
+        return;
+      }
+
+      if (data?.user && data.user.identities && data.user.identities.length === 0) {
+        try {
+          await supabase.auth.resend({
+            type: 'signup',
+            email: formData.email.trim(),
+            options: {
+              emailRedirectTo: `${origin}/auth/callback?role=artist`,
+            },
+          });
+        } catch (e) {}
+
+        setSuccessMessage('Account registered. A new verification link has been sent to your email.');
+        toast.success('Verification link sent!', {
+          description: 'Please check your email inbox to confirm your account.',
+        });
         return;
       }
 

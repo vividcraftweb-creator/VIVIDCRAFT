@@ -144,7 +144,7 @@ export default function SignUpContent() {
       }
 
       // Check if user already exists (200 status with userExists flag)
-      if (responseData.userExists) {
+      if (responseData.userExists && !responseData.unconfirmed) {
         toast.error('Account already exists', {
           description: 'Please sign in instead.',
           duration: 3000,
@@ -155,10 +155,11 @@ export default function SignUpContent() {
         return;
       }
 
-      // Success - account created (201)
-      setSuccessMessage('Account created successfully! Please check your email to verify your account.');
-      toast.success('Account created!', {
-        description: 'Please check your email inbox to verify your account.',
+      // Success / Resent verification link
+      const successText = responseData.message || 'Account created successfully! Please check your email to verify your account.';
+      setSuccessMessage(successText);
+      toast.success(responseData.unconfirmed ? 'Verification Link Sent!' : 'Account created!', {
+        description: successText,
       });
     } catch (err: any) {
       console.error("SIGNUP ERROR:", err?.message, err);

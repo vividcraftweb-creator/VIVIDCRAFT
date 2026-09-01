@@ -147,15 +147,19 @@ export async function POST(req: Request) {
 
     // Client IP already retrieved for rate limiting above (line 38)
 
-    // Create user in Supabase Auth (disable auto-confirm to use custom verification)
+    // Create user in Supabase Auth (with explicit role: 'artist' in options.data)
     const supabase = await createClient();
+    const appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           role: metadataRole,
+          user_type: metadataRole,
           role_name: metadataRole,
+          userRole: metadataRole,
+          account_type: metadataRole,
           firstName: sanitizedFirstName,
           lastName: sanitizedLastName,
           first_name: sanitizedFirstName,
@@ -163,7 +167,7 @@ export async function POST(req: Request) {
           company: sanitizedCompanyName || resolvedCompanyName,
           country: sanitizedCountry || resolvedCountry,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yourdomain.com'}/auth/callback`,
+        emailRedirectTo: `${appOrigin}/auth/callback?role=${metadataRole}`,
       }
     });
 
@@ -171,10 +175,22 @@ export async function POST(req: Request) {
       console.error('SUPABASE AUTH SIGNUP ERROR:', authError.message, authError);
       loggers.auth.error({ error: authError, email }, 'Supabase auth.signUp failed');
 
-      if (authError.message.includes('already registered')) {
+      if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already exists')) {
+        // Try resending verification email for unconfirmed accounts
+        try {
+          await supabase.auth.resend({
+            type: 'signup',
+            email,
+            options: {
+              emailRedirectTo: `${appOrigin}/auth/callback?role=${metadataRole}`,
+            },
+          });
+        } catch (resendErr) {}
+
         return NextResponse.json({ 
-          message: 'User already exists',
-          userExists: true 
+          message: 'Account already created. A new verification link has been sent to your email.',
+          userExists: false,
+          unconfirmed: true,
         }, { status: 200 });
       }
 
@@ -186,6 +202,25 @@ export async function POST(req: Request) {
     if (!authData.user) {
       console.error('SUPABASE AUTH SIGNUP: No user returned and no error');
       return NextResponse.json({ message: 'Failed to create user — no user data returned from auth' }, { status: 500 });
+    }
+
+    // Check if Supabase returned 0 identities (signals existing unconfirmed user)
+    if (authData.user.identities && authData.user.identities.length === 0) {
+      try {
+        await supabase.auth.resend({
+          type: 'signup',
+          email,
+          options: {
+            emailRedirectTo: `${appOrigin}/auth/callback?role=${metadataRole}`,
+          },
+        });
+      } catch (resendErr) {}
+
+      return NextResponse.json({ 
+        message: 'Account already registered. A new verification link has been sent to your email.',
+        userExists: false,
+        unconfirmed: true,
+      }, { status: 200 });
     }
 
     // Create or update user record in Supabase database using admin client to bypass RLS

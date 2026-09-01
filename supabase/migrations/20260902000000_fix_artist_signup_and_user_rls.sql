@@ -213,8 +213,15 @@ DECLARE
   country_val TEXT;
   slug_val TEXT;
 BEGIN
-  -- Extract metadata safely
-  user_raw_role := COALESCE(NEW.raw_user_meta_data->>'role', NEW.raw_user_meta_data->>'user_type', 'artist');
+  -- Extract metadata safely (check all variations, defaulting to 'artist')
+  user_raw_role := COALESCE(
+    NEW.raw_user_meta_data->>'role',
+    NEW.raw_user_meta_data->>'user_type',
+    NEW.raw_user_meta_data->>'role_name',
+    NEW.raw_user_meta_data->>'userRole',
+    NEW.raw_user_meta_data->>'account_type',
+    'artist'
+  );
   first_name_val := COALESCE(NEW.raw_user_meta_data->>'first_name', NEW.raw_user_meta_data->>'firstName', '');
   last_name_val := COALESCE(NEW.raw_user_meta_data->>'last_name', NEW.raw_user_meta_data->>'lastName', '');
   full_name_val := COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', '');
@@ -226,16 +233,17 @@ BEGIN
     last_name_val := substr(full_name_val, length(first_name_val) + 2);
   END IF;
 
-  -- Normalize role: 'artist', 'freelancer', 'creator' -> 'FREELANCER'
-  IF lower(trim(user_raw_role)) IN ('artist', 'freelancer', 'creator', 'seller') THEN
-    assigned_role := 'FREELANCER'::"public"."Role";
-    meta_role := 'artist';
+  -- Normalize role: ONLY assign 'CLIENT' if explicitly 'client' or 'buyer'
+  IF lower(trim(user_raw_role)) IN ('client', 'buyer') THEN
+    assigned_role := 'CLIENT'::"public"."Role";
+    meta_role := 'client';
   ELSIF lower(trim(user_raw_role)) = 'admin' THEN
     assigned_role := 'ADMIN'::"public"."Role";
     meta_role := 'admin';
   ELSE
-    assigned_role := 'CLIENT'::"public"."Role";
-    meta_role := 'client';
+    -- Default to artist / freelancer for all creator/artist accounts
+    assigned_role := 'FREELANCER'::"public"."Role";
+    meta_role := 'artist';
   END IF;
 
   -- 1. Insert into public.users (lowercase)
