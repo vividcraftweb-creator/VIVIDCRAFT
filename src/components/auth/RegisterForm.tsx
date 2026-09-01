@@ -76,22 +76,23 @@ export default function RegisterForm() {
     setSuccessMessage(null);
 
     const userCountry = formData.location?.trim() || 'Sri Lanka';
-    const userRole = 'FREELANCER';
     const origin = typeof window !== 'undefined'
       ? window.location.origin
       : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
 
     try {
-      // 1. Register artist with Supabase Auth
+      // 1. Register artist with Supabase Auth (passing role: 'artist' in options.data)
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
-          emailRedirectTo: `${origin}/auth/callback`,
+          emailRedirectTo: `${origin}/auth/callback?role=artist`,
           data: {
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
-            role: userRole,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            role: 'artist',
             company: formData.company?.trim() || '',
             country: userCountry,
           },
@@ -109,13 +110,25 @@ export default function RegisterForm() {
       if (data.session) {
         if (data.user) {
           try {
+            await supabase.from('profiles').upsert([
+              {
+                id: data.user.id,
+                first_name: formData.firstName.trim(),
+                last_name: formData.lastName.trim(),
+                role: 'artist',
+                email: formData.email.trim(),
+                address: userCountry,
+                location: userCountry,
+                updated_at: new Date().toISOString(),
+              },
+            ]);
+
             await supabase.from('Profile').upsert([
               {
                 id: data.user.id,
                 userId: data.user.id,
                 firstName: formData.firstName.trim(),
                 lastName: formData.lastName.trim(),
-                role: userRole,
                 companyName: formData.company?.trim() || null,
                 country: userCountry,
                 location: userCountry,

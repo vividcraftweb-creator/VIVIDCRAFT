@@ -37,6 +37,7 @@ export default function SignUpContent() {
 
   const handleGoogleSignUp = async (roleOverride?: 'CLIENT' | 'FREELANCER') => {
     const roleToUse = roleOverride || role;
+    const normalizedParam = roleToUse === 'FREELANCER' ? 'artist' : 'client';
     setIsGoogleLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -49,8 +50,8 @@ export default function SignUpContent() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${origin}/auth/callback?role=${encodeURIComponent(roleToUse)}`,
-          queryParams: { role: roleToUse.toLowerCase() },
+          redirectTo: `${origin}/auth/callback?role=${encodeURIComponent(normalizedParam)}`,
+          queryParams: { role: normalizedParam },
         },
       });
 
@@ -118,7 +119,7 @@ export default function SignUpContent() {
         body: JSON.stringify({
           email: formData.email.trim(),
           password: formData.password,
-          role: 'FREELANCER',
+          role: 'artist',
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
           title: formData.title?.trim() || undefined,

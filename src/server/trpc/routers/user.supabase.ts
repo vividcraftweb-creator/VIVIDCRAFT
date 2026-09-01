@@ -34,21 +34,23 @@ export const userRouter = router({
       const { data: authUser } = await supabase.auth.admin.getUserById(userId);
 
       const email = authUser?.user?.email || profile?.email || ctx.session.user.email || '';
-      const role = profile?.role || authUser?.user?.user_metadata?.role || ctx.session.user.role || 'FREELANCER';
+      const rawRole = profile?.role || authUser?.user?.user_metadata?.role || (authUser?.user as any)?.role || ctx.session.user.role || 'artist';
+      const isArtist = ['ARTIST', 'FREELANCER', 'CREATOR', 'SELLER'].includes(String(rawRole).toUpperCase());
+      const role: 'FREELANCER' | 'CLIENT' = isArtist ? 'FREELANCER' : 'CLIENT';
 
       try {
         const { data: createdUser } = await supabase
           .from('User')
-          .insert({
+          .upsert({
             id: userId,
             email,
-            role: role.toUpperCase(),
-            subscriptionPlan: role.toUpperCase() === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
-            tokens: 9999,
+            role,
+            subscriptionPlan: role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
+            tokens: role === 'FREELANCER' ? 250 : 0,
             isVerified: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          })
+          }, { onConflict: 'id' })
           .select()
           .single();
 
@@ -61,9 +63,9 @@ export const userRouter = router({
         user = {
           id: userId,
           email,
-          role: role.toUpperCase(),
-          subscriptionPlan: role.toUpperCase() === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
-          tokens: 9999,
+          role,
+          subscriptionPlan: role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
+          tokens: role === 'FREELANCER' ? 250 : 0,
           tokenResetAt: new Date().toISOString(),
           jobPostsUsed: 0,
           jobPostsResetAt: new Date().toISOString(),

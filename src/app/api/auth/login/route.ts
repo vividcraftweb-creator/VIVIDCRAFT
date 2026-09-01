@@ -82,10 +82,14 @@ export async function POST(req: Request) {
         // Fall back to metadata role
       }
 
+      const isArtist = ['artist', 'freelancer', 'creator', 'seller'].includes(String(userRole).toLowerCase());
+      const isAdmin = String(userRole).toUpperCase() === 'ADMIN';
+      const redirectUrl = isAdmin ? '/admin' : isArtist ? '/dashboard' : '/';
+
       return NextResponse.json({
         success: true,
         role: userRole,
-        redirect: userRole === 'ADMIN' ? '/admin' : userRole === 'FREELANCER' ? '/dashboard' : '/',
+        redirect: redirectUrl,
         user: data.user,
       });
     } catch (err: any) {

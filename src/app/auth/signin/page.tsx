@@ -68,12 +68,16 @@ function SignInContent() {
       }
 
       if (data?.user) {
+        const rawRole = data.user.user_metadata?.role || '';
+        const isArtist = ['artist', 'freelancer', 'creator', 'seller'].includes(String(rawRole).toLowerCase());
+        const dest = redirectTo || (isArtist ? '/dashboard' : '/');
+
         toast.success('Signed in successfully', {
-          description: 'Redirecting to home page...',
+          description: isArtist ? 'Redirecting to dashboard...' : 'Redirecting to home page...',
         });
 
-        // Direct redirection to home page (/) or explicit return destination
-        router.push(redirectTo || '/');
+        // Direct redirection to dashboard for artists or home page for clients
+        router.push(dest);
         router.refresh();
       }
     } catch (error: any) {

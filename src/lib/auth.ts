@@ -150,7 +150,10 @@ export async function auth() {
       // Error accessing database - use metadata fallback
     }
 
-    const resolvedRole = (dbRole || user.user_metadata?.role || '').toUpperCase() || 'CLIENT';
+    const rawRole = (dbRole || user.user_metadata?.role || '').toUpperCase();
+    const resolvedRole = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawRole)
+      ? 'FREELANCER'
+      : (rawRole === 'ADMIN' ? 'ADMIN' : 'CLIENT');
 
     return {
       user: {

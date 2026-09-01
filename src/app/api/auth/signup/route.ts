@@ -17,7 +17,7 @@ const signupSchema = z.object({
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
-  role: z.enum(['CLIENT', 'FREELANCER'], { message: 'Role is required' }),
+  role: z.string().min(1, 'Role is required'),
   firstName: z.string().max(100).optional(),
   lastName: z.string().max(100).optional(),
   title: z.string().max(100).optional(),
@@ -97,6 +97,12 @@ export async function POST(req: Request) {
       website
     } = validationResult.data;
 
+    // Normalize role
+    const rawRole = String(role || '').trim().toLowerCase();
+    const isArtist = ['freelancer', 'artist', 'creator', 'seller'].includes(rawRole);
+    const dbRole: 'FREELANCER' | 'CLIENT' = isArtist ? 'FREELANCER' : 'CLIENT';
+    const metadataRole = isArtist ? 'artist' : 'client';
+
     // Sensible fallback defaults for client accounts so signup never blocks
     const resolvedCountry = (country && country.trim() !== '')
       ? country.trim()
@@ -125,16 +131,16 @@ export async function POST(req: Request) {
     const sanitizedPhone = sanitizeInput(phone);
     const sanitizedLocation = sanitizeInput(location) || resolvedCountry;
     const sanitizedExperience = sanitizeInput(experience);
-    const sanitizedCompanyName = sanitizeInput(companyName) || (role === 'CLIENT' ? resolvedCompanyName : undefined);
+    const sanitizedCompanyName = sanitizeInput(companyName) || (dbRole === 'CLIENT' ? resolvedCompanyName : undefined);
     const sanitizedCompanyInfo = sanitizeInput(companyInfo);
-    const sanitizedIndustry = sanitizeInput(industry) || (role === 'CLIENT' ? resolvedIndustry : undefined);
+    const sanitizedIndustry = sanitizeInput(industry) || (dbRole === 'CLIENT' ? resolvedIndustry : undefined);
     const sanitizedCountry = sanitizeInput(country) || resolvedCountry;
-    const sanitizedTimezone = sanitizeInput(timezone) || (role === 'CLIENT' ? resolvedTimezone : undefined);
+    const sanitizedTimezone = sanitizeInput(timezone) || (dbRole === 'CLIENT' ? resolvedTimezone : undefined);
     const sanitizedWebsite = sanitizeInput(website);
 
     // Set initial tokens based on role
-    const initialTokens = role === 'FREELANCER' ? 250 : 0;
-    const defaultSubscriptionPlan = role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO';
+    const initialTokens = dbRole === 'FREELANCER' ? 250 : 0;
+    const defaultSubscriptionPlan = dbRole === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO';
 
     // Check if profile completion criteria met (calculate before using)
     const isProfileComplete = !!(sanitizedFirstName && sanitizedLastName);
@@ -148,7 +154,8 @@ export async function POST(req: Request) {
       password,
       options: {
         data: {
-          role,
+          role: metadataRole,
+          role_name: metadataRole,
           firstName: sanitizedFirstName,
           lastName: sanitizedLastName,
           first_name: sanitizedFirstName,
@@ -181,15 +188,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Failed to create user — no user data returned from auth' }, { status: 500 });
     }
 
-    // Create user record in Supabase database using admin client to bypass RLS
-
+    // Create or update user record in Supabase database using admin client to bypass RLS
     const adminClient = createAdminClient();
     const { data: userData, error: userError } = await adminClient
       .from('User')
-      .insert({
+      .upsert({
         id: authData.user.id,
         email,
-        role,
+        role: dbRole,
         tokens: initialTokens,
         subscriptionPlan: defaultSubscriptionPlan,
         tokenResetAt: new Date().toISOString(),
@@ -199,30 +205,53 @@ export async function POST(req: Request) {
         updatedAt: new Date().toISOString(),
         isVerified: false,
         profileCompleted: isProfileComplete,
-        signupIp: clientIp || null, // Capture signup IP for fraud detection
-      })
+        signupIp: clientIp || null,
+      }, { onConflict: 'id' })
       .select()
-      .single();
+      .maybeSingle();
 
     if (userError) {
+      console.error('DATABASE USER CREATION ERROR:', userError);
       // Check if it's a duplicate email error
-      if (userError.code === '23505' && userError.message.includes('User_email_key')) {
-        // Clean up auth user since database insert failed
+      if (userError.code === '23505' && userError.message?.includes('User_email_key')) {
+        return NextResponse.json({ message: 'User already exists', userExists: true }, { status: 200 });
+      }
+
+      // Check if user row actually exists (e.g. from trigger)
+      const { data: existingUserCheck } = await adminClient
+        .from('User')
+        .select('id, role')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      if (!existingUserCheck) {
         try {
           await adminClient.auth.admin.deleteUser(authData.user.id);
         } catch (cleanupError) {
           // Error cleaning up auth user
         }
-        return NextResponse.json({ message: 'User already exists', userExists: true }, { status: 200 });
+        return NextResponse.json({ message: `Failed to create user account: ${userError.message}` }, { status: 500 });
       }
+    }
 
-      // Clean up auth user if database insert fails
-      try {
-        await adminClient.auth.admin.deleteUser(authData.user.id);
-      } catch (cleanupError) {
-        // Error cleaning up auth user
-      }
-      return NextResponse.json({ message: 'Failed to create user account' }, { status: 500 });
+    // Upsert into `profiles` table
+    try {
+      await (adminClient as any)
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          first_name: sanitizedFirstName,
+          last_name: sanitizedLastName,
+          role: metadataRole,
+          title: sanitizedTitle,
+          bio: sanitizedBio,
+          email: email,
+          address: sanitizedLocation,
+          location: sanitizedLocation,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+    } catch (pErr) {
+      console.warn('profiles table upsert note:', pErr);
     }
 
     // Generate unique slug for profile
@@ -256,27 +285,13 @@ export async function POST(req: Request) {
 
       loggers.auth.debug({ userId: authData.user.id, slug: profileSlug }, 'Generated profile slug');
     } catch (slugError) {
-      loggers.auth.error({ error: slugError, userId: authData.user.id }, 'Slug generation failed');
-
-      try {
-        await adminClient.from('User').delete().eq('id', authData.user.id);
-      } catch (cleanupError) {
-        loggers.auth.error({ error: cleanupError, userId: authData.user.id }, 'Failed to cleanup User after slug generation failure');
-      }
-
-      try {
-        await adminClient.auth.admin.deleteUser(authData.user.id);
-      } catch (cleanupError) {
-        loggers.auth.error({ error: cleanupError, userId: authData.user.id }, 'Failed to cleanup Auth user after slug generation failure');
-      }
-
-      return NextResponse.json({ message: 'Failed to create user profile' }, { status: 500 });
+      profileSlug = `user-${authData.user.id.substring(0, 8)}`;
     }
 
-    // Create profile record in Supabase database using admin client
+    // Create/update profile record in Supabase database using admin client
     const { error: profileError } = await adminClient
       .from('Profile')
-      .insert({
+      .upsert({
         id: crypto.randomUUID(),
         userId: authData.user.id,
         slug: profileSlug,
@@ -296,66 +311,17 @@ export async function POST(req: Request) {
         website: sanitizedWebsite || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      })
+      }, { onConflict: 'userId' })
       .select()
-      .single();
+      .maybeSingle();
 
     if (profileError) {
-      // Log the profile creation error with full context
       loggers.auth.error({
         error: profileError,
         userId: authData.user.id,
         email: email,
-        role: role,
-        profileData: {
-          firstName: sanitizedFirstName,
-          lastName: sanitizedLastName,
-          companyName: sanitizedCompanyName,
-          slug: profileSlug
-        }
-      }, 'CRITICAL: Profile creation failed during signup');
-
-      // Profile creation is CRITICAL - rollback User record
-      loggers.auth.info({ userId: authData.user.id }, 'Rolling back User record due to profile creation failure');
-
-      try {
-        const { error: userDeleteError } = await adminClient
-          .from('User')
-          .delete()
-          .eq('id', authData.user.id);
-
-        if (userDeleteError) {
-          loggers.auth.error({
-            error: userDeleteError,
-            userId: authData.user.id
-          }, 'Failed to delete User record during rollback');
-        } else {
-          loggers.auth.info({ userId: authData.user.id }, 'Successfully deleted User record');
-        }
-      } catch (cleanupError) {
-        loggers.auth.error({
-          error: cleanupError,
-          userId: authData.user.id
-        }, 'Exception during User record cleanup');
-      }
-
-      // Rollback Auth user
-      loggers.auth.info({ userId: authData.user.id }, 'Rolling back Auth user due to profile creation failure');
-
-      try {
-        await adminClient.auth.admin.deleteUser(authData.user.id);
-        loggers.auth.info({ userId: authData.user.id }, 'Successfully deleted Auth user');
-      } catch (authCleanupError) {
-        loggers.auth.error({
-          error: authCleanupError,
-          userId: authData.user.id
-        }, 'Failed to delete Auth user during rollback');
-      }
-
-      // Return error response to client
-      return NextResponse.json({
-        message: 'Failed to create user profile. Please try again or contact support if the issue persists.'
-      }, { status: 500 });
+        role: dbRole,
+      }, 'Profile table upsert error during signup (non-fatal)');
     }
 
     // Log successful profile creation

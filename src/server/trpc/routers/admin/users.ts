@@ -101,13 +101,17 @@ export const adminUsersRouter = router({
           const profile = profilesMap.get(au.id) || {};
           const dbUser = userTableMap.get(au.id) || {};
 
-          const role = (
+          const rawRole = (
             dbUser.role ||
             profile.role ||
             au.user_metadata?.role ||
             au.app_metadata?.role ||
             'CLIENT'
           ).toUpperCase();
+
+          const role = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawRole)
+            ? 'FREELANCER'
+            : (rawRole === 'ADMIN' ? 'ADMIN' : 'CLIENT');
 
           const firstName = profile.first_name || profile.firstName || au.user_metadata?.firstName || au.user_metadata?.name?.split(' ')[0] || '';
           const lastName = profile.last_name || profile.lastName || au.user_metadata?.lastName || au.user_metadata?.name?.split(' ').slice(1).join(' ') || '';
@@ -149,7 +153,10 @@ export const adminUsersRouter = router({
             const dbUser = userTableMap.get(profileId) || {};
             const firstName = profile.first_name || profile.firstName || '';
             const lastName = profile.last_name || profile.lastName || '';
-            const role = (dbUser.role || profile.role || 'CLIENT').toUpperCase();
+            const rawRole = (dbUser.role || profile.role || 'CLIENT').toUpperCase();
+            const role = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawRole)
+              ? 'FREELANCER'
+              : (rawRole === 'ADMIN' ? 'ADMIN' : 'CLIENT');
 
             unifiedUserMap.set(profileId, {
               id: profileId,

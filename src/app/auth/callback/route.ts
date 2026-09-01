@@ -62,13 +62,15 @@ export async function GET(request: NextRequest) {
         const company = metadata.company || metadata.companyName || (userRole === 'CLIENT' ? `${firstName || 'Client'}'s Studio` : null);
         const avatarUrl = metadata.avatar_url || metadata.picture || null;
 
+        const metadataRole = userRole === 'FREELANCER' ? 'artist' : 'client';
+
         // 1. Sync auth user metadata if needed
-        if (metadata.role !== userRole) {
+        if (metadata.role !== metadataRole && metadata.role !== userRole) {
           try {
             await adminClient.auth.admin.updateUserById(user.id, {
               user_metadata: {
                 ...metadata,
-                role: userRole,
+                role: metadataRole,
                 first_name: firstName,
                 last_name: lastName,
               },
@@ -89,7 +91,7 @@ export async function GET(request: NextRequest) {
           const initialTokens = userRole === 'FREELANCER' ? 250 : 0;
           const defaultSubscriptionPlan = userRole === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO';
 
-          await adminClient.from('User').insert({
+          await adminClient.from('User').upsert({
             id: user.id,
             email: user.email || '',
             role: userRole,
@@ -102,7 +104,7 @@ export async function GET(request: NextRequest) {
             updatedAt: new Date().toISOString(),
             isVerified: true,
             profileCompleted: !!(firstName && lastName),
-          });
+          }, { onConflict: 'id' });
         } else if (queryRole && existingUser.role !== userRole) {
           await adminClient
             .from('User')
@@ -113,7 +115,23 @@ export async function GET(request: NextRequest) {
             .eq('id', user.id);
         }
 
-        // 3. Ensure Profile record exists in DB
+        // 3. Ensure profiles table record exists
+        try {
+          await (adminClient as any).from('profiles').upsert({
+            id: user.id,
+            first_name: firstName || null,
+            last_name: lastName || null,
+            role: metadataRole,
+            email: user.email || null,
+            address: userCountry,
+            location: userCountry,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+        } catch (pErr) {
+          console.warn('Callback profiles upsert warning:', pErr);
+        }
+
+        // 4. Ensure Profile record exists in DB
         const { data: existingProfile } = await adminClient
           .from('Profile')
           .select('id, slug, firstName, lastName')
@@ -137,7 +155,7 @@ export async function GET(request: NextRequest) {
             profileSlug = `user-${user.id.substring(0, 8)}`;
           }
 
-          await adminClient.from('Profile').insert({
+          await adminClient.from('Profile').upsert({
             id: crypto.randomUUID(),
             userId: user.id,
             slug: profileSlug,
@@ -149,7 +167,7 @@ export async function GET(request: NextRequest) {
             location: userCountry,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          });
+          }, { onConflict: 'userId' });
         } else {
           await adminClient
             .from('Profile')
