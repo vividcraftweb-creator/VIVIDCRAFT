@@ -237,7 +237,7 @@ const CookiesPage = () => {
                   If you have questions about our cookie policy or how we use cookies, we&apos;re here to help.
                 </p>
                 <a 
-                  href="mailto:${process.env.NEXT_PUBLIC_PRIVACY_EMAIL || 'privacy@yourdomain.com'}" 
+                  href={`mailto:${process.env.NEXT_PUBLIC_PRIVACY_EMAIL || 'privacy@yourdomain.com'}`} 
                   className="inline-flex items-center gap-2 px-4 py-2 bg-chart-1/20 text-chart-1 rounded-lg hover:bg-chart-1/30 transition-colors text-sm font-medium"
                 >
                   Contact Us

@@ -29,7 +29,7 @@ const logger = pino({
   base: {
     env: process.env.NODE_ENV,
     ...(isProduction && {
-      app: 'jobhorizons',
+      app: 'vivid-art',
       version: process.env.npm_package_version
     }),
   },

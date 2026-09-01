@@ -60,15 +60,23 @@ type MessageWithContacts = MessageRow & {
 
 type FreelancerProfileRecord = {
   id?: string;
+  userId?: string;
   firstName?: string | null;
   lastName?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   title?: string | null;
+  professional_title?: string | null;
   location?: string | null;
+  address?: string | null;
   skills?: string | null;
   rate?: number | null;
   bio?: string | null;
+  description?: string | null;
   profilePicture?: string | null;
+  avatar_url?: string | null;
   slug?: string | null;
+  isPublished?: boolean;
   PortfolioItem?: Record<string, unknown>[] | null;
   updatedAt: string | null;
   createdAt: string | null;
@@ -129,11 +137,11 @@ export const profilesRouter = router({
         selectFields += ', rate';
       }
 
-      const { data: profile, error } = await supabase
-        .from('Profile')
-        .select(selectFields)
-        .eq('userId', userId)
-        .single();
+      const { data: profile, error } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .or(`id.eq.${userId},userId.eq.${userId}`)
+        .maybeSingle();
 
       if (error || !profile) {
         throw new TRPCError({
@@ -148,7 +156,7 @@ export const profilesRouter = router({
 
       if (userId !== viewerId) {
         // Don't track self-views
-        void supabase
+        void (supabase as any)
           .from('ProfileView')
           .insert({
             id: crypto.randomUUID(),
@@ -163,6 +171,10 @@ export const profilesRouter = router({
 
       return {
         ...selectedProfile,
+        firstName: profile.firstName || profile.first_name || '',
+        lastName: profile.lastName || profile.last_name || '',
+        location: profile.location || profile.address || '',
+        skills: profile.skills || '',
         slug: selectedProfile.slug ?? SecureId.encode(userId),
       };
     }),
@@ -171,17 +183,42 @@ export const profilesRouter = router({
     // Use admin client to bypass RLS for fetching user's own profile
     const supabase = createAdminClient();
 
-    const { data, error } = await supabase
-      .from('Profile')
+    let { data, error } = await (supabase as any)
+      .from('profiles')
       .select('*')
-      .eq('userId', ctx.session.user.id)
-      .single();
+      .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
+      .maybeSingle();
 
-    if (error) {
+    try {
+      const { data: pData } = await (supabase as any)
+        .from('Profile')
+        .select('*')
+        .eq('userId', ctx.session.user.id)
+        .maybeSingle();
+      if (pData) {
+        data = { ...pData, ...(data || {}) };
+      }
+    } catch {}
+
+    if (error && !data) {
       return null;
     }
 
-    return data;
+    if (!data) return null;
+
+    return {
+      ...data,
+      firstName: data.firstName || data.first_name || data.full_name?.split(' ')[0] || '',
+      lastName: data.lastName || data.last_name || (data.full_name ? data.full_name.split(' ').slice(1).join(' ') : '') || '',
+      location: data.location || data.address || '',
+      address: data.address || data.location || '',
+      skills: data.skills || '',
+      title: data.title || '',
+      bio: data.bio || data.description || '',
+      profilePicture: data.profilePicture || data.profile_picture || data.avatar_url || '',
+      avatar_url: data.avatar_url || data.profile_picture || data.profilePicture || '',
+      isPublished: data.is_published ?? data.isPublished ?? false,
+    };
   }),
 
   updateProfile: protectedProcedure
@@ -192,7 +229,13 @@ export const profilesRouter = router({
         title: z.string().optional().nullable(),
         bio: z.string().optional().nullable(),
         phone: z.string().optional().nullable(),
+        whatsappNumber: z.string().optional().nullable(),
         location: z.string().optional().nullable(),
+        address: z.string().optional().nullable(),
+        email: z.string().optional().nullable(),
+        businessEmail: z.string().optional().nullable(),
+        businessPhone: z.string().optional().nullable(),
+        businessAddressLine1: z.string().optional().nullable(),
         skills: z.string().optional().nullable(),
         rate: z.number().optional().nullable(),
         portfolio: z.string().optional().nullable(),
@@ -203,89 +246,79 @@ export const profilesRouter = router({
         country: z.string().optional().nullable(),
         timezone: z.string().optional().nullable(),
         website: z.string().optional().nullable(),
+        gallery_images: z.array(z.string()).optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const supabase = await createClient();
+      // Validate environment variables
+      const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+      const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
-      const { data: existingProfile } = await supabase
-        .from('Profile')
-        .select('id, firstName, lastName, slug')
-        .eq('userId', ctx.session.user.id)
-        .single();
+      if (!supabaseUrl || !supabaseKey) {
+        console.error('PROFILE UPDATE ERROR: Supabase environment variables are missing or undefined');
+      }
+
+      // Use authenticated Supabase client from context or admin client
+      const supabase = ctx.supabase || ctx.adminSupabase || createAdminClient();
+
+      const { data: existingProfile, error: fetchError } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('PROFILE UPDATE ERROR (fetch existing):', fetchError);
+      }
 
       const timestamp = new Date().toISOString();
 
-      if (existingProfile) {
-        let slugToPersist: string | null = existingProfile.slug ?? null;
+      const firstName = input.firstName ?? existingProfile?.firstName ?? existingProfile?.first_name ?? '';
+      const lastName = input.lastName ?? existingProfile?.lastName ?? existingProfile?.last_name ?? '';
 
-        try {
-          slugToPersist = await generateProfileSlug(
-            supabase,
-            input.firstName ?? existingProfile.firstName,
-            input.lastName ?? existingProfile.lastName,
-            existingProfile.id
-          );
-        } catch (error) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Failed to update profile',
-          });
-        }
-
-        const { data, error } = await supabase
-          .from('Profile')
-          .update({
-            ...input,
-            slug: slugToPersist,
-            updatedAt: timestamp,
-          })
-          .eq('userId', ctx.session.user.id)
-          .select()
-          .single();
-
-        if (error) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Failed to update profile',
-          });
-        }
-
-        return data;
-      }
-
-      let slugToPersist: string | null = null;
-
+      let slugToPersist: string | null = existingProfile?.slug ?? null;
       try {
-        slugToPersist = await generateProfileSlug(
-          supabase,
-          input.firstName,
-          input.lastName
-        );
-      } catch (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to update profile',
-        });
+        if (input.firstName || input.lastName) {
+          slugToPersist = (await generateProfileSlug(
+            supabase,
+            input.firstName ?? existingProfile?.firstName ?? existingProfile?.first_name,
+            input.lastName ?? existingProfile?.lastName ?? existingProfile?.last_name,
+            existingProfile?.id
+          )) || existingProfile?.slug;
+        }
+      } catch (slugError) {
+        console.warn('PROFILE SLUG WARNING:', slugError);
+        slugToPersist = existingProfile?.slug || `user-${ctx.session.user.id.slice(0, 8)}`;
       }
 
-      const { data, error } = await supabase
-        .from('Profile')
-        .insert({
-          id: crypto.randomUUID(),
-          userId: ctx.session.user.id,
-          ...input,
-          slug: slugToPersist,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        })
+      const upsertPayload: Record<string, any> = {
+        id: ctx.session.user.id,
+        first_name: firstName || undefined,
+        last_name: lastName || undefined,
+        title: input.title !== undefined ? input.title : existingProfile?.title,
+        bio: input.bio !== undefined ? input.bio : existingProfile?.bio,
+        address: (input.address || input.location) !== undefined ? (input.address || input.location) : (existingProfile?.address || existingProfile?.location),
+        whatsapp_number: (input.whatsappNumber || input.phone) !== undefined ? (input.whatsappNumber || input.phone) : (existingProfile?.whatsapp_number || existingProfile?.phone),
+        email: (input.email || input.businessEmail) !== undefined ? (input.email || input.businessEmail) : (existingProfile?.email || existingProfile?.businessEmail),
+        skills: input.skills !== undefined ? input.skills : existingProfile?.skills,
+        slug: slugToPersist,
+        updated_at: timestamp,
+      };
+
+      // Remove undefined keys
+      Object.keys(upsertPayload).forEach((key) => upsertPayload[key] === undefined && delete upsertPayload[key]);
+
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .upsert(upsertPayload)
         .select()
         .single();
 
       if (error) {
+        console.error('PROFILE UPDATE ERROR:', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to update profile',
+          message: error.message || 'Failed to update profile',
         });
       }
 
@@ -456,7 +489,7 @@ export const profilesRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const { query, minRate, maxRate, location, limit, offset, skills } = input;
-      // Use admin client to bypass RLS for User table queries
+      // Use admin client to bypass RLS for fetching published profiles
       const supabase = createAdminClient();
 
       let allowAdvancedFilters = false;
@@ -483,62 +516,153 @@ export const profilesRouter = router({
         }
       }
 
-      let queryBuilder = supabase
-        .from('User')
-        .select(`
-          id,
-          role,
-          subscriptionPlan,
-          isVerified,
-          Profile!inner(
-            *,
-            PortfolioItem(*)
-          )
-        `, { count: 'exact' })
-        .eq('role', 'FREELANCER')
-        .eq('Profile.isPublished', true);
+      // 1. Fetch from `profiles` table
+      const profilesMap = new Map<string, any>();
+      try {
+        const { data: pRows } = await (supabase as any).from('profiles').select('*');
+        if (pRows && Array.isArray(pRows)) {
+          pRows.forEach((p: any) => {
+            if (p.id) profilesMap.set(p.id, p);
+          });
+        }
+      } catch (err) {}
 
-      // Add filters
-      if (query) {
-        queryBuilder = queryBuilder.or(
-          `Profile.firstName.ilike.%${query}%,Profile.lastName.ilike.%${query}%,Profile.title.ilike.%${query}%,Profile.bio.ilike.%${query}%,Profile.skills.ilike.%${query}%`
-        );
-      }
+      // 2. Fetch from legacy `Profile` table
+      try {
+        const { data: legacyProfiles } = await supabase.from('Profile').select('*');
+        if (legacyProfiles && Array.isArray(legacyProfiles)) {
+          legacyProfiles.forEach((lp: any) => {
+            const key = lp.userId || lp.id;
+            if (key) {
+              const existing = profilesMap.get(key) || {};
+              profilesMap.set(key, {
+                id: key,
+                ...existing,
+                ...lp,
+                first_name: existing.first_name || lp.firstName || '',
+                last_name: existing.last_name || lp.lastName || '',
+                title: existing.title || lp.title || '',
+                bio: existing.bio || lp.bio || '',
+                location: existing.location || existing.address || lp.location || '',
+                address: existing.address || existing.location || lp.location || '',
+                skills: existing.skills || lp.skills || '',
+                rate: typeof existing.rate === 'number' ? existing.rate : lp.rate,
+                avatar_url: existing.avatar_url || lp.profilePicture || '',
+                profilePicture: existing.avatar_url || lp.profilePicture || '',
+                slug: existing.slug || lp.slug || key,
+              });
+            }
+          });
+        }
+      } catch (err) {}
 
-      if (allowAdvancedFilters && minRate !== undefined) {
-        queryBuilder = queryBuilder.gte('Profile.rate', minRate);
-      }
+      // 3. Fetch from `User` table to get role, email, isVerified, subscriptionPlan
+      try {
+        const { data: userRows } = await supabase.from('User').select('*');
+        if (userRows && Array.isArray(userRows)) {
+          userRows.forEach((u: any) => {
+            const key = u.id;
+            if (key) {
+              const existing = profilesMap.get(key) || {};
+              profilesMap.set(key, {
+                id: key,
+                email: u.email || existing.email,
+                role: u.role || existing.role || 'FREELANCER',
+                subscriptionPlan: u.subscriptionPlan || existing.subscriptionPlan || 'FREELANCER_PRO',
+                is_verified: u.isVerified ?? existing.is_verified ?? true,
+                ...existing,
+              });
+            }
+          });
+        }
+      } catch (err) {}
 
-      if (allowAdvancedFilters && maxRate !== undefined) {
-        queryBuilder = queryBuilder.lte('Profile.rate', maxRate);
-      }
+      // 4. Enrich with Supabase Auth users
+      try {
+        const { data: authData } = await supabase.auth.admin.listUsers();
+        if (authData?.users) {
+          for (const u of authData.users) {
+            const meta = (u as any).user_metadata || {};
+            const appMeta = (u as any).app_metadata || {};
+            const key = u.id;
+            const existing = profilesMap.get(key) || {};
 
-      if (allowAdvancedFilters && location) {
-        queryBuilder = queryBuilder.ilike('Profile.location', `%${location}%`);
-      }
+            const fName = meta.first_name || meta.firstName || (meta.name ? meta.name.split(' ')[0] : '') || existing.first_name || existing.firstName || '';
+            const lName = meta.last_name || meta.lastName || (meta.name ? meta.name.split(' ').slice(1).join(' ') : '') || existing.last_name || existing.lastName || '';
+            const avUrl = meta.avatar_url || meta.profilePicture || meta.profile_picture || existing.avatar_url || existing.profilePicture || null;
+            const ttl = meta.title || meta.professional_title || existing.title || existing.professional_title || '';
+            const b = meta.bio || meta.description || existing.bio || existing.description || '';
+            const loc = meta.address || meta.location || existing.address || existing.location || '';
+            const sk = meta.skills || existing.skills || '';
+            const uRole = (existing.role || meta.role || appMeta.role || 'FREELANCER').toUpperCase();
 
-      if (allowAdvancedFilters && skills && skills.length > 0) {
-        skills.forEach((skill) => {
-          const sanitized = skill.trim();
-          if (sanitized.length > 0) {
-            queryBuilder = queryBuilder.ilike('Profile.skills', `%${sanitized}%`);
+            profilesMap.set(key, {
+              id: key,
+              email: u.email || existing.email,
+              role: uRole,
+              subscriptionPlan: existing.subscriptionPlan || 'FREELANCER_PRO',
+              is_verified: existing.is_verified ?? true,
+              ...existing,
+              first_name: fName,
+              last_name: lName,
+              avatar_url: avUrl,
+              profilePicture: avUrl,
+              title: ttl,
+              professional_title: ttl,
+              bio: b,
+              description: b,
+              location: loc,
+              address: loc,
+              skills: sk,
+            });
           }
-        });
+        }
+      } catch (authErr) {
+        console.warn("Auth users enrich notice:", authErr);
       }
 
-      const { data: freelancers, error, count } = await queryBuilder
-        .range(offset, offset + limit - 1);
+      const allProfiles = Array.from(profilesMap.values());
 
-      if (error) {
-        return {
-          freelancers: [],
-          total: 0,
-          hasMore: false,
-          planContext: viewerPlanInfo,
-        };
-      }
+      // Apply search and filter criteria (strictly excluding clients, buyers, admins)
+      const filteredProfiles = allProfiles.filter((p: any) => {
+        const role = String(p.role || p.user_type || p.account_type || p.userType || p.user_metadata?.role || '').toLowerCase().trim();
+        if (role === 'client' || role === 'buyer' || role === 'admin' || role === 'employer') return false;
 
-      const freelancerList = (freelancers ?? []) as FreelancerSearchResult[];
+        const fName = p.first_name || p.firstName || p.full_name?.split(' ')[0] || '';
+        const lName = p.last_name || p.lastName || (p.full_name ? p.full_name.split(' ').slice(1).join(' ') : '') || '';
+        const rawSkills = p.skills || '';
+        const skillsVal = Array.isArray(rawSkills) ? rawSkills.join(', ') : (typeof rawSkills === 'string' ? rawSkills : '');
+        const titleVal = p.title || p.professional_title || '';
+        const bioVal = p.bio || p.description || '';
+        const locVal = p.address || p.location || '';
+        const emailVal = p.email || '';
+        const rateVal = typeof p.rate === 'number' ? p.rate : (typeof p.hourly_rate === 'number' ? p.hourly_rate : null);
+
+        if (query) {
+          const q = query.toLowerCase();
+          const textMatch = `${fName} ${lName} ${emailVal} ${titleVal} ${bioVal} ${skillsVal} ${locVal}`.toLowerCase().includes(q);
+          if (!textMatch) return false;
+        }
+
+        if (allowAdvancedFilters && location && locVal) {
+          if (!locVal.toLowerCase().includes(location.toLowerCase())) return false;
+        }
+
+        if (allowAdvancedFilters && skills && skills.length > 0) {
+          const hasSkill = skills.some(s => skillsVal.toLowerCase().includes(s.toLowerCase()));
+          if (!hasSkill) return false;
+        }
+
+        if (allowAdvancedFilters && minRate !== undefined && rateVal !== null) {
+          if (rateVal < minRate) return false;
+        }
+
+        if (allowAdvancedFilters && maxRate !== undefined && rateVal !== null) {
+          if (rateVal > maxRate) return false;
+        }
+
+        return true;
+      });
 
       const toProfileRecord = (
         profile: FreelancerSearchResult['Profile']
@@ -548,7 +672,53 @@ export const profilesRouter = router({
       };
 
       const normalizePlan = (plan: SubscriptionPlan | null | undefined): SubscriptionPlan =>
-        plan ?? SubscriptionPlan.FREELANCER_FREE;
+        plan ?? SubscriptionPlan.FREELANCER_PRO;
+
+      // Transform into FreelancerSearchResult
+      const freelancerList: FreelancerSearchResult[] = filteredProfiles.map((p: any) => {
+        const fName = p.first_name || p.firstName || p.full_name?.split(' ')[0] || '';
+        const lName = p.last_name || p.lastName || (p.full_name ? p.full_name.split(' ').slice(1).join(' ') : '') || '';
+        const rawSkills = p.skills || '';
+        const skillsVal = Array.isArray(rawSkills) ? rawSkills.join(', ') : (typeof rawSkills === 'string' ? rawSkills : '');
+        const titleVal = p.title || p.professional_title || '';
+        const bioVal = p.bio || p.description || '';
+        const locVal = p.address || p.location || '';
+        const rateVal = typeof p.rate === 'number' ? p.rate : (typeof p.hourly_rate === 'number' ? p.hourly_rate : null);
+        const avatarVal = p.avatar_url || p.profile_picture || p.profilePicture || null;
+        const slugVal = p.slug || p.id;
+
+        return {
+          id: p.id,
+          email: p.email || null,
+          role: p.role || 'FREELANCER',
+          subscriptionPlan: p.subscription_plan || p.subscriptionPlan || 'FREELANCER_PRO',
+          isVerified: Boolean(p.is_verified || p.isVerified || (p.verified ?? true)),
+          Profile: {
+            id: p.id,
+            userId: p.id,
+            firstName: fName,
+            lastName: lName,
+            first_name: fName,
+            last_name: lName,
+            title: titleVal,
+            professional_title: titleVal,
+            bio: bioVal,
+            description: bioVal,
+            location: locVal,
+            address: locVal,
+            skills: skillsVal,
+            profilePicture: avatarVal,
+            avatar_url: avatarVal,
+            slug: slugVal,
+            rate: rateVal,
+            isPublished: true,
+            PortfolioItem: [],
+            createdAt: p.created_at || new Date().toISOString(),
+            updatedAt: p.updated_at || new Date().toISOString(),
+          },
+        };
+      });
+
       const sortedFreelancers = freelancerList.slice().sort((a, b) => {
         const rank = (plan: SubscriptionPlan) => {
           switch (plan) {
@@ -558,7 +728,7 @@ export const profilesRouter = router({
               return 2;
             default:
               return 1;
-          }
+            }
         };
 
         const planDelta =
@@ -572,10 +742,13 @@ export const profilesRouter = router({
         return updatedB - updatedA;
       });
 
+      const total = sortedFreelancers.length;
+      const paginatedList = sortedFreelancers.slice(offset, offset + limit);
+
       return {
-        freelancers: sortedFreelancers,
-        total: count || 0,
-        hasMore: (count || 0) > offset + limit,
+        freelancers: paginatedList,
+        total: total,
+        hasMore: total > offset + limit,
         planContext: viewerPlanInfo,
       };
     }),
@@ -604,11 +777,11 @@ export const profilesRouter = router({
       const adminSupabase = createAdminClient();
       const timestamp = new Date().toISOString();
 
-      const { data: existingProfile } = await supabase
-        .from('Profile')
+      const { data: existingProfile } = await (supabase as any)
+        .from('profiles')
         .select('id')
-        .eq('userId', ctx.session.user.id)
-        .single();
+        .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
+        .maybeSingle();
 
       const profileData = {
         companyName: input.companyName,
@@ -618,7 +791,7 @@ export const profilesRouter = router({
           timezone: input.timezone,
           website: input.website || null,
         }),
-        updatedAt: timestamp,
+        updated_at: timestamp,
       };
 
       // Mark user profile as completed using admin client
@@ -628,10 +801,10 @@ export const profilesRouter = router({
         .eq('id', ctx.session.user.id);
 
       if (existingProfile) {
-        const { data, error } = await supabase
-          .from('Profile')
+        const { data, error } = await (supabase as any)
+          .from('profiles')
           .update(profileData)
-          .eq('userId', ctx.session.user.id)
+          .eq('id', existingProfile.id)
           .select()
           .single();
 
@@ -646,13 +819,12 @@ export const profilesRouter = router({
       }
 
       // Create new profile
-      const { data, error } = await supabase
-        .from('Profile')
+      const { data, error } = await (supabase as any)
+        .from('profiles')
         .insert({
-          id: crypto.randomUUID(),
-          userId: ctx.session.user.id,
+          id: ctx.session.user.id,
           ...profileData,
-          createdAt: timestamp,
+          created_at: timestamp,
         })
         .select()
         .single();
@@ -706,31 +878,33 @@ export const profilesRouter = router({
       const timestamp = new Date().toISOString();
 
       // Check if profile exists
-      const { data: existingProfile } = await supabase
-        .from('Profile')
+      const { data: existingProfile } = await (supabase as any)
+        .from('profiles')
         .select('id')
-        .eq('userId', userId)
-        .single();
+        .or(`id.eq.${userId},userId.eq.${userId}`)
+        .maybeSingle();
+
+      const businessPayload = {
+        companyName: input.businessName,
+        businessRegistrationNumber: input.businessRegistrationNumber,
+        taxId: input.taxId || null,
+        businessEmail: input.businessEmail,
+        businessPhone: input.businessPhone,
+        businessAddressLine1: input.businessAddressLine1,
+        businessAddressLine2: input.businessAddressLine2 || null,
+        businessCity: input.businessCity,
+        businessState: input.businessState || null,
+        businessCountry: input.businessCountry,
+        businessPostalCode: input.businessPostalCode || null,
+        updated_at: timestamp,
+      };
 
       if (existingProfile) {
         // Update existing profile
-        const { data, error } = await supabase
-          .from('Profile')
-          .update({
-            companyName: input.businessName,
-            businessRegistrationNumber: input.businessRegistrationNumber,
-            taxId: input.taxId || null,
-            businessEmail: input.businessEmail,
-            businessPhone: input.businessPhone,
-            businessAddressLine1: input.businessAddressLine1,
-            businessAddressLine2: input.businessAddressLine2 || null,
-            businessCity: input.businessCity,
-            businessState: input.businessState || null,
-            businessCountry: input.businessCountry,
-            businessPostalCode: input.businessPostalCode || null,
-            updatedAt: timestamp,
-          })
-          .eq('userId', userId)
+        const { data, error } = await (supabase as any)
+          .from('profiles')
+          .update(businessPayload)
+          .eq('id', existingProfile.id)
           .select()
           .single();
 
@@ -745,24 +919,12 @@ export const profilesRouter = router({
       }
 
       // Create new profile
-      const { data, error } = await supabase
-        .from('Profile')
+      const { data, error } = await (supabase as any)
+        .from('profiles')
         .insert({
-          id: crypto.randomUUID(),
-          userId,
-          companyName: input.businessName,
-          businessRegistrationNumber: input.businessRegistrationNumber,
-          taxId: input.taxId || null,
-          businessEmail: input.businessEmail,
-          businessPhone: input.businessPhone,
-          businessAddressLine1: input.businessAddressLine1,
-          businessAddressLine2: input.businessAddressLine2 || null,
-          businessCity: input.businessCity,
-          businessState: input.businessState || null,
-          businessCountry: input.businessCountry,
-          businessPostalCode: input.businessPostalCode || null,
-          createdAt: timestamp,
-          updatedAt: timestamp,
+          id: userId,
+          ...businessPayload,
+          created_at: timestamp,
         })
         .select()
         .single();

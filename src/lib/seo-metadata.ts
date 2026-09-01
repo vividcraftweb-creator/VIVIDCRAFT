@@ -5,12 +5,12 @@ import { Metadata } from 'next';
  * Single source of truth for all SEO-related constants
  */
 export const SEO_CONFIG = {
-  siteName: 'JobHorizons',
+  siteName: 'Vivid Art',
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
-  tagline: 'Find Remote Work & Freelance Jobs',
-  twitterHandle: '@jobhorizons',
-  defaultOgImage: '/jobhorizons-og-image.png',
-  description: 'JobHorizons is the leading freelance marketplace for remote work opportunities. Connect with verified freelancers, find high-quality online jobs, and hire top talent for your projects.',
+  tagline: 'Premier Art & Creative Talent Marketplace',
+  twitterHandle: '@vividart',
+  defaultOgImage: '/vivid-art-og-image.png',
+  description: 'Vivid Art is the premier marketplace for creative talent and artwork. Connect with verified artists, commission custom artworks, and hire top creators for your projects.',
 } as const;
 
 /**
@@ -80,7 +80,7 @@ export function createPageMetadata(params: {
  * @example
  * export const metadata = createAuthPageMetadata({
  *   title: 'Dashboard',
- *   description: 'View your JobHorizons dashboard'
+ *   description: 'View your Vivid Art dashboard'
  * });
  */
 export function createAuthPageMetadata(params: {
@@ -108,7 +108,7 @@ export function createAuthPageMetadata(params: {
 
 /**
  * Create metadata for admin pages
- * Uses hierarchical title format: "Page Name | Admin | JobHorizons"
+ * Uses hierarchical title format: "Page Name | Admin | Vivid Art"
  * Always marked noindex to prevent search indexing
  *
  * @example
@@ -141,7 +141,7 @@ export function createAdminPageMetadata(params: {
 
 /**
  * Create metadata for dynamic routes (Jobs, Freelancers, etc.)
- * Uses hierarchical format: "Dynamic Title | Section | JobHorizons"
+ * Uses hierarchical format: "Dynamic Title | Section | Vivid Art"
  *
  * @example
  * return createDynamicMetadata({
@@ -198,7 +198,7 @@ export function createDynamicMetadata(params: {
 
 /**
  * Create metadata for settings subpages
- * Uses hierarchical format: "Page Name | Settings | JobHorizons"
+ * Uses hierarchical format: "Page Name | Settings | Vivid Art"
  *
  * @example
  * export const metadata = createSettingsPageMetadata({

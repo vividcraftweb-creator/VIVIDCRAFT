@@ -253,13 +253,6 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
 
   const PLAN_CATALOG: PlanConfig[] = [
     {
-      plan: SubscriptionPlan.FREELANCER_FREE,
-      name: 'Freelancer Free',
-      price: 0,
-      description: 'Build your profile and start applying.',
-      roles: ['FREELANCER'],
-    },
-    {
       plan: SubscriptionPlan.FREELANCER_PRO,
       name: 'Freelancer Pro',
       price: 9.99,
@@ -273,13 +266,6 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
       price: 12.99,
       description: 'Top-tier placement, analytics, and priority support.',
       roles: ['FREELANCER'],
-    },
-    {
-      plan: SubscriptionPlan.CLIENT_STARTER,
-      name: 'Client Starter',
-      price: 0,
-      description: 'Post jobs and connect with verified freelancers.',
-      roles: ['CLIENT'],
     },
     {
       plan: SubscriptionPlan.CLIENT_BUSINESS,
@@ -304,8 +290,8 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
 
   const defaultPlan: SubscriptionPlan =
     role === 'FREELANCER'
-      ? SubscriptionPlan.FREELANCER_FREE
-      : SubscriptionPlan.CLIENT_STARTER;
+      ? SubscriptionPlan.FREELANCER_PRO
+      : SubscriptionPlan.CLIENT_BUSINESS;
 
   const currentPlanConfig =
     planConfigs.find((plan) => plan.plan === defaultPlan) ?? planConfigs[0];

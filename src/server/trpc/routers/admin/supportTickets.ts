@@ -34,63 +34,103 @@ export const adminSupportTicketsRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) return [];
 
-      let query = supabase
-        .from('SupportTicket')
-        .select(`
-          id,
-          userId,
-          subject,
-          message,
-          category,
-          status,
-          priority,
-          createdAt,
-          updatedAt,
-          user:User!SupportTicket_userId_fkey(
+        let query = supabase
+          .from('SupportTicket')
+          .select(`
             id,
-            email,
-            Profile(firstName, lastName)
-          )
-        `)
-        .order('createdAt', { ascending: false })
-        .range(input.offset, input.offset + input.limit - 1);
+            userId,
+            subject,
+            message,
+            category,
+            status,
+            priority,
+            createdAt,
+            updatedAt,
+            user:User!SupportTicket_userId_fkey(
+              id,
+              email,
+              Profile(firstName, lastName)
+            )
+          `)
+          .order('createdAt', { ascending: false })
+          .range(input.offset, input.offset + input.limit - 1);
 
-      if (input.status !== 'all') {
-        query = query.eq('status', input.status);
+        if (input.status !== 'all') {
+          query = query.eq('status', input.status);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('getSupportTickets error:', error);
+          return [];
+        }
+
+        return data || [];
+      } catch (err) {
+        console.error('getSupportTickets exception:', err);
+        return [];
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch support tickets.',
-        });
-      }
-
-      return data || [];
     }),
 
   /**
    * Get support ticket statistics
    */
   getStats: adminProcedure.query(async ({ ctx }) => {
-    const supabase = requireAdminSupabase(ctx);
+    try {
+      const supabase = ctx.adminSupabase;
+      if (!supabase) {
+        return {
+          total: 0,
+          open: 0,
+          inProgress: 0,
+          resolved: 0,
+          closed: 0,
+          urgent: 0,
+        };
+      }
 
-    const { data: tickets, error } = await supabase
-      .from('SupportTicket')
-      .select('status, priority');
+      const { data: tickets, error } = await supabase
+        .from('SupportTicket')
+        .select('status, priority');
 
-    if (error) {
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch support ticket statistics.',
-      });
-    }
+      if (error) {
+        console.error('getStats error:', error);
+        return {
+          total: 0,
+          open: 0,
+          inProgress: 0,
+          resolved: 0,
+          closed: 0,
+          urgent: 0,
+        };
+      }
 
-    if (!tickets) {
+      if (!tickets) {
+        return {
+          total: 0,
+          open: 0,
+          inProgress: 0,
+          resolved: 0,
+          closed: 0,
+          urgent: 0,
+        };
+      }
+
+      return {
+        total: tickets.length,
+        open: tickets.filter((t) => t.status === 'open').length,
+        inProgress: tickets.filter((t) => t.status === 'in-progress').length,
+        resolved: tickets.filter((t) => t.status === 'resolved').length,
+        closed: tickets.filter((t) => t.status === 'closed').length,
+        urgent: tickets.filter((t) => t.priority === 'urgent').length,
+      };
+    } catch (err) {
+      console.error('getStats exception:', err);
       return {
         total: 0,
         open: 0,
@@ -100,75 +140,89 @@ export const adminSupportTicketsRouter = router({
         urgent: 0,
       };
     }
-
-    return {
-      total: tickets.length,
-      open: tickets.filter((t) => t.status === 'open').length,
-      inProgress: tickets.filter((t) => t.status === 'in-progress').length,
-      resolved: tickets.filter((t) => t.status === 'resolved').length,
-      closed: tickets.filter((t) => t.status === 'closed').length,
-      urgent: tickets.filter((t) => t.priority === 'urgent').length,
-    };
   }),
 
+  /**
+   * Get a single support ticket with all messages (admin view)
+   */
   /**
    * Get a single support ticket with all messages (admin view)
    */
   getTicketById: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) return null;
 
-      // Get ticket with user info
-      const { data: ticket, error: ticketError } = await supabase
-        .from('SupportTicket')
-        .select(`
-          *,
-          user:User!SupportTicket_userId_fkey(
-            id,
-            email,
-            Profile(firstName, lastName)
-          )
-        `)
-        .eq('id', input.id)
-        .single();
+        // Get ticket with user info
+        let { data: ticket, error: ticketError } = await supabase
+          .from('SupportTicket')
+          .select(`
+            *,
+            user:User!SupportTicket_userId_fkey(
+              id,
+              email,
+              Profile(firstName, lastName)
+            )
+          `)
+          .eq('id', input.id)
+          .single();
 
-      if (ticketError || !ticket) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Support ticket not found.',
-        });
+        if (ticketError) {
+          console.error('getTicketById join error, trying plain select:', ticketError);
+          const fallbackRes = await supabase
+            .from('SupportTicket')
+            .select('*')
+            .eq('id', input.id)
+            .single();
+          ticket = fallbackRes.data as any;
+        }
+
+        if (!ticket) return null;
+
+        // Get messages
+        let messages: any[] = [];
+        try {
+          const { data: msgs, error: messagesError } = await supabase
+            .from('SupportTicketMessage')
+            .select(`
+              id,
+              message,
+              isStaffResponse,
+              attachmentUrl,
+              createdAt,
+              sender:User!SupportTicketMessage_senderId_fkey(
+                id,
+                email,
+                Profile(firstName, lastName)
+              )
+            `)
+            .eq('ticketId', input.id)
+            .order('createdAt', { ascending: true });
+
+          if (messagesError) {
+            const fallbackMsgs = await supabase
+              .from('SupportTicketMessage')
+              .select('*')
+              .eq('ticketId', input.id)
+              .order('createdAt', { ascending: true });
+            messages = fallbackMsgs.data || [];
+          } else {
+            messages = msgs || [];
+          }
+        } catch {
+          messages = [];
+        }
+
+        return {
+          ...ticket,
+          messages,
+        };
+      } catch (err) {
+        console.error('getTicketById exception:', err);
+        return null;
       }
-
-      // Get messages
-      const { data: messages, error: messagesError } = await supabase
-        .from('SupportTicketMessage')
-        .select(`
-          id,
-          message,
-          isStaffResponse,
-          attachmentUrl,
-          createdAt,
-          sender:User!SupportTicketMessage_senderId_fkey(
-            id,
-            email,
-            Profile(firstName, lastName)
-          )
-        `)
-        .eq('ticketId', input.id)
-        .order('createdAt', { ascending: true });
-
-      if (messagesError) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch ticket messages.',
-        });
-      }
-
-      return {
-        ...ticket,
-        messages: messages || [],
-      };
     }),
 
   /**

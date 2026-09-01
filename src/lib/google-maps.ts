@@ -50,6 +50,10 @@ let isLoaded = false;
  * @returns Promise that resolves when Google Maps is ready
  */
 export async function loadGoogleMaps(): Promise<void> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return Promise.resolve();
+  }
+
   // Check if already loaded
   if (isLoaded && window.google?.maps?.places) {
     return Promise.resolve();
@@ -129,7 +133,7 @@ export async function loadGoogleMaps(): Promise<void> {
  * @returns boolean indicating if Google Maps is ready to use
  */
 export function isGoogleMapsLoaded(): boolean {
-  return isLoaded && !!window.google?.maps?.places;
+  return typeof window !== 'undefined' && isLoaded && !!window.google?.maps?.places;
 }
 
 /**

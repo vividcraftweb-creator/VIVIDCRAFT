@@ -53,6 +53,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SubscriptionPlan } from '@/types/database.types';
+import { createClient } from '@/lib/supabase/client';
 
 type AdminUserRole = 'ADMIN' | 'CLIENT' | 'FREELANCER';
 
@@ -68,7 +69,9 @@ type AdminUser = {
 
 type VerificationFilter = 'ALL' | 'verified' | 'unverified';
 
-export default function AdminUsersPage() {
+export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: AdminUser[] }) {
+  const [isMounted, setIsMounted] = useState(false);
+  const [directUsers, setDirectUsers] = useState<AdminUser[]>(initialUsers);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search);
   const [role, setRole] = useState<'ALL' | 'FREELANCER' | 'CLIENT' | 'ADMIN'>('ALL');
@@ -85,6 +88,78 @@ export default function AdminUsersPage() {
   const [suspendReason, setSuspendReason] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
+
+  useEffect(() => {
+    setIsMounted(true);
+
+    async function loadAllUsers() {
+      let combined: AdminUser[] = [];
+
+      // 1. Direct fetch from Supabase profiles table
+      try {
+        const supabase = createClient();
+        const { data: pData, error: pErr } = await supabase.from('profiles').select('*');
+        if (!pErr && pData && Array.isArray(pData)) {
+          pData.forEach((p: any) => {
+            const role = (p.role || 'CLIENT').toUpperCase();
+            combined.push({
+              id: p.id,
+              email: p.email || 'N/A',
+              role,
+              subscriptionPlan: p.subscriptionPlan || (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
+              isVerified: true,
+              createdAt: p.created_at || new Date().toISOString(),
+              Profile: {
+                firstName: p.first_name || p.firstName || '',
+                lastName: p.last_name || p.lastName || '',
+              },
+            });
+          });
+        }
+      } catch (err) {
+        console.warn('Direct profiles fetch notice:', err);
+      }
+
+      // 2. Fetch from /api/admin/get-users
+      try {
+        const res = await fetch('/api/admin/get-users');
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.users && Array.isArray(json.users)) {
+            json.users.forEach((u: any) => {
+              const idx = combined.findIndex((item) => item.id === u.id);
+              const role = (u.role || 'CLIENT').toUpperCase();
+              const mapped: AdminUser = {
+                id: u.id,
+                email: u.email || 'N/A',
+                role,
+                subscriptionPlan: u.subscriptionPlan && !u.subscriptionPlan.toUpperCase().includes('FREE') && !u.subscriptionPlan.toUpperCase().includes('STARTER') ? u.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
+                isVerified: u.isVerified ?? (u.status === 'Verified'),
+                createdAt: u.created_at || u.createdAt || new Date().toISOString(),
+                Profile: {
+                  firstName: u.first_name || u.firstName || u.Profile?.firstName || u.Profile?.first_name || '',
+                  lastName: u.last_name || u.lastName || u.Profile?.lastName || u.Profile?.last_name || '',
+                },
+              };
+              if (idx >= 0) {
+                combined[idx] = { ...combined[idx], ...mapped };
+              } else {
+                combined.push(mapped);
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('API get-users fetch notice:', err);
+      }
+
+      if (combined.length > 0) {
+        setDirectUsers(combined);
+      }
+    }
+
+    loadAllUsers();
+  }, []);
 
   const { data, isLoading, refetch } = trpc.admin.users.getUsers.useQuery({
     search: debouncedSearch || undefined,
@@ -139,14 +214,67 @@ export default function AdminUsersPage() {
     },
   });
 
-  const users = useMemo<AdminUser[]>(() => {
-    if (data && Array.isArray(data.users)) {
-      return data.users as AdminUser[];
+  const allFilteredUsers = useMemo<AdminUser[]>(() => {
+    let list: AdminUser[] = [];
+    if (data && Array.isArray(data.users) && data.users.length > 0) {
+      list = data.users as AdminUser[];
+    } else if (directUsers.length > 0) {
+      list = [...directUsers];
+    } else if (initialUsers.length > 0) {
+      list = [...initialUsers];
     }
-    return [];
-  }, [data]);
-  const total = data?.total ?? users.length;
-  const hasMore = data?.hasMore ?? users.length === pageSize;
+
+    // Apply functional client-side filters
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase().trim();
+      list = list.filter((u) => {
+        const email = (u.email || '').toLowerCase();
+        const id = (u.id || '').toLowerCase();
+        const prof = Array.isArray(u.Profile) ? u.Profile[0] : u.Profile;
+        const firstName = (prof?.firstName || (prof as any)?.first_name || '').toLowerCase();
+        const lastName = (prof?.lastName || (prof as any)?.last_name || '').toLowerCase();
+        return email.includes(s) || id.includes(s) || firstName.includes(s) || lastName.includes(s);
+      });
+    }
+
+    if (role !== 'ALL') {
+      list = list.filter((u) => {
+        const uRole = (u.role || 'CLIENT').toUpperCase();
+        if (role === 'CLIENT') return uRole === 'CLIENT' || uRole === 'BUYER';
+        if (role === 'FREELANCER') return uRole === 'FREELANCER' || uRole === 'ARTIST' || uRole === 'CREATOR';
+        return uRole === role;
+      });
+    }
+
+    if (verificationStatus === 'verified') {
+      list = list.filter((u) => u.isVerified === true);
+    } else if (verificationStatus === 'unverified') {
+      list = list.filter((u) => u.isVerified === false);
+    }
+
+    if (planFilter !== 'ALL') {
+      list = list.filter((u) => (u.subscriptionPlan || 'FREE') === planFilter);
+    }
+
+    if (emailStatus === 'VERIFIED') {
+      list = list.filter((u) => u.isVerified === true);
+    } else if (emailStatus === 'UNVERIFIED') {
+      list = list.filter((u) => u.isVerified === false);
+    }
+
+    return list;
+  }, [data, directUsers, initialUsers, debouncedSearch, role, verificationStatus, planFilter, emailStatus]);
+
+  const users = useMemo(() => {
+    // If backend pagination exists via tRPC, use that; otherwise page on client
+    if (data && Array.isArray(data.users) && data.users.length > 0) {
+      return allFilteredUsers;
+    }
+    return allFilteredUsers.slice(page * pageSize, (page + 1) * pageSize);
+  }, [allFilteredUsers, data, page, pageSize]);
+
+  const total = data?.total ?? allFilteredUsers.length;
+  const hasMore = (page + 1) * pageSize < allFilteredUsers.length;
 
   const handleRoleChange = (value: string) => {
     const nextRole = value as 'ALL' | AdminUserRole;
@@ -202,11 +330,19 @@ export default function AdminUsersPage() {
   const availablePlans = useMemo<SubscriptionPlan[]>(() => {
     const plans = new Set<SubscriptionPlan>();
     users.forEach((user) => {
-      if (user.subscriptionPlan) {
+      if (user.subscriptionPlan && !user.subscriptionPlan.toUpperCase().includes('FREE') && !user.subscriptionPlan.toUpperCase().includes('STARTER')) {
         plans.add(user.subscriptionPlan as SubscriptionPlan);
       }
     });
-    return Array.from(plans).sort();
+    if (plans.size === 0) {
+      plans.add(SubscriptionPlan.FREELANCER_PRO);
+      plans.add(SubscriptionPlan.FREELANCER_ELITE);
+      plans.add(SubscriptionPlan.CLIENT_BUSINESS);
+      plans.add(SubscriptionPlan.CLIENT_ENTERPRISE);
+    }
+    return Array.from(plans)
+      .filter((p) => !p.toUpperCase().includes('FREE') && !p.toUpperCase().includes('STARTER'))
+      .sort();
   }, [users]);
 
   useEffect(() => {
@@ -246,7 +382,25 @@ export default function AdminUsersPage() {
     URL.revokeObjectURL(url);
   };
 
-  if (isLoading) {
+  const statsOverview = useMemo(() => {
+    if (overview && overview.total > 0) return overview;
+    const total = users.length;
+    const verified = users.filter((u) => u.isVerified).length;
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const newThisWeek = users.filter((u) => new Date(u.createdAt).getTime() >= sevenDaysAgo).length;
+    return {
+      total,
+      verified,
+      newThisWeek,
+      unverified: Math.max(total - verified, 0),
+      clients: users.filter((u) => u.role === 'CLIENT').length,
+      freelancers: users.filter((u) => u.role === 'FREELANCER' || u.role === 'ARTIST').length,
+      admins: users.filter((u) => u.role === 'ADMIN').length,
+      pendingVerifications: 0,
+    };
+  }, [overview, users]);
+
+  if (!isMounted || (isLoading && users.length === 0)) {
     return (
       <div className="space-y-3">
         <div className="animate-pulse space-y-2">
@@ -258,7 +412,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" suppressHydrationWarning>
       {/* Compact Header with Inline Stats */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
@@ -267,12 +421,12 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Inline Stats */}
-        {overview && (
+        {statsOverview && (
           <div className="flex items-center gap-3 flex-1 justify-center">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
               <UsersIcon className="h-4 w-4 text-blue-400" />
               <div className="flex items-baseline gap-1.5">
-                <span className="text-lg font-bold text-white">{overview.total}</span>
+                <span className="text-lg font-bold text-white">{statsOverview.total}</span>
                 <span className="text-xs text-blue-300">Total</span>
               </div>
             </div>
@@ -280,7 +434,7 @@ export default function AdminUsersPage() {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
               <UserCheck className="h-4 w-4 text-green-400" />
               <div className="flex items-baseline gap-1.5">
-                <span className="text-lg font-bold text-white">{overview.verified}</span>
+                <span className="text-lg font-bold text-white">{statsOverview.verified}</span>
                 <span className="text-xs text-green-300">Verified</span>
               </div>
             </div>
@@ -288,7 +442,7 @@ export default function AdminUsersPage() {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
               <UserPlus className="h-4 w-4 text-purple-400" />
               <div className="flex items-baseline gap-1.5">
-                <span className="text-lg font-bold text-white">{overview.newThisWeek}</span>
+                <span className="text-lg font-bold text-white">{statsOverview.newThisWeek}</span>
                 <span className="text-xs text-purple-300">New</span>
               </div>
             </div>
@@ -310,6 +464,41 @@ export default function AdminUsersPage() {
       <Card className="glass-card border-white/10 bg-white/5">
         <CardContent className="p-3">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
+            {/* Role Filter Tabs (moved to top of filters) */}
+            <div className="md:col-span-6 flex gap-2 mb-2 border-b border-white/10 pb-2">
+              <Button
+                variant={role === 'ALL' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleRoleChange('ALL')}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'ALL' ? 'bg-blue-600 hover:bg-blue-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                All Users
+              </Button>
+              <Button
+                variant={role === 'CLIENT' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleRoleChange('CLIENT')}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'CLIENT' ? 'bg-green-600 hover:bg-green-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                Buyers (Clients)
+              </Button>
+              <Button
+                variant={role === 'FREELANCER' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleRoleChange('FREELANCER')}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-purple-600 hover:bg-purple-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                Artists (Freelancers)
+              </Button>
+              <Button
+                variant={role === 'ADMIN' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleRoleChange('ADMIN')}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'ADMIN' ? 'bg-yellow-600 hover:bg-yellow-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                Admins
+              </Button>
+            </div>
             {/* Search */}
             <div className="md:col-span-2">
               <div className="relative">
@@ -325,19 +514,6 @@ export default function AdminUsersPage() {
                 />
               </div>
             </div>
-
-            {/* Role Filter */}
-            <Select value={role} onValueChange={handleRoleChange}>
-              <SelectTrigger className="bg-white/5 border-white/10 text-white h-8 text-xs">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
-                <SelectItem value="ALL">All Roles</SelectItem>
-                <SelectItem value="FREELANCER">Freelancers</SelectItem>
-                <SelectItem value="CLIENT">Clients</SelectItem>
-                <SelectItem value="ADMIN">Admins</SelectItem>
-              </SelectContent>
-            </Select>
 
             {/* Verification Status */}
             <Select value={verificationStatus} onValueChange={handleVerificationChange}>
@@ -448,9 +624,9 @@ export default function AdminUsersPage() {
                   users.map((user) => {
                     const profileData = user.Profile;
                     const profile = Array.isArray(profileData) ? profileData[0] : profileData || null;
-                    const fullName = profile
-                      ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim()
-                      : null;
+                    const firstName = profile?.firstName || (profile as any)?.first_name || '';
+                    const lastName = profile?.lastName || (profile as any)?.last_name || '';
+                    const fullName = `${firstName} ${lastName}`.trim() || user.email?.split('@')[0] || null;
 
                     return (
                       <tr
@@ -475,7 +651,9 @@ export default function AdminUsersPage() {
                         </td>
                         <td className="py-2.5 px-4 align-top">
                           <Badge variant="outline" className={`text-xs ${getPlanBadge(user.subscriptionPlan ?? '')}`}>
-                            {user.subscriptionPlan?.replace('FREELANCER_', '').replace('CLIENT_', '') || 'FREE'}
+                            {user.subscriptionPlan && !user.subscriptionPlan.toUpperCase().includes('FREE') && !user.subscriptionPlan.toUpperCase().includes('STARTER')
+                              ? user.subscriptionPlan.replace('FREELANCER_', '').replace('CLIENT_', '')
+                              : 'PRO'}
                           </Badge>
                         </td>
                         <td className="py-2.5 px-4 align-top">
@@ -492,7 +670,7 @@ export default function AdminUsersPage() {
                           )}
                         </td>
                         <td className="py-2.5 px-4 align-top">
-                          <span className="text-xs text-slate-300">
+                          <span suppressHydrationWarning className="text-xs text-slate-300">
                             {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
                           </span>
                         </td>

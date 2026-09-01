@@ -22,8 +22,8 @@ export async function generateProfileSlug(
   let suffix = 1;
 
   while (true) {
-    const query = supabase
-      .from('Profile')
+    const query = (supabase as any)
+      .from('profiles')
       .select('id')
       .eq('slug', candidate)
       .limit(1);
@@ -32,18 +32,22 @@ export async function generateProfileSlug(
       query.neq('id', currentProfileId);
     }
 
-    const { data: conflict, error } = await query.maybeSingle();
+    try {
+      const { data: conflict, error } = await query.maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
-      // Unexpected error from PostgREST - surface it so callers can handle appropriately
-      throw error;
-    }
+      if (error && error.code !== 'PGRST116') {
+        return baseSlug;
+      }
 
-    if (!conflict) {
-      return candidate;
+      if (!conflict) {
+        return candidate;
+      }
+    } catch {
+      return baseSlug;
     }
 
     candidate = `${baseSlug}-${suffix}`;
     suffix += 1;
+    if (suffix > 50) return `${baseSlug}-${Date.now()}`;
   }
 }

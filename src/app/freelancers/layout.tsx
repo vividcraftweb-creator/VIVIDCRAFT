@@ -3,7 +3,7 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Browse Freelancers',
-  description: 'Browse and hire verified freelancers from around the world. Find skilled professionals for your projects on JobHorizons. View portfolios, skills, and ratings of top remote talent.',
+  description: 'Browse and hire verified freelancers from around the world. Find skilled professionals for your projects on Vivid Art. View portfolios, skills, and ratings of top remote talent.',
   keywords: [
     'hire freelancers',
     'find freelancers',
@@ -16,7 +16,7 @@ export const metadata: Metadata = createPageMetadata({
     'top freelancers',
     'skilled freelancers',
   ],
-  canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/freelancers',
+  canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/freelancers`,
   noIndex: true,
 });
 

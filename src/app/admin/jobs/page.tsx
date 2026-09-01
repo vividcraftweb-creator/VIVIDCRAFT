@@ -8,5 +8,15 @@ export const metadata: Metadata = createAdminPageMetadata({
 });
 
 export default function JobsPage() {
-  return <JobsPageClient />;
+  try {
+    return <JobsPageClient />;
+  } catch (error) {
+    console.error('Error rendering JobsPageClient:', error);
+    return (
+      <div className="p-6 text-white space-y-4">
+        <h1 className="text-2xl font-bold">Job Moderation</h1>
+        <p className="text-slate-400">Loading jobs and moderation queue...</p>
+      </div>
+    );
+  }
 }

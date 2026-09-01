@@ -79,7 +79,7 @@ export default function Step9ScreeningQuestions({ formData, updateFormData }: Pr
               Enable AI-powered screening
             </label>
             <p className="text-sm text-muted-foreground mt-1">
-              JobHorizons AI will automatically analyze responses and rank candidates based on relevance
+              Vivid Art AI will automatically analyze responses and rank candidates based on relevance
             </p>
           </div>
         </div>

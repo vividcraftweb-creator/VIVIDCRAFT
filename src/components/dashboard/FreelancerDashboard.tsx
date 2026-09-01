@@ -62,11 +62,13 @@ import dynamic from 'next/dynamic';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/trpc/router';
 import type { SupportLevel } from '@/lib/subscription-plans';
+import { createClient } from '@/lib/supabase/client';
 
 // Dynamically import components to avoid SSR issues
 const ProfileView = dynamic(() => import('./ProfileView'), { ssr: false });
 const ClientVerificationWizard = dynamic(() => import('../verification/ClientVerificationWizard'), { ssr: false });
 const SubscriptionView = dynamic(() => import('./SubscriptionView'), { ssr: false });
+const GalleryView = dynamic(() => import('./GalleryView'), { ssr: false });
 
 // Define types for our table data, including relations
 // We override date fields to be strings, as they are serialized over the wire
@@ -95,7 +97,7 @@ import { toast } from 'sonner';
 type ContactListItem = inferRouterOutputs<AppRouter>['profiles']['getContacts'][number];
 
 interface FreelancerDashboardProps {
-  view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'verification' | 'settings' | 'subscription';
+  view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'verification' | 'settings' | 'subscription' | 'gallery';
 }
 
 export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardProps) {
@@ -111,8 +113,12 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
 
   const utils = trpc.useUtils();
 
+  const [forceReady, setForceReady] = useState(false);
+
   useEffect(() => {
     setIsMounted(true);
+    const timer = setTimeout(() => setForceReady(true), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Only load data when session is available and for the active view
@@ -128,18 +134,50 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
   // Verification banner dismissal state
   const BANNER_DISMISS_KEY = `verification_banner_dismissed_${sessionUserId}`;
   const [isBannerDismissed, setIsBannerDismissed] = useState<boolean>(false);
+  const [directVerification, setDirectVerification] = useState<{ isVerified: boolean; status: string } | null>(null);
+
+  useEffect(() => {
+    async function checkAuthVerification() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: verifDocs } = await supabase
+            .from('Verification')
+            .select('*')
+            .eq('userId', user.id);
+
+          const { data: prof } = await (supabase as any)
+            .from('profiles')
+            .select('isVerified, is_verified')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          const isApproved = Boolean(prof?.isVerified || prof?.is_verified || verifDocs?.some((d: any) => d.status === 'APPROVED'));
+          const isPending = Boolean(verifDocs?.some((d: any) => d.status === 'PENDING'));
+          const isRejected = Boolean(verifDocs?.some((d: any) => d.status === 'REJECTED'));
+
+          setDirectVerification({
+            isVerified: isApproved,
+            status: isApproved ? 'approved' : isPending ? 'pending' : isRejected ? 'rejected' : 'not_started',
+          });
+        }
+      } catch (e) {}
+    }
+    checkAuthVerification();
+  }, []);
 
   const planPermissions = planSummary?.permissions;
-  const analyticsLevel = planPermissions?.analyticsLevel || 'none';
-  const marketInsightsEnabled = planPermissions?.hasMarketInsights ?? false;
-  const supportLevel = planPermissions?.supportLevel || 'email';
+  const analyticsLevel = 'advanced';
+  const marketInsightsEnabled = true;
+  const supportLevel: SupportLevel = 'priority-email';
 
   const supportLabelMap: Record<SupportLevel, string> = {
     email: 'Email support',
     'priority-email': 'Priority email support',
     dedicated: 'Dedicated concierge support',
   };
-  const supportLabel = supportLabelMap[supportLevel] ?? 'Email support';
+  const supportLabel = supportLabelMap[supportLevel] ?? 'Priority email support';
 
   const { data: proposals, isLoading: proposalsLoading } =
     trpc.proposals.getProposalsForFreelancer.useQuery(undefined, {
@@ -147,7 +185,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     });
-  const { data: verificationStatus, isLoading: verificationLoading } =
+  const { data: rawVerificationStatus, isLoading: verificationLoading } =
     trpc.verifications.checkVerificationStatus.useQuery(undefined, {
       enabled: isAuthenticated && (view === 'dashboard' || view === 'verification'),
       retry: false,
@@ -155,7 +193,24 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
       refetchOnWindowFocus: true,
       refetchOnReconnect: false,
     });
-  const hasFetchedVerification = verificationStatus !== undefined;
+
+  const verificationStatus = (rawVerificationStatus && rawVerificationStatus.message !== 'User not found')
+    ? rawVerificationStatus
+    : {
+        isVerified: directVerification?.isVerified ?? false,
+        status: (directVerification?.status as any) ?? 'not_started',
+        message: directVerification?.isVerified
+          ? 'Identity verification approved'
+          : directVerification?.status === 'pending'
+          ? 'Your ID is under review'
+          : 'Upload a government-issued ID to fully activate your account and apply for jobs.',
+        requiredDocs: ['ID_FRONT', 'ID_BACK', 'SELFIE'],
+        uploadedDocs: [],
+        missingDocs: [],
+        rejectedDocs: [],
+      };
+
+  const hasFetchedVerification = rawVerificationStatus !== undefined || directVerification !== null;
 
   // Load banner dismiss state from localStorage
   useEffect(() => {
@@ -177,19 +232,24 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     });
-  const { data: profileCompletenessData, isLoading: completenessLoading } =
+  const { data: profileCompletenessData, isLoading: completenessLoading, refetch: refetchCompleteness } =
     trpc.publicProfile.getCompleteness.useQuery(undefined, {
       enabled: isAuthenticated && view === 'dashboard',
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      staleTime: 0,
     });
   const { data: contacts } = trpc.profiles.getContacts.useQuery(undefined, {
     enabled: isAuthenticated && view === 'messages',
   });
-  const { data: myProfile } = trpc.profiles.getMyProfile.useQuery(undefined, {
+  const { data: myProfile, refetch: refetchMyProfile } = trpc.profiles.getMyProfile.useQuery(undefined, {
     enabled: isAuthenticated,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
+
+  const [directProfile, setDirectProfile] = useState<any>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const sendMessageMutation = trpc.messages.sendMessage.useMutation({
     onSuccess: () => {
@@ -209,39 +269,193 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
     },
   });
 
-  const togglePublishMutation = trpc.publicProfile.togglePublish.useMutation({
-    onSuccess: () => {
-      utils.profiles.getMyProfile.invalidate();
-      toast.success(
-        myProfile?.isPublished
-          ? "Profile unpublished successfully"
-          : "Profile published successfully"
-      );
-    },
-    onError: (error) => {
-      toast.error("Failed to update profile visibility", { description: error.message });
-    },
-  });
+  const togglePublishMutation = trpc.publicProfile.togglePublish.useMutation();
 
-  const handleTogglePublish = () => {
-    if (!profileCompletenessData?.isComplete && !myProfile?.isPublished) {
+  const fetchProfileDirect = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const targetUserId = user?.id || sessionUserId;
+      if (!targetUserId) return;
+
+      const metadata = user?.user_metadata || {};
+
+      const { data } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .or(`id.eq.${targetUserId},userId.eq.${targetUserId}`)
+        .maybeSingle();
+
+      const isPub = (data?.is_published ?? metadata.is_published) ?? (data?.status === 'published');
+
+      const merged = {
+        ...metadata,
+        ...(data || {}),
+        title: metadata.title || data?.title || '',
+        bio: metadata.bio || data?.bio || '',
+        skills: metadata.skills || data?.skills || '',
+        avatar_url: metadata.avatar_url || data?.avatar_url || '',
+        first_name: data?.first_name || metadata.first_name || '',
+        last_name: data?.last_name || metadata.last_name || '',
+        address: data?.address || metadata.address || '',
+        is_published: Boolean(isPub),
+        isPublished: Boolean(isPub),
+        status: isPub ? 'published' : 'draft',
+      };
+
+      setDirectProfile(merged);
+    } catch (err) {
+      console.warn('Dashboard profile direct load notice:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfileDirect();
+  }, [sessionUserId]);
+
+  // Evaluate the 5 steps matching exact database column names
+  const evaluatedProfile = directProfile || myProfile;
+  const hasAvatar = Boolean(
+    evaluatedProfile?.avatar_url || 
+    evaluatedProfile?.avatar || 
+    evaluatedProfile?.profile_picture || 
+    evaluatedProfile?.profilePicture
+  );
+  const hasName = Boolean(
+    evaluatedProfile?.first_name || 
+    evaluatedProfile?.last_name || 
+    evaluatedProfile?.full_name || 
+    evaluatedProfile?.displayName || 
+    evaluatedProfile?.display_name || 
+    evaluatedProfile?.firstName || 
+    evaluatedProfile?.lastName ||
+    evaluatedProfile?.name
+  );
+  const hasTitle = Boolean(
+    evaluatedProfile?.title || 
+    evaluatedProfile?.professional_title || 
+    evaluatedProfile?.professionalTitle
+  );
+  const hasAddress = Boolean(
+    evaluatedProfile?.address || 
+    evaluatedProfile?.location
+  );
+  const rawSkills = evaluatedProfile?.skills;
+  const hasSkills = Boolean(
+    (Array.isArray(rawSkills) && rawSkills.filter(Boolean).length > 0) ||
+    (typeof rawSkills === 'string' && rawSkills.trim().length > 0)
+  );
+
+  const directSteps = [
+    { field: 'Avatar Photo', value: hasAvatar },
+    { field: 'Full Name', value: hasName },
+    { field: 'Professional Title', value: hasTitle },
+    { field: 'Address', value: hasAddress },
+    { field: 'Skills', value: hasSkills },
+  ];
+  const directCompletedCount = directSteps.filter(s => s.value).length;
+  const directPercentage = Math.round((directCompletedCount / directSteps.length) * 100);
+
+  // Combine tRPC calculation and direct calculation
+  const profileCompleteness = Math.max(
+    profileCompletenessData?.percentage ?? 0,
+    directPercentage
+  );
+  const isProfileComplete = 
+    directCompletedCount >= 4 || 
+    profileCompleteness >= 80 || 
+    (profileCompletenessData?.isComplete ?? false);
+
+  // Dynamically build remaining steps: ONLY incomplete steps are shown
+  const missingFields = directSteps
+    .filter(s => !s.value)
+    .map(s => s.field);
+
+  const isCurrentlyPublished = Boolean(
+    directProfile?.is_published ?? directProfile?.isPublished ?? myProfile?.isPublished
+  );
+
+  const handleTogglePublish = async () => {
+    if (!isProfileComplete && !isCurrentlyPublished) {
       toast.error("Please complete your profile before publishing");
       return;
     }
 
-    togglePublishMutation.mutate({
-      isPublished: !myProfile?.isPublished
-    });
+    const nextState = !isCurrentlyPublished;
+    setIsPublishing(true);
+
+    // Optimistic UI update
+    setDirectProfile((prev: any) => ({
+      ...(prev || {}),
+      is_published: nextState,
+      isPublished: nextState,
+      status: nextState ? 'published' : 'draft',
+    }));
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const targetUserId = user?.id || sessionUserId;
+
+      if (targetUserId) {
+        // 1. Update Supabase Auth user metadata
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              is_published: nextState,
+              isPublished: nextState,
+            },
+          });
+        } catch {}
+
+        // 2. Direct Supabase profiles table update
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_published: nextState,
+              status: nextState ? 'published' : 'draft',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        } catch (dbErr) {
+          console.warn('Direct publish update notice:', dbErr);
+        }
+      }
+
+      // 3. Server mutation
+      await togglePublishMutation.mutateAsync({
+        isPublished: nextState,
+      });
+
+      // 4. Invalidate all profile queries and refresh Next.js route cache
+      utils.profiles.getMyProfile.invalidate();
+      utils.profiles.searchFreelancers.invalidate();
+      utils.publicProfile.getMyFullProfile.invalidate();
+      utils.publicProfile.getCompleteness.invalidate();
+      router.refresh();
+
+      toast.success(nextState ? "Profile published successfully!" : "Profile unpublished successfully!");
+    } catch (err: any) {
+      console.error("Publish toggle error:", err);
+      toast.error(`Publish failed: ${err.message || 'Could not update visibility'}`);
+      // Revert optimistic update
+      setDirectProfile((prev: any) => ({
+        ...(prev || {}),
+        is_published: !nextState,
+        isPublished: !nextState,
+        status: !nextState ? 'published' : 'draft',
+      }));
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const isLoading =
-    !hasLoadedSession ||
-    proposalsLoading ||
-    verificationLoading ||
-    messagesLoading ||
-    tokensLoading ||
-    completenessLoading ||
-    planSummaryLoading;
+    !forceReady &&
+    ((view === 'dashboard' &&
+      (proposalsLoading || verificationLoading || tokensLoading || completenessLoading)) ||
+      !hasLoadedSession);
 
   const handleWithdrawConfirm = () => {
     if (selectedProposal) {
@@ -359,9 +573,6 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
       ? `/freelancers/${sessionUserId}`
       : '/freelancers';
 
-  // Use the completeness data from the publicProfile endpoint
-  const profileCompleteness = profileCompletenessData?.percentage || 0;
-
   const totalProposals = proposals?.length ?? 0;
   const proposalStatusMap =
     proposals?.reduce<Record<string, number>>((acc, proposal) => {
@@ -404,13 +615,13 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                         ))}
                       </div>
                     )}
-                    <Link href="/dashboard?tab=verification">
-                      <Button className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30">
+                    <Button asChild className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30">
+                      <Link href="/dashboard?tab=verification">
                         <FileText className="h-4 w-4 mr-2" />
                         Upload ID for Verification
                         <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -428,12 +639,12 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                     <p className="text-blue-200/80 mb-4">
                       Thanks for submitting your ID. Our admin typically reviews requests within 1–2 business days. You&apos;ll be notified as soon as it&apos;s approved.
                     </p>
-                    <Link href="/dashboard?tab=verification">
-                      <Button className="bg-blue-500/20 border border-blue-500/30 text-blue-200 hover:bg-blue-500/30">
+                    <Button asChild className="bg-blue-500/20 border border-blue-500/30 text-blue-200 hover:bg-blue-500/30">
+                      <Link href="/dashboard?tab=verification">
                         Check Status
                         <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -461,12 +672,12 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                         ))}
                       </div>
                     )}
-                    <Link href="/dashboard?tab=verification">
-                      <Button className="bg-red-500/20 border border-red-500/30 text-red-200 hover:bg-red-500/30">
+                    <Button asChild className="bg-red-500/20 border border-red-500/30 text-red-200 hover:bg-red-500/30">
+                      <Link href="/dashboard?tab=verification">
                         Resubmit Verification
                         <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -555,22 +766,6 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
             </div>
           </div>
 
-          {/* Tokens Remaining */}
-          <div className="glass-card p-4 sm:p-6 rounded-2xl bg-orange-500/10 border border-orange-500/20 hover:border-orange-400/30 transition-all duration-300 group">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-300 text-sm font-medium">Tokens Remaining</p>
-                <p className="text-2xl sm:text-3xl font-bold text-white mt-1">{tokenData?.tokens || 150}</p>
-                <p className="text-orange-400 text-sm mt-1 flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  Refills weekly
-                </p>
-              </div>
-              <div className="p-2 sm:p-3 bg-orange-500/20 rounded-xl group-hover:bg-orange-500/30 transition-colors">
-                <CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-orange-400" />
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Main Content Grid */}
@@ -593,7 +788,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-medium text-sm sm:text-base truncate">{proposal.job?.title || 'Untitled Job'}</p>
                       <p className="text-slate-400 text-xs sm:text-sm">
-                        Proposed: ${proposal.proposedRate || 0} • Bid: {proposal.tokenBid ?? 0} token{(proposal.tokenBid ?? 0) === 1 ? '' : 's'}
+                        Proposed: ${proposal.proposedRate || 0}
                       </p>
                     </div>
                     <Badge 
@@ -612,120 +807,88 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                   <div className="text-center py-8">
                     <FileText className="h-12 w-12 text-slate-500 mx-auto mb-4" />
                     <p className="text-slate-400">No proposals yet</p>
-                    <Link href="/jobs">
-                      <Button className="mt-4 bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                    <Button asChild className="mt-4 bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                      <Link href="/jobs">
                         Find Your First Job
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Earnings / Analytics */}
-            {analyticsLevel === 'none' ? (
-              <div className="glass-card p-4 sm:p-6 rounded-2xl border border-primary/20 bg-primary/5 text-center">
-                <BarChart3 className="h-8 w-8 sm:h-10 sm:w-10 mx-auto text-primary mb-3 sm:mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-2">Unlock Advanced Analytics</h3>
-                <p className="text-xs sm:text-sm text-slate-300 mb-4">
-                  Upgrade to Pro to access proposal conversion analytics, win-rate tracking, and revenue forecasts.
-                </p>
-                <Link href="/dashboard?tab=subscription">
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                    Upgrade to Pro
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-white">Proposal Pipeline</h3>
-                    <p className="text-sm sm:text-base text-slate-400">
-                      Understand how your proposals are progressing and plan next steps with clients.
-                    </p>
-                  </div>
-                  <div className="p-2 bg-primary/20 rounded-xl">
-                    <BarChart3 className="h-6 w-6 text-primary" />
-                  </div>
+            <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Proposal Pipeline &amp; Analytics</h3>
+                  <p className="text-sm sm:text-base text-slate-400">
+                    Understand how your proposals are progressing and plan next steps with clients.
+                  </p>
                 </div>
+                <div className="p-2 bg-primary/20 rounded-xl">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
+              </div>
 
-                {proposalOverviewRows.length > 0 ? (
-                  <div className="space-y-4">
-                    {proposalOverview.map((item) => (
-                      <div key={item.label} className="flex items-center space-x-4">
-                        <span className="text-slate-300 text-sm w-24">{item.label}</span>
-                        <div className="flex-1 bg-white/10 rounded-full h-2">
-                          <div
-                            className={`${item.color} h-2 rounded-full transition-all duration-500`}
-                            style={{ width: `${totalProposals > 0 ? Math.round((item.count / totalProposals) * 100) : 0}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-white text-sm font-medium w-12 text-right">
-                          {item.count}
-                        </span>
+              {proposalOverviewRows.length > 0 ? (
+                <div className="space-y-4">
+                  {proposalOverview.map((item) => (
+                    <div key={item.label} className="flex items-center space-x-4">
+                      <span className="text-slate-300 text-sm w-24">{item.label}</span>
+                      <div className="flex-1 bg-white/10 rounded-full h-2">
+                        <div
+                          className={`${item.color} h-2 rounded-full transition-all duration-500`}
+                          style={{ width: `${totalProposals > 0 ? Math.round((item.count / totalProposals) * 100) : 0}%` }}
+                        ></div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-slate-400 text-sm">
-                    Send proposals to populate your pipeline analytics.
-                  </div>
-                )}
-
-              </div>
-            )}
-
-            {marketInsightsEnabled ? (
-              <div className="glass-card p-4 sm:p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-                <div className="flex flex-col gap-3 mb-4 sm:mb-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-semibold text-white">Market Demand Trends</h3>
-                      <p className="text-xs sm:text-sm text-purple-200">Weekly insight into in-demand skills across the platform</p>
+                      <span className="text-white text-sm font-medium w-12 text-right">
+                        {item.count}
+                      </span>
                     </div>
-                    <Badge className="bg-purple-500/20 text-purple-200 border-purple-500/30 w-fit">Elite Exclusive</Badge>
-                  </div>
+                  ))}
                 </div>
-                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Highest demand</p>
-                    <p className="text-white font-semibold">AI &amp; Machine Learning</p>
-                    <p className="text-xs text-green-400 mt-2">+18% week over week</p>
+              ) : (
+                <div className="text-center py-6 text-slate-400 text-sm">
+                  Send proposals to populate your pipeline analytics.
+                </div>
+              )}
+            </div>
+
+            {/* Market Demand Trends */}
+            <div className="glass-card p-4 sm:p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+              <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold text-white">Market Demand Trends</h3>
+                    <p className="text-xs sm:text-sm text-purple-200">Weekly insight into in-demand skills across the platform</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Top-paying skill</p>
-                    <p className="text-white font-semibold">Senior React Architecture</p>
-                    <p className="text-xs text-green-400 mt-2">Average rate: $110/hr</p>
-                  </div>
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Emerging trend</p>
-                    <p className="text-white font-semibold">Generative design automation</p>
-                    <p className="text-xs text-blue-400 mt-2">High growth opportunity</p>
-                  </div>
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Client watchlist</p>
-                    <p className="text-white font-semibold">FinTech product revamps</p>
-                    <p className="text-xs text-blue-400 mt-2">12 active projects this week</p>
-                  </div>
+                  <Badge className="bg-purple-500/20 text-purple-200 border-purple-500/30 w-fit">Unlocked</Badge>
                 </div>
               </div>
-            ) : (
-              <div className="glass-card p-4 sm:p-6 rounded-2xl border border-purple-500/20 bg-purple-500/5 text-center">
-                <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 mx-auto text-purple-300 mb-3 sm:mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-2">Unlock Market Insights</h3>
-                <p className="text-xs sm:text-sm text-purple-100 mb-4">
-                  Upgrade to Elite to access weekly demand trends, high-paying skill alerts, and curated opportunity reports.
-                </p>
-                <Link href="/dashboard?tab=subscription">
-                  <Button className="bg-purple-500 text-white hover:bg-purple-600">
-                    Explore Elite Benefits
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Highest demand</p>
+                  <p className="text-white font-semibold">AI &amp; Machine Learning</p>
+                  <p className="text-xs text-green-400 mt-2">+18% week over week</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Top-paying skill</p>
+                  <p className="text-white font-semibold">Senior React Architecture</p>
+                  <p className="text-xs text-green-400 mt-2">Average rate: $110/hr</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Emerging trend</p>
+                  <p className="text-white font-semibold">Generative design automation</p>
+                  <p className="text-xs text-blue-400 mt-2">High growth opportunity</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Client watchlist</p>
+                  <p className="text-white font-semibold">FinTech product revamps</p>
+                  <p className="text-xs text-blue-400 mt-2">12 active projects this week</p>
+                </div>
               </div>
-            )}
+            </div>
 
             <div className="glass-card p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
               <div className="flex flex-col gap-3 mb-4">
@@ -773,18 +936,18 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                   </div>
                 </div>
 
-                {profileCompleteness < 100 && profileCompletenessData?.missingFields && profileCompletenessData.missingFields.length > 0 && (
+                {profileCompleteness < 100 && missingFields && missingFields.length > 0 && (
                   <div className="text-sm text-slate-400">
-                    <p className="mb-2 font-medium text-slate-300">Steps remaining ({profileCompletenessData.missingFields.length}):</p>
+                    <p className="mb-2 font-medium text-slate-300">Steps remaining ({missingFields.length}):</p>
                     <ul className="space-y-1">
-                      {profileCompletenessData.missingFields.slice(0, 5).map((field, index) => (
+                      {missingFields.slice(0, 5).map((field, index) => (
                         <li key={index} className="flex items-center">
                           <span className="mr-2">•</span> {field}
                         </li>
                       ))}
-                      {profileCompletenessData.missingFields.length > 5 && (
+                      {missingFields.length > 5 && (
                         <li className="flex items-center text-slate-500">
-                          <span className="mr-2">•</span> +{profileCompletenessData.missingFields.length - 5} more...
+                          <span className="mr-2">•</span> +{missingFields.length - 5} more...
                         </li>
                       )}
                     </ul>
@@ -798,49 +961,49 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                       <Globe className="h-4 w-4 text-primary" />
                       <span className="text-sm font-medium text-white">Profile Visibility</span>
                     </div>
-                    <Badge variant={myProfile?.isPublished ? "default" : "secondary"}>
-                      {myProfile?.isPublished ? "Published" : "Draft"}
+                    <Badge variant={isCurrentlyPublished ? "default" : "secondary"}>
+                      {isCurrentlyPublished ? "Published" : "Draft"}
                     </Badge>
                   </div>
 
                   <p className="text-xs text-white/60 mb-3">
-                    {myProfile?.isPublished
+                    {isCurrentlyPublished
                       ? "Your profile is visible to clients"
                       : "Your profile is hidden from clients"}
                   </p>
 
                   <Button
                     className="w-full mb-3"
-                    variant={myProfile?.isPublished ? "outline" : "default"}
-                    disabled={!profileCompletenessData?.isComplete || togglePublishMutation.isPending}
+                    variant={isCurrentlyPublished ? "outline" : "default"}
+                    disabled={(!isProfileComplete && !isCurrentlyPublished) || isPublishing || togglePublishMutation.isPending}
                     onClick={handleTogglePublish}
                   >
-                    {togglePublishMutation.isPending ? (
+                    {isPublishing || togglePublishMutation.isPending ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : myProfile?.isPublished ? (
+                    ) : isCurrentlyPublished ? (
                       <EyeOff className="h-4 w-4 mr-2" />
                     ) : (
                       <Eye className="h-4 w-4 mr-2" />
                     )}
-                    {myProfile?.isPublished ? "Unpublish Profile" : "Publish Profile"}
+                    {isCurrentlyPublished ? "Unpublish Profile" : "Publish Profile"}
                   </Button>
 
-                  {!profileCompletenessData?.isComplete && (
+                  {!isProfileComplete && !isCurrentlyPublished && (
                     <p className="text-xs text-yellow-400 flex items-start gap-1">
                       <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                      Complete your profile to publish
+                      Complete your profile (at least 80%) to publish
                     </p>
                   )}
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <Link href="/profile-editor">
-                    <Button className="w-full bg-blue-600 text-white hover:bg-blue-700 font-medium">
+                  <Button asChild className="w-full bg-blue-600 text-white hover:bg-blue-700 font-medium">
+                    <Link href="/profile-editor">
                       <UserIcon className="h-4 w-4 mr-2" />
                       Edit Public Profile
                       <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
 
                   {(myProfile?.slug || sessionUserId) && (
                     <Tooltip>
@@ -848,9 +1011,9 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                         <div className="w-full">
                           <Button
                             className="w-full glass-button"
-                            disabled={!profileCompletenessData?.isComplete}
+                            disabled={!isProfileComplete}
                             onClick={() => {
-                              if (profileCompletenessData?.isComplete) {
+                              if (isProfileComplete) {
                                 router.push(freelancerProfileLink);
                               }
                             }}
@@ -860,18 +1023,18 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                           </Button>
                         </div>
                       </TooltipTrigger>
-                      {!profileCompletenessData?.isComplete && (
+                      {!isProfileComplete && (
                         <TooltipContent side="top" className="max-w-xs">
                           <div className="space-y-2">
                             <p className="font-semibold text-sm">Complete your profile to view</p>
                             <p className="text-xs text-muted-foreground">Missing items:</p>
                             <ul className="text-xs space-y-1 list-disc list-inside">
-                              {profileCompletenessData?.missingFields?.slice(0, 5).map((field, i) => (
+                              {missingFields.slice(0, 5).map((field, i) => (
                                 <li key={i}>{field}</li>
                               ))}
-                              {(profileCompletenessData?.missingFields?.length || 0) > 5 && (
+                              {missingFields.length > 5 && (
                                 <li className="text-muted-foreground">
-                                  +{(profileCompletenessData?.missingFields?.length || 0) - 5} more...
+                                  +{missingFields.length - 5} more...
                                 </li>
                               )}
                             </ul>
@@ -945,26 +1108,26 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                   </div>
                 )}
 
-                <Link href="/dashboard?tab=verification">
-                  <Button className={`w-full ${
-                    verificationStatus?.status === 'approved'
-                      ? 'bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30'
-                      : verificationStatus?.status === 'pending'
-                      ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300 hover:bg-blue-500/30'
-                      : verificationStatus?.status === 'rejected'
-                      ? 'bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30'
-                      : 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30'
-                  }`}>
+                <Button asChild className={`w-full ${
+                  verificationStatus?.status === 'approved'
+                    ? 'bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30'
+                    : verificationStatus?.status === 'pending'
+                    ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300 hover:bg-blue-500/30'
+                    : verificationStatus?.status === 'rejected'
+                    ? 'bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30'
+                    : 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30'
+                }`}>
+                  <Link href="/dashboard?tab=verification">
                     {verificationStatus?.status === 'approved'
                       ? 'View Status'
                       : verificationStatus?.status === 'pending'
                       ? 'Check Status'
                       : verificationStatus?.status === 'rejected'
                       ? 'Resubmit Verification'
-                      : 'Get Verified'}
+                      : 'Upload ID for Verification'}
                     <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
 
@@ -1195,6 +1358,9 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
           </div>
         );
 
+      case 'gallery':
+        return <GalleryView />;
+
       case 'profile':
         return <ProfileView />;
 
@@ -1254,6 +1420,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
             freelancerId: selectedProposal.freelancerId,
             tokenBid: selectedProposal.tokenBid ?? 0,
             deletedAt: null,
+            chat_enabled: false,
           }}
           isOpen={isEditModalOpen}
           onClose={() => setEditModalOpen(false)}

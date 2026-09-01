@@ -4,6 +4,9 @@ import { auth } from '@/lib/auth';
 import FreelancersPage from '@/app/freelancers/page';
 import { createAuthPageMetadata } from '@/lib/seo-metadata';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = createAuthPageMetadata({
   title: 'Browse Freelancers',
   description: 'Browse and hire verified freelancers for your projects.',

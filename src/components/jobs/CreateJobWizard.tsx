@@ -357,13 +357,15 @@ export default function CreateJobWizard() {
         {/* Back to Dashboard Button */}
         <div className="mb-6">
           <Button
-            onClick={() => router.push('/dashboard')}
+            asChild
             variant="ghost"
             size="sm"
             className="glass-button hover-lift"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Link>
           </Button>
         </div>
 

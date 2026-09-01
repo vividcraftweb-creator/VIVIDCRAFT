@@ -1,9 +1,9 @@
 /**
  * Verification Helper Functions
- * Utilities for checking and enforcing client verification requirements
+ * Utilities for checking and enforcing client/freelancer verification requirements
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { TRPCError } from '@trpc/server';
 
 export type VerificationStatus = 'not_started' | 'incomplete' | 'pending' | 'approved' | 'rejected';
@@ -27,21 +27,38 @@ export async function checkUserVerification(
   userId: string,
   requireClientRole = true
 ): Promise<VerificationCheckResult> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
-  // Get user's client type
-  const { data: user } = await supabase
+  // Get user's client type from User table
+  let { data: user } = await supabase
     .from('User')
-    .select('clientType, role')
+    .select('clientType, role, isVerified')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
+
+  // Fallback to profiles table if User table doesn't have the record
+  if (!user) {
+    const { data: profile } = await (supabase as any)
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profile) {
+      user = {
+        clientType: 'INDIVIDUAL',
+        role: profile.role || 'FREELANCER',
+        isVerified: false,
+      } as any;
+    }
+  }
 
   // Only skip verification check if requireClientRole is true AND user is not a CLIENT
   if (requireClientRole && (!user || user.role !== 'CLIENT')) {
     return {
-      isVerified: true, // Non-clients don't need verification when role checking is enabled
+      isVerified: true,
       status: 'approved',
-      message: 'Verification not required for this user type',
+      message: 'Verification complete',
       requiredDocs: [],
       uploadedDocs: [],
       missingDocs: [],
@@ -49,18 +66,7 @@ export async function checkUserVerification(
     };
   }
 
-  // If user is null at this point, return not started status
-  if (!user) {
-    return {
-      isVerified: false,
-      status: 'not_started',
-      message: 'User not found',
-      requiredDocs: [],
-      uploadedDocs: [],
-      missingDocs: [],
-      rejectedDocs: [],
-    };
-  }
+  const clientType = user?.clientType || 'INDIVIDUAL';
 
   // Get user's verification documents
   const { data: documents } = await supabase
@@ -69,41 +75,30 @@ export async function checkUserVerification(
     .eq('userId', userId);
 
   const docs = documents || [];
-  const uploadedTypes = docs.map(d => d.verificationType);
+  const uploadedTypes = docs.map(d => d.verificationType).filter(Boolean);
 
   // Determine required documents based on client type
-  // ID_FRONT, ID_BACK, and SELFIE are required for all users (prevents fraud)
-  const requiredDocs = user.clientType === 'BUSINESS'
+  const requiredDocs = clientType === 'BUSINESS'
     ? ['ID_FRONT', 'ID_BACK', 'SELFIE', 'BUSINESS_REGISTRATION', 'PROOF_OF_ADDRESS']
     : ['ID_FRONT', 'ID_BACK', 'SELFIE'];
 
   const missingDocs = requiredDocs.filter(type => !uploadedTypes.includes(type));
   const rejectedDocs = docs
     .filter(d => d.status === 'REJECTED')
-    .map(d => ({ type: d.verificationType, reason: d.rejectionReason || 'No reason provided' }));
+    .map(d => ({ type: d.verificationType, reason: d.rejectionReason || 'Document could not be verified' }));
 
   // Check verification status
   if (docs.length === 0) {
     return {
-      isVerified: false,
-      status: 'not_started',
-      message: 'Verification not started. Please complete verification to post jobs.',
+      isVerified: Boolean(user?.isVerified),
+      status: user?.isVerified ? 'approved' : 'not_started',
+      message: user?.isVerified
+        ? 'Account verified'
+        : 'Upload a government-issued ID to fully activate your account.',
       requiredDocs,
       uploadedDocs: [],
-      missingDocs: requiredDocs,
+      missingDocs: user?.isVerified ? [] : requiredDocs,
       rejectedDocs: [],
-    };
-  }
-
-  if (missingDocs.length > 0) {
-    return {
-      isVerified: false,
-      status: 'incomplete',
-      message: `Please upload the following documents: ${missingDocs.join(', ')}`,
-      requiredDocs,
-      uploadedDocs: uploadedTypes,
-      missingDocs,
-      rejectedDocs,
     };
   }
 
@@ -114,24 +109,20 @@ export async function checkUserVerification(
       message: 'Some documents were rejected. Please re-upload them.',
       requiredDocs,
       uploadedDocs: uploadedTypes,
-      missingDocs: [],
+      missingDocs,
       rejectedDocs,
     };
   }
 
-  // Check if all required documents are approved
-  const requiredDocsStatuses = docs
-    .filter(d => requiredDocs.includes(d.verificationType))
-    .map(d => d.status);
+  // Check if any submission is pending or approved
+  const hasPendingSubmission = docs.some(d => d.status === 'PENDING');
+  const hasApprovedSubmission = docs.some(d => d.status === 'APPROVED');
 
-  const allApproved = requiredDocsStatuses.every(status => status === 'APPROVED');
-  const anyPending = requiredDocsStatuses.some(status => status === 'PENDING');
-
-  if (allApproved) {
+  if (hasApprovedSubmission || user?.isVerified) {
     return {
       isVerified: true,
       status: 'approved',
-      message: 'Verification complete',
+      message: 'Identity verification approved',
       requiredDocs,
       uploadedDocs: uploadedTypes,
       missingDocs: [],
@@ -139,26 +130,38 @@ export async function checkUserVerification(
     };
   }
 
-  if (anyPending) {
+  if (hasPendingSubmission) {
     return {
       isVerified: false,
       status: 'pending',
-      message: 'Your verification is under review. You can post jobs once approved.',
+      message: 'Your verification is under review. Our team will review your ID within 24 hours.',
       requiredDocs,
       uploadedDocs: uploadedTypes,
       missingDocs: [],
       rejectedDocs: [],
+    };
+  }
+
+  if (missingDocs.length > 0) {
+    return {
+      isVerified: false,
+      status: 'incomplete',
+      message: `Please upload the remaining required documents: ${missingDocs.join(', ')}`,
+      requiredDocs,
+      uploadedDocs: uploadedTypes,
+      missingDocs,
+      rejectedDocs,
     };
   }
 
   return {
     isVerified: false,
-    status: 'incomplete',
-    message: 'Verification incomplete',
+    status: 'pending',
+    message: 'Your verification is under review.',
     requiredDocs,
     uploadedDocs: uploadedTypes,
-    missingDocs,
-    rejectedDocs,
+    missingDocs: [],
+    rejectedDocs: [],
   };
 }
 

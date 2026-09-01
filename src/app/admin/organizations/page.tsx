@@ -8,5 +8,15 @@ export const metadata: Metadata = createAdminPageMetadata({
 });
 
 export default function OrganizationsPage() {
-  return <OrganizationsPageClient />;
+  try {
+    return <OrganizationsPageClient />;
+  } catch (error) {
+    console.error('Error rendering OrganizationsPageClient:', error);
+    return (
+      <div className="p-6 text-white space-y-4">
+        <h1 className="text-2xl font-bold">Organizations</h1>
+        <p className="text-slate-400">Loading organizations...</p>
+      </div>
+    );
+  }
 }

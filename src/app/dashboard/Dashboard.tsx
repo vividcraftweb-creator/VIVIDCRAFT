@@ -25,7 +25,8 @@ import {
   Crown,
   UserCheck,
   BarChart3,
-  ArrowLeft
+  ArrowLeft,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
@@ -38,13 +39,13 @@ import { useRouter } from 'next/navigation';
 import type { AppSession } from '@/types/session';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
-const ClientDashboard = dynamic(() => import('@/components/dashboard/ClientDashboard'), {
-  loading: () => <div className="text-white p-8">Loading dashboard...</div>
-});
-const FreelancerDashboard = dynamic(() => import('@/components/dashboard/FreelancerDashboard'), {
-  loading: () => <div className="text-white p-8">Loading dashboard...</div>
-});
+import ClientDashboard from '@/components/dashboard/ClientDashboard';
+import FreelancerDashboard from '@/components/dashboard/FreelancerDashboard';
 const SubscriptionStatusBanner = dynamic(() => import('@/components/dashboard/SubscriptionStatusBanner'), {
+  ssr: false,
+});
+const GalleryView = dynamic(() => import('@/components/dashboard/GalleryView'), {
+  loading: () => <div className="text-white p-8 animate-pulse">Loading gallery...</div>,
   ssr: false,
 });
 
@@ -55,7 +56,8 @@ type DashboardView =
   | 'profile'
   | 'verification'
   | 'settings'
-  | 'subscription';
+  | 'subscription'
+  | 'gallery';
 
 const DASHBOARD_VIEW_SET = new Set<DashboardView>([
   'dashboard',
@@ -65,12 +67,14 @@ const DASHBOARD_VIEW_SET = new Set<DashboardView>([
   'verification',
   'settings',
   'subscription',
+  'gallery',
 ]);
 
 const isDashboardView = (value: string | null): value is DashboardView =>
   !!value && DASHBOARD_VIEW_SET.has(value as DashboardView);
 
 export default function Dashboard({ session }: { session: AppSession }) {
+  const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState<DashboardView>('dashboard');
   const searchParams = useSearchParams();
@@ -79,12 +83,16 @@ export default function Dashboard({ session }: { session: AppSession }) {
 
   const role = session.user?.role as 'CLIENT' | 'FREELANCER' | 'ADMIN';
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Redirect admins to admin panel immediately
   useEffect(() => {
-    if (role === 'ADMIN') {
+    if (mounted && role === 'ADMIN') {
       router.push('/admin');
     }
-  }, [role, router]);
+  }, [mounted, role, router]);
 
   // Fetch profile data to get updated name
   const { data: profile } = trpc.profiles.getMyProfile.useQuery(undefined, {
@@ -116,7 +124,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
       case 'CLIENT': {
         const baseItems = [
           { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
-          { name: 'Dashboard', icon: Home, view: 'dashboard' },
+          { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
           { name: 'Hire Freelancers', icon: Users, href: '/freelancers' },
           { name: 'My Jobs', icon: Briefcase, href: '/dashboard?tab=myjobs' },
           { name: 'Create Job', icon: Plus, href: '/jobs/create' },
@@ -200,14 +208,15 @@ export default function Dashboard({ session }: { session: AppSession }) {
       case 'FREELANCER':
         return [
           { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
-          { name: 'Dashboard', icon: Home, view: 'dashboard' },
-          { name: 'Messages', icon: MessageSquare, view: 'messages' },
+          { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
+          { name: 'Gallery', icon: ImageIcon, href: '/dashboard?tab=gallery', view: 'gallery' },
+          { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages', view: 'messages' },
           { name: 'Find Jobs', icon: Briefcase, href: '/jobs' },
-          { name: 'My Proposals', icon: FileText, view: 'proposals' },
-          { name: 'Subscription', icon: CreditCard, view: 'subscription' },
-          { name: 'Profile', icon: User, view: 'profile' },
-          { name: 'Verification', icon: Shield, view: 'verification' },
-          { name: 'Settings', icon: Settings, view: 'settings' },
+          { name: 'My Proposals', icon: FileText, href: '/dashboard?tab=proposals', view: 'proposals' },
+          { name: 'Subscription', icon: CreditCard, href: '/dashboard?tab=subscription', view: 'subscription' },
+          { name: 'Profile', icon: User, href: '/dashboard?tab=profile', view: 'profile' },
+          { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification', view: 'verification' },
+          { name: 'Settings', icon: Settings, href: '/dashboard?tab=settings', view: 'settings' },
           { name: 'Sign Out', icon: LogOut, action: 'signout' },
         ];
       case 'ADMIN':
@@ -268,11 +277,19 @@ export default function Dashboard({ session }: { session: AppSession }) {
     setSidebarOpen(false);
   };
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
+  const handleSignOut = async (e?: React.MouseEvent) => {
+    if (e?.preventDefault) e.preventDefault();
+    try {
+      document.cookie = 'mock_admin_session=; path=/; max-age=0; SameSite=Lax';
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Sign out error:', err);
+    } finally {
+      router.push('/');
+      router.refresh();
+    }
   };
 
   const renderDashboardContent = () => {
@@ -282,10 +299,9 @@ export default function Dashboard({ session }: { session: AppSession }) {
       case 'FREELANCER':
         return <FreelancerDashboard view={currentView} />;
       case 'ADMIN':
-        // Admins are redirected via useEffect - show nothing while redirecting
-        return null;
+        return <FreelancerDashboard view={currentView} />;
       default:
-        return <div className="text-white">Invalid user role.</div>;
+        return <FreelancerDashboard view={currentView} />;
     }
   };
 
@@ -373,6 +389,12 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={() => {
+                      if ('view' in item && item.view) {
+                        navigateToView(item.view as DashboardView);
+                      }
+                      setSidebarOpen(false);
+                    }}
                     className={`flex items-center justify-between space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                       isActive
                         ? 'bg-blue-500/20 text-white border border-blue-500/30'
@@ -394,7 +416,8 @@ export default function Dashboard({ session }: { session: AppSession }) {
                 return (
                   <button
                     key={item.name}
-                    onClick={handleSignOut}
+                    type="button"
+                    onClick={(e) => handleSignOut(e)}
                     className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-red-400 hover:bg-red-500/20 hover:text-red-300"
                   >
                     <item.icon className="h-5 w-5" />
@@ -406,7 +429,9 @@ export default function Dashboard({ session }: { session: AppSession }) {
               return (
                 <button
                   key={item.name}
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
                     if ('view' in item && item.view) {
                       navigateToView(item.view as DashboardView);
                     }

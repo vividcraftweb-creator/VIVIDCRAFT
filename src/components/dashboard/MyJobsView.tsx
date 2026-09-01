@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { trpc } from '@/utils/trpc';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -150,7 +150,7 @@ export default function MyJobsView() {
   }, [jobs, statusFilter, aiScoreFilter]);
 
   // Auto-expand first job with proposals
-  useMemo(() => {
+  useEffect(() => {
     if (filteredJobs.length > 0 && !expandedJobId) {
       const firstJobWithProposals = filteredJobs.find(job => job.proposals && job.proposals.length > 0);
       if (firstJobWithProposals) {
@@ -694,12 +694,7 @@ export default function MyJobsView() {
                                             <div>
                                               <h5 className="text-white font-semibold flex items-center gap-2">
                                                 {getFreelancerName(proposal.freelancer)}
-                                                {proposal.tokenBid && proposal.tokenBid > 1 && (
-                                                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
-                                                    <Award className="h-3 w-3 mr-1" />
-                                                    {proposal.tokenBid} tokens
-                                                  </Badge>
-                                                )}
+
                                                 {proposal.aiScore !== null && proposal.aiScore !== undefined && (
                                                   <Badge className={`${getAiScoreBadgeColor(proposal.aiScore)} text-xs`}>
                                                     <Brain className="h-3 w-3 mr-1" />
@@ -1166,32 +1161,7 @@ export default function MyJobsView() {
                       </Card>
                     )}
 
-                    {/* Token Bid */}
-                    {selectedProposal.tokenBid && (
-                      <Card className="glass-card bg-amber-500/10 border-amber-500/20">
-                        <CardHeader>
-                          <CardTitle className="text-lg text-white flex items-center gap-2">
-                            <Award className="h-5 w-5 text-amber-400" />
-                            Application Token Bid
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-full bg-amber-500/20 flex items-center justify-center">
-                              <span className="text-2xl font-bold text-amber-400">{selectedProposal.tokenBid}</span>
-                            </div>
-                            <div>
-                              <p className="text-sm text-slate-300">
-                                The freelancer invested <span className="font-bold text-amber-400">{selectedProposal.tokenBid} token{selectedProposal.tokenBid !== 1 ? 's' : ''}</span> to boost this proposal.
-                              </p>
-                              <p className="text-xs text-slate-400 mt-1">
-                                Higher bids indicate stronger interest in your project.
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
+
                   </div>
 
                   {/* Right Column - Freelancer Info & Actions (1/3 width) */}

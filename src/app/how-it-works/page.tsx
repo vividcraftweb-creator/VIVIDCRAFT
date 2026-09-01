@@ -159,7 +159,7 @@ const HowItWorksPage = () => {
             Connecting businesses and freelancers, simply, directly, and transparently.
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-xl">
-            JobHorizons surfaces qualified talent for meaningful projects. Clients post opportunities,
+            Vivid Art surfaces qualified talent for meaningful projects. Clients post opportunities,
             freelancers pitch their expertise, and both parties collaborate off-platform once they agree to work
             together.
           </p>
@@ -171,10 +171,10 @@ const HowItWorksPage = () => {
         <div className="glass-card rounded-3xl border border-glass-border/60 bg-background/60 p-6 shadow-xl backdrop-blur sm:p-8">
           <div className="mx-auto max-w-3xl text-center px-2 sm:px-0">
             <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">
-              The JobHorizons Journey
+              The Vivid Art Journey
             </h2>
             <p className="mt-4 text-sm text-muted-foreground sm:text-lg">
-              Every interaction on JobHorizons is designed to give clients clarity and freelancers confidence.
+              Every interaction on Vivid Art is designed to give clients clarity and freelancers confidence.
               Here is how projects move from idea to collaboration.
             </p>
           </div>
@@ -374,7 +374,7 @@ const HowItWorksPage = () => {
                   <h3 className="text-2xl font-semibold text-foreground">Transparency First</h3>
                 </div>
                 <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  JobHorizons connects vetted clients and freelancers. Payments, agreements, and day-to-day collaboration
+                  Vivid Art connects vetted clients and freelancers. Payments, agreements, and day-to-day collaboration
                   always stay in your control, using the tools and processes you already trust.
                 </p>
                 <dl className="space-y-4 text-sm leading-relaxed text-muted-foreground/90">
@@ -382,7 +382,7 @@ const HowItWorksPage = () => {
                     <div className="mt-2 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-primary/60" />
                     <div className="space-y-1">
                       <dt className="font-medium text-foreground">Direct payouts only</dt>
-                      <dd>Clients and freelancers manage invoicing and deposits independently outside JobHorizons.</dd>
+                      <dd>Clients and freelancers manage invoicing and deposits independently outside Vivid Art.</dd>
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -405,7 +405,7 @@ const HowItWorksPage = () => {
                     <div className="absolute -top-8 -right-6 h-20 w-20 rounded-full bg-primary/15 blur-2xl" />
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary">Data stays yours</p>
                     <p className="mt-2 text-sm leading-relaxed">
-                      Files, invoices, and agreements remain in your storage and contract tools. JobHorizons only references items you share.
+                      Files, invoices, and agreements remain in your storage and contract tools. Vivid Art only references items you share.
                     </p>
                   </div>
                   <div className="relative overflow-hidden rounded-2xl border border-chart-1/10 bg-background/70 p-4 transition-all duration-500 group-hover:border-chart-1/30 group-hover:shadow-[0_20px_60px_rgba(56,189,248,0.2)]">
@@ -478,7 +478,7 @@ const HowItWorksPage = () => {
         <div className="container mx-auto max-w-4xl px-4">
           <div className="glass-card rounded-3xl border border-glass-border/70 bg-gradient-to-r from-primary/25 via-background to-chart-1/25 p-12 text-center shadow-2xl">
             <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">
-              Ready to grow with JobHorizons?
+              Ready to grow with Vivid Art?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
               Join a trusted marketplace built for meaningful partnerships. Create your profile or post your first

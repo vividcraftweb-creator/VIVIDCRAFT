@@ -78,15 +78,27 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
   }
 
   const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
-  const fullName = profile
-    ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim()
-    : 'No name';
+  const firstName = profile?.firstName || profile?.first_name || '';
+  const lastName = profile?.lastName || profile?.last_name || '';
+  const fullName = `${firstName} ${lastName}`.trim() || user.email?.split('@')[0] || 'User';
 
   const handleSave = () => {
     updateMutation.mutate({
       userId,
       ...editData,
     });
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'ADMIN': return 'bg-red-500/20 text-red-300 border-red-500/30';
+      case 'CLIENT': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      default: return 'bg-green-500/20 text-green-300 border-green-500/30';
+    }
+  };
+
+  const getPlanBadge = (plan: string) => {
+    return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
   };
 
   return (
@@ -102,19 +114,21 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
             </div>
             <div>
               <div>{fullName}</div>
-              <div className="text-xs font-normal text-slate-400">{user.email}</div>
+              <DialogDescription className="text-slate-400 text-xs font-normal">
+                {user.email} • {user.role}
+              </DialogDescription>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="mt-2">
-          <TabsList className="bg-white/10 border border-white/20">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="bg-white/5 border border-white/10">
+            <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="mt-3 space-y-3">
+          {/* Details Tab */}
+          <TabsContent value="details" className="space-y-4 mt-3">
             {/* Quick Info Bar */}
             <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-white/10">
               {user.isVerified ? (
@@ -128,10 +142,10 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                   Unverified
                 </Badge>
               )}
-              <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+              <Badge className={getRoleBadge(user.role)}>
                 {user.role}
               </Badge>
-              <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+              <Badge className={getPlanBadge(user.subscriptionPlan ?? 'FREE')}>
                 {user.subscriptionPlan?.replace('FREELANCER_', '').replace('CLIENT_', '') || 'FREE'}
               </Badge>
               {stats && (
@@ -234,16 +248,22 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                 {/* Client-specific fields */}
                 {user.role === 'CLIENT' && (
                   <>
-                    {profile?.companyName && (
+                    {(profile?.phone || profile?.businessPhone) && (
                       <div>
-                        <div className="text-slate-400 text-xs mb-0.5">Company Name</div>
-                        <div className="text-white">{profile.companyName}</div>
+                        <div className="text-slate-400 text-xs mb-0.5">WhatsApp / Phone</div>
+                        <div className="text-white">{profile.phone || profile.businessPhone}</div>
                       </div>
                     )}
-                    {profile?.location && (
+                    {(profile?.location || profile?.businessAddressLine1) && (
                       <div>
-                        <div className="text-slate-400 text-xs mb-0.5">Location</div>
-                        <div className="text-white">{profile.location}</div>
+                        <div className="text-slate-400 text-xs mb-0.5">Address</div>
+                        <div className="text-white">{profile.location || profile.businessAddressLine1}</div>
+                      </div>
+                    )}
+                    {profile?.businessEmail && profile.businessEmail !== user.email && (
+                      <div>
+                        <div className="text-slate-400 text-xs mb-0.5">Contact Email</div>
+                        <div className="text-white">{profile.businessEmail}</div>
                       </div>
                     )}
                   </>

@@ -1,21 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import SkillsSelector from '@/components/ui/skills-selector';
-import LocationAutocompleteInput from '@/components/ui/LocationAutocompleteInput';
 import { trpc } from '@/utils/trpc';
 import { toast } from 'sonner';
-import { Briefcase, MapPin, DollarSign, Code, Edit, Save, X, Camera, Lightbulb, Sparkles, Upload } from 'lucide-react';
+import { Briefcase, MapPin, Edit, Save, X, Camera, Lightbulb, Upload, Palette, Check } from 'lucide-react';
 import { type Profile } from '@/types/database.types';
 import { CharacterCount } from '@/components/ui/character-count';
-import { FIELD_LIMITS, TITLE_EXAMPLES, BIO_TIPS } from '@/types/profile-editor.types';
+import { FIELD_LIMITS, ART_TITLE_EXAMPLES, ART_SKILLS, BIO_TIPS } from '@/types/profile-editor.types';
 import { useFileDragDrop } from '@/hooks/useFileDragDrop';
 import { getProfilePictureUrl, getProfilePictureUrlWithTimestamp } from '@/lib/profile-helpers';
+import { createClient } from '@/lib/supabase/client';
 
 interface BasicInfoCardProps {
   profile: Profile | null | undefined;
@@ -23,8 +23,20 @@ interface BasicInfoCardProps {
 }
 
 export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps) {
+  const router = useRouter();
   const utils = trpc.useUtils();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [profileData, setProfileData] = useState<{
+    first_name?: string;
+    last_name?: string;
+    title?: string;
+    address?: string;
+    skills?: string;
+    bio?: string;
+    avatar_url?: string;
+  }>({});
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -32,16 +44,16 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     bio: '',
     location: '',
     skills: '',
-    rate: '',
     profilePicture: '',
   });
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [lastUploadTimestamp, setLastUploadTimestamp] = useState<number>(0);
   const profileInitials = (
-    (profile?.firstName?.[0] || '') + (profile?.lastName?.[0] || '')
+    (profileData.first_name?.[0] || formData.firstName?.[0] || profile?.firstName?.[0] || '') + 
+    (profileData.last_name?.[0] || formData.lastName?.[0] || profile?.lastName?.[0] || '')
   ).toUpperCase() || 'U';
-  const profilePictureUrl = getProfilePictureUrl(profile?.userId, profile?.profilePicture) || '';
+  const profilePictureUrl = getProfilePictureUrl(profile?.userId, (profile as any)?.avatar_url || profile?.profilePicture) || '';
 
   // Drag & drop for profile picture
   const { isDragging: isPictureDragging, dragHandlers: pictureDragHandlers } = useFileDragDrop({
@@ -61,26 +73,85 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
   });
 
   useEffect(() => {
-    if (profile) {
-      setFormData({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        title: profile.title || '',
-        bio: profile.bio || '',
-        location: profile.location || '',
-        skills: profile.skills || '',
-        rate: profile.rate?.toString() || '',
-        profilePicture: profile.profilePicture || '',
-      });
+    async function loadLatestProfile() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-      // Parse existing skills from comma-separated string
-      if (profile.skills) {
-        const skillsArray = profile.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
-        setSelectedSkills(skillsArray);
-      } else {
-        setSelectedSkills([]);
+        let dbProfile: any = null;
+        let metadata: any = {};
+        if (user) {
+          metadata = user.user_metadata || {};
+          const { data } = await (supabase as any)
+            .from('profiles')
+            .select('*')
+            .or(`id.eq.${user.id},userId.eq.${user.id}`)
+            .maybeSingle();
+          dbProfile = data;
+        }
+
+        const anyProfile = profile as any;
+        const source = {
+          ...(profile || {}),
+          ...metadata,
+          ...(dbProfile || {}),
+          first_name: dbProfile?.first_name || metadata.first_name || anyProfile?.first_name || profile?.firstName || '',
+          last_name: dbProfile?.last_name || metadata.last_name || anyProfile?.last_name || profile?.lastName || '',
+          title: metadata.title || dbProfile?.title || profile?.title || '',
+          bio: metadata.bio || dbProfile?.bio || anyProfile?.description || profile?.bio || '',
+          address: dbProfile?.address || metadata.address || anyProfile?.address || profile?.location || '',
+          skills: metadata.skills || dbProfile?.skills || profile?.skills || '',
+          avatar_url: metadata.avatar_url || dbProfile?.avatar_url || anyProfile?.avatarUrl || anyProfile?.profile_picture || profile?.profilePicture || '',
+        };
+
+        if (source) {
+          const fName = source.first_name || source.firstName || source.full_name?.split(' ')[0] || '';
+          const lName = source.last_name || source.lastName || (source.full_name ? source.full_name.split(' ').slice(1).join(' ') : '') || '';
+          const titleVal = source.title || '';
+          const bioVal = source.bio || source.description || '';
+          const locVal = source.address || source.location || '';
+          const rawSkills = source.skills || '';
+          const skillsVal = Array.isArray(rawSkills) ? rawSkills.join(', ') : rawSkills;
+          const picVal = source.avatar_url || source.avatarUrl || source.profile_picture || source.profilePicture || '';
+
+          setProfileData({
+            first_name: fName,
+            last_name: lName,
+            title: titleVal,
+            address: locVal,
+            skills: skillsVal,
+            bio: bioVal,
+            avatar_url: picVal,
+          });
+
+          setFormData({
+            firstName: fName,
+            lastName: lName,
+            title: titleVal,
+            bio: bioVal,
+            location: locVal,
+            skills: skillsVal,
+            profilePicture: picVal,
+          });
+
+          if (skillsVal) {
+            const skillsArray = skillsVal.split(',').map((s: string) => s.trim()).filter(Boolean);
+            setSelectedSkills(skillsArray);
+          } else {
+            setSelectedSkills([]);
+          }
+
+          if (picVal) {
+            const resolved = getProfilePictureUrl(user?.id || profile?.userId, picVal) || picVal;
+            setAvatarUrl(resolved);
+          }
+        }
+      } catch (err) {
+        console.warn('Profile fetch on mount notice:', err);
       }
     }
+
+    loadLatestProfile();
   }, [profile]);
 
   const updateMutation = trpc.publicProfile.updateBasicInfo.useMutation({
@@ -88,6 +159,10 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
       toast.success('Basic information updated successfully!');
       setIsEditing(false);
       onUpdate();
+      utils.publicProfile.getMyFullProfile.invalidate();
+      utils.publicProfile.getCompleteness.invalidate();
+      utils.profiles.getMyProfile.invalidate();
+      router.refresh();
     },
     onError: (error) => {
       toast.error('Failed to update basic information', {
@@ -98,14 +173,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
 
   const uploadDocumentMutation = trpc.documents.uploadDocument.useMutation({
     onSuccess: (data) => {
-      // Use the actual filename with timestamp that was saved
       if (data) {
         setFormData(prev => ({ ...prev, profilePicture: data.fileName }));
-
-        // Invalidate profile query to trigger refresh
         utils.publicProfile.getMyFullProfile.invalidate();
-
-        // Set timestamp for cache-busting
         setLastUploadTimestamp(Date.now());
       }
       setIsUploadingPicture(false);
@@ -119,18 +189,112 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSkillToggle = (skill: string) => {
+    if (selectedSkills.includes(skill)) {
+      setSelectedSkills(selectedSkills.filter(s => s !== skill));
+    } else {
+      setSelectedSkills([...selectedSkills, skill]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate({
-      firstName: formData.firstName || undefined,
-      lastName: formData.lastName || undefined,
-      title: formData.title || undefined,
-      bio: formData.bio || undefined,
-      location: formData.location || undefined,
-      skills: selectedSkills.length > 0 ? selectedSkills.join(', ') : undefined,
-      rate: formData.rate ? parseFloat(formData.rate) : undefined,
-      profilePicture: formData.profilePicture || undefined,
-    });
+    setIsSaving(true);
+
+    const skillsString = selectedSkills.length > 0 ? selectedSkills.join(', ') : (formData.skills || '');
+
+    try {
+      const supabase = createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        toast.error("Authentication error. Please re-login.");
+        setIsSaving(false);
+        return;
+      }
+
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            first_name: formData.firstName || null,
+            last_name: formData.lastName || null,
+            name: `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
+            title: formData.title || null,
+            bio: formData.bio || null,
+            address: formData.location || null,
+            skills: skillsString || null,
+            avatar_url: avatarUrl || formData.profilePicture || null,
+          },
+        });
+      } catch (authMetaErr) {
+        console.warn('Auth user metadata update notice:', authMetaErr);
+      }
+
+      let currentPayload: Record<string, any> = {
+        id: user.id,
+        first_name: formData.firstName || null,
+        last_name: formData.lastName || null,
+        address: formData.location || null,
+        title: formData.title || null,
+        bio: formData.bio || null,
+        skills: skillsString || null,
+        avatar_url: avatarUrl || formData.profilePicture || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const { error } = await (supabase as any)
+          .from('profiles')
+          .upsert(currentPayload, { onConflict: 'id' });
+
+        if (!error) break;
+
+        const msg = error.message || '';
+        const match = msg.match(/Could not find the '([^']+)' column/i);
+        if (match && match[1]) {
+          delete currentPayload[match[1]];
+          continue;
+        }
+
+        if (msg.includes('schema cache')) {
+          currentPayload = {
+            id: user.id,
+            first_name: formData.firstName || null,
+            last_name: formData.lastName || null,
+            address: formData.location || null,
+            updated_at: new Date().toISOString(),
+          };
+          continue;
+        }
+
+        break;
+      }
+
+      setProfileData({
+        first_name: formData.firstName || '',
+        last_name: formData.lastName || '',
+        title: formData.title || '',
+        address: formData.location || '',
+        skills: skillsString,
+        bio: formData.bio || '',
+        avatar_url: avatarUrl || formData.profilePicture || '',
+      });
+
+      toast.success('Basic information updated successfully!');
+      setIsEditing(false);
+      onUpdate();
+      utils.publicProfile.getMyFullProfile.invalidate();
+      utils.publicProfile.getCompleteness.invalidate();
+      utils.profiles.getMyProfile.invalidate();
+      router.refresh();
+    } catch (err: any) {
+      console.error('Save error:', err);
+      toast.error('Failed to update profile', {
+        description: err.message || 'Could not save profile changes.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,19 +317,93 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     setIsUploadingPicture(true);
 
     try {
-      // Convert file to base64
       const base64 = await fileToBase64(file);
+      const dataUrl = `data:${file.type};base64,${base64}`;
 
-      await uploadDocumentMutation.mutateAsync({
-        type: 'PORTFOLIO_ITEM', // Using PORTFOLIO_ITEM type for profile pictures
-        fileName: file.name,
-        fileData: base64,
-        fileSize: file.size,
-        mimeType: file.type,
+      // 1. Instant preview with data URL
+      setAvatarUrl(dataUrl);
+
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const userId = user?.id || profile?.userId;
+      if (!userId) {
+        throw new Error('User session not found');
+      }
+
+      const fileExt = file.name.split('.').pop() || 'png';
+      const filePath = `${userId}/${Date.now()}.${fileExt}`;
+
+      let publicAvatarUrl = dataUrl;
+
+      // Try uploading to 'avatars' storage bucket
+      try {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (!uploadError && uploadData) {
+          const { data: publicUrlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          if (publicUrlData?.publicUrl) {
+            publicAvatarUrl = publicUrlData.publicUrl;
+          }
+        }
+      } catch {}
+
+      const now = Date.now();
+      const cacheBustedUrl = publicAvatarUrl.startsWith('http')
+        ? `${publicAvatarUrl}?t=${now}`
+        : publicAvatarUrl;
+
+      setAvatarUrl(cacheBustedUrl);
+      setLastUploadTimestamp(now);
+      setProfileData(prev => ({
+        ...prev,
+        avatar_url: publicAvatarUrl,
+      }));
+      setFormData(prev => ({
+        ...prev,
+        profilePicture: publicAvatarUrl,
+      }));
+
+      // 2. Persist avatar_url to Supabase Auth user metadata
+      try {
+        await supabase.auth.updateUser({
+          data: { avatar_url: publicAvatarUrl },
+        });
+      } catch (authMetaErr) {
+        console.warn('Auth user metadata avatar update notice:', authMetaErr);
+      }
+
+      // 3. Persist to profiles table
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            avatar_url: publicAvatarUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId);
+      } catch {}
+
+      toast.success('Profile picture updated successfully!');
+      onUpdate();
+      utils.publicProfile.getMyFullProfile.invalidate();
+      utils.publicProfile.getCompleteness.invalidate();
+      utils.profiles.getMyProfile.invalidate();
+      router.refresh();
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      toast.error('Failed to upload profile picture', {
+        description: error.message || 'Please try again.',
       });
-    } catch (error) {
+    } finally {
       setIsUploadingPicture(false);
-      // Error handled by mutation onError
     }
   };
 
@@ -181,7 +419,6 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     });
   };
 
-
   const handleCancel = () => {
     setIsEditing(false);
     if (profile) {
@@ -192,13 +429,12 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         bio: profile.bio || '',
         location: profile.location || '',
         skills: profile.skills || '',
-        rate: profile.rate?.toString() || '',
         profilePicture: profile.profilePicture || '',
       });
 
       // Reset skills
       if (profile.skills) {
-        const skillsArray = profile.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
+        const skillsArray = profile.skills.split(',').map(skill => skill.trim()).filter(Boolean);
         setSelectedSkills(skillsArray);
       } else {
         setSelectedSkills([]);
@@ -227,7 +463,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                 <Avatar className="h-24 w-24">
                   <AvatarImage
                     src={
-                      formData.profilePicture && profile?.userId
+                      avatarUrl
+                        ? avatarUrl
+                        : formData.profilePicture && profile?.userId
                         ? lastUploadTimestamp > 0
                           ? getProfilePictureUrlWithTimestamp(profile.userId, formData.profilePicture, lastUploadTimestamp)
                           : getProfilePictureUrl(profile.userId, formData.profilePicture)
@@ -333,7 +571,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Graphic Designer, Content Writer, Social Media Manager"
+                placeholder="e.g., Portrait Artist, Wall Painter, Fabric Painter..."
                 className="bg-background/50"
                 maxLength={FIELD_LIMITS.TITLE.max}
               />
@@ -344,30 +582,28 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                 ideal={FIELD_LIMITS.TITLE.ideal}
               />
 
-              {/* Example Titles - Progressive Disclosure */}
-              {formData.title.length < 5 && (
-                <div className="glass-card p-4 rounded-2xl border border-primary/20 mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-start gap-2 mb-2">
-                    <Lightbulb className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span className="text-sm font-medium text-foreground">Example professional titles:</span>
-                  </div>
-                  <div className="space-y-1.5 pl-6">
-                    {TITLE_EXAMPLES['Development & IT'].map((example, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, title: example })}
-                        className="text-sm text-muted-foreground hover:text-foreground text-left block transition-colors w-full"
-                      >
-                        • {example}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2 pl-6">
-                    Click any example to use it, then customize to match your expertise
-                  </p>
+              {/* Example Titles */}
+              <div className="glass-card p-4 rounded-2xl border border-primary/20 mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-2 mb-2">
+                  <Lightbulb className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm font-medium text-foreground">Example professional titles:</span>
                 </div>
-              )}
+                <div className="space-y-1.5 pl-6">
+                  {ART_TITLE_EXAMPLES.map((example, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, title: example })}
+                      className="text-sm text-muted-foreground hover:text-foreground text-left block transition-colors w-full"
+                    >
+                      • {example}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 pl-6">
+                  Click any example to use it, then customize to match your expertise
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -407,45 +643,22 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             </div>
           </div>
 
-          {/* Location & Rate */}
+          {/* Address */}
           <div className="glass-card p-5 rounded-2xl space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Location & Rate</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Address</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="location" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-chart-1" />
-                  Location
-                </Label>
-                <LocationAutocompleteInput
-                  id="location"
-                  value={formData.location}
-                  onChange={(value) => setFormData({ ...formData, location: value })}
-                  placeholder="e.g., San Francisco, CA"
-                  className="bg-background/50"
-                  types={['(cities)']}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Start typing to search for your city
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="rate" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-chart-4" />
-                  Hourly Rate (USD)
-                </Label>
-                <Input
-                  id="rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.rate}
-                  onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                  placeholder="50.00"
-                  className="bg-background/50"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="location" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-chart-1" />
+                Address
+              </Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g., Colombo, Sri Lanka"
+                className="bg-background/50"
+              />
             </div>
           </div>
 
@@ -454,16 +667,42 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Skills</h3>
 
             <div className="space-y-4">
-              <Label className="flex items-center gap-2">
-                <Code className="h-4 w-4 text-chart-2" />
-                Select Your Skills
-              </Label>
-              
-              <SkillsSelector
-                selectedSkills={selectedSkills}
-                onSkillsChange={setSelectedSkills}
-                placeholder="Search and select skills..."
-              />
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-chart-2" />
+                  Select Your Skills
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">Select your art specialties.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {ART_SKILLS.map((skill) => {
+                  const isSelected = selectedSkills.includes(skill);
+                  return (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => handleSkillToggle(skill)}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border text-sm font-medium transition-all text-left ${
+                        isSelected
+                          ? 'bg-primary/20 border-primary text-primary shadow-sm ring-1 ring-primary/30'
+                          : 'bg-background/50 border-input hover:bg-accent/40 text-foreground'
+                      }`}
+                    >
+                      <span>{skill}</span>
+                      <div
+                        className={`h-5 w-5 rounded-md flex items-center justify-center transition-colors shrink-0 ml-2 ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground'
+                            : 'border border-muted-foreground/40 bg-background/50'
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Skills Counter and Validation */}
               <div className="flex items-center justify-between text-sm mt-2">
@@ -472,43 +711,16 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                     ? 'Select at least 1 skill'
                     : `${selectedSkills.length} skill${selectedSkills.length !== 1 ? 's' : ''} selected`}
                 </span>
-                <span className="text-muted-foreground">Maximum 10 skills</span>
+                <span className="text-muted-foreground">Select your art specialties</span>
               </div>
-
-              {/* Perfect Balance Feedback */}
-              {selectedSkills.length >= 3 && selectedSkills.length <= 6 && (
-                <div className="glass-card p-4 rounded-2xl border border-primary/30 mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-start gap-2">
-                    <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <p className="text-sm">
-                      <span className="font-medium text-primary">✨ Perfect balance!</span>
-                      <span className="text-muted-foreground ml-2">
-                        {selectedSkills.length} skills is ideal for attracting the right clients without overwhelming them.
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Too Many Skills Warning */}
-              {selectedSkills.length > 6 && selectedSkills.length <= 10 && (
-                <div className="glass-card p-4 rounded-2xl border border-amber-500/30 mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-start gap-2">
-                    <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-muted-foreground">
-                      Consider focusing on your core strengths. Clients often prefer specialists over generalists.
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-2">
-            <Button type="submit" disabled={updateMutation.isPending} className="glass-button hover-lift interactive-scale flex-1 sm:flex-none">
+            <Button type="submit" disabled={isSaving || updateMutation.isPending} className="glass-button hover-lift interactive-scale flex-1 sm:flex-none">
               <Save className="h-4 w-4 mr-2" />
-              {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+              {isSaving || updateMutation.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
             <Button type="button" variant="outline" onClick={handleCancel} className="glass-button hover-lift interactive-scale">
               <X className="h-4 w-4 mr-2" />
@@ -523,13 +735,13 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Profile Picture</h3>
             <div className="flex items-center gap-6">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={profilePictureUrl || undefined} />
+                <AvatarImage src={avatarUrl || profileData.avatar_url || profilePictureUrl || undefined} />
                 <AvatarFallback className="text-lg">
                   {profileInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="text-sm text-muted-foreground">
-                {profilePictureUrl ? (
+                {avatarUrl || profileData.avatar_url || profilePictureUrl ? (
                   <p>Your current profile picture is shown here.</p>
                 ) : (
                   <p>No profile picture added yet. Click edit to upload one.</p>
@@ -544,11 +756,15 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">First Name</p>
-                <p className="font-medium">{profile?.firstName || 'Not set'}</p>
+                <p className="font-medium">
+                  {profileData.first_name || formData.firstName || (profile as any)?.first_name || profile?.firstName || (profile as any)?.full_name?.split(' ')[0] || 'Not set'}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Last Name</p>
-                <p className="font-medium">{profile?.lastName || 'Not set'}</p>
+                <p className="font-medium">
+                  {profileData.last_name || formData.lastName || (profile as any)?.last_name || profile?.lastName || 'Not set'}
+                </p>
               </div>
             </div>
           </div>
@@ -562,35 +778,30 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                 <Briefcase className="h-4 w-4 text-primary" />
                 Professional Title
               </p>
-              <p className="font-medium mt-1">{profile?.title || 'Not set'}</p>
+              <p className="font-medium mt-1">
+                {profileData.title || formData.title || profile?.title || (profile as any)?.professional_title || 'Not set'}
+              </p>
             </div>
 
             <div>
               <p className="text-sm text-muted-foreground">Bio</p>
-              <p className="font-medium whitespace-pre-wrap mt-1">{profile?.bio || 'Not set'}</p>
+              <p className="font-medium whitespace-pre-wrap mt-1">
+                {profileData.bio || formData.bio || profile?.bio || (profile as any)?.description || 'Not set'}
+              </p>
             </div>
           </div>
 
-          {/* Location & Rate */}
+          {/* Address */}
           <div className="glass-card p-5 rounded-2xl space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Location & Rate</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-chart-1" />
-                  Location
-                </p>
-                <p className="font-medium mt-1">{profile?.location || 'Not set'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-chart-4" />
-                  Hourly Rate
-                </p>
-                <p className="font-medium mt-1">
-                  {profile?.rate ? `$${profile.rate}/hr` : 'Not set'}
-                </p>
-              </div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Address</h3>
+            <div>
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-chart-1" />
+                Address
+              </p>
+              <p className="font-medium mt-1">
+                {profileData.address || formData.location || (profile as any)?.address || profile?.location || 'Not set'}
+              </p>
             </div>
           </div>
 
@@ -599,17 +810,24 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Skills</h3>
             <div>
               <p className="text-sm text-muted-foreground flex items-center gap-2 mb-3">
-                <Code className="h-4 w-4 text-chart-2" />
-                Skills
+                <Palette className="h-4 w-4 text-chart-2" />
+                Art Specialties
               </p>
-              {profile?.skills ? (
+              {(selectedSkills.length > 0 || profileData.skills || formData.skills || profile?.skills) ? (
                 <div className="flex flex-wrap gap-2">
-                  {profile.skills.split(',').map((skill, index) => (
+                  {(selectedSkills.length > 0
+                    ? selectedSkills
+                    : profileData.skills
+                    ? profileData.skills.split(',').map(s => s.trim()).filter(Boolean)
+                    : formData.skills
+                    ? formData.skills.split(',').map(s => s.trim()).filter(Boolean)
+                    : (profile?.skills ? (Array.isArray(profile.skills) ? profile.skills : profile.skills.split(',').map((s: string) => s.trim()).filter(Boolean)) : [])
+                  ).map((skill, index) => (
                     <div
                       key={index}
                       className="bg-primary/20 text-primary border border-primary/30 rounded-lg px-3 py-1 text-sm"
                     >
-                      {skill.trim()}
+                      {skill}
                     </div>
                   ))}
                 </div>

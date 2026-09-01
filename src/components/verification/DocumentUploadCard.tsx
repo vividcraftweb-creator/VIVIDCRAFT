@@ -112,6 +112,26 @@ export default function DocumentUploadCard({
     },
   });
 
+  const isUploaded = !!existingDocument;
+  const hasFileSelected = !!selectedFile;
+
+  // Drag & drop functionality
+  const { isDragging, dragHandlers } = useFileDragDrop({
+    onFileDrop: (file) => {
+      // Create synthetic event to reuse existing validation logic
+      const syntheticEvent = {
+        target: {
+          files: [file],
+          value: '',
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      handleFileSelect(syntheticEvent);
+    },
+    accept: acceptedTypes,
+    maxSize: 2 * 1024 * 1024, // 2MB
+    disabled: uploading || isUploaded || hasFileSelected,
+  });
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -260,28 +280,9 @@ export default function DocumentUploadCard({
     }
   };
 
-  const isUploaded = !!existingDocument;
-  const hasFileSelected = !!selectedFile;
   const canUpload = hasFileSelected && (!requiresExpiryDate || (!!expiryDate && !expiryDateError));
   const needsExpiryDate = hasFileSelected && requiresExpiryDate && !expiryDate;
   const hasExpiryError = hasFileSelected && requiresExpiryDate && !!expiryDate && !!expiryDateError;
-
-  // Drag & drop functionality
-  const { isDragging, dragHandlers } = useFileDragDrop({
-    onFileDrop: (file) => {
-      // Create synthetic event to reuse existing validation logic
-      const syntheticEvent = {
-        target: {
-          files: [file],
-          value: '',
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileSelect(syntheticEvent);
-    },
-    accept: acceptedTypes,
-    maxSize: 2 * 1024 * 1024, // 2MB
-    disabled: uploading || isUploaded || hasFileSelected,
-  });
 
   // Determine card state
   let cardStyle = 'bg-white/5 border-white/10';

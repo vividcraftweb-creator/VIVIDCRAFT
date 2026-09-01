@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/utils/trpc';
+import { ThemeSwitcher } from '@/components/theme-switcher';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   User as UserIcon,
@@ -16,6 +18,8 @@ import {
   FileText,
   CreditCard,
   Bell,
+  Shield,
+  ShoppingBag,
 } from 'lucide-react';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,10 +34,9 @@ import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 
 const getNavigation = () => [
-  { name: 'Find Work', href: '/jobs' },
-  { name: 'Hire Freelancers', href: '/freelancers' },
+  { name: 'Explore Art', href: '/jobs' },
+  { name: 'Discover Artists', href: '/freelancers' },
   { name: 'How It Works', href: '/how-it-works' },
-  { name: 'Pricing', href: '/pricing' },
 ];
 
 const Header = () => {
@@ -48,17 +51,39 @@ const Header = () => {
   useEffect(() => {
     setIsMounted(true);
 
-    // Get initial user
+    // Check for mock admin session
+    if (typeof window !== 'undefined') {
+      const localUserStr = localStorage.getItem('user');
+      if (localUserStr) {
+        try {
+          const parsed = JSON.parse(localUserStr);
+          if (parsed?.role === 'admin' || parsed?.email === 'vividcraftweb@gmail.com') {
+            setUser({
+              id: 'admin-vividcraft-default-id',
+              email: 'vividcraftweb@gmail.com',
+              user_metadata: { role: 'ADMIN', name: 'Vivid Craft Admin' },
+            } as any);
+            setUserRole('ADMIN');
+          }
+        } catch {}
+      }
+    }
+
+    // Get initial user from supabase
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setUserRole(user?.user_metadata?.role || null);
-    });
+      if (user) {
+        setUser(user);
+        setUserRole(user?.user_metadata?.role || null);
+      }
+    }).catch(() => {});
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user || null);
-      setUserRole(session?.user?.user_metadata?.role || null);
+      if (session?.user) {
+        setUser(session.user);
+        setUserRole(session.user?.user_metadata?.role || null);
+      }
     });
 
     return () => {
@@ -67,23 +92,34 @@ const Header = () => {
   }, []);
 
   const hasUser = !!user;
-  const isFreelancer = hasUser && userRole === 'FREELANCER';
-
-  // Fetch current token status for freelancers
-  const { data: tokenStatus } = trpc.user.getTokenStatus.useQuery(undefined, {
-    enabled: isFreelancer,
-    refetchInterval: isFreelancer ? 10000 : false,
-  });
 
   // Fetch profile data for avatar and name
   const { data: profile, isLoading: isProfileLoading } = trpc.profiles.getMyProfile.useQuery(undefined, {
-    enabled: hasUser,
+    enabled: hasUser && userRole !== 'ADMIN',
   });
+
+  // Check the logged-in user's role from user.role, user_metadata.role, or profile.role
+  const effectiveRole = useMemo(() => {
+    const rawRole = (
+      userRole ||
+      (profile as any)?.role ||
+      user?.user_metadata?.role ||
+      (user as any)?.role ||
+      ''
+    ).toString().trim().toUpperCase();
+
+    return rawRole;
+  }, [userRole, profile, user]);
+
+  const isArtistOrCreator = hasUser && (effectiveRole === 'FREELANCER' || effectiveRole === 'ARTIST' || effectiveRole === 'CREATOR');
+  const isAdmin = hasUser && effectiveRole === 'ADMIN';
+  const isBuyerOrClient = hasUser && !isArtistOrCreator && !isAdmin;
 
   // Calculate avatar - memoized to prevent flashing
   const { userFullName, avatarSrc } = useMemo(() => {
-    // Wait for profile to load before using it to prevent initial flash
-    // If profile is loading, use a consistent fallback until it's ready
+    if (userRole === 'ADMIN') {
+      return { userFullName: 'Admin', avatarSrc: undefined };
+    }
     const fullName = (!isProfileLoading && profile?.firstName && profile?.lastName)
       ? `${profile.firstName} ${profile.lastName}`
       : user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
@@ -93,18 +129,26 @@ const Header = () => {
       : user?.user_metadata?.avatar_url || undefined;
 
     return { userFullName: fullName, avatarSrc: avatarUrl };
-  }, [isProfileLoading, profile?.firstName, profile?.lastName, profile?.profilePicture, profile?.userId, user?.user_metadata?.name, user?.user_metadata?.avatar_url, user?.email]);
+  }, [isProfileLoading, profile?.firstName, profile?.lastName, profile?.profilePicture, profile?.userId, user?.user_metadata?.name, user?.user_metadata?.avatar_url, user?.email, userRole]);
 
   const isActive = (href: string) => pathname === href;
 
-  const handleSignOut = async () => {
+  const handleSignOut = async (e?: React.MouseEvent) => {
+    if (e?.preventDefault) e.preventDefault();
     try {
+      document.cookie = 'is_admin=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'mock_admin_session=; path=/; max-age=0; SameSite=Lax';
+      localStorage.removeItem('user');
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       const supabase = createClient();
       await supabase.auth.signOut();
-      router.push('/');
-      router.refresh();
     } catch (error) {
       // Ignore sign out errors
+    } finally {
+      setUser(null);
+      setUserRole(null);
+      router.push('/');
+      router.refresh();
     }
   };
 
@@ -122,17 +166,48 @@ const Header = () => {
           visible ? 'top-0 translate-y-0' : '-top-32 -translate-y-full'
         }`}
       >
-        <nav className="mx-auto max-w-6xl rounded-full border border-white/20 bg-black/40 backdrop-blur-xl px-6 shadow-lg transition-all duration-300">
+        <nav className="mx-auto max-w-6xl rounded-full border border-slate-200/60 dark:border-white/20 bg-white/70 dark:bg-black/40 backdrop-blur-xl px-6 shadow-lg dark:shadow-none transition-all duration-300">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
-              <Image
-                src="/jobhorizons-logo.webp"
-                alt="JobHorizons - Freelance Remote Work Platform Logo"
-                width={120}
-                height={24}
-                priority
-              />
+            <Link href="/" className="flex items-center gap-2.5 group">
+              {/* Artistic paint-swirl V emblem */}
+              <svg
+                className="w-9 h-9 group-hover:scale-110 transition-transform duration-300"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <defs>
+                  <linearGradient id="logoGrad1" x1="0" y1="0" x2="48" y2="48">
+                    <stop offset="0%" stopColor="#8B5CF6" />
+                    <stop offset="50%" stopColor="#EC4899" />
+                    <stop offset="100%" stopColor="#F59E0B" />
+                  </linearGradient>
+                  <linearGradient id="logoGrad2" x1="48" y1="0" x2="0" y2="48">
+                    <stop offset="0%" stopColor="#06B6D4" />
+                    <stop offset="100%" stopColor="#8B5CF6" />
+                  </linearGradient>
+                </defs>
+                {/* Outer swirl */}
+                <path
+                  d="M24 4C13 4 6 14 10 24C14 34 20 38 24 44C28 38 34 34 38 24C42 14 35 4 24 4Z"
+                  fill="url(#logoGrad1)"
+                  fillOpacity="0.9"
+                />
+                {/* Inner V brushstroke */}
+                <path
+                  d="M16 14L24 34L32 14"
+                  stroke="white"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+                {/* Paint splash dot */}
+                <circle cx="36" cy="12" r="3" fill="url(#logoGrad2)" />
+              </svg>
+              <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
+                Vivid Art
+              </span>
             </Link>
 
             {/* Navigation - Hidden on mobile */}
@@ -143,8 +218,8 @@ const Header = () => {
                   href={item.href}
                   className={`text-sm font-medium transition-colors duration-200 ${
                     isActive(item.href)
-                      ? 'text-white'
-                      : 'text-white/70 hover:text-white'
+                      ? 'text-slate-900 dark:text-white'
+                      : 'text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {item.name}
@@ -157,25 +232,23 @@ const Header = () => {
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden h-9 w-9 rounded-full hover:bg-white/10 transition-colors flex items-center justify-center text-white"
+                className="lg:hidden h-9 w-9 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center text-slate-700 dark:text-white"
                 aria-label="Toggle mobile menu"
               >
                 <div className="relative w-5 h-4 flex flex-col justify-between">
-                  <span className={`w-full h-0.5 bg-white rounded-full transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
-                  <span className={`w-full h-0.5 bg-white rounded-full transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`} />
-                  <span className={`w-full h-0.5 bg-white rounded-full transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
+                  <span className={`w-full h-0.5 bg-slate-700 dark:bg-white rounded-full transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
+                  <span className={`w-full h-0.5 bg-slate-700 dark:bg-white rounded-full transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`} />
+                  <span className={`w-full h-0.5 bg-slate-700 dark:bg-white rounded-full transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
                 </div>
               </button>
 
               {user ? (
                 <>
-                  {/* Token Counter (Desktop) - Only for Freelancers */}
-                  {userRole === 'FREELANCER' && tokenStatus && (
-                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20">
-                      <Zap className="h-4 w-4 text-yellow-400" />
-                      <span className="text-sm font-medium text-white">{tokenStatus.currentTokens}</span>
-                    </div>
-                  )}
+                  {/* Theme and Language Toggles (Desktop) */}
+                  <div className="hidden lg:flex items-center gap-2">
+                    <ThemeSwitcher />
+                    <LanguageSwitcher />
+                  </div>
 
                   {/* Notification Dropdown (Desktop) */}
                   <div className="hidden lg:block">
@@ -188,59 +261,107 @@ const Header = () => {
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="h-9 w-9 rounded-full p-0 hover:bg-white/10 transition-colors"
+                          className="h-9 w-9 rounded-full p-0 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-700 dark:text-slate-200"
                         >
-                          <Avatar className="h-8 w-8 border border-white/20">
+                          <Avatar className="h-8 w-8 border border-slate-200 dark:border-white/20">
                             <AvatarImage src={avatarSrc} alt={userFullName} />
-                            <AvatarFallback className="bg-white/10 text-white">
-                              <UserIcon className="h-4 w-4" />
+                            <AvatarFallback className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200">
+                              <UserIcon className="h-4 w-4 text-slate-700 dark:text-slate-200" />
                             </AvatarFallback>
                           </Avatar>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
-                        className="w-56"
+                        className="w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-lg text-slate-800 dark:text-white"
                         align="end"
                         sideOffset={8}
                       >
+                        {isAdmin && (
+                          <>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-purple-600 dark:text-purple-400 font-medium"
+                              onClick={() => router.push('/admin')}
+                            >
+                              <Shield className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                              <span>Admin Panel</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/dashboard')}
+                            >
+                              <Briefcase className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Dashboard</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/dashboard?tab=messages')}
+                            >
+                              <MessageSquare className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Messages</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/profile')}
+                            >
+                              <UserIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Profile</span>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        {isArtistOrCreator && (
+                          <>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/dashboard')}
+                            >
+                              <Briefcase className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Dashboard</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/dashboard?tab=messages')}
+                            >
+                              <MessageSquare className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Messages</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/dashboard?tab=proposals')}
+                            >
+                              <FileText className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>My Proposals</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/dashboard?tab=subscription')}
+                            >
+                              <CreditCard className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Subscription</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/profile')}
+                            >
+                              <UserIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Profile</span>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        {isBuyerOrClient && (
+                          <DropdownMenuItem
+                            className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                            onClick={() => router.push('/profile')}
+                          >
+                            <UserIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <span>Profile</span>
+                          </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuSeparator className="bg-slate-200 dark:bg-white/20" />
                         <DropdownMenuItem
-                          className="gap-3 py-3 cursor-pointer hover:bg-white/10 text-white"
-                          onClick={handleDashboardClick}
-                        >
-                          <Briefcase className="h-4 w-4" />
-                          <span>Dashboard</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-3 py-3 cursor-pointer hover:bg-white/10 text-white"
-                          onClick={() => router.push('/dashboard?tab=messages')}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          <span>Messages</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-3 py-3 cursor-pointer hover:bg-white/10 text-white"
-                          onClick={() => router.push('/dashboard?tab=proposals')}
-                        >
-                          <FileText className="h-4 w-4" />
-                          <span>My Proposals</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-3 py-3 cursor-pointer hover:bg-white/10 text-white"
-                          onClick={() => router.push('/dashboard?tab=subscription')}
-                        >
-                          <CreditCard className="h-4 w-4" />
-                          <span>Subscription</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-3 py-3 cursor-pointer hover:bg-white/10 text-white"
-                          onClick={() => router.push('/dashboard?tab=profile')}
-                        >
-                          <UserIcon className="h-4 w-4" />
-                          <span>Profile</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/20" />
-                        <DropdownMenuItem
-                          className="gap-3 py-3 cursor-pointer hover:bg-white/10 text-red-400"
+                          className="gap-3 py-3 cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400"
                           onClick={handleSignOut}
                         >
                           <LogOut className="h-4 w-4" />
@@ -252,19 +373,25 @@ const Header = () => {
                 </>
               ) : (
                 <div className="hidden lg:flex items-center gap-3">
-                  <Link href="/auth/signin">
-                    <Button
-                      variant="ghost"
-                      className="text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                    >
+                  <ThemeSwitcher />
+                  <LanguageSwitcher />
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="text-sm font-medium text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <Link href="/auth/signin">
                       Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/auth/signup">
-                    <Button className="text-sm font-medium bg-white text-gray-900 hover:bg-white/90 transition-colors rounded-full">
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="text-sm font-medium bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white/90 transition-colors rounded-full"
+                  >
+                    <Link href="/auth/signup">
                       Get Started
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               )}
             </div>
@@ -294,18 +421,68 @@ const Header = () => {
               ))}
             </div>
 
+            <div className="flex items-center justify-center gap-6 mb-8 text-white">
+              <ThemeSwitcher />
+              <LanguageSwitcher />
+            </div>
+
             {user ? (
               <>
                 {/* User Menu Items */}
                 <div className="space-y-4 mb-8 border-t border-white/20 pt-8">
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
-                  >
-                    <Briefcase className="h-5 w-5" />
-                    <span>Dashboard</span>
-                  </Link>
+                  {isAdmin && (
+                    <>
+                      <Link
+                        href="/admin"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 text-xl font-medium text-purple-400 hover:text-purple-300 transition-all hover:translate-x-2"
+                      >
+                        <Shield className="h-5 w-5" />
+                        <span>Admin Panel</span>
+                      </Link>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
+                      >
+                        <Briefcase className="h-5 w-5" />
+                        <span>Dashboard</span>
+                      </Link>
+                    </>
+                  )}
+
+                  {isArtistOrCreator && (
+                    <>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
+                      >
+                        <Briefcase className="h-5 w-5" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
+                      >
+                        <UserIcon className="h-5 w-5" />
+                        <span>Profile</span>
+                      </Link>
+                    </>
+                  )}
+
+                  {isBuyerOrClient && (
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
+                    >
+                      <UserIcon className="h-5 w-5" />
+                      <span>Profile</span>
+                    </Link>
+                  )}
+
                   <Link
                     href="/notifications"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -316,13 +493,6 @@ const Header = () => {
                   </Link>
                 </div>
 
-                {/* Token Counter for Freelancers */}
-                {userRole === 'FREELANCER' && tokenStatus && (
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8 w-fit">
-                    <Zap className="h-5 w-5 text-yellow-400" />
-                    <span className="text-lg font-medium text-white">{tokenStatus.currentTokens} tokens</span>
-                  </div>
-                )}
 
                 {/* Sign Out */}
                 <button

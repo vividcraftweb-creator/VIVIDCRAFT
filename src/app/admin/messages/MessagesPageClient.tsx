@@ -54,7 +54,7 @@ export default function AdminMessagesPage() {
 
   // Filter messages by search term
   const filteredMessages =
-    messagesData?.messages.filter((msg) => {
+    (messagesData?.messages || []).filter((msg) => {
       const searchLower = searchTerm.toLowerCase();
       const senderEmail = msg.sender?.email?.toLowerCase() || '';
       const receiverEmail = msg.receiver?.email?.toLowerCase() || '';
@@ -65,7 +65,7 @@ export default function AdminMessagesPage() {
         receiverEmail.includes(searchLower) ||
         content.includes(searchLower)
       );
-    }) || [];
+    });
 
   const totalPages = messagesData?.totalPages || 1;
   const totalMessages = stats?.totalMessages || 0;

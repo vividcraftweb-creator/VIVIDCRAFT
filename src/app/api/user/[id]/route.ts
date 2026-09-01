@@ -47,7 +47,7 @@ export async function GET(
     return NextResponse.json({
       id: user.id,
       email: user.email,
-      role: user.user_metadata?.role || 'FREELANCER',
+      role: user.user_metadata?.role || 'CLIENT',
       isVerified,
       tokens: user.user_metadata?.tokens || (user.user_metadata?.role === 'CLIENT' ? 50 : 10),
       createdAt: user.created_at,

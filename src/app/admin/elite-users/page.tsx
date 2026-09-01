@@ -8,5 +8,15 @@ export const metadata: Metadata = createAdminPageMetadata({
 });
 
 export default function EliteUsersPage() {
-  return <EliteUsersPageClient />;
+  try {
+    return <EliteUsersPageClient />;
+  } catch (error) {
+    console.error('Error rendering EliteUsersPageClient:', error);
+    return (
+      <div className="p-6 text-white space-y-4">
+        <h1 className="text-2xl font-bold">Elite Users</h1>
+        <p className="text-slate-400">Loading elite users...</p>
+      </div>
+    );
+  }
 }

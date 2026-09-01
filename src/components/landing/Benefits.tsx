@@ -69,7 +69,7 @@ export default function Benefits() {
         </h4>
 
         <p className="text-sm sm:text-base lg:text-lg max-w-2xl my-3 sm:my-4 mx-auto text-neutral-500 text-center font-normal dark:text-neutral-300">
-          From powerful dashboards to global reach, JobHorizons provides all the tools freelancers and clients need to connect, collaborate, and grow.
+          From powerful dashboards to global reach, Vivid Art provides all the tools freelancers and clients need to connect, collaborate, and grow.
         </p>
       </div>
 

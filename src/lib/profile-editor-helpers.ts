@@ -15,46 +15,37 @@ export function calculateBasicInfoStrength(profile: Profile | null | undefined):
   }
 
   let score = 0;
-  let maxScore = 8;
 
-  // Profile picture (10 points)
-  if (profile.profilePicture) score += 10;
+  // 1. Profile picture / Avatar (20%)
+  if (profile.profilePicture || (profile as any).avatar_url || (profile as any).avatarUrl || (profile as any).profile_picture) {
+    score += 20;
+  }
 
-  // First and last name (10 points each)
-  if (profile.firstName) score += 10;
-  if (profile.lastName) score += 10;
+  // 2. Full name (20%)
+  if (profile.firstName || profile.lastName || (profile as any).first_name || (profile as any).last_name || (profile as any).full_name) {
+    score += 20;
+  }
 
-  // Professional title (15 points, with quality check)
+  // 3. Professional title (20%)
   if (profile.title) {
-    const titleLength = profile.title.length;
-    if (titleLength >= FIELD_LIMITS.TITLE.min) {
-      score += titleLength >= FIELD_LIMITS.TITLE.ideal ? 15 : 10;
-    }
+    score += 20;
   }
 
-  // Bio (20 points, with quality check)
-  if (profile.bio) {
-    const bioLength = profile.bio.length;
-    if (bioLength >= FIELD_LIMITS.BIO.min) {
-      score += bioLength >= FIELD_LIMITS.BIO.ideal ? 20 : 12;
-    }
+  // 4. Address / Location (20%)
+  if (profile.location || (profile as any).address) {
+    score += 20;
   }
 
-  // Skills (15 points, with quality check)
+  // 5. Skills (20%)
   if (profile.skills) {
-    const skillsArray = profile.skills.split(',').map(s => s.trim()).filter(Boolean);
-    if (skillsArray.length >= FIELD_LIMITS.SKILLS.min) {
-      score += skillsArray.length >= 3 && skillsArray.length <= 6 ? 15 : 10;
+    const rawSkills = profile.skills;
+    const skillsArray = Array.isArray(rawSkills) ? rawSkills : (typeof rawSkills === 'string' ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+    if (skillsArray.length > 0) {
+      score += 20;
     }
   }
 
-  // Rate (10 points)
-  if (profile.rate && profile.rate > 0) score += 10;
-
-  // Location (10 points)
-  if (profile.location) score += 10;
-
-  const percentage = Math.round((score / 100) * 100);
+  const percentage = Math.min(100, Math.round(score));
 
   return getSectionStrengthLabel(percentage);
 }
@@ -65,7 +56,7 @@ export function calculateBasicInfoStrength(profile: Profile | null | undefined):
 export function calculateExperienceStrength(
   experienceItems: Array<{ position?: string; company?: string; description?: string | null }> | undefined
 ): SectionStrength {
-  if (!experienceItems || experienceItems.length === 0) {
+  if (!experienceItems || experienceItems.length === 0 || !experienceItems[0]?.description) {
     return {
       percentage: 0,
       label: 'Needs Work',
@@ -74,23 +65,8 @@ export function calculateExperienceStrength(
     };
   }
 
-  let score = 0;
-  const hasItems = experienceItems.length > 0;
-
-  // At least one experience (40 points)
-  if (hasItems) score += 40;
-
-  // Multiple experiences (20 points)
-  if (experienceItems.length >= 2) score += 20;
-
-  // Quality of experiences (40 points)
-  const experiencesWithDescriptions = experienceItems.filter(
-    exp => exp.description && exp.description.length >= 50
-  ).length;
-
-  score += Math.min(40, experiencesWithDescriptions * 20);
-
-  const percentage = Math.min(100, score);
+  const descLength = (experienceItems[0].description || '').length;
+  const percentage = descLength >= 20 ? 100 : 70;
 
   return getSectionStrengthLabel(percentage);
 }
@@ -99,9 +75,9 @@ export function calculateExperienceStrength(
  * Calculate the strength/completeness of the Education section
  */
 export function calculateEducationStrength(
-  educationItems: Array<{ institution?: string; degree?: string | null }> | undefined
+  educationItems: Array<{ institution?: string; degree?: string | null; description?: string | null }> | undefined
 ): SectionStrength {
-  if (!educationItems || educationItems.length === 0) {
+  if (!educationItems || educationItems.length === 0 || (!educationItems[0]?.description && !educationItems[0]?.institution)) {
     return {
       percentage: 0,
       label: 'Needs Work',
@@ -110,22 +86,8 @@ export function calculateEducationStrength(
     };
   }
 
-  let score = 0;
-
-  // At least one education (50 points)
-  if (educationItems.length > 0) score += 50;
-
-  // Multiple education entries (25 points)
-  if (educationItems.length >= 2) score += 25;
-
-  // Quality of entries (25 points)
-  const qualityEntries = educationItems.filter(
-    edu => edu.degree && edu.degree.length > 0
-  ).length;
-
-  score += Math.min(25, qualityEntries * 12);
-
-  const percentage = Math.min(100, score);
+  const descLength = (educationItems[0].description || educationItems[0].institution || '').length;
+  const percentage = descLength >= 20 ? 100 : 70;
 
   return getSectionStrengthLabel(percentage);
 }

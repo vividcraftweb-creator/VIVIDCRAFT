@@ -199,7 +199,7 @@ export default function VerificationCard({ user, verificationStatus }: Verificat
           variant="ghost"
           className="text-slate-400 hover:text-white hover:bg-white/5"
         >
-          <a href="/support">Need help? Contact our support team</a>
+          <Link href="/support">Need help? Contact our support team</Link>
         </Button>
       </div>
     </div>

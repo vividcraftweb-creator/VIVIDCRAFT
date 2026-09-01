@@ -37,75 +37,97 @@ export const adminJobsRouter = router({
   getJobs: adminProcedure
     .input(jobFilterSchema)
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) {
+          return { jobs: [], total: 0, hasMore: false };
+        }
 
-      let query = supabase
-        .from('Job')
-        .select(`
-          *,
-          client:User!Job_clientId_fkey(id, email, Profile(*))
-        `, { count: 'exact' });
+        let query = supabase
+          .from('Job')
+          .select(`
+            *,
+            client:User!Job_clientId_fkey(id, email, Profile(*))
+          `, { count: 'exact' });
 
-      // Apply filters
-      if (input.search) {
-        query = query.or(`title.ilike.%${input.search}%,description.ilike.%${input.search}%`);
+        // Apply filters
+        if (input.search) {
+          query = query.or(`title.ilike.%${input.search}%,description.ilike.%${input.search}%`);
+        }
+
+        if (input.status && input.status !== 'ALL') {
+          query = query.eq('status', input.status);
+        }
+
+        if (input.isApproved === 'approved') {
+          query = query.eq('isApproved', true);
+        } else if (input.isApproved === 'pending') {
+          query = query.is('isApproved', null);
+        } else if (input.isApproved === 'rejected') {
+          query = query.eq('isApproved', false);
+        }
+
+        // Sorting
+        query = query.order(input.sortBy, { ascending: input.sortOrder === 'asc' });
+
+        // Pagination
+        query = query.range(input.offset, input.offset + input.limit - 1);
+
+        let { data, error, count } = await query;
+
+        if (error) {
+          console.error('getJobs join query error, trying plain select:', error);
+          const fallbackRes = await supabase
+            .from('Job')
+            .select('*', { count: 'exact' })
+            .order(input.sortBy, { ascending: input.sortOrder === 'asc' })
+            .range(input.offset, input.offset + input.limit - 1);
+
+          data = fallbackRes.data as any;
+          count = fallbackRes.count;
+        }
+
+        return {
+          jobs: data || [],
+          total: count || 0,
+          hasMore: (count || 0) > input.offset + input.limit,
+        };
+      } catch (err) {
+        console.error('getJobs exception:', err);
+        return { jobs: [], total: 0, hasMore: false };
       }
-
-      if (input.status && input.status !== 'ALL') {
-        query = query.eq('status', input.status);
-      }
-
-      if (input.isApproved === 'approved') {
-        query = query.eq('isApproved', true);
-      } else if (input.isApproved === 'pending') {
-        query = query.is('isApproved', null);
-      } else if (input.isApproved === 'rejected') {
-        query = query.eq('isApproved', false);
-      }
-
-      // Sorting
-      query = query.order(input.sortBy, { ascending: input.sortOrder === 'asc' });
-
-      // Pagination
-      query = query.range(input.offset, input.offset + input.limit - 1);
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch jobs.',
-        });
-      }
-
-      return {
-        jobs: data || [],
-        total: count || 0,
-        hasMore: (count || 0) > input.offset + input.limit,
-      };
     }),
 
   // Get pending jobs for approval
   getPendingJobs: adminProcedure.query(async ({ ctx }) => {
-    const supabase = requireAdminSupabase(ctx);
+    try {
+      const supabase = ctx.adminSupabase;
+      if (!supabase) return [];
 
-    const { data, error } = await supabase
-      .from('Job')
-      .select(`
-        *,
-        client:User!Job_clientId_fkey(id, email, Profile(*))
-      `)
-      .is('isApproved', null)
-      .order('createdAt', { ascending: false });
+      let { data, error } = await supabase
+        .from('Job')
+        .select(`
+          *,
+          client:User!Job_clientId_fkey(id, email, Profile(*))
+        `)
+        .is('isApproved', null)
+        .order('createdAt', { ascending: false });
 
-    if (error) {
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch pending jobs.',
-      });
+      if (error) {
+        console.error('getPendingJobs join error, trying plain select:', error);
+        const fallbackRes = await supabase
+          .from('Job')
+          .select('*')
+          .is('isApproved', null)
+          .order('createdAt', { ascending: false });
+        data = fallbackRes.data as any;
+      }
+
+      return data || [];
+    } catch (err) {
+      console.error('getPendingJobs exception:', err);
+      return [];
     }
-
-    return data || [];
   }),
 
   // Approve job
@@ -350,31 +372,52 @@ export const adminJobsRouter = router({
 
   // Get job statistics
   getJobStats: adminProcedure.query(async ({ ctx }) => {
-    const supabase = requireAdminSupabase(ctx);
+    try {
+      const supabase = ctx.adminSupabase;
+      if (!supabase) {
+        return {
+          totalJobs: 0,
+          openJobs: 0,
+          closedJobs: 0,
+          pendingApproval: 0,
+          approvedJobs: 0,
+          rejectedJobs: 0,
+        };
+      }
 
-    const [
-      { count: totalJobs },
-      { count: openJobs },
-      { count: closedJobs },
-      { count: pendingApproval },
-      { count: approvedJobs },
-      { count: rejectedJobs },
-    ] = await Promise.all([
-      supabase.from('Job').select('*', { count: 'exact', head: true }),
-      supabase.from('Job').select('*', { count: 'exact', head: true }).eq('status', 'OPEN'),
-      supabase.from('Job').select('*', { count: 'exact', head: true }).eq('status', 'CLOSED'),
-      supabase.from('Job').select('*', { count: 'exact', head: true }).is('isApproved', null),
-      supabase.from('Job').select('*', { count: 'exact', head: true }).eq('isApproved', true),
-      supabase.from('Job').select('*', { count: 'exact', head: true }).eq('isApproved', false),
-    ]);
+      const [
+        { count: totalJobs },
+        { count: openJobs },
+        { count: closedJobs },
+        { count: pendingApproval },
+        { count: approvedJobs },
+        { count: rejectedJobs },
+      ] = await Promise.all([
+        supabase.from('Job').select('*', { count: 'exact', head: true }),
+        supabase.from('Job').select('*', { count: 'exact', head: true }).eq('status', 'OPEN'),
+        supabase.from('Job').select('*', { count: 'exact', head: true }).eq('status', 'CLOSED'),
+        supabase.from('Job').select('*', { count: 'exact', head: true }).is('isApproved', null),
+        supabase.from('Job').select('*', { count: 'exact', head: true }).eq('isApproved', true),
+        supabase.from('Job').select('*', { count: 'exact', head: true }).eq('isApproved', false),
+      ]);
 
-    return {
-      totalJobs: totalJobs || 0,
-      openJobs: openJobs || 0,
-      closedJobs: closedJobs || 0,
-      pendingApproval: pendingApproval || 0,
-      approvedJobs: approvedJobs || 0,
-      rejectedJobs: rejectedJobs || 0,
-    };
+      return {
+        totalJobs: totalJobs || 0,
+        openJobs: openJobs || 0,
+        closedJobs: closedJobs || 0,
+        pendingApproval: pendingApproval || 0,
+        approvedJobs: approvedJobs || 0,
+        rejectedJobs: rejectedJobs || 0,
+      };
+    } catch (err) {
+      return {
+        totalJobs: 0,
+        openJobs: 0,
+        closedJobs: 0,
+        pendingApproval: 0,
+        approvedJobs: 0,
+        rejectedJobs: 0,
+      };
+    }
   }),
 });

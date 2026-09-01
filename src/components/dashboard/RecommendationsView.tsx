@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { trpc } from '@/utils/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,9 +39,13 @@ export default function RecommendationsView() {
   }, [jobs]);
 
   // Auto-select first job if available
-  if (openJobs.length > 0 && !selectedJobId) {
-    setSelectedJobId(openJobs[0].id);
-  }
+  useEffect(() => {
+    if (openJobs.length > 0 && !selectedJobId) {
+      setSelectedJobId(openJobs[0].id);
+    }
+  }, [openJobs, selectedJobId]);
+
+  const activeJobId = selectedJobId || openJobs[0]?.id || '';
 
   // Fetch recommendations for selected job
   const {
@@ -49,8 +53,8 @@ export default function RecommendationsView() {
     isLoading: recommendationsLoading,
     error: recommendationsError,
   } = trpc.recommendations.getForJob.useQuery(
-    { jobId: selectedJobId, limit: recommendationLimit },
-    { enabled: !!selectedJobId }
+    { jobId: activeJobId, limit: recommendationLimit },
+    { enabled: !!activeJobId }
   );
 
   const recommendations = recommendationsData?.recommendations || [];

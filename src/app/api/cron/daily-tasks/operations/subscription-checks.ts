@@ -160,9 +160,9 @@ export async function runSubscriptionChecks(): Promise<SubscriptionCheckResults>
   for (const subscription of expiredCancelledSubscriptions) {
     try {
       const userRole = (subscription.user?.role || 'FREELANCER') as Role;
-      const freePlan =
-        userRole === 'FREELANCER' ? 'FREELANCER_FREE' : 'CLIENT_STARTER';
-      const freePlanInfo = getSubscriptionPlanInfo(freePlan as SubscriptionPlan);
+      const defaultPlan =
+        userRole === 'FREELANCER' ? 'FREELANCER_PRO' : 'CLIENT_BUSINESS';
+      const defaultPlanInfo = getSubscriptionPlanInfo(defaultPlan as SubscriptionPlan);
 
       // Update subscription status
       await supabase
@@ -170,12 +170,12 @@ export async function runSubscriptionChecks(): Promise<SubscriptionCheckResults>
         .update({ status: 'CANCELED' })
         .eq('id', subscription.id);
 
-      // Downgrade user to free plan
+      // Update user subscription plan
       await supabase
         .from('User')
         .update({
-          subscriptionPlan: freePlan,
-          tokens: userRole === 'FREELANCER' ? freePlanInfo.tokensPerWeek ?? 150 : undefined,
+          subscriptionPlan: defaultPlan,
+          tokens: userRole === 'FREELANCER' ? defaultPlanInfo.tokensPerWeek ?? 250 : undefined,
           tokenResetAt: new Date().toISOString(),
           jobPostsUsed: userRole === 'CLIENT' ? 0 : undefined,
           jobPostsResetAt: new Date().toISOString(),
@@ -190,15 +190,13 @@ export async function runSubscriptionChecks(): Promise<SubscriptionCheckResults>
         subject: 'Your subscription has expired',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Subscription Expired</h2>
-            <p>Hi ${userName},</p>
-            <p>Your subscription has expired and your account has been downgraded to the <strong>${freePlan}</strong> plan.</p>
-            <p>You can continue using JobHorizons with limited features, or upgrade anytime to regain access to premium features.</p>
+            <p>Your subscription has expired. Please renew or upgrade your plan to maintain full access.</p>
+            <p>You can continue using Vivid Art with limited features, or upgrade anytime to regain access to premium features.</p>
             <a href="${process.env.NEXTAUTH_URL}/dashboard?tab=subscription"
                style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">
               View Subscription Plans
             </a>
-            <p>Thank you for using JobHorizons!</p>
+            <p>Thank you for using Vivid Art!</p>
           </div>
         `,
       });

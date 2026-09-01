@@ -50,7 +50,7 @@ type Settings = z.infer<typeof settingsSchema>;
 // Default settings
 const defaultSettings: Settings = {
   general: {
-    platformName: 'JobHorizons',
+    platformName: 'Vivid Art',
     supportEmail: process.env.ADMIN_EMAIL || 'support@example.com',
     maintenanceMode: false,
     userRegistration: true,
@@ -76,23 +76,30 @@ export const adminSettingsRouter = router({
    * Uses AuditLog table to store settings as a workaround
    */
   getSettings: adminProcedure.query(async ({ ctx }) => {
-    const supabase = requireAdminSupabase(ctx);
+    try {
+      const supabase = ctx.adminSupabase;
+      if (!supabase) {
+        return defaultSettings;
+      }
 
-    // Try to get settings from database (stored in AuditLog metadata as a workaround)
-    const { data: settingsLog } = await supabase
-      .from('AuditLog')
-      .select('metadata')
-      .eq('action', 'ADMIN_SETTINGS')
-      .eq('entityType', 'SETTINGS')
-      .order('createdAt', { ascending: false })
-      .limit(1)
-      .single();
+      // Try to get settings from database (stored in AuditLog metadata as a workaround)
+      const { data: settingsLog } = await supabase
+        .from('AuditLog')
+        .select('metadata')
+        .eq('action', 'ADMIN_SETTINGS')
+        .eq('entityType', 'SETTINGS')
+        .order('createdAt', { ascending: false })
+        .limit(1)
+        .single();
 
-    if (settingsLog && settingsLog.metadata) {
-      return settingsLog.metadata as Settings;
+      if (settingsLog && settingsLog.metadata) {
+        return settingsLog.metadata as Settings;
+      }
+
+      return defaultSettings;
+    } catch (err) {
+      return defaultSettings;
     }
-
-    return defaultSettings;
   }),
 
   /**

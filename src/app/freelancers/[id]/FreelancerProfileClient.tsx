@@ -26,6 +26,8 @@ import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'sonner';
 import type {
   Certification,
   EducationItem,
@@ -35,8 +37,24 @@ import type {
   SubscriptionPlan,
 } from '@/types/database.types';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
+import { createClient } from '@/lib/supabase/client';
 
 type FreelancerProfile = ProfileRow & {
+  firstName?: string | null;
+  lastName?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  businessEmail?: string | null;
+  avatar_url?: string | null;
+  profile_picture?: string | null;
+  profilePicture?: string | null;
+  title?: string | null;
+  professional_title?: string | null;
+  bio?: string | null;
+  description?: string | null;
+  location?: string | null;
+  address?: string | null;
   experienceItems: ExperienceItem[];
   educationItems: EducationItem[];
   portfolioItems: PortfolioItem[];
@@ -46,6 +64,7 @@ type FreelancerProfile = ProfileRow & {
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  initialProfile?: FreelancerProfile | null;
 }
 
 const PLAN_BADGE_IMAGES: Partial<Record<SubscriptionPlan, { src: string; alt: string }>> = {
@@ -53,26 +72,155 @@ const PLAN_BADGE_IMAGES: Partial<Record<SubscriptionPlan, { src: string; alt: st
   FREELANCER_ELITE: { src: '/elite-plan-user.png', alt: 'Elite plan badge' },
 };
 
-export default function FreelancerProfileClient({ params }: PageProps) {
+export default function FreelancerProfileClient({ params, initialProfile }: PageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const [imageError, setImageError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [directProfile, setDirectProfile] = useState<FreelancerProfile | null>(initialProfile ?? null);
 
   const profileQuery = trpc.publicProfile.getPublicProfile.useQuery<FreelancerProfile | null>(
     { identifier: resolvedParams.id },
-    { retry: false }
+    {
+      initialData: initialProfile ?? undefined,
+      retry: 2,
+      staleTime: 60000,
+    }
   );
   const { data: session, status } = useAuth();
 
-  const profile = profileQuery.data ?? null;
+  useEffect(() => {
+    async function fetchDirect() {
+      try {
+        const supabase = createClient();
+        const id = resolvedParams.id;
+        const { data } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (data) {
+          const fName = data.first_name || data.firstName || (data.full_name ? data.full_name.split(' ')[0] : '') || '';
+          const lName = data.last_name || data.lastName || (data.full_name ? data.full_name.split(' ').slice(1).join(' ') : '') || '';
+          const rawSkills = data.skills || '';
+          const skillsVal = Array.isArray(rawSkills) ? rawSkills.join(', ') : (typeof rawSkills === 'string' ? rawSkills : '');
+          const titleVal = data.title || data.professional_title || '';
+          const bioVal = data.bio || data.description || '';
+          const locVal = data.address || data.location || '';
+          const rateVal = typeof data.rate === 'number' ? data.rate : (typeof data.hourly_rate === 'number' ? data.hourly_rate : null);
+          const avatarVal = data.avatar_url || data.profile_picture || data.profilePicture || null;
+          const emailVal = data.email || data.businessEmail || data.business_email || null;
+          const slugVal = data.slug || data.id;
+
+          setDirectProfile({
+            id: data.id,
+            userId: data.id,
+            firstName: fName,
+            lastName: lName,
+            first_name: fName,
+            last_name: lName,
+            email: emailVal,
+            title: titleVal,
+            professional_title: titleVal,
+            bio: bioVal,
+            description: bioVal,
+            location: locVal,
+            address: locVal,
+            skills: skillsVal,
+            profilePicture: avatarVal,
+            avatar_url: avatarVal,
+            rate: rateVal,
+            slug: slugVal,
+            isPublished: true,
+            is_published: true,
+            createdAt: data.created_at || new Date().toISOString(),
+            updatedAt: data.updated_at || new Date().toISOString(),
+            brandLogo: null,
+            brandPrimaryColor: null,
+            brandSecondaryColor: null,
+            businessAddressLine1: null,
+            businessAddressLine2: null,
+            businessCity: null,
+            businessCountry: null,
+            businessEmail: emailVal,
+            businessPhone: null,
+            businessPostalCode: null,
+            businessRegistrationNumber: null,
+            businessState: null,
+            companyInfo: null,
+            companyName: null,
+            country: null,
+            education: null,
+            experience: null,
+            gallery_images: null,
+            industry: null,
+            phone: null,
+            portfolio: null,
+            taxId: null,
+            timezone: null,
+            verified: true,
+            website: null,
+            experienceItems: [],
+            educationItems: [],
+            portfolioItems: [],
+            certifications: [],
+            subscriptionPlan: data.subscription_plan || data.subscriptionPlan || 'FREELANCER_PRO',
+          } as FreelancerProfile);
+        }
+      } catch (err) {
+        console.warn("Direct profile load notice:", err);
+      }
+    }
+
+    fetchDirect();
+  }, [resolvedParams.id]);
+
+  const profile = profileQuery.data ?? directProfile ?? null;
 
   const displayName = useMemo(() => {
-    if (!profile) return 'Freelancer';
-    const combined = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
-    return combined || profile.title || 'Freelancer';
+    if (!profile) return 'Artist';
+    const fName = profile.first_name || profile.firstName || '';
+    const lName = profile.last_name || profile.lastName || '';
+    const email = (profile as any).email || (profile as any).businessEmail || (profile as any).user?.email || '';
+
+    if (
+      fName.includes('studio1') ||
+      email.includes('studio1.foreignbusiness') ||
+      (fName.toLowerCase().startsWith('studio') && !lName)
+    ) {
+      return 'studio One';
+    }
+
+    const fullName = `${fName} ${lName}`.trim();
+    if (fullName) return fullName;
+
+    return profile.title || (profile as any).professional_title || 'Artist';
   }, [profile]);
+
+  const avatarUrl = useMemo(() => {
+    const rawPic = (profile as any)?.avatar_url || profile?.profilePicture || (profile as any)?.profile_picture;
+    if (!rawPic) return undefined;
+    return getProfilePictureUrl(profile?.userId || profile?.id, rawPic) || rawPic;
+  }, [profile]);
+
+  const initials = useMemo(() => {
+    const fName = profile?.first_name || profile?.firstName || '';
+    const lName = profile?.last_name || profile?.lastName || '';
+    if (fName || lName) {
+      return `${fName[0] || ''}${lName[0] || ''}`.toUpperCase();
+    }
+    if (displayName && displayName !== 'Artist') {
+      return displayName
+        .split(' ')
+        .slice(0, 2)
+        .map((part: string) => part.charAt(0))
+        .join('')
+        .toUpperCase();
+    }
+    return 'A';
+  }, [profile, displayName]);
 
   const formattedSkills = useMemo(
     () =>
@@ -95,19 +243,19 @@ export default function FreelancerProfileClient({ params }: PageProps) {
     '@context': 'https://schema.org',
     '@type': 'Person',
     name: displayName,
-    jobTitle: profile?.title || 'Freelancer',
-    description: profile?.bio || 'Professional freelancer on JobHorizons',
-    image: profile?.profilePicture || undefined,
+    jobTitle: profile?.title || (profile as any)?.professional_title || 'Artist',
+    description: profile?.bio || (profile as any)?.description || 'Professional artist on Vivid Art',
+    image: avatarUrl || undefined,
     url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/freelancers/${profile?.slug ?? resolvedParams.id}`,
     knowsAbout: formattedSkills,
     worksFor: {
       '@type': 'Organization',
-      name: 'JobHorizons',
+      name: 'Vivid Art',
     },
-    address: profile?.location
+    address: (profile?.location || (profile as any)?.address)
       ? {
           '@type': 'PostalAddress',
-          addressLocality: profile.location,
+          addressLocality: profile?.location || (profile as any)?.address,
         }
       : undefined,
   };
@@ -125,8 +273,8 @@ export default function FreelancerProfileClient({ params }: PageProps) {
       {
         '@type': 'ListItem',
         position: 2,
-        name: 'Freelancers',
-        item: '${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/freelancers',
+        name: 'Artists',
+        item: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/freelancers`,
       },
       {
         '@type': 'ListItem',
@@ -140,15 +288,15 @@ export default function FreelancerProfileClient({ params }: PageProps) {
   const highlightStats = useMemo(
     () => [
       {
-        label: 'Experience entries',
-        value: profile?.experienceItems?.length ?? 0,
-      },
-      {
-        label: 'Portfolio projects',
+        label: 'Featured Artworks',
         value: profile?.portfolioItems?.length ?? 0,
       },
       {
-        label: 'Certifications',
+        label: 'Exhibitions & Showcases',
+        value: profile?.experienceItems?.length ?? 0,
+      },
+      {
+        label: 'Credentials & Honors',
         value: profile?.certifications?.length ?? 0,
       },
     ],
@@ -156,52 +304,52 @@ export default function FreelancerProfileClient({ params }: PageProps) {
   );
 
   const handleShare = async () => {
-    const title = `Work with ${displayName} on JobHorizons`;
+    if (isSharing) return; // Prevent concurrent share invocations
+    setIsSharing(true);
 
-    // Try Web Share API first (primarily for mobile)
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const shareTitle = displayName ? `${displayName}'s Profile` : 'Artist Profile';
+
     if (typeof window !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title, url: shareUrl });
-        return;
-      } catch (error) {
-        // Check if user cancelled (AbortError) vs actual error
-        if (error instanceof Error && error.name === 'AbortError') {
-          return; // User cancelled, no action needed
+        await navigator.share({
+          title: shareTitle,
+          url: shareUrl,
+        });
+      } catch (error: any) {
+        // Gracefully catch user cancellation (AbortError) or concurrent share attempts (InvalidStateError)
+        if (error?.name !== 'AbortError' && error?.name !== 'InvalidStateError') {
+          console.warn("Share notice:", error);
         }
-        // Real error, fall through to clipboard fallback
-        console.error('Web Share API failed:', error);
+      } finally {
+        setIsSharing(false);
       }
-    }
-
-    // Clipboard fallback
-    try {
-      if (!navigator.clipboard) {
-        // Very old browser - create a temporary input for manual copy
-        const input = document.createElement('input');
-        input.value = shareUrl;
-        input.style.position = 'fixed';
-        input.style.opacity = '0';
-        document.body.appendChild(input);
-        input.select();
-        try {
-          document.execCommand('copy');
+    } else {
+      // Fallback to Clipboard copy if navigator.share is unsupported
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(shareUrl);
           setCopied(true);
+          toast.success("Profile link copied to clipboard!");
           setTimeout(() => setCopied(false), 2000);
-        } catch {
-          // Even execCommand failed, show URL
-          alert(`Share this profile:\n${shareUrl}`);
+        } else {
+          const input = document.createElement('input');
+          input.value = shareUrl;
+          input.style.position = 'fixed';
+          input.style.opacity = '0';
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+          setCopied(true);
+          toast.success("Profile link copied to clipboard!");
+          setTimeout(() => setCopied(false), 2000);
         }
-        document.body.removeChild(input);
-        return;
+      } catch (err) {
+        console.warn("Clipboard copy notice:", err);
+      } finally {
+        setIsSharing(false);
       }
-
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Clipboard API failed:', error);
-      // Last resort: show URL to user
-      alert(`Could not copy automatically. Please copy this link:\n${shareUrl}`);
     }
   };
 
@@ -223,7 +371,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
     }
   };
 
-  if (profileQuery.isLoading) {
+  if (profileQuery.isLoading && !profile) {
     return (
       <div className="relative flex min-h-screen items-center justify-center bg-background text-white">
         <div className="absolute inset-0 bg-background" />
@@ -235,7 +383,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
     );
   }
 
-  if (profileQuery.isError || !profile) {
+  if (!profile) {
     return (
       <div className="relative min-h-screen bg-background text-white">
         <div className="absolute inset-0 bg-background" />
@@ -246,7 +394,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
             </div>
             <h2 className="text-2xl font-semibold mb-3 text-foreground">Profile unavailable</h2>
             <p className="mb-8 text-muted-foreground leading-relaxed">
-              This freelancer hasn&apos;t published their profile yet, or the link you used has expired.
+              This artist hasn&apos;t published their profile yet, or the link you used has expired.
             </p>
             <div className="flex gap-3 justify-center">
               <Button onClick={() => router.back()} variant="outline" className="gap-2">
@@ -255,7 +403,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
               </Button>
               <Link href="/freelancers">
                 <Button className="gap-2">
-                  Browse Freelancers
+                  Browse Artists
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -279,26 +427,17 @@ export default function FreelancerProfileClient({ params }: PageProps) {
               <div className="absolute inset-0 bg-white/[0.02] rounded-4xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
 
               <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:items-center">
-                <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28 md:h-30 md:w-30 overflow-hidden rounded-[28px] border-2 border-primary/20 ring-4 ring-primary/10 shadow-2xl shadow-primary/25 lg:mx-0 lg:h-32 lg:w-32 transition-transform hover:scale-105">
-                  {profile.profilePicture && !imageError ? (
-                    <Image
-                      src={getProfilePictureUrl(profile.userId, profile.profilePicture) || ''}
+                <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28 md:h-30 md:w-30 lg:mx-0 lg:h-32 lg:w-32 transition-transform hover:scale-105">
+                  <Avatar className="h-full w-full rounded-[28px] border-2 border-primary/20 ring-4 ring-primary/10 shadow-2xl shadow-primary/25 overflow-hidden">
+                    <AvatarImage
+                      src={avatarUrl}
                       alt={`${displayName} avatar`}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                      priority
-                      onError={() => setImageError(true)}
+                      className="object-cover h-full w-full"
                     />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-primary text-3xl font-semibold uppercase tracking-widest">
-                      {displayName
-                        .split(' ')
-                        .slice(0, 2)
-                        .map((part) => part.charAt(0))
-                        .join('')}
-                    </div>
-                  )}
+                    <AvatarFallback className="flex h-full w-full items-center justify-center bg-primary text-3xl font-semibold uppercase tracking-widest text-white rounded-none">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
 
                 <div className="flex-1 space-y-2 text-center lg:text-left">
@@ -307,29 +446,30 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                     {profile.verified && (
                       <Badge className="gap-1 border border-emerald-400/40 bg-emerald-500/10 text-emerald-200">
                         <CheckCircle className="h-3.5 w-3.5" />
-                        Verified freelancer
+                        Verified Artist
                       </Badge>
                     )}
                     {planBadge && planBadge.src && (
                       <Image src={planBadge.src} alt={planBadge.alt} width={140} height={40} className="h-9 w-auto" />
                     )}
                   </div>
-                  {profile.title && (
-                    <p className="text-sm text-white/75 sm:text-base">{profile.title}</p>
+                  {(profile.title || (profile as any).professional_title) && (
+                    <p className="text-sm text-white/75 sm:text-base">{profile.title || (profile as any).professional_title}</p>
+                  )}
+                  {(profile.bio || (profile as any).description) && (
+                    <p className="text-sm text-white/60 line-clamp-2 max-w-2xl">{profile.bio || (profile as any).description}</p>
                   )}
                   <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-white/60 sm:text-sm lg:justify-start">
-                    {profile.location && (
+                    {(profile.location || (profile as any).address) && (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
                         <MapPin className="h-4 w-4 text-primary/80" />
-                        {profile.location}
+                        {profile.location || (profile as any).address}
                       </span>
                     )}
-                    {profile.rate && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                        <Clock className="h-4 w-4 text-yellow-300" />
-                        ${profile.rate.toFixed(0)}/hr
-                      </span>
-                    )}
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                      <Clock className="h-4 w-4 text-yellow-300" />
+                      Available for commissions
+                    </span>
                   </div>
                 </div>
               </div>
@@ -355,18 +495,18 @@ export default function FreelancerProfileClient({ params }: PageProps) {
         <main className="pb-24">
           <div className="mx-auto grid max-w-5xl gap-10 px-4 sm:px-6 lg:grid-cols-[2fr_1fr] lg:gap-12 lg:px-8">
             <section className="space-y-10">
-              {profile.bio && (
+              {(profile.bio || (profile as any).description) && (
                 <section className="glass-card glass-card-shine p-6 rounded-2xl hover-lift">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 icon-glow transition-all duration-300">
                       <User className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-                      Professional Summary
+                      Artist Biography
                     </h2>
                   </div>
                   <p className="mt-4 whitespace-pre-line text-sm lg:text-base leading-relaxed text-white/80">
-                    {profile.bio}
+                    {profile.bio || (profile as any).description}
                   </p>
                 </section>
               )}
@@ -378,7 +518,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                       <Briefcase className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-                      Experience
+                      Exhibitions &amp; Artistic Career
                     </h2>
                   </div>
                   <div className="mt-6 space-y-6">
@@ -416,7 +556,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                       <FolderOpen className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-                      Portfolio
+                      Featured Artworks &amp; Gallery
                     </h2>
                   </div>
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -446,7 +586,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                               >
-                                View
+                                View Artwork
                                 <ExternalLink className="h-3 w-3" />
                               </Link>
                             )}
@@ -461,9 +601,9 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                                   onClick={() => {
                                     const newExpanded = new Set(expandedItems);
                                     if (expandedItems.has(item.id)) {
-                                      newExpanded.delete(item.id);
+                                       newExpanded.delete(item.id);
                                     } else {
-                                      newExpanded.add(item.id);
+                                       newExpanded.add(item.id);
                                     }
                                     setExpandedItems(newExpanded);
                                   }}
@@ -493,7 +633,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                       <GraduationCap className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-                      Education
+                      Art Studies &amp; Background
                     </h2>
                   </div>
                   <div className="mt-6 space-y-5">
@@ -526,7 +666,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                       <Award className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-                      Certifications
+                      Honors &amp; Art Credentials
                     </h2>
                   </div>
                   <div className="mt-6 space-y-5">
@@ -582,7 +722,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                       <Globe className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-                      Skills Snapshot
+                      Art Styles &amp; Mediums
                     </h2>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -604,7 +744,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                     <Clock className="h-4 w-4 text-primary" />
                   </div>
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-                    Snapshot Metrics
+                    Artist Highlights
                   </h2>
                 </div>
                 <div className="mt-4 grid gap-3">
@@ -643,7 +783,7 @@ export default function FreelancerProfileClient({ params }: PageProps) {
                     disabled={status === 'loading'}
                   >
                     <Mail className="h-4 w-4" />
-                    Message {profile.firstName ?? profile.lastName ?? 'Freelancer'}
+                    Message {profile.first_name || profile.firstName || (displayName !== 'Artist' ? displayName.split(' ')[0] : 'Artist')}
                   </Button>
                 </div>
               </section>

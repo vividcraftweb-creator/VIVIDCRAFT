@@ -315,27 +315,30 @@ export default function SubscriptionView() {
       const order =
         userRole === 'FREELANCER'
           ? [
-              SubscriptionPlan.FREELANCER_FREE,
               SubscriptionPlan.FREELANCER_PRO,
               SubscriptionPlan.FREELANCER_ELITE,
             ]
           : [
-              SubscriptionPlan.CLIENT_STARTER,
               SubscriptionPlan.CLIENT_BUSINESS,
               SubscriptionPlan.CLIENT_ENTERPRISE,
             ];
       return order.indexOf(a.plan as SubscriptionPlan) - order.indexOf(b.plan as SubscriptionPlan);
     });
 
-  const visiblePlans = orderedPlans.map((plan) => {
-    const canonical = getSubscriptionPlanInfo(plan.plan as SubscriptionPlan);
-    return {
-      ...plan,
-      priceAmount: canonical.priceAmount,
-      name: canonical.name,
-      description: canonical.description,
-    };
-  });
+  const visiblePlans = orderedPlans
+    .filter((plan) => {
+      const canonical = getSubscriptionPlanInfo(plan.plan as SubscriptionPlan);
+      return canonical.priceAmount > 0;
+    })
+    .map((plan) => {
+      const canonical = getSubscriptionPlanInfo(plan.plan as SubscriptionPlan);
+      return {
+        ...plan,
+        priceAmount: canonical.priceAmount,
+        name: canonical.name,
+        description: canonical.description,
+      };
+    });
 
   const currentPlan = currentSubscription?.currentPlan;
 

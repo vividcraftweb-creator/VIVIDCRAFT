@@ -214,6 +214,25 @@ export const messagesRouter = router({
       return enrichedMessages;
     }),
 
+  canChat: protectedProcedure
+    .input(z.object({ partnerId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.role === 'ADMIN') return true;
+
+      const supabase = createAdminClient();
+      
+      const { data, error } = await supabase
+        .from('ChatConnection')
+        .select('chatEnabled')
+        .or(`and(clientId.eq.${ctx.session.user.id},artistId.eq.${input.partnerId}),and(clientId.eq.${input.partnerId},artistId.eq.${ctx.session.user.id})`)
+        .eq('chatEnabled', true)
+        .maybeSingle();
+
+      if (error || !data) return false;
+
+      return data.chatEnabled;
+    }),
+
   sendMessage: protectedProcedure
     .input(
       z.object({
@@ -224,6 +243,23 @@ export const messagesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'ADMIN') {
+        const adminClient = createAdminClient();
+        const { data: chatAccess } = await adminClient
+          .from('ChatConnection')
+          .select('chatEnabled')
+          .or(`and(clientId.eq.${ctx.session.user.id},artistId.eq.${input.receiverId}),and(clientId.eq.${input.receiverId},artistId.eq.${ctx.session.user.id})`)
+          .eq('chatEnabled', true)
+          .maybeSingle();
+
+        if (!chatAccess?.chatEnabled) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Chat is not enabled for this connection. Admin approval is required.',
+          });
+        }
+      }
+
       const supabase = await createClient();
 
       // Scan message content for scam patterns BEFORE sending

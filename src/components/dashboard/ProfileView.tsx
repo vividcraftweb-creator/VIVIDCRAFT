@@ -34,30 +34,32 @@ export default function ProfileView() {
   const router = useRouter();
 
   const { data: profile, isLoading } = trpc.profiles.getMyProfile.useQuery(undefined, {
-    enabled: status === 'authenticated' && !!session.session?.user,
+    enabled: status === 'authenticated' && !!session?.session?.user,
   });
 
   const { data: verification } = trpc.verifications.getVerificationStatus.useQuery(undefined, {
-    enabled: status === 'authenticated' && !!session.session?.user,
+    enabled: status === 'authenticated' && !!session?.session?.user,
     retry: false,
   });
   const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
-    enabled: status === 'authenticated' && !!session.session?.user,
+    enabled: status === 'authenticated' && !!session?.session?.user,
     refetchOnWindowFocus: false,
   });
 
-  const sessionInitials = session.session?.user?.user_metadata?.firstName && session.session?.user?.user_metadata?.lastName
-    ? `${session.session.user.user_metadata.firstName[0]}${session.session.user.user_metadata.lastName[0]}`.toUpperCase()
-    : session.session?.user?.name
-    ? session.session?.user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-    : session.session?.user?.email?.[0]?.toUpperCase() || 'U';
+  const sessionUser = session?.session?.user;
+
+  const sessionInitials = sessionUser?.user_metadata?.firstName && sessionUser?.user_metadata?.lastName
+    ? `${sessionUser.user_metadata.firstName[0]}${sessionUser.user_metadata.lastName[0]}`.toUpperCase()
+    : sessionUser?.name
+    ? sessionUser.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+    : sessionUser?.email?.[0]?.toUpperCase() || 'U';
 
   const profileInitials = (profile?.firstName || profile?.lastName)
     ? `${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase()
     : sessionInitials;
 
   const avatarSrc = getProfilePictureUrl(profile?.userId, profile?.profilePicture)
-    || session.session?.user?.image
+    || sessionUser?.image
     || undefined;
 
   if (isLoading) {
@@ -181,7 +183,7 @@ export default function ProfileView() {
             <Button
               onClick={() => {
                 // CLIENT users edit in dashboard, FREELANCER users use profile editor
-                if (session.session?.user?.role === 'CLIENT') {
+                if (sessionUser?.role === 'CLIENT') {
                   router.push('/dashboard?tab=profile&mode=edit');
                 } else {
                   router.push('/profile-editor');
@@ -221,9 +223,9 @@ export default function ProfileView() {
               <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2 tracking-tight">
                 {profile?.firstName && profile?.lastName
                   ? `${profile.firstName} ${profile.lastName}`
-                  : session.session?.user?.user_metadata?.firstName && session.session?.user?.user_metadata?.lastName
-                  ? `${session.session.user.user_metadata.firstName} ${session.session.user.user_metadata.lastName}`
-                  : session.session?.user?.name || 'Complete Your Profile'}
+                  : sessionUser?.user_metadata?.firstName && sessionUser?.user_metadata?.lastName
+                  ? `${sessionUser.user_metadata.firstName} ${sessionUser.user_metadata.lastName}`
+                  : sessionUser?.name || 'Complete Your Profile'}
               </h1>
 
               {profile?.title && (
@@ -242,10 +244,10 @@ export default function ProfileView() {
                   </div>
                 )}
 
-                {session.session?.user?.email && (
+                {sessionUser?.email && (
                   <div className="flex items-center gap-1.5">
                     <Mail className="h-4 w-4 text-slate-400" />
-                    <span>{session.session.user.email}</span>
+                    <span>{sessionUser.email}</span>
                   </div>
                 )}
 
@@ -269,7 +271,7 @@ export default function ProfileView() {
                   </Badge>
                 )}
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                  {session.session?.user?.role}
+                  {sessionUser?.role || 'FREELANCER'}
                 </Badge>
               </div>
             </div>
@@ -293,7 +295,7 @@ export default function ProfileView() {
       )}
 
       {/* Company Info - For CLIENT users */}
-      {profile?.companyInfo && session.session?.user?.role === 'CLIENT' && (
+      {profile?.companyInfo && sessionUser?.role === 'CLIENT' && (
         <div className="glass-card p-6 sm:p-8 rounded-2xl bg-white/5 border border-white/10">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -308,7 +310,7 @@ export default function ProfileView() {
       )}
 
       {/* CLIENT-SPECIFIC LAYOUT */}
-      {session.session?.user?.role === 'CLIENT' ? (
+      {sessionUser?.role === 'CLIENT' ? (
         <>
           {/* Company Details Grid - 2x2 Layout */}
           {(profile?.industry || profile?.country || profile?.timezone || profile?.website) && (
@@ -488,7 +490,7 @@ export default function ProfileView() {
       )}
 
       {/* Empty State - Only for FREELANCER users */}
-      {!profile?.firstName && !profile?.lastName && session.session?.user?.role === 'FREELANCER' && (
+      {!profile?.firstName && !profile?.lastName && sessionUser?.role !== 'CLIENT' && (
         <div className="glass-card p-8 rounded-3xl bg-primary/10 border border-primary/20 text-center">
           <div className="max-w-md mx-auto">
             <div className="inline-flex p-6 bg-primary/20 rounded-full mb-6 shadow-lg shadow-primary/10">
@@ -511,7 +513,7 @@ export default function ProfileView() {
       )}
 
       {/* Empty State - For CLIENT users */}
-      {!profile?.firstName && !profile?.lastName && session.session?.user?.role === 'CLIENT' && (
+      {!profile?.firstName && !profile?.lastName && sessionUser?.role === 'CLIENT' && (
         <div className="glass-card p-8 rounded-3xl bg-white/5 border border-white/10 text-center">
           <div className="max-w-md mx-auto">
             <div className="inline-flex p-6 bg-blue-500/20 rounded-full mb-6">

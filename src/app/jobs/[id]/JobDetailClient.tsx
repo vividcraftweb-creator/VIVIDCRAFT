@@ -9,23 +9,35 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import ProposalModal from '@/components/proposals/ProposalModal';
 import {
-  AlertCircle,
+  MapPin,
+  Clock,
+  Briefcase,
+  DollarSign,
+  Monitor,
+  Share2,
+  ChevronRight,
   ArrowRight,
+  Calendar,
+  AlertCircle,
+  Shield,
+  ThumbsUp,
+  Award,
+  Zap,
+  Globe,
+  Star,
+  Users,
+  CheckCircle2,
+  MessageSquare,
   Building,
   CalendarDays,
-  CheckCircle2,
-  Clock,
   ExternalLink,
   FileText,
-  Globe,
   Globe2,
   Layers,
-  MapPin,
   Radar,
   Send,
   Sparkles,
   Target,
-  Users,
 } from 'lucide-react';
 
 type Maybe<T> = T | null | undefined;
@@ -185,7 +197,7 @@ function JobDetailClient() {
   const params = useParams();
   const slug = params.id as string;
   const { data: session } = useSession();
-  const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+
 
   const { data: job, isLoading: jobLoading, error } = trpc.jobs.getJobBySlug.useQuery(
     {
@@ -394,7 +406,7 @@ function JobDetailClient() {
         '@type': 'ListItem',
         position: 2,
         name: 'Jobs',
-        item: '${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/jobs',
+        item: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/jobs`,
       },
       {
         '@type': 'ListItem',
@@ -497,39 +509,25 @@ function JobDetailClient() {
                       </div>
                     </div>
                   )}
-
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    {canApply && (
-                      <Button
-                        size="lg"
-                        className="group relative flex-1 overflow-hidden border-0 bg-primary text-white shadow-[0_20px_35px_-20px_rgba(59,130,246,0.9)] transition hover:scale-[1.02]"
-                        onClick={() => setIsProposalModalOpen(true)}
-                      >
-                        <span className="absolute inset-0 translate-y-full bg-white/10 opacity-0 transition group-hover:translate-y-0 group-hover:opacity-100" />
-                        <span className="relative flex items-center justify-center gap-2">
-                          Apply now
-                          <ArrowRight className="h-4 w-4" />
-                        </span>
-                      </Button>
-                    )}
-                    {session?.session?.user?.role === 'FREELANCER' && hasApplied && (
-                      <Button
-                        size="lg"
-                        variant="outline"
-                        disabled
-                        className="flex-1 border-white/20 bg-white/5 text-white/70"
-                      >
-                        Already applied
-                      </Button>
-                    )}
-                    {session?.session?.user?.role === 'FREELANCER' && !isOwner && !isVerificationLoading && !isVerified && (
-                      <div className="flex-1 rounded-xl border border-amber-500/40 bg-amber-500/15 p-3 text-sm text-amber-100">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          Verification required to apply
-                        </div>
-                      </div>
-                    )}
+                    <Button
+                      size="lg"
+                      className="group relative flex-1 overflow-hidden border-0 bg-green-500 text-white shadow-[0_20px_35px_-20px_rgba(34,197,94,0.9)] transition hover:scale-[1.02] hover:bg-green-600"
+                      onClick={() => {
+                        const buyerName = session?.session?.user?.user_metadata?.firstName ? `${session.session.user.user_metadata.firstName} ${session.session.user.user_metadata.lastName}` : 'a buyer';
+                        const artistName = job.companyName || 'the artist';
+                        const message = `Hi Vivid Art Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
+                        const url = `https://wa.me/940783813833?text=${encodeURIComponent(message)}`;
+                        window.open(url, '_blank');
+                      }}
+                    >
+                      <span className="absolute inset-0 translate-y-full bg-white/10 opacity-0 transition group-hover:translate-y-0 group-hover:opacity-100" />
+                      <span className="relative flex items-center justify-center gap-2 font-medium">
+                        <MessageSquare className="h-4 w-4" />
+                        Ask About Pricing
+                        <ArrowRight className="h-4 w-4 ml-1" />
+                      </span>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -820,35 +818,23 @@ function JobDetailClient() {
           </div>
         </section>
 
-        {canApply && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 p-4 lg:hidden">
-            <Button
-              size="lg"
-              className="w-full border-0 bg-primary text-white shadow-[0_15px_35px_-15px_rgba(59,130,246,0.9)]"
-              onClick={() => setIsProposalModalOpen(true)}
-            >
-              Apply now
-              <Send className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
-        )}
-        {session?.session?.user?.role === 'FREELANCER' && !isOwner && !isVerified && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 p-4 lg:hidden">
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/15 p-4 text-center text-sm text-amber-100 backdrop-blur">
-              <AlertCircle className="mx-auto mb-2 h-5 w-5" />
-              Complete ID verification to apply for jobs
-            </div>
-          </div>
-        )}
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 lg:hidden">
+          <Button
+            size="lg"
+            className="w-full border-0 bg-green-500 text-white shadow-[0_15px_35px_-15px_rgba(34,197,94,0.9)] hover:bg-green-600"
+            onClick={() => {
+              const buyerName = session?.session?.user?.user_metadata?.firstName ? `${session.session.user.user_metadata.firstName} ${session.session.user.user_metadata.lastName}` : 'a buyer';
+              const artistName = job.companyName || 'the artist';
+              const message = `Hi Vivid Art Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
+              const url = `https://wa.me/940783813833?text=${encodeURIComponent(message)}`;
+              window.open(url, '_blank');
+            }}
+          >
+            <MessageSquare className="mr-2 h-5 w-5" />
+            Ask About Pricing
+          </Button>
+        </div>
       </div>
-
-      {canApply && (
-        <ProposalModal
-          jobId={job.id}
-          isOpen={isProposalModalOpen}
-          onClose={() => setIsProposalModalOpen(false)}
-        />
-      )}
     </div>
   );
 }

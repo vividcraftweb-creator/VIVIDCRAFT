@@ -48,8 +48,8 @@ export default function ComingSoonOverlay({
     >
       <div className="relative max-w-lg mx-auto px-6 text-center">
         {/* Decorative background elements */}
-        <div className="absolute -top-20 -left-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-chart-4/10 rounded-full blur-3xl" />
+        <div className="pointer-events-none absolute -top-20 -left-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -right-20 w-40 h-40 bg-chart-4/10 rounded-full blur-3xl" />
 
         {/* Main content */}
         <div className="relative space-y-6">

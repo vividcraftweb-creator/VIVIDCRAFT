@@ -256,7 +256,7 @@ const TermsPage = () => {
               please don&apos;t hesitate to contact our legal team.
             </p>
             <a 
-              href="mailto:${process.env.NEXT_PUBLIC_LEGAL_EMAIL || 'legal@yourdomain.com'}" 
+              href={`mailto:${process.env.NEXT_PUBLIC_LEGAL_EMAIL || 'legal@yourdomain.com'}`} 
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium"
             >
               <FileText className="h-4 w-4" />

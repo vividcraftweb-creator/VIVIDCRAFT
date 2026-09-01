@@ -73,11 +73,11 @@ export default function BillingPage() {
       <Alert className="border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 backdrop-blur">
         <AlertTriangle className="h-6 w-6 text-amber-400" />
         <AlertTitle className="text-xl font-bold text-white">
-          Important: JobHorizons Does Not Process Payments
+          Important: Vivid Art Does Not Process Payments
         </AlertTitle>
         <AlertDescription className="text-base text-slate-200 space-y-2 mt-3">
           <p className="font-medium">
-            JobHorizons is a <span className="text-amber-300 font-bold">connection platform only</span>.
+            Vivid Art is a <span className="text-amber-300 font-bold">connection platform only</span>.
             We do not hold, process, or transfer funds between clients and freelancers.
           </p>
           <p>
@@ -97,7 +97,7 @@ export default function BillingPage() {
             <CardTitle className="text-2xl">Platform Scope & Capabilities</CardTitle>
           </div>
           <CardDescription>
-            Understanding what JobHorizons provides and what you handle directly
+            Understanding what Vivid Art provides and what you handle directly
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -106,7 +106,7 @@ export default function BillingPage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5" />
-                What JobHorizons Provides
+                What Vivid Art Provides
               </h3>
               <div className="space-y-3 text-sm text-slate-300">
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
@@ -154,7 +154,7 @@ export default function BillingPage() {
                   <XCircle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-white">Payment Processing</p>
-                    <p className="text-slate-400 mt-1">JobHorizons never holds, processes, or transfers money between parties</p>
+                    <p className="text-slate-400 mt-1">Vivid Art never holds, processes, or transfers money between parties</p>
                   </div>
                 </div>
 
@@ -205,7 +205,7 @@ export default function BillingPage() {
               <div>
                 <CardTitle className="text-xl">Invoice History</CardTitle>
                 <CardDescription className="mt-2">
-                  Track invoices generated through JobHorizons. These are for record-keeping only.
+                  Track invoices generated through Vivid Art. These are for record-keeping only.
                 </CardDescription>
               </div>
               <Badge variant="outline" className="border-blue-500/30 text-blue-300 bg-blue-500/10">
@@ -219,7 +219,7 @@ export default function BillingPage() {
               <p className="text-sm text-slate-300">
                 <CreditCard className="h-4 w-4 inline-block mr-2 text-blue-400" />
                 <strong className="text-white">Payment Reminder:</strong> Settle each invoice directly with
-                your freelancer using the payment method you both agreed upon. JobHorizons invoices are
+                your freelancer using the payment method you both agreed upon. Vivid Art invoices are
                 documentation tools only.
               </p>
             </div>
@@ -247,7 +247,7 @@ export default function BillingPage() {
               <CardTitle className="text-xl">Freelancer Payment Guide</CardTitle>
             </div>
             <CardDescription>
-              How to get paid for your work on JobHorizons projects
+              How to get paid for your work on Vivid Art projects
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -255,7 +255,7 @@ export default function BillingPage() {
               <Info className="h-5 w-5 text-blue-400" />
               <AlertTitle className="text-white">You Control Your Payments</AlertTitle>
               <AlertDescription className="text-slate-300">
-                JobHorizons does not run an escrow or payout service. You and your client
+                Vivid Art does not run an escrow or payout service. You and your client
                 arrange payments directly using your preferred method.
               </AlertDescription>
             </Alert>
@@ -286,7 +286,7 @@ export default function BillingPage() {
                   <div>
                     <p className="font-medium text-white">Complete Work & Document Progress</p>
                     <p className="text-sm text-slate-400 mt-1">
-                      Use JobHorizons messaging and project tracking tools to share updates,
+                      Use Vivid Art messaging and project tracking tools to share updates,
                       deliverables, and milestone completion confirmations.
                     </p>
                   </div>
@@ -299,7 +299,7 @@ export default function BillingPage() {
                   <div>
                     <p className="font-medium text-white">Create Invoice (Optional)</p>
                     <p className="text-sm text-slate-400 mt-1">
-                      Generate a professional invoice within JobHorizons for documentation,
+                      Generate a professional invoice within Vivid Art for documentation,
                       or use your own invoicing software (Wave, FreshBooks, etc.).
                     </p>
                   </div>
@@ -313,7 +313,7 @@ export default function BillingPage() {
                     <p className="font-medium text-white">Send Payment Request</p>
                     <p className="text-sm text-slate-400 mt-1">
                       Send a PayPal invoice, Wise payment request, or share your bank transfer details
-                      directly with the client through JobHorizons messaging or email.
+                      directly with the client through Vivid Art messaging or email.
                     </p>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export default function BillingPage() {
                   <div>
                     <p className="font-medium text-white">Confirm Receipt & Share Confirmation</p>
                     <p className="text-sm text-slate-400 mt-1">
-                      Once payment is received, acknowledge receipt in your JobHorizons message thread.
+                      Once payment is received, acknowledge receipt in your Vivid Art message thread.
                       Keep payment confirmations for your records.
                     </p>
                   </div>
@@ -468,7 +468,7 @@ export default function BillingPage() {
 
           <div className="text-sm text-slate-400">
             <Info className="h-4 w-4 inline-block mr-2 text-blue-400" />
-            <strong className="text-white">Note:</strong> JobHorizons is not affiliated with these providers
+            <strong className="text-white">Note:</strong> Vivid Art is not affiliated with these providers
             and does not receive commissions. These are recommendations based on popular choices in the freelance community.
           </div>
         </CardContent>
@@ -482,7 +482,7 @@ export default function BillingPage() {
             <CardTitle className="text-xl">Frequently Asked Questions</CardTitle>
           </div>
           <CardDescription>
-            Common questions about payments on JobHorizons
+            Common questions about payments on Vivid Art
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -490,7 +490,7 @@ export default function BillingPage() {
           <div>
             <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
               <ArrowRight className="h-4 w-4 text-primary" />
-              Why doesn&apos;t JobHorizons process payments?
+              Why doesn&apos;t Vivid Art process payments?
             </h4>
             <p className="text-sm text-slate-400 pl-6">
               By keeping payments separate, we eliminate platform fees (typically 5-20% on other platforms),
@@ -507,10 +507,10 @@ export default function BillingPage() {
               What if a client doesn&apos;t pay me?
             </h4>
             <p className="text-sm text-slate-400 pl-6">
-              First, reach out to the client directly through JobHorizons messaging to resolve the issue.
+              First, reach out to the client directly through Vivid Art messaging to resolve the issue.
               If unresolved, contact{' '}
               <Link href="/support" className="text-primary underline">
-                JobHorizons Support
+                Vivid Art Support
               </Link>
               . While we cannot force payment or issue refunds, we can: document the issue, mediate
               communication, and take action against the client&apos;s account if fraud is confirmed (including
@@ -522,10 +522,10 @@ export default function BillingPage() {
           <div>
             <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
               <ArrowRight className="h-4 w-4 text-primary" />
-              Can I request a refund through JobHorizons?
+              Can I request a refund through Vivid Art?
             </h4>
             <p className="text-sm text-slate-400 pl-6">
-              No. Since JobHorizons does not process payments, we cannot issue refunds. Payment disputes,
+              No. Since Vivid Art does not process payments, we cannot issue refunds. Payment disputes,
               refunds, and chargebacks must be handled directly with the other party and through your
               payment provider (e.g., PayPal&apos;s dispute resolution, your bank&apos;s chargeback process).
             </p>
@@ -540,9 +540,9 @@ export default function BillingPage() {
             <p className="text-sm text-slate-400 pl-6">
               Best practices: (1) Always document payment terms in writing before starting work.
               (2) Use milestone-based payments for large projects. (3) Request upfront deposits for
-              new clients. (4) Keep all communication and receipts in JobHorizons messaging.
+              new clients. (4) Keep all communication and receipts in Vivid Art messaging.
               (5) Use payment methods with buyer/seller protection (PayPal, Stripe).
-              (6) Verify client identity through their JobHorizons verified badge.
+              (6) Verify client identity through their Vivid Art verified badge.
             </p>
           </div>
 
@@ -550,11 +550,11 @@ export default function BillingPage() {
           <div>
             <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
               <ArrowRight className="h-4 w-4 text-primary" />
-              Do I need to pay taxes on income earned through JobHorizons?
+              Do I need to pay taxes on income earned through Vivid Art?
             </h4>
             <p className="text-sm text-slate-400 pl-6">
               Yes. You are responsible for reporting and paying taxes on all income earned, regardless
-              of the platform you use. JobHorizons does not issue tax forms (1099, W-2, etc.) since we
+              of the platform you use. Vivid Art does not issue tax forms (1099, W-2, etc.) since we
               do not process payments. Consult with a tax professional for guidance specific to your situation.
             </p>
           </div>
@@ -566,7 +566,7 @@ export default function BillingPage() {
               What are the invoices in my dashboard for?
             </h4>
             <p className="text-sm text-slate-400 pl-6">
-              JobHorizons invoices are documentation and record-keeping tools only. They help you track
+              Vivid Art invoices are documentation and record-keeping tools only. They help you track
               project milestones and payment schedules, but they do not collect payments. You must still
               send payment requests through your chosen external payment method.
             </p>
@@ -595,7 +595,7 @@ export default function BillingPage() {
                 <div>
                   <h4 className="font-medium text-white mb-1">Document Everything</h4>
                   <p className="text-sm text-slate-400">
-                    Confirm deliverables, timelines, and payment schedules in writing. Use JobHorizons
+                    Confirm deliverables, timelines, and payment schedules in writing. Use Vivid Art
                     messaging to create a permanent record of all agreements.
                   </p>
                 </div>
@@ -636,7 +636,7 @@ export default function BillingPage() {
                 <div>
                   <h4 className="font-medium text-white mb-1">Share Payment Confirmations</h4>
                   <p className="text-sm text-slate-400">
-                    After each payment, share receipts or confirmations in your JobHorizons message
+                    After each payment, share receipts or confirmations in your Vivid Art message
                     thread for transparency and record-keeping.
                   </p>
                 </div>
@@ -678,21 +678,21 @@ export default function BillingPage() {
           <Info className="h-5 w-5 text-slate-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-slate-400 space-y-2">
             <p className="font-medium text-slate-300">
-              JobHorizons Platform Disclaimer
+              Vivid Art Platform Disclaimer
             </p>
             <p>
-              JobHorizons is a professional connection and project management platform. We do not hold,
+              Vivid Art is a professional connection and project management platform. We do not hold,
               process, transfer, or manage funds on behalf of clients or freelancers. All payment
               arrangements, transactions, and financial agreements are made directly between you and your
               collaborator using external payment services of your choice.
             </p>
             <p>
-              JobHorizons cannot issue refunds, release payments, mediate financial disputes, or provide
+              Vivid Art cannot issue refunds, release payments, mediate financial disputes, or provide
               payment protection services. We recommend documenting all agreements and using payment
               methods with buyer/seller protection. For payment issues, contact your collaborator first,
               then reach out to{' '}
               <Link href="/support" className="text-primary underline">
-                JobHorizons Support
+                Vivid Art Support
               </Link>{' '}
               for assistance.
             </p>

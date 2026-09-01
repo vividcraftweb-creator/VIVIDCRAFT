@@ -107,16 +107,16 @@ export default function AuthCodeErrorPage() {
               </h1>
               <p className="text-gray-400 mb-6">{message}</p>
               <div className="space-y-3">
-                <Link href="/auth/verify-email">
-                  <Button className="w-full bg-white text-gray-900 hover:bg-gray-100 font-medium rounded-lg transition-colors">
+                <Button asChild className="w-full bg-white text-gray-900 hover:bg-gray-100 font-medium rounded-lg transition-colors">
+                  <Link href="/auth/verify-email">
                     Request New Verification Email
-                  </Button>
-                </Link>
-                <Link href="/auth/signin">
-                  <Button variant="outline" className="w-full border-white/10 text-white hover:bg-white/5">
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full border-white/10 text-white hover:bg-white/5">
+                  <Link href="/auth/signin">
                     Back to Sign In
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </>
           )}

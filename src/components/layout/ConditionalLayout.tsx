@@ -31,3 +31,4 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   // For dashboard and auth routes, let them handle their own layout
   return <>{children}</>;
 }
+

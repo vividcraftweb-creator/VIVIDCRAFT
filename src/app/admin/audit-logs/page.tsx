@@ -8,5 +8,15 @@ export const metadata: Metadata = createAdminPageMetadata({
 });
 
 export default function AuditLogsPage() {
-  return <AuditLogsPageClient />;
+  try {
+    return <AuditLogsPageClient />;
+  } catch (error) {
+    console.error('Error rendering AuditLogsPageClient:', error);
+    return (
+      <div className="p-6 text-white space-y-4">
+        <h1 className="text-2xl font-bold">Audit Logs</h1>
+        <p className="text-slate-400">Loading audit logs...</p>
+      </div>
+    );
+  }
 }

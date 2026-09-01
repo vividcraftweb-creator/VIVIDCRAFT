@@ -186,7 +186,7 @@ export const webhooksRouter = router({
         event: 'webhook.test',
         timestamp: new Date().toISOString(),
         data: {
-          message: 'This is a test webhook from JobHorizons',
+          message: 'This is a test webhook from Vivid Art',
           webhook_id: webhook.id,
         },
       };
@@ -201,8 +201,8 @@ export const webhooksRouter = router({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-JobHorizons-Signature': `sha256=${signature}`,
-            'X-JobHorizons-Event': 'webhook.test',
+            'X-VividArt-Signature': `sha256=${signature}`,
+            'X-VividArt-Event': 'webhook.test',
           },
           body: JSON.stringify(testPayload),
           signal: AbortSignal.timeout(5000),

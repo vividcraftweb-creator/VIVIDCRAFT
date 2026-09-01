@@ -41,34 +41,7 @@ export default function ClientVerificationWizard() {
       return;
     }
 
-    // If user has uploaded documents, check if they're ready to review
-    if (documents && documents.length > 0) {
-      // Count required documents uploaded
-      const docTypes = new Set(documents.map(d => d.verificationType));
-      // All users need ID_FRONT, ID_BACK, and SELFIE at minimum
-      const hasRequiredDocs = docTypes.has('ID_FRONT') && docTypes.has('ID_BACK') && docTypes.has('SELFIE');
-
-      if (hasRequiredDocs) {
-        // If business, also need business docs
-        if (user.clientType === 'BUSINESS') {
-          const hasBusinessDocs = docTypes.has('BUSINESS_REGISTRATION') && docTypes.has('PROOF_OF_ADDRESS');
-          if (hasBusinessDocs) {
-            setCurrentStep('review');
-          } else {
-            setCurrentStep('documents');
-          }
-        } else {
-          // Individual with all required docs - ready for review
-          setCurrentStep('review');
-        }
-      } else {
-        // Continue uploading documents
-        setCurrentStep('documents');
-      }
-      return;
-    }
-
-    // If client type selected but no documents, go to documents step
+    // Default to documents step
     setCurrentStep('documents');
   }, [user, documents, isLoadingUser, isLoadingDocs]);
 
@@ -80,15 +53,7 @@ export default function ClientVerificationWizard() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-slate-400">Unable to load user information</p>
-      </div>
-    );
-  }
-
-  const clientType = user.clientType as 'INDIVIDUAL' | 'BUSINESS' | null;
+  const clientType = (user?.clientType as 'INDIVIDUAL' | 'BUSINESS' | null) || 'INDIVIDUAL';
 
   return (
     <div className="max-w-4xl mx-auto">

@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@config "../../tailwind.config.js";
 
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:where(.dark, .dark *));
 
 /* Prevent FOUC by ensuring font variables are available immediately */
 :root {
@@ -54,7 +55,44 @@
 
 :root {
   --radius: 0.875rem;
-  /* Dark theme as default - premium dark mode inspired by Apple, ClickUp, Slack */
+  /* Light theme as default */
+  --background: oklch(0.99 0.002 264);
+  --foreground: oklch(0.12 0.008 264);
+  --card: oklch(0.98 0.002 264 / 80%);
+  --card-foreground: oklch(0.12 0.008 264);
+  --popover: oklch(0.98 0.002 264);
+  --popover-foreground: oklch(0.12 0.008 264);
+  --primary: oklch(0.5 0.18 264);
+  --primary-foreground: oklch(0.98 0.002 264);
+  --secondary: oklch(0.95 0.005 264);
+  --secondary-foreground: oklch(0.12 0.008 264);
+  --muted: oklch(0.96 0.004 264);
+  --muted-foreground: oklch(0.45 0.008 264);
+  --accent: oklch(0.94 0.006 264);
+  --accent-foreground: oklch(0.12 0.008 264);
+  --destructive: oklch(0.6 0.22 15);
+  --border: oklch(0.88 0.01 264 / 40%);
+  --input: oklch(0.94 0.006 264);
+  --ring: oklch(0.5 0.18 264 / 60%);
+  --glass: oklch(0.98 0.002 264 / 40%);
+  --glass-border: oklch(0.85 0.01 264 / 50%);
+  --chart-1: oklch(0.55 0.18 320);
+  --chart-2: oklch(0.55 0.15 200);
+  --chart-3: oklch(0.6 0.12 160);
+  --chart-4: oklch(0.58 0.2 40);
+  --chart-5: oklch(0.58 0.16 280);
+  --sidebar: oklch(0.97 0.003 264);
+  --sidebar-foreground: oklch(0.12 0.008 264);
+  --sidebar-primary: oklch(0.5 0.18 264);
+  --sidebar-primary-foreground: oklch(0.98 0.002 264);
+  --sidebar-accent: oklch(0.94 0.006 264);
+  --sidebar-accent-foreground: oklch(0.12 0.008 264);
+  --sidebar-border: oklch(0.88 0.01 264 / 40%);
+  --sidebar-ring: oklch(0.5 0.18 264 / 60%);
+}
+
+/* Dark theme */
+.dark {
   --background: oklch(0.08 0.005 264);
   --foreground: oklch(0.98 0.002 264);
   --card: oklch(0.12 0.008 264 / 60%);
@@ -90,30 +128,6 @@
   --sidebar-ring: oklch(0.65 0.15 264 / 60%);
 }
 
-/* Light theme fallback (rarely used) */
-.light {
-  --background: oklch(0.99 0.002 264);
-  --foreground: oklch(0.12 0.008 264);
-  --card: oklch(0.98 0.002 264 / 80%);
-  --card-foreground: oklch(0.12 0.008 264);
-  --popover: oklch(0.98 0.002 264);
-  --popover-foreground: oklch(0.12 0.008 264);
-  --primary: oklch(0.5 0.18 264);
-  --primary-foreground: oklch(0.98 0.002 264);
-  --secondary: oklch(0.95 0.005 264);
-  --secondary-foreground: oklch(0.12 0.008 264);
-  --muted: oklch(0.96 0.004 264);
-  --muted-foreground: oklch(0.45 0.008 264);
-  --accent: oklch(0.94 0.006 264);
-  --accent-foreground: oklch(0.12 0.008 264);
-  --destructive: oklch(0.6 0.22 15);
-  --border: oklch(0.88 0.01 264 / 40%);
-  --input: oklch(0.94 0.006 264);
-  --ring: oklch(0.5 0.18 264 / 60%);
-  --glass: oklch(0.98 0.002 264 / 40%);
-  --glass-border: oklch(0.85 0.01 264 / 50%);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -125,6 +139,10 @@
   
   body {
     @apply bg-background text-foreground;
+    background: var(--background);
+  }
+
+  .dark body {
     background: 
       radial-gradient(ellipse at top left, oklch(0.12 0.02 280 / 20%) 0%, transparent 50%),
       radial-gradient(ellipse at bottom right, oklch(0.12 0.02 320 / 15%) 0%, transparent 50%),

@@ -27,7 +27,7 @@ export default function AdminSettingsPage() {
   });
 
   // General Settings State
-  const [platformName, setPlatformName] = useState('JobHorizons');
+  const [platformName, setPlatformName] = useState('Vivid Art');
   const [supportEmail, setSupportEmail] = useState('');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [userRegistration, setUserRegistration] = useState(true);

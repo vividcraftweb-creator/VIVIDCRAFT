@@ -20,15 +20,32 @@ export interface ProfileEditorFormData {
 }
 
 export const FIELD_LIMITS = {
-  TITLE: { min: 10, max: 70, ideal: 30 },
+  TITLE: { min: 3, max: 70, ideal: 20 },
   BIO: { min: 50, max: 2000, ideal: 150 },
-  SKILLS: { min: 1, max: 10, ideal: 5 },
+  SKILLS: { min: 1, max: 10, ideal: 3 },
   EXPERIENCE_DESCRIPTION: { max: 500 },
   EDUCATION_DESCRIPTION: { max: 300 },
   PORTFOLIO_DESCRIPTION: { max: 400 },
   PORTFOLIO_TITLE: { min: 5, max: 100 },
   CERTIFICATION_NAME: { min: 3, max: 200 },
 } as const;
+
+export const ART_TITLE_EXAMPLES = [
+  'Portrait Artist',
+  'Wall Painter',
+  'Fabric Painter',
+  'All Rounder',
+  'Other',
+] as const;
+
+export const ART_SKILLS = [
+  'Portrait',
+  'Wall Murals and wall arts',
+  '3D & Digital Art',
+  'Landscape painting',
+  'Abstract & Modern paintings',
+  'Traditional & Oil Painting',
+] as const;
 
 export const TITLE_EXAMPLES = {
   'Design & Creative': [

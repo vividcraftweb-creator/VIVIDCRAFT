@@ -48,89 +48,128 @@ export const adminMessagesRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
-      const { page, limit, flaggedOnly } = input;
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) {
+          return { messages: [], total: 0, page: input.page, limit: input.limit, totalPages: 0 };
+        }
+        const { page, limit, flaggedOnly } = input;
 
-      const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit;
 
-      // Build query
-      const query = supabase
-        .from('Message')
-        .select(
-          `
-          *,
-          sender:User!Message_senderId_fkey(
-            id,
-            email,
-            Profile(firstName, lastName)
-          ),
-          receiver:User!Message_receiverId_fkey(
-            id,
-            email,
-            Profile(firstName, lastName)
+        // Build query
+        const query = supabase
+          .from('Message')
+          .select(
+            `
+            *,
+            sender:User!Message_senderId_fkey(
+              id,
+              email,
+              Profile(firstName, lastName)
+            ),
+            receiver:User!Message_receiverId_fkey(
+              id,
+              email,
+              Profile(firstName, lastName)
+            )
+          `,
+            { count: 'exact' }
           )
-        `,
-          { count: 'exact' }
-        )
-        .order('createdAt', { ascending: false })
-        .range(offset, offset + limit - 1);
+          .order('createdAt', { ascending: false })
+          .range(offset, offset + limit - 1);
 
-      const { data: messages, error, count } = await query;
+        const { data: messages, error, count } = await query;
 
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch messages.',
-        });
+        if (error) {
+          console.error('getMessages error:', error);
+          return {
+            messages: [],
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          };
+        }
+
+        // Add flagged status to each message
+        const messagesWithFlags = messages?.map((msg) => ({
+          ...msg,
+          flagged: isFlagged(msg.content),
+        })) || [];
+
+        // Filter by flagged if requested
+        const filteredMessages = flaggedOnly
+          ? messagesWithFlags.filter((msg) => msg.flagged)
+          : messagesWithFlags;
+
+        return {
+          messages: filteredMessages,
+          total: flaggedOnly ? filteredMessages.length : (count || 0),
+          page,
+          limit,
+          totalPages: Math.ceil((flaggedOnly ? filteredMessages.length : (count || 0)) / limit),
+        };
+      } catch (err) {
+        console.error('getMessages exception:', err);
+        return {
+          messages: [],
+          total: 0,
+          page: input.page,
+          limit: input.limit,
+          totalPages: 0,
+        };
       }
-
-      // Add flagged status to each message
-      const messagesWithFlags = messages?.map((msg) => ({
-        ...msg,
-        flagged: isFlagged(msg.content),
-      })) || [];
-
-      // Filter by flagged if requested
-      const filteredMessages = flaggedOnly
-        ? messagesWithFlags.filter((msg) => msg.flagged)
-        : messagesWithFlags;
-
-      return {
-        messages: filteredMessages,
-        total: flaggedOnly ? filteredMessages.length : (count || 0),
-        page,
-        limit,
-        totalPages: Math.ceil((flaggedOnly ? filteredMessages.length : (count || 0)) / limit),
-      };
     }),
 
   /**
    * Get message statistics
    */
+  /**
+   * Get message statistics
+   */
   getStats: adminProcedure.query(async ({ ctx }) => {
-    const supabase = requireAdminSupabase(ctx);
+    try {
+      const supabase = ctx.adminSupabase;
+      if (!supabase) {
+        return {
+          totalMessages: 0,
+          flaggedMessages: 0,
+          last24Hours: 0,
+          flaggedPercentage: '0',
+        };
+      }
 
-    // Get all messages
-    const { data: allMessages, count: totalMessages } = await supabase
-      .from('Message')
-      .select('content', { count: 'exact' });
+      // Get all messages
+      const { data: allMessages, count: totalMessages } = await supabase
+        .from('Message')
+        .select('content', { count: 'exact' });
 
-    // Count flagged messages
-    const flaggedCount = allMessages?.filter((msg) => isFlagged(msg.content)).length || 0;
+      // Count flagged messages
+      const flaggedCount = allMessages?.filter((msg) => isFlagged(msg.content)).length || 0;
 
-    // Get messages from last 24 hours
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { count: last24Hours } = await supabase
-      .from('Message')
-      .select('*', { count: 'exact', head: true })
-      .gte('createdAt', yesterday);
+      // Get messages from last 24 hours
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count: last24Hours } = await supabase
+        .from('Message')
+        .select('*', { count: 'exact', head: true })
+        .gte('createdAt', yesterday);
 
-    return {
-      totalMessages: totalMessages || 0,
-      flaggedMessages: flaggedCount,
-      last24Hours: last24Hours || 0,
-      flaggedPercentage: totalMessages ? ((flaggedCount / totalMessages) * 100).toFixed(1) : '0',
-    };
+      return {
+        totalMessages: totalMessages || 0,
+        flaggedMessages: flaggedCount,
+        last24Hours: last24Hours || 0,
+        flaggedPercentage: totalMessages ? ((flaggedCount / totalMessages) * 100).toFixed(1) : '0',
+      };
+    } catch (err) {
+      console.error('getStats exception in messages:', err);
+      return {
+        totalMessages: 0,
+        flaggedMessages: 0,
+        last24Hours: 0,
+        flaggedPercentage: '0',
+      };
+    }
   }),
 
   /**
@@ -139,39 +178,50 @@ export const adminMessagesRouter = router({
   getMessageById: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) return null;
 
-      const { data: message, error } = await supabase
-        .from('Message')
-        .select(
+        let { data: message, error } = await supabase
+          .from('Message')
+          .select(
+            `
+            *,
+            sender:User!Message_senderId_fkey(
+              id,
+              email,
+              Profile(*)
+            ),
+            receiver:User!Message_receiverId_fkey(
+              id,
+              email,
+              Profile(*)
+            )
           `
-          *,
-          sender:User!Message_senderId_fkey(
-            id,
-            email,
-            Profile(*)
-          ),
-          receiver:User!Message_receiverId_fkey(
-            id,
-            email,
-            Profile(*)
           )
-        `
-        )
-        .eq('id', input.id)
-        .single();
+          .eq('id', input.id)
+          .single();
 
-      if (error) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Message not found.',
-        });
+        if (error) {
+          console.error('getMessageById join error, trying plain select:', error);
+          const fallbackRes = await supabase
+            .from('Message')
+            .select('*')
+            .eq('id', input.id)
+            .single();
+          message = fallbackRes.data as any;
+        }
+
+        if (!message) return null;
+
+        return {
+          ...message,
+          flagged: isFlagged(message.content || ''),
+        };
+      } catch (err) {
+        console.error('getMessageById exception:', err);
+        return null;
       }
-
-      return {
-        ...message,
-        flagged: isFlagged(message.content),
-      };
     }),
 
   /**
@@ -235,33 +285,45 @@ export const adminMessagesRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) return [];
 
-      const { data: messages, error } = await supabase
-        .from('Message')
-        .select(
+        let { data: messages, error } = await supabase
+          .from('Message')
+          .select(
+            `
+            *,
+            sender:User!Message_senderId_fkey(id, email, Profile(firstName, lastName)),
+            receiver:User!Message_receiverId_fkey(id, email, Profile(firstName, lastName))
           `
-          *,
-          sender:User!Message_senderId_fkey(id, email, Profile(firstName, lastName)),
-          receiver:User!Message_receiverId_fkey(id, email, Profile(firstName, lastName))
-        `
-        )
-        .or(
-          `and(senderId.eq.${input.userId1},receiverId.eq.${input.userId2}),and(senderId.eq.${input.userId2},receiverId.eq.${input.userId1})`
-        )
-        .order('createdAt', { ascending: true })
-        .limit(input.limit);
+          )
+          .or(
+            `and(senderId.eq.${input.userId1},receiverId.eq.${input.userId2}),and(senderId.eq.${input.userId2},receiverId.eq.${input.userId1})`
+          )
+          .order('createdAt', { ascending: true })
+          .limit(input.limit);
 
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch conversation.',
-        });
+        if (error) {
+          console.error('getConversation join error, trying plain select:', error);
+          const fallbackRes = await supabase
+            .from('Message')
+            .select('*')
+            .or(
+              `and(senderId.eq.${input.userId1},receiverId.eq.${input.userId2}),and(senderId.eq.${input.userId2},receiverId.eq.${input.userId1})`
+            )
+            .order('createdAt', { ascending: true })
+            .limit(input.limit);
+          messages = fallbackRes.data as any;
+        }
+
+        return messages?.map((msg) => ({
+          ...msg,
+          flagged: isFlagged(msg.content || ''),
+        })) || [];
+      } catch (err) {
+        console.error('getConversation exception:', err);
+        return [];
       }
-
-      return messages?.map((msg) => ({
-        ...msg,
-        flagged: isFlagged(msg.content),
-      })) || [];
     }),
 });

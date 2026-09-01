@@ -131,10 +131,10 @@ export default async function SupportPage() {
             </p>
             <div className="space-y-3">
               <a
-                href="mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@yourdomain.com'}"
+                href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@yourdomain.com'}`}
                 className="block text-lg font-medium text-primary hover:underline"
               >
-                ${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@yourdomain.com'}
+                {process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@yourdomain.com'}
               </a>
               <p className="text-sm text-muted-foreground">
                 Response time: Within 24 hours

@@ -99,7 +99,7 @@ const timeline: TimelineStep[] = [
     icon: Code,
   },
   {
-    title: 'Launching JobHorizons',
+    title: 'Launching Vivid Art',
     description:
       'We introduced a token-driven, verification-first network that balances opportunity flow for both clients and freelancers.',
     icon: Briefcase,
@@ -162,7 +162,7 @@ const AboutPage = () => {
               }`}
             >
               <Sparkles className="h-4 w-4" />
-              About JobHorizons
+              About Vivid Art
             </div>
             <h1
               className={`mt-6 text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl lg:text-6xl transition-all duration-700 delay-100 ${
@@ -176,7 +176,7 @@ const AboutPage = () => {
                 isVisible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
               }`}
             >
-              JobHorizons was crafted to give freelancers and clients a modern, ownership-first platform. We connect
+              Vivid Art was crafted to give freelancers and clients a modern, ownership-first platform. We connect
               people who value thoughtful collaboration, then let them run with their own agreements.
             </p>
             <div
@@ -188,7 +188,7 @@ const AboutPage = () => {
                 href="/how-it-works"
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform duration-300 hover:-translate-y-1 hover:bg-primary/90"
               >
-                See how JobHorizons works
+                See how Vivid Art works
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
@@ -213,7 +213,7 @@ const AboutPage = () => {
                 One founder. One mission.
               </h2>
               <p className="mt-3 text-sm text-muted-foreground">
-                JobHorizons is designed, engineered, and operated by a solo creator who built the platform he wished existed, a place where
+                Vivid Art is designed, engineered, and operated by a solo creator who built the platform he wished existed, a place where
                 professionals connect without giving up control.
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -270,7 +270,7 @@ const AboutPage = () => {
       {/* Principles */}
       <section className="container mx-auto max-w-6xl px-4 pt-8 pb-12 sm:pt-10 sm:pb-16 sm:px-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-foreground sm:text-4xl">Principles that shape JobHorizons</h2>
+          <h2 className="text-3xl font-bold text-foreground sm:text-4xl">Principles that shape Vivid Art</h2>
           <p className="mt-3 text-sm text-muted-foreground sm:text-base">
             Every feature builds toward transparency, trust, and professional respect.
           </p>
@@ -301,7 +301,7 @@ const AboutPage = () => {
         <div className="text-center">
           <h2 className="text-3xl font-bold text-foreground sm:text-4xl">From idea to impact</h2>
           <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-            The milestones that shaped JobHorizons into the platform it is today.
+            The milestones that shaped Vivid Art into the platform it is today.
           </p>
         </div>
         <div className="relative mt-12">
@@ -349,7 +349,7 @@ const AboutPage = () => {
               “This isn&apos;t a marketplace built for volume. It&apos;s engineered to champion people who take their craft seriously.”
             </h3>
             <p className="mt-4 text-sm text-muted-foreground sm:text-base">
-              As a freelancer turned founder, I saw firsthand how difficult it is to separate signal from noise. JobHorizons is built so
+              As a freelancer turned founder, I saw firsthand how difficult it is to separate signal from noise. Vivid Art is built so
               the right conversations happen faster and both sides keep control while working together.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
@@ -368,7 +368,7 @@ const AboutPage = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Built around real outcomes</p>
-                <p className="text-lg font-semibold text-foreground">JobHorizons Guiding Values</p>
+                <p className="text-lg font-semibold text-foreground">Vivid Art Guiding Values</p>
               </div>
             </div>
             <ul className="mt-6 space-y-4 text-sm text-muted-foreground">
@@ -404,7 +404,7 @@ const AboutPage = () => {
                 href="/auth/signup"
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform duration-300 hover:-translate-y-1 hover:bg-primary/90"
               >
-                Create your JobHorizons account
+                Create your Vivid Art account
               </Link>
               <Link
                 href="/how-it-works"

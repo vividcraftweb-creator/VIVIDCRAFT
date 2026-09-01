@@ -18,8 +18,8 @@ export function generateSEOMetadata({
   ogType = 'website',
   noIndex = false,
 }: SEOHeadProps): Metadata {
-  const defaultTitle = 'JobHorizons | Freelance Remote Work & Online Opportunities';
-  const defaultDescription = 'JobHorizons is the leading freelance marketplace for remote work opportunities. Connect with verified freelancers, find high-quality online jobs, and hire top talent for your projects.';
+  const defaultTitle = 'Vivid Art | Freelance Remote Work & Online Opportunities';
+  const defaultDescription = 'Vivid Art is the leading freelance marketplace for remote work opportunities. Connect with verified freelancers, find high-quality online jobs, and hire top talent for your projects.';
 
   const finalTitle = title || defaultTitle;
   const finalDescription = description || defaultDescription;
@@ -61,10 +61,10 @@ export function OrganizationSchema() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'JobHorizons',
+    name: 'Vivid Art',
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
     logo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/logo.webp`,
-    description: 'JobHorizons is a leading freelance marketplace connecting talented professionals with remote work opportunities worldwide.',
+    description: 'Vivid Art is a leading freelance marketplace connecting talented professionals with remote work opportunities worldwide.',
     sameAs: [
       process.env.NEXT_PUBLIC_TWITTER_URL || '',
       process.env.NEXT_PUBLIC_LINKEDIN_URL || '',
@@ -102,7 +102,7 @@ export function JobPostingSchema({ title, description, budget, deadline, locatio
     description: description,
     identifier: {
       '@type': 'PropertyValue',
-      name: 'JobHorizons',
+      name: 'Vivid Art',
       value: jobId,
     },
     datePosted: new Date().toISOString(),
@@ -110,7 +110,7 @@ export function JobPostingSchema({ title, description, budget, deadline, locatio
     employmentType: 'CONTRACTOR',
     hiringOrganization: {
       '@type': 'Organization',
-      name: 'JobHorizons',
+      name: 'Vivid Art',
       sameAs: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
       logo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/logo.webp`,
     },
@@ -168,7 +168,7 @@ export function PersonSchema({ name, jobTitle, description, image, url, skills, 
     knowsAbout: skills,
     worksFor: {
       '@type': 'Organization',
-      name: 'JobHorizons',
+      name: 'Vivid Art',
     },
     address: location ? {
       '@type': 'PostalAddress',
@@ -188,7 +188,7 @@ export function WebsiteSchema() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'JobHorizons',
+    name: 'Vivid Art',
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
     description: 'Freelance marketplace for remote work opportunities',
     potentialAction: {

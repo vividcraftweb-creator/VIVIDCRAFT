@@ -329,10 +329,8 @@ export default function AdminSubscriptionsPage() {
                 className="px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 <option value="all" className="bg-slate-900">All Plans</option>
-                <option value="FREELANCER_FREE" className="bg-slate-900">Freelancer Free</option>
                 <option value="FREELANCER_PRO" className="bg-slate-900">Freelancer Pro</option>
                 <option value="FREELANCER_ELITE" className="bg-slate-900">Freelancer Elite</option>
-                <option value="CLIENT_STARTER" className="bg-slate-900">Client Starter</option>
                 <option value="CLIENT_BUSINESS" className="bg-slate-900">Client Business</option>
                 <option value="CLIENT_ENTERPRISE" className="bg-slate-900">Client Enterprise</option>
               </select>

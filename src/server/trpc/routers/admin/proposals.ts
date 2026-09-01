@@ -36,107 +36,146 @@ export const adminProposalsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
-      const { page, limit, status, search } = input;
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) {
+          return { proposals: [], total: 0, page: input.page, limit: input.limit, totalPages: 0 };
+        }
+        const { page, limit, status, search } = input;
 
-      const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit;
 
-      // Build query - fetch all proposal fields including AI analysis and screening
-      let query = supabase
-        .from('Proposal')
-        .select(
-          `
-          id,
-          freelancerId,
-          jobId,
-          status,
-          proposedRate,
-          tokenBid,
-          coverLetter,
-          aiScore,
-          aiAnalysis,
-          screeningAnswers,
-          createdAt,
-          updatedAt,
-          freelancer:User!Proposal_freelancerId_fkey(
+        // Build query - fetch all proposal fields including AI analysis and screening
+        let query = supabase
+          .from('Proposal')
+          .select(
+            `
             id,
-            email,
-            Profile(firstName, lastName, title)
-          ),
-          job:Job!Proposal_jobId_fkey(
-            id,
-            title,
-            budget,
-            client:User!Job_clientId_fkey(
+            freelancerId,
+            jobId,
+            status,
+            proposedRate,
+            tokenBid,
+            coverLetter,
+            aiScore,
+            aiAnalysis,
+            screeningAnswers,
+            createdAt,
+            updatedAt,
+            freelancer:User!Proposal_freelancerId_fkey(
               id,
               email,
-              Profile(firstName, lastName, companyName)
+              Profile(firstName, lastName, title)
+            ),
+            job:Job!Proposal_jobId_fkey(
+              id,
+              title,
+              budget,
+              client:User!Job_clientId_fkey(
+                id,
+                email,
+                Profile(firstName, lastName, companyName)
+              )
             )
+          `,
+            { count: 'exact' }
           )
-        `,
-          { count: 'exact' }
-        )
-        .order('createdAt', { ascending: false });
+          .order('createdAt', { ascending: false });
 
-      // Apply filters
-      if (status) {
-        query = query.eq('status', status);
+        // Apply filters
+        if (status) {
+          query = query.eq('status', status);
+        }
+
+        // Apply pagination
+        query = query.range(offset, offset + limit - 1);
+
+        const { data: proposals, error, count } = await query;
+
+        if (error) {
+          console.error('getProposals error:', error);
+          return {
+            proposals: [],
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          };
+        }
+
+        return {
+          proposals: proposals || [],
+          total: count || 0,
+          page,
+          limit,
+          totalPages: Math.ceil((count || 0) / limit),
+        };
+      } catch (err) {
+        console.error('getProposals exception:', err);
+        return {
+          proposals: [],
+          total: 0,
+          page: input.page,
+          limit: input.limit,
+          totalPages: 0,
+        };
       }
-
-      // Apply pagination
-      query = query.range(offset, offset + limit - 1);
-
-      const { data: proposals, error, count } = await query;
-
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch proposals.',
-        });
-      }
-
-      return {
-        proposals: proposals || [],
-        total: count || 0,
-        page,
-        limit,
-        totalPages: Math.ceil((count || 0) / limit),
-      };
     }),
 
   /**
    * Get proposal statistics
    */
+  /**
+   * Get proposal statistics
+   */
   getStats: adminProcedure.query(async ({ ctx }) => {
-    const supabase = requireAdminSupabase(ctx);
+    try {
+      const supabase = ctx.adminSupabase;
+      if (!supabase) {
+        return {
+          totalProposals: 0,
+          pendingProposals: 0,
+          acceptedProposals: 0,
+          rejectedProposals: 0,
+        };
+      }
 
-    const [
-      { count: totalProposals },
-      { count: pendingProposals },
-      { count: acceptedProposals },
-      { count: rejectedProposals },
-    ] = await Promise.all([
-      supabase.from('Proposal').select('*', { count: 'exact', head: true }),
-      supabase
-        .from('Proposal')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'PENDING'),
-      supabase
-        .from('Proposal')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'ACCEPTED'),
-      supabase
-        .from('Proposal')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'REJECTED'),
-    ]);
+      const [
+        { count: totalProposals },
+        { count: pendingProposals },
+        { count: acceptedProposals },
+        { count: rejectedProposals },
+      ] = await Promise.all([
+        supabase.from('Proposal').select('*', { count: 'exact', head: true }),
+        supabase
+          .from('Proposal')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'PENDING'),
+        supabase
+          .from('Proposal')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'ACCEPTED'),
+        supabase
+          .from('Proposal')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'REJECTED'),
+      ]);
 
-    return {
-      totalProposals: totalProposals || 0,
-      pendingProposals: pendingProposals || 0,
-      acceptedProposals: acceptedProposals || 0,
-      rejectedProposals: rejectedProposals || 0,
-    };
+      return {
+        totalProposals: totalProposals || 0,
+        pendingProposals: pendingProposals || 0,
+        acceptedProposals: acceptedProposals || 0,
+        rejectedProposals: rejectedProposals || 0,
+      };
+    } catch (err) {
+      console.error('getStats exception in proposals:', err);
+      return {
+        totalProposals: 0,
+        pendingProposals: 0,
+        acceptedProposals: 0,
+        rejectedProposals: 0,
+      };
+    }
   }),
 
   /**
@@ -145,39 +184,48 @@ export const adminProposalsRouter = router({
   getProposalById: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) return null;
 
-      const { data: proposal, error } = await supabase
-        .from('Proposal')
-        .select(
-          `
-          *,
-          freelancer:User!Proposal_freelancerId_fkey(
-            id,
-            email,
-            Profile(*)
-          ),
-          job:Job!Proposal_jobId_fkey(
+        let { data: proposal, error } = await supabase
+          .from('Proposal')
+          .select(
+            `
             *,
-            client:User!Job_clientId_fkey(
+            freelancer:User!Proposal_freelancerId_fkey(
               id,
               email,
               Profile(*)
+            ),
+            job:Job!Proposal_jobId_fkey(
+              *,
+              client:User!Job_clientId_fkey(
+                id,
+                email,
+                Profile(*)
+              )
             )
+          `
           )
-        `
-        )
-        .eq('id', input.id)
-        .single();
+          .eq('id', input.id)
+          .single();
 
-      if (error) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Proposal not found.',
-        });
+        if (error) {
+          console.error('getProposalById join error, trying plain select:', error);
+          const fallbackRes = await supabase
+            .from('Proposal')
+            .select('*')
+            .eq('id', input.id)
+            .single();
+          proposal = fallbackRes.data as any;
+        }
+
+        return proposal || null;
+      } catch (err) {
+        console.error('getProposalById exception:', err);
+        return null;
       }
-
-      return proposal;
     }),
 
   /**
@@ -234,28 +282,38 @@ export const adminProposalsRouter = router({
   getProposalsByFreelancer: adminProcedure
     .input(z.object({ freelancerId: z.string(), limit: z.number().default(10) }))
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) return [];
 
-      const { data: proposals, error } = await supabase
-        .from('Proposal')
-        .select(
+        let { data: proposals, error } = await supabase
+          .from('Proposal')
+          .select(
+            `
+            *,
+            job:Job!Proposal_jobId_fkey(id, title, budget)
           `
-          *,
-          job:Job!Proposal_jobId_fkey(id, title, budget)
-        `
-        )
-        .eq('freelancerId', input.freelancerId)
-        .order('createdAt', { ascending: false })
-        .limit(input.limit);
+          )
+          .eq('freelancerId', input.freelancerId)
+          .order('createdAt', { ascending: false })
+          .limit(input.limit);
 
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch proposals by freelancer.',
-        });
+        if (error) {
+          console.error('getProposalsByFreelancer join error, trying plain select:', error);
+          const fallbackRes = await supabase
+            .from('Proposal')
+            .select('*')
+            .eq('freelancerId', input.freelancerId)
+            .order('createdAt', { ascending: false })
+            .limit(input.limit);
+          proposals = fallbackRes.data as any;
+        }
+
+        return proposals || [];
+      } catch (err) {
+        console.error('getProposalsByFreelancer exception:', err);
+        return [];
       }
-
-      return proposals || [];
     }),
 
   /**

@@ -6,6 +6,7 @@ export interface AppSessionUser {
   email?: string | null;
   name?: string | null;
   image?: string | null;
+  avatar_url?: string | null;
   user_metadata?: {
     firstName?: string;
     lastName?: string;

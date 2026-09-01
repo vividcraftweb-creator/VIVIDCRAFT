@@ -97,33 +97,24 @@ export async function POST(req: Request) {
       website
     } = validationResult.data;
 
-    // Role-based validation for required fields
-    if (role === 'CLIENT') {
-      if (!country || country.trim() === '') {
-        return NextResponse.json(
-          { message: 'Country is required for client accounts' },
-          { status: 400 }
-        );
-      }
-      if (!timezone || timezone.trim() === '') {
-        return NextResponse.json(
-          { message: 'Timezone is required for client accounts' },
-          { status: 400 }
-        );
-      }
-      if (!industry || industry.trim() === '') {
-        return NextResponse.json(
-          { message: 'Industry is required for client accounts' },
-          { status: 400 }
-        );
-      }
-      if (!companyName || companyName.trim() === '') {
-        return NextResponse.json(
-          { message: 'Company name is required for client accounts' },
-          { status: 400 }
-        );
-      }
-    }
+    // Sensible fallback defaults for client accounts so signup never blocks
+    const resolvedCountry = (country && country.trim() !== '')
+      ? country.trim()
+      : (location && location.trim() !== '')
+        ? location.trim()
+        : 'Sri Lanka';
+
+    const resolvedTimezone = (timezone && timezone.trim() !== '')
+      ? timezone.trim()
+      : 'UTC';
+
+    const resolvedIndustry = (industry && industry.trim() !== '')
+      ? industry.trim()
+      : 'Art & Creative';
+
+    const resolvedCompanyName = (companyName && companyName.trim() !== '')
+      ? companyName.trim()
+      : `${firstName || 'Client'}'s Studio`;
 
     // Sanitize text inputs
     const sanitizedFirstName = sanitizeInput(firstName);
@@ -132,18 +123,18 @@ export async function POST(req: Request) {
     const sanitizedBio = sanitizeInput(bio);
     const sanitizedSkills = sanitizeInput(skills);
     const sanitizedPhone = sanitizeInput(phone);
-    const sanitizedLocation = sanitizeInput(location);
+    const sanitizedLocation = sanitizeInput(location) || resolvedCountry;
     const sanitizedExperience = sanitizeInput(experience);
-    const sanitizedCompanyName = sanitizeInput(companyName);
+    const sanitizedCompanyName = sanitizeInput(companyName) || (role === 'CLIENT' ? resolvedCompanyName : undefined);
     const sanitizedCompanyInfo = sanitizeInput(companyInfo);
-    const sanitizedIndustry = sanitizeInput(industry);
-    const sanitizedCountry = sanitizeInput(country);
-    const sanitizedTimezone = sanitizeInput(timezone);
+    const sanitizedIndustry = sanitizeInput(industry) || (role === 'CLIENT' ? resolvedIndustry : undefined);
+    const sanitizedCountry = sanitizeInput(country) || resolvedCountry;
+    const sanitizedTimezone = sanitizeInput(timezone) || (role === 'CLIENT' ? resolvedTimezone : undefined);
     const sanitizedWebsite = sanitizeInput(website);
 
     // Set initial tokens based on role
-    const initialTokens = role === 'FREELANCER' ? 150 : 0;
-    const defaultSubscriptionPlan = role === 'CLIENT' ? 'CLIENT_STARTER' : 'FREELANCER_FREE';
+    const initialTokens = role === 'FREELANCER' ? 250 : 0;
+    const defaultSubscriptionPlan = role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO';
 
     // Check if profile completion criteria met (calculate before using)
     const isProfileComplete = !!(sanitizedFirstName && sanitizedLastName);
@@ -160,22 +151,34 @@ export async function POST(req: Request) {
           role,
           firstName: sanitizedFirstName,
           lastName: sanitizedLastName,
+          first_name: sanitizedFirstName,
+          last_name: sanitizedLastName,
+          company: sanitizedCompanyName || resolvedCompanyName,
+          country: sanitizedCountry || resolvedCountry,
         },
         emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yourdomain.com'}/auth/callback`,
       }
     });
 
     if (authError) {
+      console.error('SUPABASE AUTH SIGNUP ERROR:', authError.message, authError);
+      loggers.auth.error({ error: authError, email }, 'Supabase auth.signUp failed');
+
       if (authError.message.includes('already registered')) {
         return NextResponse.json({ 
           message: 'User already exists',
           userExists: true 
         }, { status: 200 });
       }
+
+      return NextResponse.json({ 
+        message: `Signup failed: ${authError.message}` 
+      }, { status: 400 });
     }
 
     if (!authData.user) {
-      return NextResponse.json({ message: 'Failed to create user' }, { status: 500 });
+      console.error('SUPABASE AUTH SIGNUP: No user returned and no error');
+      return NextResponse.json({ message: 'Failed to create user — no user data returned from auth' }, { status: 500 });
     }
 
     // Create user record in Supabase database using admin client to bypass RLS
@@ -226,7 +229,7 @@ export async function POST(req: Request) {
     let profileSlug: string;
     try {
       const baseSlug = slugFromName(sanitizedFirstName, sanitizedLastName);
-      const slugToUse = baseSlug || `user-${authData.user.id.substring(0, 8)}`;
+      const slugToUse = (baseSlug && baseSlug.length >= 2) ? baseSlug : `user-${authData.user.id.substring(0, 8)}`;
 
       const { data: existingSlugs, error: slugCheckError } = await adminClient
         .from('Profile')

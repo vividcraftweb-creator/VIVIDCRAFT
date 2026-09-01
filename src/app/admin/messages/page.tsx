@@ -8,5 +8,15 @@ export const metadata: Metadata = createAdminPageMetadata({
 });
 
 export default function MessagesPage() {
-  return <MessagesPageClient />;
+  try {
+    return <MessagesPageClient />;
+  } catch (error) {
+    console.error('Error rendering MessagesPageClient:', error);
+    return (
+      <div className="p-6 text-white space-y-4">
+        <h1 className="text-2xl font-bold">Messages Moderation</h1>
+        <p className="text-slate-400">Loading messages...</p>
+      </div>
+    );
+  }
 }

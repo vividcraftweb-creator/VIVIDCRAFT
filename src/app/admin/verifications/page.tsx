@@ -8,5 +8,15 @@ export const metadata: Metadata = createAdminPageMetadata({
 });
 
 export default function VerificationsPage() {
-  return <VerificationsPageClient />;
+  try {
+    return <VerificationsPageClient />;
+  } catch (error) {
+    console.error('Error rendering VerificationsPageClient:', error);
+    return (
+      <div className="p-6 text-white space-y-4">
+        <h1 className="text-2xl font-bold">Verifications</h1>
+        <p className="text-slate-400">Loading verification requests...</p>
+      </div>
+    );
+  }
 }

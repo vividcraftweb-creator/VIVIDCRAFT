@@ -485,7 +485,7 @@ async function handleSubscriptionCanceled(subscription: BraintreeSubscriptionWit
   if (user) {
     const profile = Array.isArray(user.profile) ? user.profile[0] : user.profile;
     const defaultPlan =
-      user.role === 'FREELANCER' ? SubscriptionPlan.FREELANCER_FREE : SubscriptionPlan.CLIENT_STARTER;
+      user.role === 'FREELANCER' ? SubscriptionPlan.FREELANCER_PRO : SubscriptionPlan.CLIENT_BUSINESS;
 
     await supabase
       .from('User')

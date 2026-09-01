@@ -3,18 +3,18 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Pricing Plans',
-  description: 'Choose the perfect plan for your needs. Flexible pricing for freelancers and clients on JobHorizons. Free plans available with premium features for Pro and Elite members.',
+  description: 'Choose the perfect plan for your needs. Flexible pricing for freelancers and clients on Vivid Art. Free plans available with premium features for Pro and Elite members.',
   keywords: [
     'freelance pricing',
     'subscription plans',
     'freelancer plans',
     'client plans',
-    'JobHorizons pricing',
+    'Vivid Art pricing',
     'remote work pricing',
     'freelance marketplace pricing',
     'affordable freelance platform',
   ],
-  canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing',
+  canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing`,
 });
 
 const faqSchema = {
@@ -68,7 +68,7 @@ const offerSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'JobHorizons Freelancer Pro Plan',
+    name: 'Vivid Art Freelancer Pro Plan',
     description: 'Premium plan for freelancers with enhanced features',
     offers: {
       '@type': 'Offer',
@@ -76,13 +76,13 @@ const offerSchemas = [
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
       priceValidUntil: '2025-12-31',
-      url: '${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing',
+      url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing`,
     },
   },
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'JobHorizons Freelancer Elite Plan',
+    name: 'Vivid Art Freelancer Elite Plan',
     description: 'Elite plan for top freelancers',
     offers: {
       '@type': 'Offer',
@@ -90,13 +90,13 @@ const offerSchemas = [
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
       priceValidUntil: '2025-12-31',
-      url: '${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing',
+      url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing`,
     },
   },
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'JobHorizons Client Business Plan',
+    name: 'Vivid Art Client Business Plan',
     description: 'Business plan for hiring teams',
     offers: {
       '@type': 'Offer',
@@ -104,13 +104,13 @@ const offerSchemas = [
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
       priceValidUntil: '2025-12-31',
-      url: '${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing',
+      url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing`,
     },
   },
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'JobHorizons Client Enterprise Plan',
+    name: 'Vivid Art Client Enterprise Plan',
     description: 'Enterprise plan with advanced features',
     offers: {
       '@type': 'Offer',
@@ -118,7 +118,7 @@ const offerSchemas = [
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
       priceValidUntil: '2025-12-31',
-      url: '${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing',
+      url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing`,
     },
   },
 ];

@@ -1,8 +1,10 @@
 import { Metadata } from 'next';
-import { permanentRedirect } from 'next/navigation';
 import FreelancerProfileClient from './FreelancerProfileClient';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { createDynamicMetadata } from '@/lib/seo-metadata';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -10,89 +12,200 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const identifier = resolvedParams.id.trim();
+  const profileId = resolvedParams.id.trim();
 
-  // Check if identifier is a UUID
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+  const supabase = createAdminClient();
 
-  const supabase = await createClient();
-  const column = isUuid ? 'userId' : 'slug';
-  const value = isUuid ? identifier : identifier.toLowerCase();
-
-  // Fetch profile - use maybeSingle to avoid errors
-  const { data: profile } = await supabase
-    .from('Profile')
-    .select('firstName, lastName, title, profilePicture, bio')
-    .eq(column, value)
-    .eq('isPublished', true)
-    .maybeSingle();
+  // Fetch profile purely by ID
+  let profile: any = null;
+  try {
+    const { data } = await (supabase as any)
+      .from('profiles')
+      .select('*')
+      .eq('id', profileId)
+      .maybeSingle();
+    if (data) profile = data;
+  } catch {}
 
   if (!profile) {
     return {
       title: {
-        absolute: 'Freelancer Not Found | JobHorizons',
+        absolute: 'Artist Profile | Vivid Art',
       },
-      description: 'This freelancer profile could not be found.',
+      description: 'View artist profile and creative portfolio on Vivid Art.',
     };
   }
 
-  const name = `${profile.firstName} ${profile.lastName}`;
+  const firstName = profile.first_name || profile.firstName || '';
+  const lastName = profile.last_name || profile.lastName || '';
+  const email = profile.email || profile.businessEmail || '';
+  let name = `${firstName} ${lastName}`.trim();
+  if (
+    firstName.includes('studio1') ||
+    email.includes('studio1.foreignbusiness') ||
+    (firstName.toLowerCase().startsWith('studio') && !lastName)
+  ) {
+    name = 'studio One';
+  } else if (!name) {
+    name = profile.title || 'Artist';
+  }
+
   const pageTitle = profile.title
     ? `${name} - ${profile.title}`
     : name;
 
   const description = profile.bio
     ? (profile.bio.length > 160 ? `${profile.bio.slice(0, 157)}...` : profile.bio)
-    : `View ${name}'s freelancer profile on JobHorizons. Browse skills, portfolio, and hire for your next project.`;
+    : `View ${name}'s artist profile and creative portfolio on Vivid Art.`;
 
   return createDynamicMetadata({
     title: pageTitle,
     description,
-    section: 'Freelancers',
-    ogImage: profile.profilePicture || undefined,
+    section: 'Artists',
+    ogImage: profile.profilePicture || profile.profile_picture || profile.avatar_url || undefined,
     keywords: [
-      'freelancer',
+      'artist',
+      'creator',
       name,
       profile.title || '',
-      'remote worker',
-      'hire freelancer',
+      'creative professional',
     ].filter(Boolean),
   });
 }
 
 /**
- * Server Component Wrapper for Freelancer Profile Page
- *
- * Handles 301 permanent redirects from UUID-based URLs to slug-based URLs.
- * This is critical for SEO and ensures all freelancer profiles use user-friendly URLs.
+ * Server Component for Freelancer/Artist Profile Page
+ * Fetches profile purely by ID using admin/public client to avoid schema & RLS exceptions
  */
 export default async function FreelancerPublicProfilePage({ params }: PageProps) {
   const resolvedParams = await params;
-  const identifier = resolvedParams.id;
+  const profileId = resolvedParams.id.trim();
 
-  // Check if identifier is a UUID
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+  const supabase = createAdminClient();
 
-  if (isUuid) {
-    // Fetch profile slug from database using server-side Supabase client
-    const supabase = await createClient();
-
-    const { data: profile } = await supabase
-      .from('Profile')
-      .select('slug')
-      .eq('userId', identifier)
-      .eq('isPublished', true)
+  // Fetch profile purely by ID
+  let profile: any = null;
+  try {
+    const { data, error: idErr } = await (supabase as any)
+      .from('profiles')
+      .select('*')
+      .eq('id', profileId)
       .maybeSingle();
 
-    if (profile?.slug) {
-      // 301 Permanent Redirect to slug-based URL (SEO-friendly)
-      permanentRedirect(`/freelancers/${profile.slug}`);
+    if (data) {
+      profile = data;
+    } else if (idErr) {
+      console.warn("Notice fetching profile by id:", idErr.message || idErr);
     }
-
-    // If no slug found or profile not published, continue to render
-    // (will show 404 via client component)
+  } catch (err) {
+    console.warn("Exception fetching profile by id:", err);
   }
 
-  // Render client component for slug-based URLs or when no redirect is needed
-  return <FreelancerProfileClient params={params} />;
+  // Fallback: Check legacy Profile table by ID if needed
+  if (!profile) {
+    try {
+      const { data: legacyProfile } = await (supabase as any)
+        .from('Profile')
+        .select('*')
+        .eq('id', profileId)
+        .maybeSingle();
+
+      if (legacyProfile) {
+        profile = legacyProfile;
+      }
+    } catch {}
+  }
+
+  if (profile) {
+    const fName = profile.first_name || profile.firstName || (profile.full_name ? profile.full_name.split(' ')[0] : '') || '';
+    const lName = profile.last_name || profile.lastName || (profile.full_name ? profile.full_name.split(' ').slice(1).join(' ') : '') || '';
+    const titleVal = profile.title || profile.professional_title || '';
+    const bioVal = profile.bio || profile.description || '';
+    const locVal = profile.address || profile.location || '';
+    const picVal = profile.avatar_url || profile.profile_picture || profile.profilePicture || '';
+    const rateVal = typeof profile.rate === 'number' ? profile.rate : (typeof profile.hourly_rate === 'number' ? profile.hourly_rate : null);
+    const slugVal = profile.slug || profile.id;
+    const pId = profile.id;
+
+    // Fetch related records in parallel using admin client
+    let ed: any[] = [];
+    let ex: any[] = [];
+    let po: any[] = [];
+    let ce: any[] = [];
+    let u: any = null;
+
+    try {
+      const results = await Promise.all([
+        supabase.from('EducationItem').select('*').eq('profileId', pId).order('order', { ascending: true }),
+        supabase.from('ExperienceItem').select('*').eq('profileId', pId).order('order', { ascending: true }),
+        supabase.from('PortfolioItem').select('*').eq('profileId', pId).order('order', { ascending: true }),
+        supabase.from('Certification').select('*').eq('profileId', pId).order('order', { ascending: true }),
+        supabase.from('User').select('subscriptionPlan, email').eq('id', pId).maybeSingle(),
+      ]);
+      ed = results[0]?.data || [];
+      ex = results[1]?.data || [];
+      po = results[2]?.data || [];
+      ce = results[3]?.data || [];
+      u = results[4]?.data || null;
+    } catch {}
+
+    const initialProfile: any = {
+      id: pId,
+      userId: pId,
+      firstName: fName,
+      lastName: lName,
+      first_name: fName,
+      last_name: lName,
+      email: u?.email || profile.email || profile.businessEmail || profile.business_email || null,
+      title: titleVal,
+      professional_title: titleVal,
+      bio: bioVal,
+      description: bioVal,
+      location: locVal,
+      address: locVal,
+      skills: profile.skills || '',
+      profilePicture: picVal,
+      avatar_url: picVal,
+      rate: rateVal,
+      slug: slugVal,
+      isPublished: true,
+      is_published: true,
+      createdAt: profile.created_at || new Date().toISOString(),
+      updatedAt: profile.updated_at || new Date().toISOString(),
+      brandLogo: null,
+      brandPrimaryColor: null,
+      brandSecondaryColor: null,
+      businessAddressLine1: null,
+      businessAddressLine2: null,
+      businessCity: null,
+      businessCountry: null,
+      businessEmail: u?.email || profile.email || profile.businessEmail || profile.business_email || null,
+      businessPhone: null,
+      businessPostalCode: null,
+      businessRegistrationNumber: null,
+      businessState: null,
+      companyInfo: null,
+      companyName: null,
+      country: null,
+      education: null,
+      experience: null,
+      gallery_images: null,
+      industry: null,
+      phone: null,
+      portfolio: null,
+      taxId: null,
+      timezone: null,
+      verified: true,
+      website: null,
+      experienceItems: ex,
+      educationItems: ed,
+      portfolioItems: po,
+      certifications: ce,
+      subscriptionPlan: u?.subscriptionPlan ?? profile.subscription_plan ?? profile.subscriptionPlan ?? 'FREELANCER_PRO',
+    };
+
+    return <FreelancerProfileClient params={params} initialProfile={initialProfile} />;
+  }
+
+  return <FreelancerProfileClient params={params} initialProfile={null} />;
 }

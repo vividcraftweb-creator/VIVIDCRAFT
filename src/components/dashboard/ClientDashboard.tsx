@@ -127,9 +127,14 @@ export default function ClientDashboard() {
       refetchOnReconnect: false,
     });
 
-  const isLoading =
-    statsLoading || jobsLoading || userLoading;
-  const showSkeleton = isLoading || !stats;
+  const [forceReady, setForceReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setForceReady(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isLoading = !forceReady && (statsLoading || jobsLoading || userLoading);
+  const showSkeleton = isLoading && !stats;
 
   const {
     totalJobsCount,
@@ -380,11 +385,11 @@ export default function ClientDashboard() {
                     >
                       {job.status}
                     </Badge>
-                    <Link href={`/jobs/${job.slug || job.id}`}>
-                      <Button size="sm" variant="ghost" className="text-slate-400 hover:text-white hover:bg-white/10">
+                    <Button asChild size="sm" variant="ghost" className="text-slate-400 hover:text-white hover:bg-white/10">
+                      <Link href={`/jobs/${job.slug || job.id}`}>
                         <Eye className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -402,12 +407,12 @@ export default function ClientDashboard() {
                   <p className="text-slate-400 text-sm max-w-sm mx-auto mb-4">
                     Publish a role to start receiving tailored freelancer proposals and interview signals.
                   </p>
-                  <Link href="/jobs/create">
-                    <Button className="bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                  <Button asChild className="bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                    <Link href="/jobs/create">
                       <Plus className="h-4 w-4 mr-2" />
                       Post Your First Job
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               )}
             </div>

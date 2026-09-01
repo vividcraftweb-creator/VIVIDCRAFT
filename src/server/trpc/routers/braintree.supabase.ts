@@ -36,10 +36,10 @@ function addThirtyDays(from: Date): Date {
 
 function getFreePlanForRole(role: Role): SubscriptionPlanEnum {
   if (role === 'CLIENT') {
-    return SubscriptionPlanEnum.CLIENT_STARTER;
+    return SubscriptionPlanEnum.CLIENT_BUSINESS;
   }
   // Treat ADMIN as freelancers for subscription benefits
-  return SubscriptionPlanEnum.FREELANCER_FREE;
+  return SubscriptionPlanEnum.FREELANCER_PRO;
 }
 
 export const braintreeRouter = router({
@@ -58,31 +58,26 @@ export const braintreeRouter = router({
         .eq('id', userId)
         .single();
 
-      if (error || !user?.email) {
+      if (error || !user) {
         throw new TRPCError({
           code: 'NOT_FOUND',
-          message: 'Unable to load your account details.',
+          message: 'User not found',
         });
       }
 
-      const profile = Array.isArray(user.profile) ? user.profile[0] : user.profile;
-
-      await getOrCreateCustomer(
-        userId,
-        user.email,
-        profile?.firstName ?? undefined,
-        profile?.lastName ?? undefined,
-      );
-
-      const clientToken = await generateClientToken(userId);
+      // Generate Braintree client token
+      const clientToken = await generateClientToken();
 
       return {
         clientToken,
       };
     } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to generate client token',
+        message: 'Failed to generate payment token',
       });
     }
   }),
@@ -97,6 +92,7 @@ export const braintreeRouter = router({
       .from('SubscriptionPlanConfig')
       .select('*')
       .eq('isActive', true)
+      .gt('priceAmount', 0)
       .order('priceAmount', { ascending: true });
 
     if (error) {

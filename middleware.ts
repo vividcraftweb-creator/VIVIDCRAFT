@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { updateSession } from '@/lib/supabase/middleware';
-import { createClient } from '@/lib/supabase/server';
+import { updateSession, getMiddlewareClient } from '@/lib/supabase/middleware';
 import { SubscriptionPlan } from '@/types/database.types';
 
 // Premium routes that require specific subscription plans
@@ -20,54 +19,59 @@ const PREMIUM_ROUTES = [
 ];
 
 export async function middleware(request: NextRequest) {
-  // First, update the session
-  const response = await updateSession(request);
+  try {
+    // First, update the session
+    const response = await updateSession(request);
 
-  const { pathname } = request.nextUrl;
+    const { pathname } = request.nextUrl;
 
-  // Check if this is a premium route
-  const premiumRoute = PREMIUM_ROUTES.find((route) => pathname.startsWith(route.path));
+    // Check if this is a premium route
+    const premiumRoute = PREMIUM_ROUTES.find((route) => pathname.startsWith(route.path));
 
-  if (premiumRoute) {
-    try {
-      const supabase = await createClient();
+    if (premiumRoute) {
+      try {
+        const supabase = getMiddlewareClient(request, response);
 
-      // Get the current user from the session
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+        // Get the current user from the session
+        const { data: { user: authUser } } = await supabase.auth.getUser();
 
-      if (!authUser) {
-        // Not authenticated, redirect to sign in
-        return NextResponse.redirect(new URL('/auth/signin', request.url));
-      }
+        if (!authUser) {
+          // Not authenticated, redirect to sign in
+          return NextResponse.redirect(new URL('/auth/signin', request.url));
+        }
 
-      // Check user's subscription plan
-      const { data: user } = await supabase
-        .from('User')
-        .select('subscriptionPlan')
-        .eq('id', authUser.id)
-        .single();
+        // Check user's subscription plan
+        const { data: user } = await supabase
+          .from('User')
+          .select('subscriptionPlan')
+          .eq('id', authUser.id)
+          .single();
 
-      if (!user) {
+        if (!user) {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+
+        const userPlan = user.subscriptionPlan as SubscriptionPlan;
+        const hasAccess = premiumRoute.plans.includes(userPlan);
+
+        if (!hasAccess) {
+          // User doesn't have the required plan, redirect to subscription page
+          const upgradeUrl = new URL('/dashboard', request.url);
+          upgradeUrl.searchParams.set('tab', 'subscription');
+          upgradeUrl.searchParams.set('upgrade', 'required');
+          return NextResponse.redirect(upgradeUrl);
+        }
+      } catch (error) {
+        // On error, redirect to dashboard
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
-
-      const userPlan = user.subscriptionPlan as SubscriptionPlan;
-      const hasAccess = premiumRoute.plans.includes(userPlan);
-
-      if (!hasAccess) {
-        // User doesn't have the required plan, redirect to subscription page
-        const upgradeUrl = new URL('/dashboard', request.url);
-        upgradeUrl.searchParams.set('tab', 'subscription');
-        upgradeUrl.searchParams.set('upgrade', 'required');
-        return NextResponse.redirect(upgradeUrl);
-      }
-    } catch (error) {
-      // On error, redirect to dashboard
-      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
-  }
 
-  return response;
+    return response;
+  } catch (error) {
+    console.error('Unhandled middleware error, proceeding:', error);
+    return NextResponse.next({ request });
+  }
 }
 
 export const config = {

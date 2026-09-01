@@ -88,6 +88,13 @@ export default function MessagesView() {
     { enabled: !!selectedUser && !!session }
   );
 
+  const canChatQuery = trpc.messages.canChat.useQuery(
+    { partnerId: selectedUser?.id || '' },
+    { enabled: !!selectedUser && !!session }
+  );
+
+  const canChat = canChatQuery.data ?? false;
+
   const utils = trpc.useUtils();
 
   const sendMessageMutation = trpc.messages.sendMessage.useMutation({
@@ -449,22 +456,28 @@ export default function MessagesView() {
 
             {/* Message Input */}
             <div className="border-t border-white/10 p-4 flex-shrink-0">
-              <form onSubmit={handleSendMessage} className="flex gap-2">
-                <Input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                  disabled={sendMessageMutation.isPending}
-                />
-                <Button
-                  type="submit"
-                  disabled={sendMessageMutation.isPending || !message.trim()}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+              {!canChat ? (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center text-sm text-red-300">
+                  Chat disabled for this connection. Please contact the administrator.
+                </div>
+              ) : (
+                <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <Input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                    disabled={sendMessageMutation.isPending}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={sendMessageMutation.isPending || !message.trim()}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
+              )}
             </div>
           </>
         ) : (

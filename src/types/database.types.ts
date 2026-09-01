@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      Artwork: {
+        Row: {
+          id: string
+          artistId: string
+          title: string
+          description: string | null
+          imageUrl: string
+          price: number | null
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id: string
+          artistId: string
+          title: string
+          description?: string | null
+          imageUrl: string
+          price?: number | null
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          artistId?: string
+          title?: string
+          description?: string | null
+          imageUrl?: string
+          price?: number | null
+          createdAt?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Artwork_artistId_fkey"
+            columns: ["artistId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      ChatConnection: {
+        Row: {
+          id: string
+          clientId: string
+          artistId: string
+          chatEnabled: boolean
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id: string
+          clientId: string
+          artistId: string
+          chatEnabled?: boolean
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          clientId?: string
+          artistId?: string
+          chatEnabled?: boolean
+          createdAt?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ChatConnection_clientId_fkey"
+            columns: ["clientId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ChatConnection_artistId_fkey"
+            columns: ["artistId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       _prisma_migrations: {
         Row: {
           applied_steps_count: number
@@ -1286,8 +1369,10 @@ export type Database = {
           experience: string | null
           firstName: string | null
           id: string
+          gallery_images: string[] | null
           industry: string | null
           isPublished: boolean | null
+          is_published: boolean | null
           lastName: string | null
           location: string | null
           phone: string | null
@@ -1326,8 +1411,10 @@ export type Database = {
           experience?: string | null
           firstName?: string | null
           id: string
+          gallery_images?: string[] | null
           industry?: string | null
           isPublished?: boolean | null
+          is_published?: boolean | null
           lastName?: string | null
           location?: string | null
           phone?: string | null
@@ -1366,6 +1453,7 @@ export type Database = {
           experience?: string | null
           firstName?: string | null
           id?: string
+          gallery_images?: string[] | null
           industry?: string | null
           isPublished?: boolean | null
           lastName?: string | null
@@ -1721,6 +1809,7 @@ export type Database = {
           deletedAt: string | null
           freelancerId: string
           id: string
+          chat_enabled: boolean
           jobId: string
           proposedRate: number
           screeningAnswers: Json | null
@@ -1736,6 +1825,7 @@ export type Database = {
           deletedAt?: string | null
           freelancerId: string
           id: string
+          chat_enabled?: boolean
           jobId: string
           proposedRate: number
           screeningAnswers?: Json | null
@@ -1751,6 +1841,7 @@ export type Database = {
           deletedAt?: string | null
           freelancerId?: string
           id?: string
+          chat_enabled?: boolean
           jobId?: string
           proposedRate?: number
           screeningAnswers?: Json | null

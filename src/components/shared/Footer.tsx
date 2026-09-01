@@ -20,26 +20,24 @@ const getFooterSections = (userRole?: string) => [
   {
     title: 'Platform',
     links: [
-      { name: 'Find Work', href: '/jobs' },
-      { name: 'Browse Freelancers', href: '/freelancers' },
+      { name: 'Find Art', href: '/jobs' },
+      { name: 'Browse Artists', href: '/freelancers' },
       { name: 'How It Works', href: '/how-it-works' },
     ],
   },
   {
-    title: 'For Freelancers',
+    title: 'For Artists',
     links: [
       {
         name: 'Getting Started',
         href: userRole === 'FREELANCER' ? '/freelancer/checklist' : '/freelancers/getting-started',
       },
-      { name: 'Pricing', href: '/pricing#freelancer' },
     ],
   },
   {
-    title: 'For Clients',
+    title: 'For Collectors',
     links: [
-      { name: 'Post a Job', href: '/jobs/create' },
-      { name: 'Pricing', href: '/pricing#client' },
+      { name: 'List Artwork', href: '/jobs/create' },
       { name: 'Support', href: '/support' },
     ],
   },
@@ -58,7 +56,7 @@ const socialLinks = [
   { name: 'LinkedIn', href: '#', icon: Linkedin },
   { name: 'X', href: '#', icon: X },
   { name: 'Facebook', href: '#', icon: Facebook },
-  { name: 'Email', href: 'mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'hello@yourdomain.com'}', icon: Mail },
+  { name: 'Email', href: `mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'hello@yourdomain.com'}`, icon: Mail },
 ];
 const Footer = () => {
   const { data: session } = useSession();
@@ -72,7 +70,7 @@ const Footer = () => {
   return (
     <footer className="relative bg-gradient-to-b from-transparent to-background/50 border-t border-glass-border">
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/4 w-80 h-80 rounded-full bg-primary/5 blur-3xl animate-float" />
         <div className="absolute -top-20 right-1/3 w-64 h-64 rounded-full bg-chart-1/8 blur-3xl animate-float" style={{ animationDelay: '2s' }} />
       </div>
@@ -86,8 +84,8 @@ const Footer = () => {
             <div className="lg:col-span-2 space-y-6">
               <Link href="/" className="group w-fit">
                 <Image
-                  src="/jobhorizons-logo.webp"
-                  alt="JobHorizons - Freelance Remote Work Platform"
+                  src="/vivid-art-logo.webp"
+                  alt="Vivid Art - Online Art Marketplace"
                   width={160}
                   height={32}
                   priority
@@ -97,7 +95,7 @@ const Footer = () => {
               </Link>
 
               <p className="text-muted-foreground leading-relaxed max-w-md pt-2">
-                A curated freelance marketplace connecting verified professionals with quality clients. Experience transparent hiring with fair pricing and genuine opportunities.
+                Connecting artists with art lovers worldwide. Discover, collect, and celebrate creativity.
               </p>
 
               {/* Key Features */}
@@ -191,7 +189,7 @@ const Footer = () => {
             </div>
           </div>
           <div className="text-center pt-6 text-sm text-muted-foreground">
-            © {new Date().getFullYear()} JobHorizons. All rights reserved.
+            © {new Date().getFullYear()} Vivid Art. All rights reserved.
           </div>
         </div>
       </div>

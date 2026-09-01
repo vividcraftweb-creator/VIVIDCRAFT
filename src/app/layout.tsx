@@ -1,52 +1,33 @@
+import "@/app/globals.css";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "block", // Block rendering until font loads to prevent FOUC
-  fallback: ["system-ui", "arial"],
-  preload: true,
-  adjustFontFallback: true,
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "optional", // Optional for monospace since it's not critical
-  fallback: ["ui-monospace", "monospace"],
-  preload: false, // Only preload fonts used on every page
-  adjustFontFallback: true,
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'),
   title: {
-    default: 'JobHorizons | Freelance Remote Work & Online Opportunities - Hire Top Freelancers',
-    template: '%s | JobHorizons - Find Remote Work & Freelance Jobs',
+    default: 'Vivid Art | Online Art Marketplace - Buy Art & Discover Artists',
+    template: '%s | Vivid Art - Art Marketplace',
   },
-  description: 'JobHorizons is the leading freelance marketplace for remote work opportunities. Connect with verified freelancers, find high-quality online jobs, and hire top talent for your projects. Join thousands of professionals working remotely worldwide.',
+  description: 'Vivid Art is the leading online art marketplace. Discover extraordinary artwork from independent artists, buy original art, and showcase your creative services. Join a vibrant community of artists and art collectors worldwide.',
   keywords: [
-    'freelance jobs',
-    'remote work',
-    'online freelance marketplace',
-    'hire freelancers online',
-    'work from home opportunities',
-    'freelance remote work',
-    'online jobs',
-    'freelancer marketplace',
-    'remote freelance jobs',
-    'hire remote workers',
-    'freelance platform',
-    'online work opportunities',
-    'digital nomad jobs',
-    'remote job board',
-    'freelance gigs',
+    'buy art online',
+    'art marketplace',
+    'original artwork',
+    'independent artists',
+    'art for sale',
+    'discover artists',
+    'art gallery online',
+    'contemporary art',
+    'art collectors',
+    'commission art',
+    'artist services',
+    'fine art marketplace',
+    'digital art',
+    'art prints',
+    'creative marketplace',
   ],
-  authors: [{ name: 'JobHorizons' }],
-  creator: 'JobHorizons',
-  publisher: 'JobHorizons',
+  authors: [{ name: 'Vivid Art' }],
+  creator: 'Vivid Art',
+  publisher: 'Vivid Art',
   formatDetection: {
     email: false,
     address: false,
@@ -64,30 +45,30 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'JobHorizons',
+    title: 'Vivid Art',
   },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
-    siteName: 'JobHorizons',
-    title: 'JobHorizons | Freelance Remote Work & Online Opportunities',
-    description: 'Find freelance remote work opportunities and hire verified freelancers online. JobHorizons connects talented professionals with quality projects worldwide.',
+    siteName: 'Vivid Art',
+    title: 'Vivid Art | Online Art Marketplace - Discover & Collect Art',
+    description: 'Discover extraordinary artwork from independent artists. Vivid Art connects collectors with talented artists worldwide.',
     images: [
       {
-        url: '/jobhorizons-og-image.png',
+        url: '/vivid-art-og-image.png',
         width: 1200,
         height: 630,
-        alt: 'JobHorizons - Freelance Remote Work Platform',
+        alt: 'Vivid Art - Online Art Marketplace',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'JobHorizons | Freelance Remote Work & Online Opportunities',
-    description: 'Find freelance remote work opportunities and hire verified freelancers online. Connect with top talent worldwide.',
-    images: ['/jobhorizons-og-image.png'],
-    creator: '@jobhorizons',
+    title: 'Vivid Art | Online Art Marketplace - Discover & Collect Art',
+    description: 'Discover extraordinary artwork from independent artists. Connect with talented artists worldwide.',
+    images: ['/vivid-art-og-image.png'],
+    creator: '@vividart',
   },
   robots: {
     index: true,
@@ -106,7 +87,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0d0d14',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d0d14' },
+  ],
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -114,11 +98,10 @@ export const viewport: Viewport = {
 
 import Provider from './_trpc/Provider';
 import SessionProvider from '@/components/providers/SessionProvider';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { auth } from '@/lib/auth';
 import { Toaster } from '@/components/ui/sonner';
 import ConditionalLayout from '@/components/layout/ConditionalLayout';
-import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
-import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export default async function RootLayout({
@@ -126,14 +109,19 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
 
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'JobHorizons',
+    name: 'Vivid Art',
     url: siteUrl,
     logo: {
       '@type': 'ImageObject',
@@ -141,7 +129,7 @@ export default async function RootLayout({
       width: 512,
       height: 512,
     },
-    description: 'JobHorizons is a leading freelance marketplace connecting talented professionals with remote work opportunities worldwide.',
+    description: 'Vivid Art is a leading online art marketplace connecting independent artists with art collectors worldwide.',
     sameAs: [
       process.env.NEXT_PUBLIC_TWITTER_URL || '',
       process.env.NEXT_PUBLIC_LINKEDIN_URL || '',
@@ -157,9 +145,9 @@ export default async function RootLayout({
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'JobHorizons',
+    name: 'Vivid Art',
     url: siteUrl,
-    description: 'Freelance marketplace for remote work opportunities',
+    description: 'Online art marketplace for buying and selling artwork',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -178,80 +166,66 @@ export default async function RootLayout({
         '@type': 'SiteNavigationElement',
         position: 1,
         name: 'Get Started',
-        description: 'Sign up and start your freelance journey on JobHorizons',
+        description: 'Sign up and start your art journey on Vivid Art',
         url: `${siteUrl}/freelancers/getting-started`,
       },
       {
         '@type': 'SiteNavigationElement',
         position: 2,
-        name: 'Find Work',
-        description: 'Browse and apply to remote freelance jobs',
+        name: 'Explore Art',
+        description: 'Browse and discover original artwork',
         url: `${siteUrl}/jobs`,
       },
       {
         '@type': 'SiteNavigationElement',
         position: 3,
-        name: 'Hire Freelancers',
-        description: 'Find and hire talented freelancers for your projects',
+        name: 'Discover Artists',
+        description: 'Find and connect with talented independent artists',
         url: `${siteUrl}/freelancers`,
       },
       {
         '@type': 'SiteNavigationElement',
         position: 4,
         name: 'How It Works',
-        description: 'Learn how JobHorizons connects freelancers with clients',
+        description: 'Learn how Vivid Art connects artists with collectors',
         url: `${siteUrl}/how-it-works`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 5,
-        name: 'Pricing',
-        description: 'View our pricing plans for freelancers and clients',
-        url: `${siteUrl}/pricing`,
       },
     ],
   };
 
   return (
-    <html lang="en" className="dark" suppressHydrationWarning style={{
-      background: 'oklch(0.08 0.005 264)',
-      color: 'oklch(0.98 0.002 264)',
-    }}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className="antialiased min-h-screen overflow-x-hidden"
+        suppressHydrationWarning
+      >
+        {/* JSON-LD structured data */}
         <script
+          id="schema-organization"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
         <script
+          id="schema-website"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         <script
+          id="schema-navigation"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteNavigationSchema) }}
         />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen overflow-x-hidden`}
-        suppressHydrationWarning
-        style={{
-          margin: 0,
-          padding: 0,
-        }}
-      >
-        <GoogleAnalytics />
-        <Analytics />
-        <SpeedInsights />
-        <SessionProvider session={session}>
-          <Provider>
-            <ConditionalLayout session={session}>
-              {children}
-            </ConditionalLayout>
-            <Toaster />
-          </Provider>
-        </SessionProvider>
+        <LanguageProvider>
+          {process.env.NODE_ENV === 'production' && <SpeedInsights />}
+          <SessionProvider session={session}>
+            <Provider>
+              <ConditionalLayout session={session}>
+                {children}
+              </ConditionalLayout>
+              <Toaster />
+            </Provider>
+          </SessionProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

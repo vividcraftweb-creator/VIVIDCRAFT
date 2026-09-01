@@ -49,7 +49,7 @@ export const analytics = {
   // Payment events
   subscriptionPurchased: (plan: string, amount: number) =>
     trackEvent('purchase', {
-      transaction_id: crypto.randomUUID(),
+      transaction_id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       value: amount,
       currency: 'USD',
       items: [{ item_name: plan }]

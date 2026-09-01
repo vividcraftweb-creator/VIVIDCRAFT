@@ -1,13 +1,12 @@
-import { Metadata } from 'next';
-import { createAuthPageMetadata } from '@/lib/seo-metadata';
-import SignUpPageClient from './SignUpPageClient';
+'use client';
 
-export const metadata: Metadata = createAuthPageMetadata({
-  title: 'Create Account',
-  description: 'Create your JobHorizons account and start freelancing or hire top talent.',
-  noIndex: false,
+import dynamic from 'next/dynamic';
+
+const SignUpContent = dynamic(() => import('./SignUpContent'), {
+  ssr: false,
+  loading: () => <div className="min-h-screen bg-slate-950" />,
 });
 
 export default function SignUpPage() {
-  return <SignUpPageClient />;
+  return <SignUpContent />;
 }

@@ -7,7 +7,7 @@ import CTA from '@/components/landing/CTA';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Home',
-  description: 'JobHorizons connects talented freelancers with quality remote work opportunities. Discover verified projects, build your career, and work with trusted clients worldwide.',
+  description: 'Vivid Art connects talented freelancers with quality remote work opportunities. Discover verified projects, build your career, and work with trusted clients worldwide.',
   keywords: [
     'remote jobs',
     'freelance work',
@@ -23,7 +23,7 @@ export const metadata: Metadata = createPageMetadata({
 
 export default function HomePage() {
   return (
-    <div className="relative">
+    <div className="relative min-h-screen w-full bg-background text-foreground overflow-hidden">
       <Hero />
       <Benefits />
       <Features />

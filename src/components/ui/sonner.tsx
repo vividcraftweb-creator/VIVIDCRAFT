@@ -1,16 +1,25 @@
 "use client"
 
 import { Toaster as Sonner } from "sonner"
-import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("dark")
+
+  useEffect(() => {
+    setMounted(true)
+    const isDark = document.documentElement.classList.contains('dark')
+    setTheme(isDark ? 'dark' : 'light')
+  }, [])
+
+  if (!mounted) return null
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       className="toaster group"
       toastOptions={{
         classNames: {

@@ -17,14 +17,24 @@ export function getProfilePictureUrl(
   filename: string | undefined | null,
   options?: { bustCache?: boolean }
 ): string | undefined {
-  if (!userId || !filename) {
+  if (!filename) {
     return undefined;
   }
 
-  const baseUrl = `/uploads/documents/${userId}/${filename}`;
+  let baseUrl = filename;
+  // If it's already a full URL or data URI, use it directly
+  if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:') || filename.startsWith('blob:')) {
+    baseUrl = filename;
+  } else if (filename.startsWith('/')) {
+    baseUrl = filename;
+  } else {
+    if (!userId) return undefined;
+    baseUrl = `/uploads/documents/${userId}/${filename}`;
+  }
 
   if (options?.bustCache) {
-    return `${baseUrl}?t=${Date.now()}`;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}t=${Date.now()}`;
   }
 
   return baseUrl;
@@ -55,9 +65,20 @@ export function getProfilePictureUrlWithTimestamp(
   filename: string | undefined | null,
   timestamp: number
 ): string | undefined {
-  if (!userId || !filename) {
+  if (!filename) {
     return undefined;
   }
 
-  return `/uploads/documents/${userId}/${filename}?t=${timestamp}`;
+  let baseUrl = filename;
+  if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:') || filename.startsWith('blob:')) {
+    baseUrl = filename;
+  } else if (filename.startsWith('/')) {
+    baseUrl = filename;
+  } else {
+    if (!userId) return undefined;
+    baseUrl = `/uploads/documents/${userId}/${filename}`;
+  }
+
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}t=${timestamp}`;
 }

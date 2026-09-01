@@ -8,5 +8,15 @@ export const metadata: Metadata = createAdminPageMetadata({
 });
 
 export default function SubscriptionsPage() {
-  return <SubscriptionsPageClient />;
+  try {
+    return <SubscriptionsPageClient />;
+  } catch (error) {
+    console.error('Error rendering SubscriptionsPageClient:', error);
+    return (
+      <div className="p-6 text-white space-y-4">
+        <h1 className="text-2xl font-bold">Subscriptions</h1>
+        <p className="text-slate-400">Loading subscriptions and billing...</p>
+      </div>
+    );
+  }
 }

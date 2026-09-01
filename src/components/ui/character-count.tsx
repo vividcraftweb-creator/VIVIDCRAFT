@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import type { ValidationStatus } from '@/types/profile-editor.types';
 
@@ -62,3 +64,5 @@ export function CharacterCount({
     </div>
   );
 }
+
+export default CharacterCount;

@@ -6,7 +6,8 @@
     "dev": "nodemon server.js",
     "build": "tsc && next build",
     "start": "NODE_ENV=production node server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.67.0",

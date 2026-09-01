@@ -438,7 +438,7 @@ export const jobsRouter = router({
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       // Determine priority placement based on client's subscription plan
-      const userSubscriptionPlan = (ctx.session.user as any).subscriptionPlan || 'CLIENT_STARTER';
+      const userSubscriptionPlan = (ctx.session.user as any).subscriptionPlan || 'CLIENT_BUSINESS';
       const planInfo = getSubscriptionPlanInfo(userSubscriptionPlan);
       const priorityPlacement = planInfo.clientPerks?.priorityPlacement || 'none';
 

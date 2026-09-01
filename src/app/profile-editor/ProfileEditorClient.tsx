@@ -13,6 +13,7 @@ import EducationCard from '@/components/profile-editor/EducationCard';
 import ExperienceCard from '@/components/profile-editor/ExperienceCard';
 import PortfolioCard from '@/components/profile-editor/PortfolioCard';
 import CertificationCard from '@/components/profile-editor/CertificationCard';
+import { createClient } from '@/lib/supabase/client';
 import {
   calculateBasicInfoStrength,
   calculateExperienceStrength,
@@ -23,10 +24,11 @@ import {
 
 const STEPS = [
   { id: 1, title: 'Basic Info', icon: User, description: 'Tell us about yourself' },
-  { id: 2, title: 'Experience', icon: Briefcase, description: 'Your work history' },
-  { id: 3, title: 'Education', icon: GraduationCap, description: 'Your qualifications' },
-  { id: 4, title: 'Portfolio', icon: FolderOpen, description: 'Showcase your work' },
-  { id: 5, title: 'Certifications (Optional)', icon: Award, description: 'Professional credentials' },
+  { id: 2, title: 'Experience (Optional)', icon: Briefcase, description: 'Your work history' },
+  { id: 3, title: 'Education & Qualifications (Optional)', icon: GraduationCap, description: 'Your qualifications' },
+  // Portfolio step hidden - code preserved
+  // { id: 4, title: 'Portfolio', icon: FolderOpen, description: 'Showcase your work' },
+  { id: 4, title: 'Certifications (Optional)', icon: Award, description: 'Professional credentials' },
 ];
 
 export default function ProfileEditorPage() {
@@ -48,14 +50,43 @@ export default function ProfileEditorPage() {
     enabled: !!session?.session?.user,
   });
 
+  // Re-fetch latest data on component mount directly from Supabase
+  useEffect(() => {
+    async function loadDirectProfile() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await (supabase as any).from('profiles').select('*').or(`id.eq.${user.id},userId.eq.${user.id}`).maybeSingle();
+          profileQuery.refetch();
+          completenessQuery.refetch();
+        }
+      } catch (err) {
+        console.warn('Profile mount load notice:', err);
+      }
+    }
+    loadDirectProfile();
+  }, []);
+
+  const handleUpdate = () => {
+    profileQuery.refetch();
+    completenessQuery.refetch();
+    router.refresh();
+  };
+
   const publicProfileUrl = profileQuery.data?.slug
     ? `/freelancers/${profileQuery.data.slug}`
     : '/freelancers';
+
+  const utils = trpc.useUtils();
 
   // Publish mutation
   const togglePublishMutation = trpc.publicProfile.togglePublish.useMutation({
     onSuccess: () => {
       profileQuery.refetch();
+      utils.profiles.searchFreelancers.invalidate();
+      utils.profiles.getMyProfile.invalidate();
+      router.refresh();
       toast.success('Profile published successfully!');
       // Redirect to public profile after successful publish
       setTimeout(() => {
@@ -69,23 +100,38 @@ export default function ProfileEditorPage() {
     },
   });
 
-  const handlePublishToggle = () => {
-    // Check if profile has minimum required entries before allowing publish
+  const handlePublishToggle = async () => {
+    // Only basic info is required before allowing publish
     if (profileQuery.data) {
-      const experienceCount = profileQuery.data.experienceItems?.length ?? 0;
-      const educationCount = profileQuery.data.educationItems?.length ?? 0;
-      const portfolioCount = profileQuery.data.portfolioItems?.length ?? 0;
-
-      if (experienceCount < 1 || educationCount < 1 || portfolioCount < 1) {
+      const p = profileQuery.data as any;
+      const hasName = !!(p.firstName || p.lastName || p.first_name || p.last_name || p.fullName);
+      const hasTitle = !!p.title;
+      if (!hasName || !hasTitle) {
         toast.error('Profile incomplete', {
-          description: 'Please add at least one entry to each required section: Experience, Education, and Portfolio.',
+          description: 'Please complete your Basic Information (Name & Title) before publishing.',
         });
         return;
       }
     }
 
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            is_published: true,
+            status: 'published',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+      }
+    } catch {}
+
     // Always publish (set to true)
     togglePublishMutation.mutate({ isPublished: true });
+    router.refresh();
   };
 
   // Calculate section strength based on current step
@@ -100,8 +146,6 @@ export default function ProfileEditorPage() {
       case 3:
         return calculateEducationStrength(profileQuery.data.educationItems);
       case 4:
-        return calculatePortfolioStrength(profileQuery.data.portfolioItems);
-      case 5:
         return calculateCertificationStrength(profileQuery.data.certifications);
       default:
         return null;
@@ -287,30 +331,31 @@ export default function ProfileEditorPage() {
 
             <div className="min-h-[400px]">
               {currentStep === 1 && (
-                <BasicInfoCard profile={profileQuery.data} onUpdate={profileQuery.refetch} />
+                <BasicInfoCard profile={profileQuery.data} onUpdate={handleUpdate} />
               )}
               {currentStep === 2 && (
                 <ExperienceCard
                   items={profileQuery.data?.experienceItems || []}
-                  onUpdate={profileQuery.refetch}
+                  onUpdate={handleUpdate}
                 />
               )}
               {currentStep === 3 && (
                 <EducationCard
                   items={profileQuery.data?.educationItems || []}
-                  onUpdate={profileQuery.refetch}
+                  onUpdate={handleUpdate}
                 />
               )}
-              {currentStep === 4 && (
+              {/* Portfolio step hidden - code preserved */}
+              {/* {currentStep === 999 && (
                 <PortfolioCard
                   items={profileQuery.data?.portfolioItems || []}
-                  onUpdate={profileQuery.refetch}
+                  onUpdate={handleUpdate}
                 />
-              )}
-              {currentStep === 5 && (
+              )} */}
+              {currentStep === 4 && (
                 <CertificationCard
                   items={profileQuery.data?.certifications || []}
-                  onUpdate={profileQuery.refetch}
+                  onUpdate={handleUpdate}
                 />
               )}
             </div>

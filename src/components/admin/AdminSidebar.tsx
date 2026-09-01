@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -23,7 +24,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { trpc } from '@/utils/trpc';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 
 interface NavItem {
   title: string;
@@ -34,18 +34,47 @@ interface NavItem {
 }
 
 export default function AdminSidebar() {
+  const [mounted, setMounted] = useState(false);
+  const [directProfileCount, setDirectProfileCount] = useState<number | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { data: stats } = trpc.admin.getSystemStats.useQuery(undefined, {
     refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: mounted,
   });
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
+  useEffect(() => {
+    setMounted(true);
+    async function fetchProfilesCount() {
+      try {
+        const supabase = createClient();
+        const { count, error } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        if (!error && typeof count === 'number') {
+          setDirectProfileCount(count);
+        }
+      } catch (e) {}
+    }
+    fetchProfilesCount();
+  }, []);
+
+  const handleSignOut = async (e?: React.MouseEvent) => {
+    if (e?.preventDefault) e.preventDefault();
+    try {
+      document.cookie = 'mock_admin_session=; path=/; max-age=0; SameSite=Lax';
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    } finally {
+      router.push('/');
+      router.refresh();
+    }
   };
+
+  if (!mounted) {
+    return <div className="w-64 h-screen bg-slate-900 border-r border-white/10 fixed left-0 top-0 z-40" />;
+  }
 
   const navItems: NavItem[] = [
     {
@@ -84,6 +113,18 @@ export default function AdminSidebar() {
       href: '/admin/messages',
       icon: MessageSquare,
       description: 'Communication oversight',
+    },
+    {
+      title: 'Chat Controls',
+      href: '/admin/chats',
+      icon: MessageSquare,
+      description: 'Manage chat connections',
+    },
+    {
+      title: 'Artworks',
+      href: '/admin/artworks',
+      icon: LayoutDashboard,
+      description: 'Monitor listed artworks',
     },
     {
       title: 'Support',
@@ -130,13 +171,13 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <div className="flex h-screen w-64 flex-col fixed left-0 top-0 border-r border-white/10 bg-slate-900">
+    <div className="flex h-screen w-64 flex-col fixed left-0 top-0 z-40 border-r border-white/10 bg-slate-900">
       {/* Logo/Header */}
       <div className="flex h-16 items-center justify-center border-b border-white/10 px-6">
         <Link href="/admin" className="w-full flex items-center justify-center">
           <Image
-            src="/jobhorizons-logo.webp"
-            alt="JobHorizons"
+            src="/vivid-art-logo.webp"
+            alt="Vivid Art"
             width={160}
             height={160}
             priority
@@ -194,22 +235,23 @@ export default function AdminSidebar() {
             <span className="text-green-400 font-medium">Operational</span>
           </div>
         </div>
-        {stats && (
+        {(stats || directProfileCount !== null) && (
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-white/5 rounded px-2 py-1">
               <div className="text-slate-400">Users</div>
-              <div className="text-white font-semibold">{stats.totalUsers}</div>
+              <div className="text-white font-semibold">{Math.max(stats?.totalUsers ?? 0, directProfileCount ?? 0)}</div>
             </div>
             <div className="bg-white/5 rounded px-2 py-1">
               <div className="text-slate-400">Jobs</div>
-              <div className="text-white font-semibold">{stats.totalJobs}</div>
+              <div className="text-white font-semibold">{stats?.totalJobs ?? 0}</div>
             </div>
           </div>
         )}
 
         {/* Logout Button */}
         <button
-          onClick={handleSignOut}
+          type="button"
+          onClick={(e) => handleSignOut(e)}
           className="w-full flex items-center justify-center space-x-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 border border-red-500/30"
         >
           <LogOut className="h-4 w-4" />

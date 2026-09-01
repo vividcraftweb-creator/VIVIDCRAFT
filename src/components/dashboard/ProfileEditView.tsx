@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth as useSession } from '@/hooks/useAuth';
 import { trpc } from '@/utils/trpc';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,14 @@ import { Label } from '@/components/ui/label';
 import LocationAutocompleteInput from '@/components/ui/LocationAutocompleteInput';
 import { type Profile } from '@/types/database.types';
 import { toast } from 'sonner';
-import { User, Briefcase, MapPin, DollarSign, Link as LinkIcon, Save, Phone, Globe, Clock } from 'lucide-react';
+import { User, Briefcase, MapPin, DollarSign, Link as LinkIcon, Save, Phone, Globe, Clock, Mail, Shield } from 'lucide-react';
 
 type ProfileFormState = Partial<Omit<Profile, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>;
 
 export default function ProfileEditView() {
   const { data: session } = useSession();
   const [profile, setProfile] = useState<ProfileFormState>({});
+  const hasInitializedRef = useRef(false);
 
   const utils = trpc.useUtils();
 
@@ -44,14 +45,16 @@ export default function ProfileEditView() {
         firstName: profileQuery.data.firstName || session?.session?.user?.user_metadata?.firstName || '',
         lastName: profileQuery.data.lastName || session?.session?.user?.user_metadata?.lastName || '',
       });
-    } else if (session?.session?.user) {
+      hasInitializedRef.current = true;
+    } else if (!hasInitializedRef.current && session?.session?.user) {
       // If no profile data exists, initialize with session metadata
       setProfile({
-        firstName: session.session.user.user_metadata?.firstName || '',
-        lastName: session.session.user.user_metadata?.lastName || '',
+        firstName: session?.session?.user?.user_metadata?.firstName || '',
+        lastName: session?.session?.user?.user_metadata?.lastName || '',
       });
+      hasInitializedRef.current = true;
     }
-  }, [profileQuery.data]); // Only depend on profileQuery.data, not session
+  }, [profileQuery.data, session?.session?.user?.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -118,66 +121,66 @@ export default function ProfileEditView() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-white font-medium flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-purple-400" />
-              Professional Title
-            </Label>
-            <Input
-              id="title"
-              value={profile.title || ''}
-              onChange={handleChange}
-              placeholder="e.g., Senior Software Engineer"
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="bio" className="text-white font-medium flex items-center gap-2">
-              <User className="h-4 w-4 text-green-400" />
-              Bio
-            </Label>
-            <Textarea
-              id="bio"
-              value={profile.bio || ''}
-              onChange={handleChange}
-              placeholder="Tell us about yourself..."
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 min-h-32"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-red-400" />
-              Location
-            </Label>
-            <LocationAutocompleteInput
-              id="location"
-              value={profile.location || ''}
-              onChange={(value) => setProfile((prev) => ({ ...prev, location: value }))}
-              placeholder="e.g., San Francisco, CA"
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
-              types={['(cities)']}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
-              <Phone className="h-4 w-4 text-blue-400" />
-              Phone Number
-            </Label>
-            <Input
-              id="phone"
-              value={profile.phone || ''}
-              onChange={handleChange}
-              placeholder="+1 (555) 123-4567"
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
-            />
-          </div>
-
-          {/* Role-specific fields */}
+          {/* Freelancer specific fields */}
           {session?.session?.user.role === 'FREELANCER' && (
             <>
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-white font-medium flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-purple-400" />
+                  Professional Title
+                </Label>
+                <Input
+                  id="title"
+                  value={profile.title || ''}
+                  onChange={handleChange}
+                  placeholder="e.g., Senior Software Engineer"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bio" className="text-white font-medium flex items-center gap-2">
+                  <User className="h-4 w-4 text-green-400" />
+                  Bio
+                </Label>
+                <Textarea
+                  id="bio"
+                  value={profile.bio || ''}
+                  onChange={handleChange}
+                  placeholder="Tell us about yourself..."
+                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 min-h-32"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-red-400" />
+                  Location
+                </Label>
+                <LocationAutocompleteInput
+                  id="location"
+                  value={profile.location || ''}
+                  onChange={(value) => setProfile((prev) => ({ ...prev, location: value }))}
+                  placeholder="e.g., San Francisco, CA"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  types={['(cities)']}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-blue-400" />
+                  Phone Number
+                </Label>
+                <Input
+                  id="phone"
+                  value={profile.phone || ''}
+                  onChange={handleChange}
+                  placeholder="+1 (555) 123-4567"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="skills" className="text-white font-medium flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-cyan-400" />
@@ -237,90 +240,59 @@ export default function ProfileEditView() {
             </>
           )}
 
-          {session?.session?.user.role === 'CLIENT' && (
+          {/* Client / Buyer specific fields */}
+          {session?.session?.user.role !== 'FREELANCER' && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="companyName" className="text-white font-medium flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-blue-400" />
-                  Company Name
+                <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-red-400" />
+                  Address
                 </Label>
                 <Input
-                  id="companyName"
-                  value={profile.companyName || ''}
+                  id="location"
+                  value={profile.location || profile.businessAddressLine1 || ''}
                   onChange={handleChange}
-                  placeholder="e.g., Acme Corporation"
+                  placeholder="e.g., 123 Main Street, Suite 400, New York, NY"
                   className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="companyInfo" className="text-white font-medium flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-purple-400" />
-                  Company Info
-                </Label>
-                <Textarea
-                  id="companyInfo"
-                  value={profile.companyInfo || ''}
-                  onChange={handleChange}
-                  placeholder="Tell us about your company..."
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 min-h-32"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-blue-400" />
+                    WhatsApp Number
+                  </Label>
+                  <Input
+                    id="phone"
+                    value={profile.phone || profile.businessPhone || ''}
+                    onChange={handleChange}
+                    placeholder="+1 (555) 123-4567"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessEmail" className="text-white font-medium flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-purple-400" />
+                    Email Address
+                  </Label>
+                  <Input
+                    id="businessEmail"
+                    type="email"
+                    value={profile.businessEmail || session?.session?.user?.email || ''}
+                    onChange={handleChange}
+                    placeholder="client@example.com"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="industry" className="text-white font-medium flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-cyan-400" />
-                  Industry
-                </Label>
-                <Input
-                  id="industry"
-                  value={profile.industry || ''}
-                  onChange={handleChange}
-                  placeholder="e.g., Technology, Finance, Healthcare"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="country" className="text-white font-medium flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-blue-400" />
-                  Country
-                </Label>
-                <Input
-                  id="country"
-                  value={profile.country || ''}
-                  onChange={handleChange}
-                  placeholder="e.g., United States, United Kingdom"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="timezone" className="text-white font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-purple-400" />
-                  Timezone
-                </Label>
-                <Input
-                  id="timezone"
-                  value={profile.timezone || ''}
-                  onChange={handleChange}
-                  placeholder="e.g., UTC-05:00 (EST)"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="website" className="text-white font-medium flex items-center gap-2">
-                  <LinkIcon className="h-4 w-4 text-green-400" />
-                  Company Website
-                </Label>
-                <Input
-                  id="website"
-                  value={profile.website || ''}
-                  onChange={handleChange}
-                  placeholder="https://yourcompany.com"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
-                />
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs leading-relaxed">
+                <Shield className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                <span>
+                  Your personal contact details (Address, WhatsApp, Email) are kept private and are only visible to system administrators.
+                </span>
               </div>
             </>
           )}

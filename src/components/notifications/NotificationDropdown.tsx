@@ -47,11 +47,14 @@ export function NotificationDropdown({
         <Button
           variant={variant}
           size={size}
-          className={cn('relative text-white hover:bg-white/10', className)}
+          className={cn(
+            'relative text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors',
+            className
+          )}
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-5 w-5 text-slate-700 dark:text-slate-200" />
           {hasUnreadNotifications && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold">
+            <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

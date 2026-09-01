@@ -162,7 +162,7 @@ export default function ApiKeysView() {
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">API Keys</h1>
         <p className="text-slate-400">
-          Manage your API keys for programmatic access to JobHorizons
+          Manage your API keys for programmatic access to Vivid Art
         </p>
       </div>
 
@@ -303,7 +303,7 @@ export default function ApiKeysView() {
             <Key className="h-16 w-16 text-slate-600 mx-auto mb-4" />
             <p className="text-slate-400 text-lg mb-2">No API keys yet</p>
             <p className="text-slate-500 text-sm">
-              Create your first API key to get started with the JobHorizons API
+              Create your first API key to get started with the Vivid Art API
             </p>
           </div>
         ) : (
@@ -366,7 +366,7 @@ export default function ApiKeysView() {
           <div>
             <h3 className="text-lg font-bold text-blue-300 mb-2">API Documentation</h3>
             <p className="text-blue-200/80 text-sm mb-4">
-              Learn how to use the JobHorizons API to integrate with your applications.
+              Learn how to use the Vivid Art API to integrate with your applications.
             </p>
             <Button
               variant="outline"

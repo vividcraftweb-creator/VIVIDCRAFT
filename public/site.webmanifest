@@ -1,7 +1,7 @@
 {
-  "name": "JobHorizons - Freelance Remote Work Platform",
-  "short_name": "JobHorizons",
-  "description": "Find freelance remote work opportunities and hire verified freelancers online",
+  "name": "Vivid Art - Online Art Marketplace",
+  "short_name": "Vivid Art",
+  "description": "Discover extraordinary artwork from independent artists. Buy original art and showcase your creative services.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -16,8 +16,8 @@
       "purpose": "any maskable"
     }
   ],
-  "theme_color": "#0d0d14",
-  "background_color": "#0d0d14",
+  "theme_color": "#fafafa",
+  "background_color": "#fafafa",
   "display": "standalone",
   "start_url": "/",
   "scope": "/"

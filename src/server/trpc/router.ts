@@ -23,9 +23,13 @@ import { projectMilestonesRouter } from './routers/projectMilestones';
 import { projectFilesRouter } from './routers/projectFiles';
 import { supportTicketsRouter } from './routers/supportTickets';
 import { interviewsRouter } from './routers/interviews.supabase';
+import { chatConnectionsRouter } from './routers/chatConnections.supabase';
+import { artworksRouter } from './routers/artworks.supabase';
 
 export const appRouter = router({
   user: userRouter,
+  chatConnections: chatConnectionsRouter,
+  artworks: artworksRouter,
   clients: clientRouter,
   apiKeys: apiKeysRouter,
   webhooks: webhooksRouter,

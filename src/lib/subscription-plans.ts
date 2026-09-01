@@ -43,32 +43,7 @@ export interface SubscriptionPlanInfo {
 }
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlanInfo[] = [
-  // Freelancer Plans
-  {
-    plan: SubscriptionPlan.FREELANCER_FREE,
-    name: 'Free',
-    description: 'Perfect for getting started as a freelancer',
-    priceAmount: 0,
-    currency: 'usd',
-    interval: 'month',
-    features: [
-      '150 application tokens/week',
-      'Portfolio showcase (max 5 items)',
-      'Standard messaging',
-      'Basic dashboard access',
-      'Email support',
-    ],
-    tokensPerWeek: 150,
-    freelancerPerks: {
-      messaging: 'standard',
-      searchPlacement: 'none',
-      analytics: 'none',
-      support: 'email',
-      featuredBadge: false,
-      marketInsights: false,
-      dedicatedAccountManager: false,
-    },
-  },
+  // Freelancer Paid Plans
   {
     plan: SubscriptionPlan.FREELANCER_PRO,
     name: 'Pro Plan',
@@ -124,33 +99,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlanInfo[] = [
     },
   },
 
-  // Client Plans
-  {
-    plan: SubscriptionPlan.CLIENT_STARTER,
-    name: 'Starter',
-    description: 'Perfect for small hiring needs',
-    priceAmount: 0,
-    currency: 'usd',
-    interval: 'month',
-    features: [
-      'Post up to 1 job per month',
-      'Access to verified freelancers',
-      'Standard messaging with freelancers',
-      'Secure payment protection',
-      'Email support',
-    ],
-    maxJobPosts: 1,
-    clientPerks: {
-      support: 'email',
-      priorityPlacement: 'none',
-      advancedSearch: false,
-      teamCollaboration: false,
-      projectManagement: false,
-      analytics: 'none',
-      earlyAccess: false,
-      dedicatedAccountManager: false,
-    },
-  },
+  // Client Paid Plans
   {
     plan: SubscriptionPlan.CLIENT_BUSINESS,
     name: 'Business',
@@ -213,32 +162,41 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlanInfo[] = [
   },
 ];
 
-export function getSubscriptionPlanInfo(plan: SubscriptionPlan): SubscriptionPlanInfo {
+export function getSubscriptionPlanInfo(plan: SubscriptionPlan | string): SubscriptionPlanInfo {
   const planInfo = SUBSCRIPTION_PLANS.find((p) => p.plan === plan);
   if (!planInfo) {
-    throw new Error(`Unknown subscription plan: ${plan}`);
+    // Fallback info for unknown/legacy plan
+    return {
+      plan: plan as SubscriptionPlan,
+      name: String(plan).replace('FREELANCER_', '').replace('CLIENT_', ''),
+      description: 'Subscription Plan',
+      priceAmount: 9.99,
+      currency: 'usd',
+      interval: 'month',
+      features: ['Active platform access', 'Direct messaging', 'Standard support'],
+    };
   }
   return planInfo;
 }
 
-export function isFreelancerPlan(plan: SubscriptionPlan): boolean {
+export function isFreelancerPlan(plan: SubscriptionPlan | string): boolean {
   return (
-    plan === SubscriptionPlan.FREELANCER_FREE ||
     plan === SubscriptionPlan.FREELANCER_PRO ||
-    plan === SubscriptionPlan.FREELANCER_ELITE
+    plan === SubscriptionPlan.FREELANCER_ELITE ||
+    plan === SubscriptionPlan.FREELANCER_FREE
   );
 }
 
-export function isClientPlan(plan: SubscriptionPlan): boolean {
+export function isClientPlan(plan: SubscriptionPlan | string): boolean {
   return (
-    plan === SubscriptionPlan.CLIENT_STARTER ||
     plan === SubscriptionPlan.CLIENT_BUSINESS ||
-    plan === SubscriptionPlan.CLIENT_ENTERPRISE
+    plan === SubscriptionPlan.CLIENT_ENTERPRISE ||
+    plan === SubscriptionPlan.CLIENT_STARTER
   );
 }
 
 export function getDefaultPlanForRole(role: 'FREELANCER' | 'CLIENT'): SubscriptionPlan {
   return role === 'FREELANCER'
-    ? SubscriptionPlan.FREELANCER_FREE
-    : SubscriptionPlan.CLIENT_STARTER;
+    ? SubscriptionPlan.FREELANCER_PRO
+    : SubscriptionPlan.CLIENT_BUSINESS;
 }

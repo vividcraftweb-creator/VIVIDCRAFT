@@ -149,10 +149,10 @@ export default function SignUpPage() {
         if (formData.role === 'CLIENT') {
           const isCountryValid = formData.country === 'Other'
             ? customCountry.trim().length > 0
-            : !!formData.country;
-          return formData.companyName && formData.industry && isCountryValid && formData.timezone;
+            : !!(formData.country || formData.location);
+          return !!formData.companyName && !!formData.industry && isCountryValid && !!(formData.timezone || 'UTC');
         } else {
-          return formData.bio && selectedSkills.length > 0 && formData.experience;
+          return !!formData.bio && selectedSkills.length > 0 && !!formData.experience;
         }
       default:
         return true;
@@ -244,14 +244,14 @@ export default function SignUpPage() {
         if (!formData.industry) {
           errors.industry = 'Industry or company type is required';
         }
-        if (!formData.country) {
+        if (!formData.country && !formData.location) {
           errors.country = 'Country is required';
         }
         if (formData.country === 'Other' && !customCountry.trim()) {
           errors.customCountry = 'Please enter your country name';
         }
         if (!formData.timezone) {
-          errors.timezone = 'Timezone is required';
+          setFormData(prev => ({ ...prev, timezone: 'UTC' }));
         }
       }
 
@@ -276,6 +276,11 @@ export default function SignUpPage() {
 
     setIsLoading(true);
     try {
+      const resolvedCountry = (formData.country === 'Other' ? customCountry.trim() : formData.country) || formData.location || 'Sri Lanka';
+      const resolvedTimezone = formData.timezone || 'UTC';
+      const resolvedIndustry = formData.industry || 'Art & Creative';
+      const resolvedCompanyName = formData.companyName || `${formData.firstName || 'Client'}'s Studio`;
+
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -283,7 +288,10 @@ export default function SignUpPage() {
         },
         body: JSON.stringify({
           ...formData,
-          country: formData.country === 'Other' ? customCountry.trim() : formData.country,
+          country: resolvedCountry,
+          timezone: resolvedTimezone,
+          industry: resolvedIndustry,
+          companyName: resolvedCompanyName,
           skills: selectedSkills.join(', ')
         }),
       });
@@ -314,13 +322,19 @@ export default function SignUpPage() {
         }
       } else {
         // Handle other errors
+        const errMsg = typeof responseData?.message === 'string'
+          ? responseData.message
+          : 'Please check your information and try again.';
         toast.error('Sign up failed', {
-          description: responseData.message || 'Please try again.'
+          description: errMsg
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      const errMsg = typeof error === 'string'
+        ? error
+        : error?.message || 'Please try again later.';
       toast.error('Something went wrong', {
-        description: 'Please try again later.'
+        description: errMsg
       });
     } finally {
       setIsLoading(false);
@@ -943,7 +957,11 @@ export default function SignUpPage() {
           <div className="flex justify-between mt-8 pt-6 border-t border-white/10">
             {currentStep > 1 && (
               <Button
-                onClick={handleBack}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleBack();
+                }}
                 variant="outline"
                 className="h-11 px-6 bg-white/5 border-white/10 text-white hover:bg-white/10 transition-colors rounded-lg"
               >
@@ -954,7 +972,11 @@ export default function SignUpPage() {
             <div className={currentStep === 1 ? 'ml-auto' : ''}>
               {currentStep < 3 ? (
                 <Button
-                  onClick={handleNext}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNext();
+                  }}
                   data-testid="continue-button"
                   className="h-11 px-8 bg-white text-gray-900 hover:bg-gray-100 font-medium rounded-lg transition-colors"
                 >
@@ -962,7 +984,11 @@ export default function SignUpPage() {
                 </Button>
               ) : (
                 <Button
-                  onClick={handleSignUp}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSignUp();
+                  }}
                   disabled={isLoading}
                   data-testid="create-account-button"
                   className="h-11 px-8 bg-white text-gray-900 hover:bg-gray-100 font-medium rounded-lg transition-colors"

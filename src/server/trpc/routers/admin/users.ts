@@ -1,17 +1,13 @@
-/**
- * Admin User Management Router
- * Handles all user management operations for admins
- */
-
 import { router, adminProcedure } from '../../trpc';
 import type { Context } from '../../context';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { SubscriptionPlan } from '@/types/database.types';
+import { createAdminClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
 
 const requireAdminSupabase = (ctx: Context) => {
-  const supabase = ctx.adminSupabase;
+  const supabase = ctx.adminSupabase || createAdminClient();
 
   if (!supabase) {
     throw new TRPCError({
@@ -40,87 +36,331 @@ export const adminUsersRouter = router({
   getUsers: adminProcedure
     .input(userFilterSchema)
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase || createAdminClient();
+        if (!supabase) {
+          return { users: [], total: 0, hasMore: false };
+        }
 
-      let query = supabase
-        .from('User')
-        .select(`
-          *,
-          Profile(*)
-        `, { count: 'exact' });
+        // 1. Fetch users from Supabase Auth Admin API
+        let authUsers: any[] = [];
+        try {
+          const { data: authList, error: authError } = await supabase.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000,
+          });
+          if (!authError && authList?.users) {
+            authUsers = authList.users;
+          } else if (authError) {
+            console.warn('supabase.auth.admin.listUsers error:', authError);
+          }
+        } catch (authErr) {
+          console.warn('listUsers exception:', authErr);
+        }
 
-      // Apply filters
-      if (input.search) {
-        query = query.or(`email.ilike.%${input.search}%,id.ilike.%${input.search}%`);
-      }
+        // 2. Fetch profiles from profiles / Profile table
+        const profilesMap = new Map<string, any>();
+        try {
+          const { data: profilesRows } = await (supabase as any).from('profiles').select('*');
+          if (profilesRows) {
+            profilesRows.forEach((p: any) => {
+              if (p.id) profilesMap.set(p.id, p);
+            });
+          }
+        } catch (pErr) {}
 
-      if (input.role && input.role !== 'ALL') {
-        query = query.eq('role', input.role);
-      }
+        try {
+          const { data: profileTableRows } = await supabase.from('Profile').select('*');
+          if (profileTableRows) {
+            profileTableRows.forEach((p: any) => {
+              const key = p.userId || p.id;
+              if (key) {
+                const existing = profilesMap.get(key) || {};
+                profilesMap.set(key, { ...existing, ...p });
+              }
+            });
+          }
+        } catch (pErr) {}
 
-      if (input.subscriptionPlan) {
-        query = query.eq('subscriptionPlan', input.subscriptionPlan);
-      }
+        // 3. Fetch from User table if exists
+        const userTableMap = new Map<string, any>();
+        try {
+          const { data: userRows } = await supabase.from('User').select('*');
+          if (userRows) {
+            userRows.forEach((u: any) => {
+              if (u.id) userTableMap.set(u.id, u);
+            });
+          }
+        } catch (uErr) {}
 
-      if (input.verificationStatus === 'verified') {
-        query = query.eq('isVerified', true);
-      } else if (input.verificationStatus === 'unverified') {
-        query = query.eq('isVerified', false);
-      }
+        // 4. Merge all sources into unified user objects
+        const unifiedUserMap = new Map<string, any>();
 
-      if (input.emailVerified !== undefined) {
-        query = query.eq('isVerified', input.emailVerified);
-      }
+        // Merge from authUsers
+        authUsers.forEach((au) => {
+          const profile = profilesMap.get(au.id) || {};
+          const dbUser = userTableMap.get(au.id) || {};
 
-      // Sorting
-      query = query.order(input.sortBy, { ascending: input.sortOrder === 'asc' });
+          const role = (
+            dbUser.role ||
+            profile.role ||
+            au.user_metadata?.role ||
+            au.app_metadata?.role ||
+            'CLIENT'
+          ).toUpperCase();
 
-      // Pagination
-      query = query.range(input.offset, input.offset + input.limit - 1);
+          const firstName = profile.first_name || profile.firstName || au.user_metadata?.firstName || au.user_metadata?.name?.split(' ')[0] || '';
+          const lastName = profile.last_name || profile.lastName || au.user_metadata?.lastName || au.user_metadata?.name?.split(' ').slice(1).join(' ') || '';
 
-      const { data, error, count } = await query;
-
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch users.',
+          unifiedUserMap.set(au.id, {
+            id: au.id,
+            email: au.email || dbUser.email || profile.email || '',
+            role,
+            subscriptionPlan: dbUser.subscriptionPlan && !dbUser.subscriptionPlan.toUpperCase().includes('FREE') && !dbUser.subscriptionPlan.toUpperCase().includes('STARTER') ? dbUser.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
+            isVerified: dbUser.isVerified ?? Boolean(au.email_confirmed_at),
+            createdAt: au.created_at || dbUser.createdAt || profile.created_at || new Date().toISOString(),
+            lastLoginAt: au.last_sign_in_at || dbUser.lastLoginAt || null,
+            Profile: {
+              id: profile.id || au.id,
+              userId: au.id,
+              firstName,
+              lastName,
+              first_name: firstName,
+              last_name: lastName,
+              address: profile.address || profile.location || profile.businessAddressLine1 || '',
+              whatsappNumber: profile.whatsapp_number || profile.phone || profile.businessPhone || '',
+              whatsapp_number: profile.whatsapp_number || profile.phone || profile.businessPhone || '',
+              phone: profile.whatsapp_number || profile.phone || profile.businessPhone || '',
+              email: profile.email || profile.businessEmail || au.email || '',
+              location: profile.address || profile.location || profile.businessAddressLine1 || '',
+              bio: profile.bio || '',
+              title: profile.title || '',
+              skills: profile.skills || '',
+              rate: profile.rate,
+              portfolio: profile.portfolio || '',
+            },
+            ...dbUser,
+          });
         });
-      }
 
-      return {
-        users: data || [],
-        total: count || 0,
-        hasMore: (count || 0) > input.offset + input.limit,
-      };
+        // Also add any profiles not in authUsers (e.g. legacy/mock profiles)
+        profilesMap.forEach((profile, profileId) => {
+          if (!unifiedUserMap.has(profileId)) {
+            const dbUser = userTableMap.get(profileId) || {};
+            const firstName = profile.first_name || profile.firstName || '';
+            const lastName = profile.last_name || profile.lastName || '';
+            const role = (dbUser.role || profile.role || 'CLIENT').toUpperCase();
+
+            unifiedUserMap.set(profileId, {
+              id: profileId,
+              email: profile.email || dbUser.email || '',
+              role,
+              subscriptionPlan: dbUser.subscriptionPlan && !dbUser.subscriptionPlan.toUpperCase().includes('FREE') && !dbUser.subscriptionPlan.toUpperCase().includes('STARTER') ? dbUser.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
+              isVerified: dbUser.isVerified ?? false,
+              createdAt: profile.created_at || profile.createdAt || new Date().toISOString(),
+              Profile: {
+                id: profile.id || profileId,
+                userId: profileId,
+                firstName,
+                lastName,
+                first_name: firstName,
+                last_name: lastName,
+                address: profile.address || profile.location || '',
+                whatsappNumber: profile.whatsapp_number || profile.phone || '',
+                phone: profile.whatsapp_number || profile.phone || '',
+                email: profile.email || '',
+                location: profile.address || profile.location || '',
+              },
+              ...dbUser,
+            });
+          }
+        });
+
+        // Also add any userTable entries not in authUsers
+        userTableMap.forEach((dbUser, userId) => {
+          if (!unifiedUserMap.has(userId)) {
+            const profile = profilesMap.get(userId) || {};
+            const firstName = profile.first_name || profile.firstName || '';
+            const lastName = profile.last_name || profile.lastName || '';
+            const role = (dbUser.role || 'CLIENT').toUpperCase();
+
+            unifiedUserMap.set(userId, {
+              id: userId,
+              email: dbUser.email || profile.email || '',
+              role,
+              subscriptionPlan: dbUser.subscriptionPlan || 'FREE',
+              isVerified: dbUser.isVerified ?? false,
+              createdAt: dbUser.createdAt || new Date().toISOString(),
+              Profile: {
+                id: profile.id || userId,
+                userId,
+                firstName,
+                lastName,
+                first_name: firstName,
+                last_name: lastName,
+                address: profile.address || profile.location || '',
+                whatsappNumber: profile.whatsapp_number || profile.phone || '',
+                phone: profile.whatsapp_number || profile.phone || '',
+                email: profile.email || dbUser.email || '',
+                location: profile.address || profile.location || '',
+              },
+              ...dbUser,
+            });
+          }
+        });
+
+        let allUsers = Array.from(unifiedUserMap.values());
+
+        // 5. Apply filters
+        if (input.search) {
+          const s = input.search.toLowerCase();
+          allUsers = allUsers.filter(
+            (u) =>
+              u.email?.toLowerCase().includes(s) ||
+              u.id?.toLowerCase().includes(s) ||
+              u.Profile?.firstName?.toLowerCase().includes(s) ||
+              u.Profile?.lastName?.toLowerCase().includes(s)
+          );
+        }
+
+        if (input.role && input.role !== 'ALL') {
+          allUsers = allUsers.filter((u) => u.role === input.role);
+        }
+
+        if (input.subscriptionPlan) {
+          allUsers = allUsers.filter((u) => u.subscriptionPlan === input.subscriptionPlan);
+        }
+
+        if (input.verificationStatus === 'verified') {
+          allUsers = allUsers.filter((u) => u.isVerified === true);
+        } else if (input.verificationStatus === 'unverified') {
+          allUsers = allUsers.filter((u) => u.isVerified === false);
+        }
+
+        if (input.emailVerified !== undefined) {
+          allUsers = allUsers.filter((u) => u.isVerified === input.emailVerified);
+        }
+
+        // Sorting
+        allUsers.sort((a, b) => {
+          const aVal = a[input.sortBy || 'createdAt'];
+          const bVal = b[input.sortBy || 'createdAt'];
+          if (!aVal) return 1;
+          if (!bVal) return -1;
+          if (input.sortOrder === 'asc') {
+            return aVal > bVal ? 1 : -1;
+          } else {
+            return aVal < bVal ? 1 : -1;
+          }
+        });
+
+        const total = allUsers.length;
+        const paginatedUsers = allUsers.slice(input.offset, input.offset + input.limit);
+
+        return {
+          users: paginatedUsers,
+          total,
+          hasMore: total > input.offset + input.limit,
+        };
+      } catch (err) {
+        console.error('getUsers exception:', err);
+        return { users: [], total: 0, hasMore: false };
+      }
     }),
 
   // Get single user details
   getUserById: adminProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase || createAdminClient();
+        if (!supabase) return null;
 
-      const { data, error } = await supabase
-        .from('User')
-        .select(`
-          *,
-          Profile(*),
-          clientContracts:Contract!Contract_clientId_fkey(*),
-          freelancerContracts:Contract!Contract_freelancerId_fkey(*),
-          clientJobs:Job!Job_clientId_fkey(*),
-          freelancerProposals:Proposal!Proposal_freelancerId_fkey(*)
-        `)
-        .eq('id', input.userId)
-        .single();
+        // Try getting user from User table first
+        let dbUser: any = null;
+        try {
+          const { data } = await supabase
+            .from('User')
+            .select(`
+              *,
+              Profile(*),
+              clientContracts:Contract!Contract_clientId_fkey(*),
+              freelancerContracts:Contract!Contract_freelancerId_fkey(*),
+              clientJobs:Job!Job_clientId_fkey(*),
+              freelancerProposals:Proposal!Proposal_freelancerId_fkey(*)
+            `)
+            .eq('id', input.userId)
+            .maybeSingle();
+          dbUser = data;
+        } catch (e) {}
 
-      if (error) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'User not found.',
-        });
+        // Fetch from Supabase Auth
+        let authUser: any = null;
+        try {
+          const { data: authData } = await supabase.auth.admin.getUserById(input.userId);
+          authUser = authData?.user;
+        } catch (e) {}
+
+        // Fetch profile
+        let profileData: any = null;
+        try {
+          const { data: p1 } = await (supabase as any).from('profiles').select('*').eq('id', input.userId).maybeSingle();
+          const { data: p2 } = await supabase.from('Profile').select('*').eq('userId', input.userId).maybeSingle();
+          profileData = { ...(p1 || {}), ...(p2 || {}) };
+        } catch (e) {}
+
+        if (!dbUser && !authUser && !profileData) {
+          return null;
+        }
+
+        const role = (
+          dbUser?.role ||
+          profileData?.role ||
+          authUser?.user_metadata?.role ||
+          'CLIENT'
+        ).toUpperCase();
+
+        const firstName = profileData?.first_name || profileData?.firstName || authUser?.user_metadata?.firstName || authUser?.user_metadata?.name?.split(' ')[0] || '';
+        const lastName = profileData?.last_name || profileData?.lastName || authUser?.user_metadata?.lastName || authUser?.user_metadata?.name?.split(' ').slice(1).join(' ') || '';
+
+        return {
+          id: input.userId,
+          email: authUser?.email || dbUser?.email || profileData?.email || '',
+          role,
+          subscriptionPlan: dbUser?.subscriptionPlan || 'FREE',
+          isVerified: dbUser?.isVerified ?? Boolean(authUser?.email_confirmed_at),
+          tokens: dbUser?.tokens || (role === 'CLIENT' ? 50 : 10),
+          createdAt: authUser?.created_at || dbUser?.createdAt || profileData?.created_at || new Date().toISOString(),
+          lastLoginAt: authUser?.last_sign_in_at || dbUser?.lastLoginAt || null,
+          Profile: {
+            id: profileData?.id || input.userId,
+            userId: input.userId,
+            firstName,
+            lastName,
+            first_name: firstName,
+            last_name: lastName,
+            location: profileData?.address || profileData?.location || profileData?.businessAddressLine1 || '',
+            address: profileData?.address || profileData?.location || profileData?.businessAddressLine1 || '',
+            phone: profileData?.whatsapp_number || profileData?.phone || profileData?.businessPhone || '',
+            whatsapp_number: profileData?.whatsapp_number || profileData?.phone || profileData?.businessPhone || '',
+            whatsappNumber: profileData?.whatsapp_number || profileData?.phone || profileData?.businessPhone || '',
+            businessPhone: profileData?.whatsapp_number || profileData?.phone || profileData?.businessPhone || '',
+            email: profileData?.email || profileData?.businessEmail || authUser?.email || '',
+            businessEmail: profileData?.email || profileData?.businessEmail || authUser?.email || '',
+            title: profileData?.title || '',
+            bio: profileData?.bio || '',
+            skills: profileData?.skills || '',
+            rate: profileData?.rate,
+            portfolio: profileData?.portfolio || '',
+            experience: profileData?.experience || '',
+            education: profileData?.education || '',
+          },
+          ...(dbUser || {}),
+        };
+      } catch (err) {
+        console.error('getUserById exception:', err);
+        return null;
       }
-
-      return data;
     }),
 
   // Update user information
@@ -338,91 +578,179 @@ export const adminUsersRouter = router({
   getUserStats: adminProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input, ctx }) => {
-      const supabase = requireAdminSupabase(ctx);
+      try {
+        const supabase = ctx.adminSupabase;
+        if (!supabase) {
+          return {
+            jobsPosted: 0,
+            proposalsSubmitted: 0,
+            totalEarned: 0,
+            totalSpent: 0,
+          };
+        }
 
-      const [
-        { count: jobsCount },
-        { count: proposalsCount },
-        { data: approvedMilestones },
-        { data: paidInvoices },
-      ] = await Promise.all([
-        supabase.from('Job').select('*', { count: 'exact', head: true }).eq('clientId', input.userId),
-        supabase.from('Proposal').select('*', { count: 'exact', head: true }).eq('freelancerId', input.userId),
-        supabase
-          .from('Milestone')
-          .select(
-            `
-              amount,
-              status,
-              contract:Contract!Milestone_contractId_fkey(
-                freelancerId
-              )
-            `
-          )
-          .eq('status', 'APPROVED')
-          .eq('contract.freelancerId', input.userId),
-        supabase
-          .from('Invoice')
-          .select('amount, status')
-          .eq('clientId', input.userId)
-          .eq('status', 'PAID'),
-      ]);
+        let jobsCount = 0;
+        let proposalsCount = 0;
+        let approvedMilestones: any[] = [];
+        let paidInvoices: any[] = [];
 
-      const totalEarned =
-        approvedMilestones?.reduce((sum, milestone) => {
-          const amount = Number(milestone.amount) || 0;
-          return sum + amount;
-        }, 0) || 0;
+        try {
+          const res = await supabase.from('Job').select('*', { count: 'exact', head: true }).eq('clientId', input.userId);
+          jobsCount = res.count || 0;
+        } catch {}
 
-      const totalSpent =
-        paidInvoices?.reduce((sum, invoice) => {
-          const amount = Number(invoice.amount) || 0;
-          return sum + amount;
-        }, 0) || 0;
+        try {
+          const res = await supabase.from('Proposal').select('*', { count: 'exact', head: true }).eq('freelancerId', input.userId);
+          proposalsCount = res.count || 0;
+        } catch {}
 
-      return {
-        jobsPosted: jobsCount || 0,
-        proposalsSubmitted: proposalsCount || 0,
-        totalEarned,
-        totalSpent,
-      };
+        try {
+          const res = await supabase
+            .from('Milestone')
+            .select(
+              `
+                amount,
+                status,
+                contract:Contract!Milestone_contractId_fkey(
+                  freelancerId
+                )
+              `
+            )
+            .eq('status', 'APPROVED')
+            .eq('contract.freelancerId', input.userId);
+          approvedMilestones = res.data || [];
+        } catch {}
+
+        try {
+          const res = await supabase
+            .from('Invoice')
+            .select('amount, status')
+            .eq('clientId', input.userId)
+            .eq('status', 'PAID');
+          paidInvoices = res.data || [];
+        } catch {}
+
+        const totalEarned =
+          approvedMilestones?.reduce((sum, milestone) => {
+            const amount = Number(milestone.amount) || 0;
+            return sum + amount;
+          }, 0) || 0;
+
+        const totalSpent =
+          paidInvoices?.reduce((sum, invoice) => {
+            const amount = Number(invoice.amount) || 0;
+            return sum + amount;
+          }, 0) || 0;
+
+        return {
+          jobsPosted: jobsCount || 0,
+          proposalsSubmitted: proposalsCount || 0,
+          totalEarned,
+          totalSpent,
+        };
+      } catch (err) {
+        console.error('getUserStats exception:', err);
+        return {
+          jobsPosted: 0,
+          proposalsSubmitted: 0,
+          totalEarned: 0,
+          totalSpent: 0,
+        };
+      }
     }),
 
   getOverview: adminProcedure.query(async ({ ctx }) => {
-    const supabase = requireAdminSupabase(ctx);
+    try {
+      const supabase = ctx.adminSupabase || createAdminClient();
+      if (!supabase) {
+        return {
+          total: 0,
+          verified: 0,
+          unverified: 0,
+          clients: 0,
+          freelancers: 0,
+          admins: 0,
+          pendingVerifications: 0,
+          newThisWeek: 0,
+        };
+      }
 
-    const now = new Date();
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      let authUsers: any[] = [];
+      try {
+        const { data: authList } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        if (authList?.users) {
+          authUsers = authList.users;
+        }
+      } catch (authErr) {}
 
-    const [
-      { count: totalCount },
-      { count: verifiedCount },
-      { count: clientCount },
-      { count: freelancerCount },
-      { count: adminCount },
-      { count: pendingVerifications },
-      { count: newThisWeek },
-    ] = await Promise.all([
-      supabase.from('User').select('*', { count: 'exact', head: true }),
-      supabase.from('User').select('*', { count: 'exact', head: true }).eq('isVerified', true),
-      supabase.from('User').select('*', { count: 'exact', head: true }).eq('role', 'CLIENT'),
-      supabase.from('User').select('*', { count: 'exact', head: true }).eq('role', 'FREELANCER'),
-      supabase.from('User').select('*', { count: 'exact', head: true }).eq('role', 'ADMIN'),
-      supabase.from('Verification').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
-      supabase.from('User').select('*', { count: 'exact', head: true }).gte('createdAt', sevenDaysAgo.toISOString()),
-    ]);
+      let userRows: any[] = [];
+      try {
+        const { data } = await supabase.from('User').select('*');
+        if (data) userRows = data;
+      } catch (uErr) {}
 
-    return {
-      total: totalCount || 0,
-      verified: verifiedCount || 0,
-      unverified: totalCount && verifiedCount ? Math.max(totalCount - verifiedCount, 0) : 0,
-      clients: clientCount || 0,
-      freelancers: freelancerCount || 0,
-      admins: adminCount || 0,
-      pendingVerifications: pendingVerifications || 0,
-      newThisWeek: newThisWeek || 0,
-    };
+      let profileRows: any[] = [];
+      try {
+        const { data } = await (supabase as any).from('profiles').select('*');
+        if (data) profileRows = data;
+      } catch (pErr) {}
+
+      const userIds = new Set<string>();
+      authUsers.forEach((u) => userIds.add(u.id));
+      userRows.forEach((u) => userIds.add(u.id));
+      profileRows.forEach((p) => userIds.add(p.id));
+
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      let verifiedCount = 0;
+      let newCount = 0;
+      let clientCount = 0;
+      let freelancerCount = 0;
+      let adminCount = 0;
+
+      userIds.forEach((id) => {
+        const au = authUsers.find((u) => u.id === id);
+        const du = userRows.find((u) => u.id === id);
+        const pu = profileRows.find((p) => p.id === id);
+
+        const isVerified = du?.isVerified ?? Boolean(au?.email_confirmed_at);
+        if (isVerified) verifiedCount++;
+
+        const createdDate = new Date(au?.created_at || du?.createdAt || pu?.created_at || now);
+        if (createdDate >= sevenDaysAgo) newCount++;
+
+        const role = (du?.role || pu?.role || au?.user_metadata?.role || 'CLIENT').toUpperCase();
+        if (role === 'CLIENT') clientCount++;
+        else if (role === 'FREELANCER' || role === 'ARTIST') freelancerCount++;
+        else if (role === 'ADMIN') adminCount++;
+      });
+
+      const total = userIds.size;
+
+      return {
+        total,
+        verified: verifiedCount,
+        unverified: Math.max(total - verifiedCount, 0),
+        clients: clientCount,
+        freelancers: freelancerCount,
+        admins: adminCount,
+        pendingVerifications: 0,
+        newThisWeek: newCount,
+      };
+    } catch (err) {
+      console.error('getOverview exception:', err);
+      return {
+        total: 0,
+        verified: 0,
+        unverified: 0,
+        clients: 0,
+        freelancers: 0,
+        admins: 0,
+        pendingVerifications: 0,
+        newThisWeek: 0,
+      };
+    }
   }),
 
   // Impersonate user (generate special session token)

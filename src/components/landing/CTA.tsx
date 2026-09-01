@@ -30,7 +30,7 @@ export default function CTA() {
 
         {/* Heading */}
         <h2 className="bg-clip-text text-transparent text-center bg-gradient-to-b from-neutral-900 to-neutral-700 dark:from-neutral-600 dark:to-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-sans py-2 sm:py-4 md:py-6 relative z-20 font-bold tracking-tight leading-tight max-w-4xl px-4">
-          Start Your Journey Today.
+          Start Your Vivid Art Today.
           <br />
           Find Work or Hire Talent.
         </h2>
@@ -43,24 +43,26 @@ export default function CTA() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center relative z-20 w-full sm:w-auto px-4 max-w-md sm:max-w-none mx-auto">
-          <Link href={user ? '/dashboard' : '/auth/signup'} className="w-full sm:w-auto">
-            <Button
-              size="lg"
-              className="group w-full sm:w-auto bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 px-6 sm:px-8 py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all"
-            >
+          <Button
+            asChild
+            size="lg"
+            className="group w-full sm:w-auto bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 px-6 sm:px-8 py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all"
+          >
+            <Link href={user ? '/dashboard' : '/auth/signup'} className="w-full sm:w-auto">
               {user ? 'Go to Dashboard' : 'Start For Free'}
               <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
-          <Link href="/how-it-works" className="w-full sm:w-auto">
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg font-semibold rounded-full border-2 border-neutral-300 dark:border-neutral-700 hover:border-neutral-900 dark:hover:border-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-900/20 transition-all"
-            >
+            </Link>
+          </Button>
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-5 md:py-6 text-sm sm:text-base md:text-lg font-semibold rounded-full border-2 border-neutral-300 dark:border-neutral-700 hover:border-neutral-900 dark:hover:border-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-900/20 transition-all"
+          >
+            <Link href="/how-it-works" className="w-full sm:w-auto">
               Learn More
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         {/* Feature highlights */}
