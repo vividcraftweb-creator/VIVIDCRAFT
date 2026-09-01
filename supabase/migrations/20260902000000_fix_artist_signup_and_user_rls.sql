@@ -1,5 +1,5 @@
 -- Migration: Fix Artist Signup, User/Profile RLS Policies & Auth Trigger
--- Ensures role is properly assigned to 'FREELANCER' in User table and 'artist' in profiles/user_metadata
+-- Ensures role is properly assigned to 'FREELANCER' in users/User table and 'artist' in profiles/user_metadata
 
 -- 1. Ensure profiles table exists with role column
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
@@ -28,12 +28,79 @@ ALTER TABLE "public"."profiles" ADD COLUMN IF NOT EXISTS "bio" text;
 ALTER TABLE "public"."profiles" ADD COLUMN IF NOT EXISTS "location" text;
 ALTER TABLE "public"."profiles" ADD COLUMN IF NOT EXISTS "is_published" boolean DEFAULT true;
 
--- 2. Configure RLS Policies on public."User"
+-- 2. Ensure public.users table exists (lowercase)
+CREATE TABLE IF NOT EXISTS "public"."users" (
+  "id" text PRIMARY KEY,
+  "email" text,
+  "role" text DEFAULT 'FREELANCER',
+  "tokens" integer DEFAULT 250,
+  "subscriptionPlan" text DEFAULT 'FREELANCER_PRO',
+  "tokenResetAt" text DEFAULT now()::text,
+  "jobPostsUsed" integer DEFAULT 0,
+  "jobPostsResetAt" text DEFAULT now()::text,
+  "isVerified" boolean DEFAULT false,
+  "profileCompleted" boolean DEFAULT false,
+  "signupIp" text,
+  "verificationToken" text,
+  "verificationTokenExpiry" text,
+  "autoLoginToken" text,
+  "autoLoginTokenExpiry" text,
+  "createdAt" text DEFAULT now()::text,
+  "updatedAt" text DEFAULT now()::text
+);
+
+-- Ensure public."User" table exists (uppercase)
+CREATE TABLE IF NOT EXISTS "public"."User" (
+  "id" text PRIMARY KEY,
+  "email" text,
+  "role" "public"."Role" DEFAULT 'FREELANCER'::"public"."Role",
+  "tokens" integer DEFAULT 250,
+  "subscriptionPlan" text DEFAULT 'FREELANCER_PRO',
+  "tokenResetAt" text DEFAULT now()::text,
+  "jobPostsUsed" integer DEFAULT 0,
+  "jobPostsResetAt" text DEFAULT now()::text,
+  "isVerified" boolean DEFAULT false,
+  "profileCompleted" boolean DEFAULT false,
+  "signupIp" text,
+  "verificationToken" text,
+  "verificationTokenExpiry" text,
+  "autoLoginToken" text,
+  "autoLoginTokenExpiry" text,
+  "createdAt" timestamp with time zone DEFAULT now(),
+  "updatedAt" timestamp with time zone DEFAULT now()
+);
+
+-- 3. Configure RLS Policies on public.users (lowercase)
+ALTER TABLE IF EXISTS "public"."users" ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "users_all_service_role" ON "public"."users";
+  DROP POLICY IF EXISTS "users_select_policy" ON "public"."users";
+  DROP POLICY IF EXISTS "users_insert_policy" ON "public"."users";
+  DROP POLICY IF EXISTS "users_update_policy" ON "public"."users";
+
+  CREATE POLICY "users_all_service_role" ON "public"."users"
+    FOR ALL
+    USING (
+      (SELECT auth.role()) = 'service_role'
+      OR (auth.uid())::text = "id"
+      OR (SELECT auth.role()) = 'authenticated'
+      OR (SELECT auth.role()) = 'anon'
+    )
+    WITH CHECK (
+      (SELECT auth.role()) = 'service_role'
+      OR (auth.uid())::text = "id"
+      OR (SELECT auth.role()) = 'authenticated'
+      OR (SELECT auth.role()) = 'anon'
+    );
+END $$;
+
+-- 4. Configure RLS Policies on public."User" (uppercase)
 ALTER TABLE IF EXISTS "public"."User" ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
-  -- Drop existing User table policies to avoid conflicts
   DROP POLICY IF EXISTS "Users can view own record" ON "public"."User";
   DROP POLICY IF EXISTS "Users can update own lastLoginAt" ON "public"."User";
   DROP POLICY IF EXISTS "user_select_policy" ON "public"."User";
@@ -41,52 +108,23 @@ BEGIN
   DROP POLICY IF EXISTS "user_update_policy" ON "public"."User";
   DROP POLICY IF EXISTS "user_all_service_role" ON "public"."User";
 
-  -- Service role full access
   CREATE POLICY "user_all_service_role" ON "public"."User"
     FOR ALL
     USING (
       (SELECT auth.role()) = 'service_role'
       OR (auth.uid())::text = "id"
+      OR (SELECT auth.role()) = 'authenticated'
+      OR (SELECT auth.role()) = 'anon'
     )
     WITH CHECK (
       (SELECT auth.role()) = 'service_role'
       OR (auth.uid())::text = "id"
-    );
-
-  -- Users can view their own record or if admin
-  CREATE POLICY "user_select_policy" ON "public"."User"
-    FOR SELECT
-    USING (
-      (auth.uid())::text = "id"
-      OR (SELECT auth.role()) = 'service_role'
       OR (SELECT auth.role()) = 'authenticated'
       OR (SELECT auth.role()) = 'anon'
-    );
-
-  -- Users can insert their own record upon registration
-  CREATE POLICY "user_insert_policy" ON "public"."User"
-    FOR INSERT
-    WITH CHECK (
-      (auth.uid())::text = "id"
-      OR (SELECT auth.role()) = 'service_role'
-      OR (SELECT auth.role()) = 'authenticated'
-      OR (SELECT auth.role()) = 'anon'
-    );
-
-  -- Users can update their own record
-  CREATE POLICY "user_update_policy" ON "public"."User"
-    FOR UPDATE
-    USING (
-      (auth.uid())::text = "id"
-      OR (SELECT auth.role()) = 'service_role'
-    )
-    WITH CHECK (
-      (auth.uid())::text = "id"
-      OR (SELECT auth.role()) = 'service_role'
     );
 END $$;
 
--- 3. Configure RLS Policies on public.profiles
+-- 5. Configure RLS Policies on public.profiles
 ALTER TABLE IF EXISTS "public"."profiles" ENABLE ROW LEVEL SECURITY;
 
 DO $$
@@ -112,7 +150,7 @@ BEGIN
     );
 END $$;
 
--- 4. Configure RLS Policies on public."Profile"
+-- 6. Configure RLS Policies on public."Profile"
 ALTER TABLE IF EXISTS "public"."Profile" ENABLE ROW LEVEL SECURITY;
 
 DO $$
@@ -161,7 +199,7 @@ BEGIN
     );
 END $$;
 
--- 5. Trigger function to handle user creation directly from auth.users (if enabled in Supabase)
+-- 7. Trigger function to handle user creation directly from auth.users (if enabled in Supabase)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
@@ -200,7 +238,33 @@ BEGIN
     meta_role := 'client';
   END IF;
 
-  -- 1. Insert into public."User"
+  -- 1. Insert into public.users (lowercase)
+  INSERT INTO "public"."users" (
+    "id",
+    "email",
+    "role",
+    "tokens",
+    "subscriptionPlan",
+    "isVerified",
+    "profileCompleted",
+    "createdAt",
+    "updatedAt"
+  ) VALUES (
+    NEW.id::text,
+    COALESCE(NEW.email, ''),
+    assigned_role::text,
+    CASE WHEN assigned_role = 'FREELANCER' THEN 250 ELSE 0 END,
+    CASE WHEN assigned_role = 'CLIENT' THEN 'CLIENT_BUSINESS' ELSE 'FREELANCER_PRO' END,
+    COALESCE(NEW.email_confirmed_at IS NOT NULL, false),
+    (first_name_val <> '' AND last_name_val <> ''),
+    NOW()::text,
+    NOW()::text
+  )
+  ON CONFLICT ("id") DO UPDATE SET
+    "role" = EXCLUDED."role",
+    "updatedAt" = NOW()::text;
+
+  -- 2. Insert into public."User" (uppercase)
   INSERT INTO "public"."User" (
     "id",
     "email",
@@ -226,7 +290,7 @@ BEGIN
     "role" = EXCLUDED."role",
     "updatedAt" = NOW();
 
-  -- 2. Insert into public.profiles
+  -- 3. Insert into public.profiles
   INSERT INTO "public"."profiles" (
     "id",
     "first_name",
@@ -254,7 +318,7 @@ BEGIN
     "last_name" = COALESCE(NULLIF(EXCLUDED."last_name", ''), "public"."profiles"."last_name"),
     "updated_at" = NOW()::text;
 
-  -- 3. Insert into public."Profile"
+  -- 4. Insert into public."Profile"
   slug_val := lower(regexp_replace(COALESCE(NULLIF(first_name_val || '-' || last_name_val, '-'), 'user-' || substr(NEW.id::text, 1, 8)), '[^a-zA-Z0-9]+', '-', 'g'));
 
   INSERT INTO "public"."Profile" (

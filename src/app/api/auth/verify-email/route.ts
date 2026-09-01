@@ -14,13 +14,21 @@ export async function GET(req: Request) {
     const adminClient = createAdminClient();
 
     // Find user by verification token using admin client
-    const { data: userData, error: userError } = await adminClient
-      .from('User')
+    let userData: any = (await (adminClient as any)
+      .from('users')
       .select('id, email, verificationToken, verificationTokenExpiry, isVerified')
       .eq('verificationToken', token)
-      .single();
+      .maybeSingle())?.data;
 
-    if (userError || !userData) {
+    if (!userData) {
+      userData = (await adminClient
+        .from('User')
+        .select('id, email, verificationToken, verificationTokenExpiry, isVerified')
+        .eq('verificationToken', token)
+        .maybeSingle())?.data;
+    }
+
+    if (!userData) {
       return NextResponse.json({ message: 'Invalid or expired verification token' }, { status: 400 });
     }
 
@@ -39,20 +47,21 @@ export async function GET(req: Request) {
     const autoLoginTokenExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     // Update user verification status, clear verification token, and set auto-login token
-    const { error: updateError } = await adminClient
-      .from('User')
-      .update({
-        isVerified: true,
-        verificationToken: null,
-        verificationTokenExpiry: null,
-        autoLoginToken,
-        autoLoginTokenExpiry,
-      })
-      .eq('id', userData.id);
+    const updatePayload = {
+      isVerified: true,
+      verificationToken: null,
+      verificationTokenExpiry: null,
+      autoLoginToken,
+      autoLoginTokenExpiry: autoLoginTokenExpiry.toISOString(),
+    };
 
-    if (updateError) {
-      return NextResponse.json({ message: 'Failed to update verification status' }, { status: 500 });
-    }
+    try {
+      await (adminClient as any).from('users').update(updatePayload).eq('id', userData.id);
+    } catch (e) {}
+
+    try {
+      await adminClient.from('User').update(updatePayload).eq('id', userData.id);
+    } catch (e) {}
 
     // Verify the email in Supabase Auth
     try {

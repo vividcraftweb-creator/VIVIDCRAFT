@@ -82,10 +82,13 @@ export const adminUsersRouter = router({
           }
         } catch (pErr) {}
 
-        // 3. Fetch from User table if exists
+        // 3. Fetch from users or User table if exists
         const userTableMap = new Map<string, any>();
         try {
-          const { data: userRows } = await supabase.from('User').select('*');
+          let userRows = (await (supabase as any).from('users').select('*'))?.data;
+          if (!userRows || userRows.length === 0) {
+            userRows = (await supabase.from('User').select('*'))?.data;
+          }
           if (userRows) {
             userRows.forEach((u: any) => {
               if (u.id) userTableMap.set(u.id, u);

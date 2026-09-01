@@ -137,13 +137,15 @@ export async function auth() {
     let dbRole: string | null = null;
     try {
       const adminSupabase = createAdminClient();
-      const { data: userRow, error: userRowError } = await adminSupabase
-        .from('User')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+      let userRow = (await (adminSupabase as any).from('users').select('role').eq('id', user.id).maybeSingle())?.data;
+      if (!userRow) {
+        userRow = (await (adminSupabase as any).from('profiles').select('role').eq('id', user.id).maybeSingle())?.data;
+      }
+      if (!userRow) {
+        userRow = (await adminSupabase.from('User').select('role').eq('id', user.id).maybeSingle())?.data;
+      }
 
-      if (!userRowError && userRow?.role) {
+      if (userRow?.role) {
         dbRole = userRow.role;
       }
     } catch {

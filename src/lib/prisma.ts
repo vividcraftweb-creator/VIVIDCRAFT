@@ -132,10 +132,20 @@ function isComparisonObject(value: unknown): value is ComparisonOperators<unknow
   );
 }
 
+function getTargetTableName(tableName: string): string {
+  const lower = String(tableName).toLowerCase();
+  if (lower === 'user' || lower === 'users') return 'users';
+  if (lower === 'profile' || lower === 'profiles') return 'profiles';
+  return tableName;
+}
+
 /**
  * Creates a table accessor that mimics Prisma's table API
  */
 function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): PrismaTableAccessor<TTable> {
+  const targetTable = getTargetTableName(tableName as string);
+  const altTable = targetTable === 'users' ? 'User' : targetTable === 'profiles' ? 'Profile' : tableName as string;
+
   return {
     async findUnique({ where }: FindUniqueArgs<TTable>): Promise<TableRow<TTable> | null> {
       const supabase = createAdminClient();
@@ -145,21 +155,22 @@ function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): Pr
         throw new PrismaCompatError('Complex where clauses are not supported for findUnique', 'P2025');
       }
 
-      const query = supabase.from(tableName as string).select('*').eq(whereKey, whereValue).single();
-
-      const { data, error } = await query;
-
-      if (error) {
-        if (error.code === 'PGRST116') return null; // Not found
-        throw new PrismaCompatError(error.message, 'P2001');
+      let res = await supabase.from(targetTable).select('*').eq(whereKey, whereValue).maybeSingle();
+      if (res.error && (res.error.message?.includes('schema cache') || res.error.code === 'PGRST205')) {
+        res = await supabase.from(altTable).select('*').eq(whereKey, whereValue).maybeSingle();
       }
 
-      return data;
+      if (res.error) {
+        if (res.error.code === 'PGRST116') return null; // Not found
+        throw new PrismaCompatError(res.error.message, 'P2001');
+      }
+
+      return res.data;
     },
 
     async findMany({ where, take, orderBy }: FindManyArgs<TTable> = {}): Promise<TableRow<TTable>[]> {
       const supabase = createAdminClient();
-      let query = supabase.from(tableName as string).select('*');
+      let query = supabase.from(targetTable).select('*');
 
       if (where) {
         for (const [key, value] of Object.entries(where)) {
@@ -230,19 +241,25 @@ function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): Pr
         }
       }
 
-      const { data: created, error } = await supabase
-        .from(tableName as string)
+      let res = await supabase
+        .from(targetTable)
         .insert(mainData as TableInsert<TTable>)
         .select()
         .single();
 
-      if (error) {
-        throw new PrismaCompatError(error.message, 'P2002');
+      if (res.error && (res.error.message?.includes('schema cache') || res.error.code === 'PGRST205')) {
+        res = await supabase
+          .from(altTable)
+          .insert(mainData as TableInsert<TTable>)
+          .select()
+          .single();
       }
 
-      // TODO: Handle nested creates if needed
+      if (res.error) {
+        throw new PrismaCompatError(res.error.message, 'P2002');
+      }
 
-      return created;
+      return res.data;
     },
 
     async update({ where, data }: UpdateArgs<TTable>): Promise<TableRow<TTable>> {
@@ -253,28 +270,36 @@ function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): Pr
         throw new PrismaCompatError('Complex where clauses are not supported for update', 'P2025');
       }
 
-      const { data: updated, error } = await supabase
-        .from(tableName as string)
+      let res = await supabase
+        .from(targetTable)
         .update(data)
         .eq(whereKey, whereValue)
         .select()
         .single();
 
-      if (error) {
-        throw new PrismaCompatError(error.message, 'P2025');
+      if (res.error && (res.error.message?.includes('schema cache') || res.error.code === 'PGRST205')) {
+        res = await supabase
+          .from(altTable)
+          .update(data)
+          .eq(whereKey, whereValue)
+          .select()
+          .single();
       }
 
-      return updated;
+      if (res.error) {
+        throw new PrismaCompatError(res.error.message, 'P2025');
+      }
+
+      return res.data;
     },
 
     async updateMany({ where, data }: UpdateManyArgs<TTable>): Promise<{ count: number }> {
       const supabase = createAdminClient();
-      let query = supabase.from(tableName as string).update(data);
+      let query = supabase.from(targetTable).update(data);
 
       if (where) {
         for (const [key, value] of Object.entries(where)) {
           if (isComparisonObject(value)) {
-            // Only equality filters are supported in this simplified implementation
             if (value.not !== undefined) {
               query = query.neq(key, value.not as string | number | boolean | null);
             }
@@ -284,13 +309,28 @@ function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): Pr
         }
       }
 
-      const { data: updated, error } = await query.select();
-
-      if (error) {
-        throw new PrismaCompatError(error.message, 'P2025');
+      let res = await query.select();
+      if (res.error && (res.error.message?.includes('schema cache') || res.error.code === 'PGRST205')) {
+        let altQuery = supabase.from(altTable).update(data);
+        if (where) {
+          for (const [key, value] of Object.entries(where)) {
+            if (isComparisonObject(value)) {
+              if (value.not !== undefined) {
+                altQuery = altQuery.neq(key, value.not as string | number | boolean | null);
+              }
+            } else if (value !== undefined) {
+              altQuery = altQuery.eq(key, value);
+            }
+          }
+        }
+        res = await altQuery.select();
       }
 
-      return { count: updated?.length || 0 };
+      if (res.error) {
+        throw new PrismaCompatError(res.error.message, 'P2025');
+      }
+
+      return { count: res.data?.length || 0 };
     },
 
     async delete({ where }: DeleteArgs<TTable>): Promise<TableRow<TTable>> {
@@ -301,23 +341,32 @@ function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): Pr
         throw new PrismaCompatError('Complex where clauses are not supported for delete', 'P2025');
       }
 
-      const { data: deleted, error } = await supabase
-        .from(tableName as string)
+      let res = await supabase
+        .from(targetTable)
         .delete()
         .eq(whereKey, whereValue)
         .select()
         .single();
 
-      if (error) {
-        throw new PrismaCompatError(error.message, 'P2025');
+      if (res.error && (res.error.message?.includes('schema cache') || res.error.code === 'PGRST205')) {
+        res = await supabase
+          .from(altTable)
+          .delete()
+          .eq(whereKey, whereValue)
+          .select()
+          .single();
       }
 
-      return deleted;
+      if (res.error) {
+        throw new PrismaCompatError(res.error.message, 'P2025');
+      }
+
+      return res.data;
     },
 
     async deleteMany({ where }: DeleteManyArgs<TTable> = {}): Promise<{ count: number }> {
       const supabase = createAdminClient();
-      let query = supabase.from(tableName as string).delete();
+      let query = supabase.from(targetTable).delete();
 
       if (where) {
         for (const [key, value] of Object.entries(where)) {
@@ -331,18 +380,33 @@ function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): Pr
         }
       }
 
-      const { data: deleted, error } = await query.select();
-
-      if (error) {
-        throw new PrismaCompatError(error.message, 'P2003');
+      let res = await query.select();
+      if (res.error && (res.error.message?.includes('schema cache') || res.error.code === 'PGRST205')) {
+        let altQuery = supabase.from(altTable).delete();
+        if (where) {
+          for (const [key, value] of Object.entries(where)) {
+            if (isComparisonObject(value)) {
+              if (value.not !== undefined) {
+                altQuery = altQuery.neq(key, value.not as string | number | boolean | null);
+              }
+            } else if (value !== undefined) {
+              altQuery = altQuery.eq(key, value);
+            }
+          }
+        }
+        res = await altQuery.select();
       }
 
-      return { count: deleted?.length || 0 };
+      if (res.error) {
+        throw new PrismaCompatError(res.error.message, 'P2003');
+      }
+
+      return { count: res.data?.length || 0 };
     },
 
     async count({ where }: CountArgs<TTable> = {}): Promise<number> {
       const supabase = createAdminClient();
-      let query = supabase.from(tableName as string).select('id', { count: 'exact', head: true });
+      let query = supabase.from(targetTable).select('id', { count: 'exact', head: true });
 
       if (where) {
         for (const [key, value] of Object.entries(where)) {
@@ -359,13 +423,31 @@ function createTableAccessor<TTable extends keyof Tables>(tableName: TTable): Pr
         }
       }
 
-      const { count, error } = await query;
-
-      if (error) {
-        throw new PrismaCompatError(error.message, 'P2002');
+      let res = await query;
+      if (res.error && (res.error.message?.includes('schema cache') || res.error.code === 'PGRST205')) {
+        let altQuery = supabase.from(altTable).select('id', { count: 'exact', head: true });
+        if (where) {
+          for (const [key, value] of Object.entries(where)) {
+            if (isComparisonObject(value)) {
+              if (value.gte !== undefined) {
+                altQuery = altQuery.gte(key, value.gte as string | number);
+              }
+              if (value.not !== undefined) {
+                altQuery = altQuery.neq(key, value.not as string | number | boolean | null);
+              }
+            } else if (value !== undefined) {
+              altQuery = altQuery.eq(key, value);
+            }
+          }
+        }
+        res = await altQuery;
       }
 
-      return count || 0;
+      if (res.error) {
+        throw new PrismaCompatError(res.error.message, 'P2002');
+      }
+
+      return res.count || 0;
     },
 
     async upsert({ where, create, update }: UpsertArgs<TTable>): Promise<TableRow<TTable>> {

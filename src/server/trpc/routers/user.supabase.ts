@@ -17,11 +17,22 @@ export const userRouter = router({
     const supabase = createAdminClient();
     const userId = ctx.session.user.id;
 
-    let { data: user } = await supabase
-      .from('User')
+    let { data: user } = await (supabase as any)
+      .from('users')
       .select('id, email, role, subscriptionPlan, tokens, tokenResetAt, jobPostsUsed, jobPostsResetAt, isVerified, verificationPaidAt, profileCompleted, clientType, verificationPaymentStatus, verificationStartedAt, verificationDeadline, verificationSubmittedAt, createdAt')
       .eq('id', userId)
       .maybeSingle();
+
+    if (!user) {
+      const res = await supabase
+        .from('User')
+        .select('id, email, role, subscriptionPlan, tokens, tokenResetAt, jobPostsUsed, jobPostsResetAt, isVerified, verificationPaidAt, profileCompleted, clientType, verificationPaymentStatus, verificationStartedAt, verificationDeadline, verificationSubmittedAt, createdAt')
+        .eq('id', userId)
+        .maybeSingle();
+      if (res.data) {
+        user = res.data;
+      }
+    }
 
     if (!user) {
       // Fallback to profiles table or auth
@@ -38,26 +49,41 @@ export const userRouter = router({
       const isArtist = ['ARTIST', 'FREELANCER', 'CREATOR', 'SELLER'].includes(String(rawRole).toUpperCase());
       const role: 'FREELANCER' | 'CLIENT' = isArtist ? 'FREELANCER' : 'CLIENT';
 
+      const userCreatePayload = {
+        id: userId,
+        email,
+        role,
+        subscriptionPlan: role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
+        tokens: role === 'FREELANCER' ? 250 : 0,
+        isVerified: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
       try {
-        const { data: createdUser } = await supabase
-          .from('User')
-          .upsert({
-            id: userId,
-            email,
-            role,
-            subscriptionPlan: role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
-            tokens: role === 'FREELANCER' ? 250 : 0,
-            isVerified: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }, { onConflict: 'id' })
+        const { data: createdUser } = await (supabase as any)
+          .from('users')
+          .upsert(userCreatePayload, { onConflict: 'id' })
           .select()
           .single();
-
         if (createdUser) {
           user = createdUser;
         }
       } catch (e) {}
+
+      if (!user) {
+        try {
+          const { data: createdUser } = await supabase
+            .from('User')
+            .upsert(userCreatePayload, { onConflict: 'id' })
+            .select()
+            .single();
+
+          if (createdUser) {
+            user = createdUser;
+          }
+        } catch (e) {}
+      }
 
       if (!user) {
         user = {

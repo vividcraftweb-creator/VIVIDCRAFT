@@ -70,11 +70,13 @@ export async function POST(req: Request) {
 
       let userRole = data?.user?.user_metadata?.role || 'CLIENT';
       try {
-        const { data: dbUser } = await supabase
-          .from('User')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
+        let dbUser = (await (supabase as any).from('users').select('role').eq('id', data.user.id).maybeSingle())?.data;
+        if (!dbUser) {
+          dbUser = (await (supabase as any).from('profiles').select('role').eq('id', data.user.id).maybeSingle())?.data;
+        }
+        if (!dbUser) {
+          dbUser = (await supabase.from('User').select('role').eq('id', data.user.id).maybeSingle())?.data;
+        }
         if (dbUser?.role) {
           userRole = dbUser.role;
         }

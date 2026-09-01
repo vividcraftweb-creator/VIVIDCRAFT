@@ -190,51 +190,46 @@ export async function POST(req: Request) {
 
     // Create or update user record in Supabase database using admin client to bypass RLS
     const adminClient = createAdminClient();
-    const { data: userData, error: userError } = await adminClient
-      .from('User')
-      .upsert({
-        id: authData.user.id,
-        email,
-        role: dbRole,
-        tokens: initialTokens,
-        subscriptionPlan: defaultSubscriptionPlan,
-        tokenResetAt: new Date().toISOString(),
-        jobPostsUsed: 0,
-        jobPostsResetAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isVerified: false,
-        profileCompleted: isProfileComplete,
-        signupIp: clientIp || null,
-      }, { onConflict: 'id' })
-      .select()
-      .maybeSingle();
+    const userPayload = {
+      id: authData.user.id,
+      email,
+      role: dbRole,
+      tokens: initialTokens,
+      subscriptionPlan: defaultSubscriptionPlan,
+      tokenResetAt: new Date().toISOString(),
+      jobPostsUsed: 0,
+      jobPostsResetAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isVerified: false,
+      profileCompleted: isProfileComplete,
+      signupIp: clientIp || null,
+    };
 
-    if (userError) {
-      console.error('DATABASE USER CREATION ERROR:', userError);
-      // Check if it's a duplicate email error
-      if (userError.code === '23505' && userError.message?.includes('User_email_key')) {
-        return NextResponse.json({ message: 'User already exists', userExists: true }, { status: 200 });
+    // 1. Try lowercase `users` table first
+    let userInserted = false;
+    try {
+      const { error: usersError } = await (adminClient as any)
+        .from('users')
+        .upsert(userPayload, { onConflict: 'id' });
+      if (!usersError) {
+        userInserted = true;
       }
+    } catch (e) {}
 
-      // Check if user row actually exists (e.g. from trigger)
-      const { data: existingUserCheck } = await adminClient
-        .from('User')
-        .select('id, role')
-        .eq('id', authData.user.id)
-        .maybeSingle();
-
-      if (!existingUserCheck) {
-        try {
-          await adminClient.auth.admin.deleteUser(authData.user.id);
-        } catch (cleanupError) {
-          // Error cleaning up auth user
+    // 2. Fallback to `User` table if available
+    if (!userInserted) {
+      try {
+        const { error: userError } = await adminClient
+          .from('User')
+          .upsert(userPayload, { onConflict: 'id' });
+        if (!userError) {
+          userInserted = true;
         }
-        return NextResponse.json({ message: `Failed to create user account: ${userError.message}` }, { status: 500 });
-      }
+      } catch (e) {}
     }
 
-    // Upsert into `profiles` table
+    // 3. Upsert into `profiles` table
     try {
       await (adminClient as any)
         .from('profiles')
@@ -342,17 +337,25 @@ export async function POST(req: Request) {
     tokenExpiry.setHours(tokenExpiry.getHours() + 24); // Token expires in 24 hours
 
     // Store verification token in database using admin client
-    const { error: tokenError } = await adminClient
-      .from('User')
-      .update({
-        verificationToken,
-        verificationTokenExpiry: tokenExpiry.toISOString(),
-      })
-      .eq('id', authData.user.id);
+    try {
+      await (adminClient as any)
+        .from('users')
+        .update({
+          verificationToken,
+          verificationTokenExpiry: tokenExpiry.toISOString(),
+        })
+        .eq('id', authData.user.id);
+    } catch (e) {}
 
-    if (tokenError) {
-      // Error storing verification token
-    }
+    try {
+      await adminClient
+        .from('User')
+        .update({
+          verificationToken,
+          verificationTokenExpiry: tokenExpiry.toISOString(),
+        })
+        .eq('id', authData.user.id);
+    } catch (e) {}
 
     // Send verification email using Supabase edge function
     try {

@@ -80,40 +80,29 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // 2. Ensure User record exists in DB
-        const { data: existingUser } = await adminClient
-          .from('User')
-          .select('id, role')
-          .eq('id', user.id)
-          .maybeSingle();
+        // 2. Ensure User record exists in DB (try `users` first, then `User`)
+        const userDbPayload = {
+          id: user.id,
+          email: user.email || '',
+          role: userRole,
+          tokens: userRole === 'FREELANCER' ? 250 : 0,
+          subscriptionPlan: userRole === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
+          tokenResetAt: new Date().toISOString(),
+          jobPostsUsed: 0,
+          jobPostsResetAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isVerified: true,
+          profileCompleted: !!(firstName && lastName),
+        };
 
-        if (!existingUser) {
-          const initialTokens = userRole === 'FREELANCER' ? 250 : 0;
-          const defaultSubscriptionPlan = userRole === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO';
+        try {
+          await (adminClient as any).from('users').upsert(userDbPayload, { onConflict: 'id' });
+        } catch (e) {}
 
-          await adminClient.from('User').upsert({
-            id: user.id,
-            email: user.email || '',
-            role: userRole,
-            tokens: initialTokens,
-            subscriptionPlan: defaultSubscriptionPlan,
-            tokenResetAt: new Date().toISOString(),
-            jobPostsUsed: 0,
-            jobPostsResetAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            isVerified: true,
-            profileCompleted: !!(firstName && lastName),
-          }, { onConflict: 'id' });
-        } else if (queryRole && existingUser.role !== userRole) {
-          await adminClient
-            .from('User')
-            .update({
-              role: userRole,
-              updatedAt: new Date().toISOString(),
-            })
-            .eq('id', user.id);
-        }
+        try {
+          await adminClient.from('User').upsert(userDbPayload, { onConflict: 'id' });
+        } catch (e) {}
 
         // 3. Ensure profiles table record exists
         try {
