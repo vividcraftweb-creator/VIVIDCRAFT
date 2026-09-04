@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
 
         if (!authUser) {
           // Not authenticated, redirect to sign in
-          return NextResponse.redirect(new URL('/auth/signin', request.url));
+          return NextResponse.redirect(new URL('/auth/login', request.url));
         }
 
         // Check user's subscription plan

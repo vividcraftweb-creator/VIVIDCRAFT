@@ -13,14 +13,35 @@ export function useAuth() {
     const supabase = createClient();
 
     // Get initial user
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error) {
+        const msg = (error.message || '').toLowerCase();
+        if (
+          msg.includes('user not found') ||
+          msg.includes('invalid claim') ||
+          msg.includes('jwt') ||
+          error.status === 401 ||
+          error.status === 403
+        ) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      }
       setUser(user);
+      setLoading(false);
+    }).catch(() => {
+      setUser(null);
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user || null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        setUser(null);
+      } else {
+        setUser(session.user);
+      }
       setLoading(false);
     });
 

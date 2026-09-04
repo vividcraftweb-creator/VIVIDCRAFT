@@ -71,19 +71,28 @@ const Header = () => {
 
     // Get initial user from supabase
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUser(user);
-        const metaRole = (user?.user_metadata?.role || '').toString().trim().toUpperCase();
-        // Normalize artist/creator/seller variants to FREELANCER
-        const normalized = ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
-        setUserRole(normalized || null);
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) {
+        setUser(null);
+        setUserRole(null);
+        return;
       }
-    }).catch(() => {});
+      setUser(user);
+      const metaRole = (user?.user_metadata?.role || '').toString().trim().toUpperCase();
+      // Normalize artist/creator/seller variants to FREELANCER
+      const normalized = ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
+      setUserRole(normalized || null);
+    }).catch(() => {
+      setUser(null);
+      setUserRole(null);
+    });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (session?.user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        setUser(null);
+        setUserRole(null);
+      } else {
         setUser(session.user);
         const metaRole = (session.user?.user_metadata?.role || '').toString().trim().toUpperCase();
         const normalized = ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;

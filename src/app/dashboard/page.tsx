@@ -33,25 +33,11 @@ export default async function DashboardPage({
     session = null;
   }
 
-  // Fallback mock user profile when database fetch returns null or error
-  const userProfile = {
-    id: session?.user?.id || 'mock-user-id',
-    name: session?.user?.name || 'Vivid Craft User',
-    email: session?.user?.email || 'vividcraftweb@gmail.com',
-    role: session?.user?.role || 'FREELANCER',
-    avatar_url: (session?.user as any)?.avatar_url || (session?.user as any)?.image || '/placeholder-avatar.png'
-  };
+  if (!session?.user) {
+    redirect('/auth/login?callbackUrl=/dashboard');
+  }
 
-  const activeSession: AppSession = session || {
-    user: {
-      id: userProfile.id,
-      email: userProfile.email,
-      name: userProfile.name,
-      role: userProfile.role,
-      avatar_url: userProfile.avatar_url,
-    },
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  };
+  const activeSession: AppSession = session;
 
   try {
     const supabase = await withTimeout(createClient(), 2000);
@@ -59,6 +45,10 @@ export default async function DashboardPage({
       const userRes = await withTimeout(supabase.auth.getUser(), 2000);
       const authUser = userRes?.data?.user;
       const userError = userRes?.error;
+
+      if (!authUser || userError) {
+        redirect('/auth/login?callbackUrl=/dashboard&logged_out=1');
+      }
 
       if (authUser && !userError) {
         const { data: userData } = await supabase
@@ -91,7 +81,7 @@ export default async function DashboardPage({
     if ((err as any)?.digest?.startsWith('NEXT_REDIRECT')) {
       throw err;
     }
-    // If Supabase connection fails or user is offline, proceed gracefully with activeSession fallback
+    // If Supabase connection fails or user is offline, proceed with validated session
   }
 
   if (activeSession.user.role === 'CLIENT') {
