@@ -266,7 +266,7 @@ export const proposalsRouter = router({
           if (emailNotificationsEnabled && newProposalsEnabled) {
             const profileRecord = Array.isArray(job.client?.Profile) ? job.client?.Profile[0] : undefined;
             const freelancerName = ctx.session.user?.name || ctx.session.user.email || 'A freelancer';
-            const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://yourdomain.com';
+            const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://vividcraft.vercel.app';
             await emailTemplates.sendProposalReceivedEmail(
               client.email,
               job.title,
@@ -616,7 +616,7 @@ export const proposalsRouter = router({
           if (emailNotificationsEnabled && proposalUpdatesEnabled) {
             const profileRecord = Array.isArray(freelancer.Profile) ? freelancer.Profile[0] : freelancer.Profile;
             const clientName = ctx.session.user?.name || ctx.session.user.email || 'A client';
-            const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://yourdomain.com';
+            const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://vividcraft.vercel.app';
             await emailTemplates.sendProposalAcceptedEmail(
               freelancer.email,
               job.title,

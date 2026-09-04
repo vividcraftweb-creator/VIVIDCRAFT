@@ -11,7 +11,7 @@ export function useNotificationTitle(unreadCount: number) {
 
     // Capture the original title on first mount (from Next.js SSR/metadata)
     if (originalTitleRef.current === null) {
-      originalTitleRef.current = document.title || 'JobHorizons';
+      originalTitleRef.current = document.title || 'Vivid Art';
     }
 
     const originalTitle = originalTitleRef.current;

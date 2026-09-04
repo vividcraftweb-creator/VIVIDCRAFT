@@ -1,7 +1,7 @@
 import * as nodemailer from 'nodemailer';
 
 // Base URL for email links
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://vividcraft.vercel.app';
 
 // Create transporter with Brevo SMTP configuration
 const transporter = nodemailer.createTransport({

@@ -26,7 +26,8 @@ import {
   UserCheck,
   BarChart3,
   ArrowLeft,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
@@ -133,9 +134,9 @@ export default function Dashboard({ session }: { session: AppSession }) {
         const baseItems = [
           { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
           { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
-          { name: 'Hire Freelancers', icon: Users, href: '/freelancers' },
-          { name: 'My Jobs', icon: Briefcase, href: '/dashboard?tab=myjobs' },
-          { name: 'Create Job', icon: Plus, href: '/jobs/create' },
+          { name: 'Discover Artists', icon: Palette, href: '/freelancers' },
+          { name: 'My Commissions', icon: Briefcase, href: '/dashboard?tab=myjobs' },
+          { name: 'Post Commission', icon: Plus, href: '/jobs/create' },
           { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages' },
           { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification' },
           { name: 'Subscription', icon: CreditCard, href: '/dashboard?tab=subscription' },
@@ -219,8 +220,8 @@ export default function Dashboard({ session }: { session: AppSession }) {
           { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
           { name: 'Gallery', icon: ImageIcon, href: '/dashboard?tab=gallery', view: 'gallery' },
           { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages', view: 'messages' },
-          { name: 'Find Jobs', icon: Briefcase, href: '/jobs' },
-          { name: 'My Proposals', icon: FileText, href: '/dashboard?tab=proposals', view: 'proposals' },
+          { name: 'Browse Commissions', icon: Palette, href: '/jobs' },
+          { name: 'My Commissions & Proposals', icon: FileText, href: '/dashboard?tab=proposals', view: 'proposals' },
           { name: 'Subscription', icon: CreditCard, href: '/dashboard?tab=subscription', view: 'subscription' },
           { name: 'Profile', icon: User, href: '/dashboard?tab=profile', view: 'profile' },
           { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification', view: 'verification' },
@@ -342,16 +343,42 @@ export default function Dashboard({ session }: { session: AppSession }) {
         <div className="flex h-full flex-col backdrop-blur-xl bg-gray-900/95 border-r border-white/10">
           {/* Logo/Brand */}
           <div className="flex h-16 shrink-0 items-center px-6 border-b border-white/10">
-            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <Image
-                src="/jobhorizons-logo.webp"
-                alt="JobHorizons - Freelance Remote Work Platform Logo"
-                width={120}
-                height={24}
-                priority
-                unoptimized
-                style={{ width: 'auto', height: 'auto' }}
-              />
+            <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+              <svg
+                className="w-8 h-8"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <defs>
+                  <linearGradient id="dashboardLogoGrad1" x1="0" y1="0" x2="48" y2="48">
+                    <stop offset="0%" stopColor="#8B5CF6" />
+                    <stop offset="50%" stopColor="#EC4899" />
+                    <stop offset="100%" stopColor="#F59E0B" />
+                  </linearGradient>
+                  <linearGradient id="dashboardLogoGrad2" x1="48" y1="0" x2="0" y2="48">
+                    <stop offset="0%" stopColor="#06B6D4" />
+                    <stop offset="100%" stopColor="#8B5CF6" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M24 4C13 4 6 14 10 24C14 34 20 38 24 44C28 38 34 34 38 24C42 14 35 4 24 4Z"
+                  fill="url(#dashboardLogoGrad1)"
+                  fillOpacity="0.9"
+                />
+                <path
+                  d="M16 14L24 34L32 14"
+                  stroke="white"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+                <circle cx="36" cy="12" r="3" fill="url(#dashboardLogoGrad2)" />
+              </svg>
+              <span className="font-bold text-lg tracking-tight text-white">
+                Vivid Art
+              </span>
             </Link>
             <Button
               variant="ghost"
@@ -380,7 +407,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   {session.user?.email}
                 </p>
                 <Badge className={`w-fit text-xs mt-1 ${getRoleColor()}`}>
-                  {role}
+                  {role === 'FREELANCER' ? 'ARTIST' : role === 'CLIENT' ? 'COLLECTOR' : role}
                 </Badge>
               </div>
             </div>

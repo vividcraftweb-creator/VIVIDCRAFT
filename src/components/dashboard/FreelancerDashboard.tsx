@@ -717,11 +717,11 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
 
         {/* Stats Overview */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Proposals Submitted */}
+          {/* Commissions Inquired */}
           <div className="glass-card p-4 sm:p-6 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-400/30 transition-all duration-300 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-indigo-300 text-sm font-medium">Proposals Submitted</p>
+                <p className="text-indigo-300 text-sm font-medium">Commissions Inquired</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
                   {totalProposals}
                 </p>
@@ -736,15 +736,15 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
             </div>
           </div>
 
-          {/* Accepted Proposals */}
+          {/* Accepted Commissions */}
           <div className="glass-card p-4 sm:p-6 rounded-2xl bg-blue-500/10 border border-blue-500/20 hover:border-blue-400/30 transition-all duration-300 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-300 text-sm font-medium">Accepted Proposals</p>
+                <p className="text-blue-300 text-sm font-medium">Accepted Commissions</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">{acceptedProposals.length || 0}</p>
                 <p className="text-blue-400 text-sm mt-1 flex items-center">
                   <Activity className="h-4 w-4 mr-1" />
-                  {acceptedProposals.length || 0} total wins
+                  {acceptedProposals.length || 0} completed commissions
                 </p>
               </div>
               <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
@@ -763,7 +763,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                 </p>
                 <p className="text-purple-400 text-sm mt-1 flex items-center">
                   <Target className="h-4 w-4 mr-1" />
-                  {acceptedProposals.length || 0} of {proposals?.length || 0} proposals
+                  {acceptedProposals.length || 0} of {proposals?.length || 0} commissions
                 </p>
               </div>
               <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
@@ -782,7 +782,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
             <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
               <div className="mb-4 sm:mb-6">
                 <h3 className="text-lg sm:text-xl font-bold text-white">Recent Activity</h3>
-                <p className="text-sm sm:text-base text-slate-400">Your latest proposals</p>
+                <p className="text-sm sm:text-base text-slate-400">Your latest commission inquiries</p>
               </div>
 
               <div className="space-y-4">
@@ -792,7 +792,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                       <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium text-sm sm:text-base truncate">{proposal.job?.title || 'Untitled Job'}</p>
+                      <p className="text-white font-medium text-sm sm:text-base truncate">{proposal.job?.title || 'Untitled Commission'}</p>
                       <p className="text-slate-400 text-xs sm:text-sm">
                         Proposed: ${proposal.proposedRate || 0}
                       </p>
@@ -812,10 +812,10 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                 {(!proposals || proposals.length === 0) && (
                   <div className="text-center py-8">
                     <FileText className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                    <p className="text-slate-400">No proposals yet</p>
+                    <p className="text-slate-400">No commission inquiries yet</p>
                     <Button asChild className="mt-4 bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
                       <Link href="/jobs">
-                        Find Your First Job
+                        Browse Open Commissions
                       </Link>
                     </Button>
                   </div>
@@ -827,9 +827,9 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
             <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">Proposal Pipeline &amp; Analytics</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Commission Pipeline &amp; Analytics</h3>
                   <p className="text-sm sm:text-base text-slate-400">
-                    Understand how your proposals are progressing and plan next steps with clients.
+                    Understand how your commissions are progressing and plan next steps with collectors.
                   </p>
                 </div>
                 <div className="p-2 bg-primary/20 rounded-xl">
@@ -856,7 +856,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
                 </div>
               ) : (
                 <div className="text-center py-6 text-slate-400 text-sm">
-                  Send proposals to populate your pipeline analytics.
+                  Inquire on open commissions to populate your pipeline analytics.
                 </div>
               )}
             </div>
@@ -1339,7 +1339,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
         return (
           <div className="space-y-4 sm:space-y-6">
             <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">My Proposals</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">My Commissions &amp; Proposals</h2>
               {proposalsLoading ? (
                 <div className="space-y-4">
                   <Skeleton className="h-12 w-full" />
@@ -1358,8 +1358,8 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
               ) : (
                 <div className="text-center py-12">
                   <FileText className="h-16 w-16 text-slate-500 mx-auto mb-4" />
-                  <p className="text-slate-400 text-lg mb-2">No proposals yet</p>
-                  <p className="text-slate-500 text-sm">Start applying for jobs to see your proposals here</p>
+                  <p className="text-slate-400 text-lg mb-2">No commission proposals yet</p>
+                  <p className="text-slate-500 text-sm">Start inquiring on open commissions to see your proposals here</p>
                 </div>
               )}
             </div>

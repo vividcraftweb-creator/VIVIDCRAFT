@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vividcraft.vercel.app';
 
   // Define priority pages for sitelinks
   const getPriority = (route: string): number => {

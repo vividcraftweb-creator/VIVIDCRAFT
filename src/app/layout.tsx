@@ -2,7 +2,7 @@ import "@/app/globals.css";
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://vividcraft.vercel.app'),
   title: {
     default: 'Vivid Art | Online Art Marketplace - Buy Art & Discover Artists',
     template: '%s | Vivid Art - Art Marketplace',
@@ -116,7 +116,7 @@ export default async function RootLayout({
     session = null;
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vividcraft.vercel.app';
 
   const organizationSchema = {
     '@context': 'https://schema.org',

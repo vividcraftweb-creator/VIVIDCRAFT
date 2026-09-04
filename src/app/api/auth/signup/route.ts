@@ -149,7 +149,7 @@ export async function POST(req: Request) {
 
     // Create user in Supabase Auth (with explicit role: 'artist' in options.data)
     const supabase = await createClient();
-    const appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app';
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,

@@ -434,7 +434,7 @@ export const messagesRouter = router({
               ? input.content.substring(0, 200) + '...'
               : input.content;
 
-            const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://yourdomain.com';
+            const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://vividcraft.vercel.app';
 
             await emailTemplates.sendNewMessageEmail(
               receiver.email,

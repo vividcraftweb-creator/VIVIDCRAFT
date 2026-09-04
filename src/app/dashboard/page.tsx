@@ -8,7 +8,7 @@ import type { AppSession } from '@/types/session';
 
 export const metadata: Metadata = createAuthPageMetadata({
   title: 'Dashboard',
-  description: 'View your JobHorizons dashboard, manage your projects, and track your freelance work.',
+  description: 'View your Vivid Art dashboard, manage your projects, and track your creative commissions.',
 });
 
 const withTimeout = <T,>(promise: Promise<T>, ms = 2000): Promise<T | null> => {

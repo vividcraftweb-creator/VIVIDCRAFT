@@ -49,7 +49,7 @@ export default function RegisterForm() {
     try {
       const origin = typeof window !== 'undefined'
         ? window.location.origin
-        : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+        : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -78,7 +78,7 @@ export default function RegisterForm() {
     const userCountry = formData.location?.trim() || 'Sri Lanka';
     const origin = typeof window !== 'undefined'
       ? window.location.origin
-      : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+      : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
 
     try {
       // 1. Register artist with Supabase Auth (passing role: 'artist' in options.data)

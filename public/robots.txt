@@ -22,4 +22,4 @@ Allow: /about
 Allow: /support
 
 # Sitemap location
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://vividcraft.vercel.app/sitemap.xml

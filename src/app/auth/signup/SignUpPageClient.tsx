@@ -581,7 +581,7 @@ export default function SignUpPage() {
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold text-white mb-2">Choose Your Role</h2>
-        <p className="text-gray-400 text-sm">How do you plan to use JobHorizons?</p>
+        <p className="text-gray-400 text-sm">How do you plan to use Vivid Art?</p>
       </div>
 
       <div className="space-y-4">
@@ -901,21 +901,49 @@ export default function SignUpPage() {
       <div className={`w-full max-w-sm sm:max-w-md lg:max-w-lg transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <Link href="/" className="hover:opacity-80 transition-opacity">
-            <Image
-              src="/jobhorizons-logo.webp"
-              alt="JobHorizons"
-              width={180}
-              height={36}
-              priority
-            />
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <svg
+              className="w-10 h-10"
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="signupLogoGrad1" x1="0" y1="0" x2="48" y2="48">
+                  <stop offset="0%" stopColor="#8B5CF6" />
+                  <stop offset="50%" stopColor="#EC4899" />
+                  <stop offset="100%" stopColor="#F59E0B" />
+                </linearGradient>
+                <linearGradient id="signupLogoGrad2" x1="48" y1="0" x2="0" y2="48">
+                  <stop offset="0%" stopColor="#06B6D4" />
+                  <stop offset="100%" stopColor="#8B5CF6" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M24 4C13 4 6 14 10 24C14 34 20 38 24 44C28 38 34 34 38 24C42 14 35 4 24 4Z"
+                fill="url(#signupLogoGrad1)"
+                fillOpacity="0.9"
+              />
+              <path
+                d="M16 14L24 34L32 14"
+                stroke="white"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+              <circle cx="36" cy="12" r="3" fill="url(#signupLogoGrad2)" />
+            </svg>
+            <span className="font-bold text-2xl tracking-tight text-white">
+              Vivid Art
+            </span>
           </Link>
         </div>
 
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">Create account</h1>
-          <p className="text-sm sm:text-base text-gray-400">Get started with JobHorizons</p>
+          <p className="text-sm sm:text-base text-gray-400">Get started with Vivid Art</p>
         </div>
 
         {/* Progress Indicator */}
@@ -1025,7 +1053,7 @@ export default function SignUpPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-500 text-sm">
-          <p>© 2025 JobHorizons</p>
+          <p>© 2025 Vivid Art</p>
         </div>
       </div>
     </div>

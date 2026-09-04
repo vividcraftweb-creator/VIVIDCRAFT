@@ -252,13 +252,13 @@ export default function ClientDashboard() {
         <div className="glass-card p-4 sm:p-6 rounded-2xl bg-blue-500/10 border border-blue-500/20 hover:border-blue-400/40 transition-all duration-300 group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-200 text-sm font-medium uppercase tracking-wide">Total Jobs Posted</p>
+              <p className="text-blue-200 text-sm font-medium uppercase tracking-wide">Commissions &amp; Projects Posted</p>
               <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
                 {totalJobsCount}
               </p>
               <p className="text-blue-300 text-sm mt-1 flex items-center gap-1">
                 <Briefcase className="h-4 w-4" />
-                {openJobCount} open roles live
+                {openJobCount} open commissions live
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
@@ -270,13 +270,13 @@ export default function ClientDashboard() {
         <div className="glass-card p-4 sm:p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-400/40 transition-all duration-300 group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-emerald-200 text-sm font-medium uppercase tracking-wide">Proposals Received</p>
+              <p className="text-emerald-200 text-sm font-medium uppercase tracking-wide">Artist Proposals Received</p>
               <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
                 {proposalsReceivedCount}
               </p>
               <p className="text-emerald-300 text-sm mt-1 flex items-center gap-1">
                 <Mail className="h-4 w-4" />
-                Across your active searches
+                Across your active listings
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-emerald-500/20 rounded-xl group-hover:bg-emerald-500/30 transition-colors">
@@ -306,13 +306,13 @@ export default function ClientDashboard() {
         <div className="glass-card p-4 sm:p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:border-purple-400/40 transition-all duration-300 group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-200 text-sm font-medium uppercase tracking-wide">Interviews In Progress</p>
+              <p className="text-purple-200 text-sm font-medium uppercase tracking-wide">Artist Consultations</p>
               <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
                 {interviewsInProgressCount}
               </p>
               <p className="text-purple-300 text-sm mt-1 flex items-center gap-1">
                 <UserCheck className="h-4 w-4" />
-                From tracked proposal stages
+                Active artist inquiries
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
@@ -335,9 +335,9 @@ export default function ClientDashboard() {
             <div className="flex flex-col gap-4 mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">Your Projects</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Your Commissions &amp; Projects</h3>
                   <p className="text-sm sm:text-base text-slate-400">
-                    Manage your active job postings and review applications from freelancers.
+                    Manage your active commission postings and review proposals from artists.
                   </p>
                 </div>
               </div>
@@ -404,14 +404,14 @@ export default function ClientDashboard() {
               {jobsWithMeta.length === 0 && (
                 <div className="text-center py-8">
                   <Briefcase className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                  <p className="text-slate-300 font-medium mb-2">No job posts yet</p>
+                  <p className="text-slate-300 font-medium mb-2">No commissions posted yet</p>
                   <p className="text-slate-400 text-sm max-w-sm mx-auto mb-4">
-                    Publish a role to start receiving tailored freelancer proposals and interview signals.
+                    Publish a commission request to start receiving tailored artist proposals.
                   </p>
                   <Button asChild className="bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
                     <Link href="/jobs/create">
                       <Plus className="h-4 w-4 mr-2" />
-                      Post Your First Job
+                      Post Your First Commission
                     </Link>
                   </Button>
                 </div>

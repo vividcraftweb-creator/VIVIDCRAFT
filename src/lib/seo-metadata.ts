@@ -6,7 +6,7 @@ import { Metadata } from 'next';
  */
 export const SEO_CONFIG = {
   siteName: 'Vivid Art',
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://vividcraft.vercel.app',
   tagline: 'Premier Art & Creative Talent Marketplace',
   twitterHandle: '@vividart',
   defaultOgImage: '/vivid-art-og-image.png',
