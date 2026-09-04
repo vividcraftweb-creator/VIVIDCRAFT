@@ -51,6 +51,22 @@ export function calculateBasicInfoStrength(profile: Profile | null | undefined):
 }
 
 /**
+ * Calculate overall profile completion percentage based ONLY on active fields
+ */
+export function calculateCompletionPercentage(profile: any): number {
+  if (!profile) return 0;
+  const checks = [
+    Boolean(profile.avatar_url || profile.avatar || profile.profilePicture || profile.profile_picture),
+    Boolean((profile.firstName && profile.lastName) || (profile.first_name && profile.last_name) || profile.name),
+    Boolean(profile.title || profile.professional_title),
+    Boolean(profile.location || profile.address),
+    Boolean(profile.skills && (Array.isArray(profile.skills) ? profile.skills.length > 0 : String(profile.skills).trim().length > 0)),
+  ];
+  const completed = checks.filter(Boolean).length;
+  return Math.round((completed / checks.length) * 100);
+}
+
+/**
  * Calculate the strength/completeness of the Experience section
  */
 export function calculateExperienceStrength(

@@ -11,6 +11,7 @@ export default function SubscriptionStatusBanner() {
   const { data: subscriptionStatus } = trpc.braintree.getSubscriptionStatus.useQuery(undefined, {
     refetchOnWindowFocus: false,
     refetchOnMount: true,
+    retry: false,
   });
 
   if (!subscriptionStatus?.hasActiveSubscription) {

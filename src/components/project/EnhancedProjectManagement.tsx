@@ -205,6 +205,7 @@ export default function EnhancedProjectManagement() {
 
   const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const hasEnhancedProjectManagement = planSummary?.permissions?.hasEnhancedProjectManagement ?? false;

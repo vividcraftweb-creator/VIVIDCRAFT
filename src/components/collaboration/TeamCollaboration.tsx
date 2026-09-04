@@ -75,6 +75,7 @@ export default function TeamCollaboration() {
 
   const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const hasTeamCollaboration = planSummary?.permissions.hasTeamCollaboration ?? false;

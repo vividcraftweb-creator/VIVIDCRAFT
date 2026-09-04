@@ -43,11 +43,13 @@ export default function ProfileEditorPage() {
   // Fetch full profile with all sections
   const profileQuery = trpc.publicProfile.getMyFullProfile.useQuery(undefined, {
     enabled: !!session?.session?.user,
+    retry: false,
   });
 
   // Fetch profile completeness
   const completenessQuery = trpc.publicProfile.getCompleteness.useQuery(undefined, {
     enabled: !!session?.session?.user,
+    retry: false,
   });
 
   // Re-fetch latest data on component mount directly from Supabase

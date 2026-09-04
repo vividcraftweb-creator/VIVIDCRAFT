@@ -46,8 +46,11 @@ export const braintreeRouter = router({
   /**
    * Generate a client token for frontend Braintree initialization
    */
-  getClientToken: protectedProcedure.query(async ({ ctx }) => {
+  getClientToken: publicProcedure.query(async ({ ctx }) => {
     try {
+      if (!ctx.session?.user?.id) {
+        return { clientToken: null };
+      }
       const userId = ctx.session.user.id;
       // Use admin client for User table queries
       const supabase = createAdminClient();
@@ -59,10 +62,7 @@ export const braintreeRouter = router({
         .single();
 
       if (error || !user) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'User not found',
-        });
+        return { clientToken: null };
       }
 
       // Generate Braintree client token
@@ -72,13 +72,8 @@ export const braintreeRouter = router({
         clientToken,
       };
     } catch (error) {
-      if (error instanceof TRPCError) {
-        throw error;
-      }
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to generate payment token',
-      });
+      console.error('getClientToken error:', error);
+      return { clientToken: null };
     }
   }),
 
@@ -108,45 +103,50 @@ export const braintreeRouter = router({
   /**
    * Fetch current plan and active subscription window
    */
-  getCurrentSubscription: protectedProcedure.query(async ({ ctx }) => {
-    // Use admin client for User table queries
-    const adminSupabase = createAdminClient();
-    const supabase = await createClient();
-    const userId = ctx.session.user.id;
+  getCurrentSubscription: publicProcedure.query(async ({ ctx }) => {
+    try {
+      if (!ctx.session?.user?.id) {
+        return null;
+      }
+      // Use admin client for User table queries
+      const adminSupabase = createAdminClient();
+      const supabase = await createClient();
+      const userId = ctx.session.user.id;
 
-    const { data: user, error: userError } = await adminSupabase
-      .from('User')
-      .select('subscriptionPlan, role')
-      .eq('id', userId)
-      .single();
+      const { data: user, error: userError } = await adminSupabase
+        .from('User')
+        .select('subscriptionPlan, role')
+        .eq('id', userId)
+        .single();
 
-    if (userError || !user) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'User not found.',
-      });
+      if (userError || !user) {
+        return null;
+      }
+
+      const { data: planConfig } = await supabase
+        .from('SubscriptionPlanConfig')
+        .select('*')
+        .eq('plan', user.subscriptionPlan)
+        .single();
+
+      const { data: activeSubscriptions } = await supabase
+        .from('Subscription')
+        .select('*')
+        .eq('userId', userId)
+        .eq('status', 'ACTIVE')
+        .order('currentPeriodEnd', { ascending: false })
+        .limit(1);
+
+      return {
+        currentPlan: user.subscriptionPlan,
+        planConfig: planConfig ?? null,
+        activeSubscription: activeSubscriptions?.[0] ?? null,
+        role: user.role,
+      };
+    } catch (error) {
+      console.error('getCurrentSubscription error:', error);
+      return null;
     }
-
-    const { data: planConfig } = await supabase
-      .from('SubscriptionPlanConfig')
-      .select('*')
-      .eq('plan', user.subscriptionPlan)
-      .single();
-
-    const { data: activeSubscriptions } = await supabase
-      .from('Subscription')
-      .select('*')
-      .eq('userId', userId)
-      .eq('status', 'ACTIVE')
-      .order('currentPeriodEnd', { ascending: false })
-      .limit(1);
-
-    return {
-      currentPlan: user.subscriptionPlan,
-      planConfig,
-      activeSubscription: activeSubscriptions?.[0] ?? null,
-      role: user.role,
-    };
   }),
 
   /**
@@ -518,40 +518,56 @@ export const braintreeRouter = router({
   /**
    * Lightweight status helper for dashboard banners
    */
-  getSubscriptionStatus: protectedProcedure.query(async ({ ctx }) => {
-    const supabase = await createClient();
-    const userId = ctx.session.user.id;
+  getSubscriptionStatus: publicProcedure.query(async ({ ctx }) => {
+    try {
+      if (!ctx.session?.user?.id) {
+        return {
+          hasActiveSubscription: false,
+          daysUntilExpiry: null,
+          isExpiringSoon: false,
+        };
+      }
+      const supabase = await createClient();
+      const userId = ctx.session.user.id;
 
-    const { data: subscriptions } = await supabase
-      .from('Subscription')
-      .select('*')
-      .eq('userId', userId)
-      .eq('status', 'ACTIVE')
-      .order('currentPeriodEnd', { ascending: false })
-      .limit(1);
+      const { data: subscriptions } = await supabase
+        .from('Subscription')
+        .select('*')
+        .eq('userId', userId)
+        .eq('status', 'ACTIVE')
+        .order('currentPeriodEnd', { ascending: false })
+        .limit(1);
 
-    const subscription = subscriptions?.[0];
+      const subscription = subscriptions?.[0];
 
-    if (!subscription) {
+      if (!subscription) {
+        return {
+          hasActiveSubscription: false,
+          daysUntilExpiry: null,
+          isExpiringSoon: false,
+        };
+      }
+
+      const now = new Date();
+      const endDate = new Date(subscription.currentPeriodEnd);
+      const msUntilExpiry = endDate.getTime() - now.getTime();
+      const daysUntilExpiry = Math.ceil(msUntilExpiry / (1000 * 60 * 60 * 24));
+
+      return {
+        hasActiveSubscription: true,
+        currentPeriodEnd: subscription.currentPeriodEnd,
+        daysUntilExpiry,
+        isExpiringSoon: daysUntilExpiry <= 7,
+        canRenew: true,
+      };
+    } catch (err) {
+      console.error('getSubscriptionStatus error:', err);
       return {
         hasActiveSubscription: false,
         daysUntilExpiry: null,
         isExpiringSoon: false,
       };
     }
-
-    const now = new Date();
-    const endDate = new Date(subscription.currentPeriodEnd);
-    const msUntilExpiry = endDate.getTime() - now.getTime();
-    const daysUntilExpiry = Math.ceil(msUntilExpiry / (1000 * 60 * 60 * 24));
-
-    return {
-      hasActiveSubscription: true,
-      currentPeriodEnd: subscription.currentPeriodEnd,
-      daysUntilExpiry,
-      isExpiringSoon: daysUntilExpiry <= 7,
-      canRenew: true,
-    };
   }),
 
   /**

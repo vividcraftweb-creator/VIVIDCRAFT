@@ -27,7 +27,7 @@ export default function AnalyticsView() {
   const [days, setDays] = useState(30);
 
   // Fetch user plan
-  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery();
+  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, { retry: false });
   const hasAccess = planSummary?.permissions?.hasAdvancedClientAnalytics;
   const isEnterprise = planSummary?.plan === 'CLIENT_ENTERPRISE';
 

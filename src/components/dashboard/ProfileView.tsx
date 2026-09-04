@@ -45,6 +45,7 @@ export default function ProfileView() {
   const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
     enabled: status === 'authenticated' && !!session?.session?.user,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const sessionUser = session?.session?.user;

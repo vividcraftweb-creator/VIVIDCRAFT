@@ -93,8 +93,12 @@ type FreelancerSearchResult = {
 
 export const profilesRouter = router({
   getProfile: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
+      if (!input?.id) {
+        return null;
+      }
+
       // Rate limiting
       const clientIp = ctx.req?.headers.get('x-forwarded-for') || ctx.req?.headers.get('x-real-ip') || 'unknown';
       if (!RateLimiter.checkLimit(`profile_${clientIp}`, 30, 60000)) {
@@ -109,10 +113,7 @@ export const profilesRouter = router({
       try {
         userId = SecureId.ensureId(input.id);
       } catch {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Profile not found',
-        });
+        return null;
       }
 
       const supabase = await createClient();
@@ -334,7 +335,10 @@ export const profilesRouter = router({
       return data;
     }),
 
-  getContacts: protectedProcedure.query(async ({ ctx }) => {
+  getContacts: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.id) {
+      return [];
+    }
     const userId = ctx.session.user.id;
     // Use admin client to bypass RLS for User table joins
     const supabase = createAdminClient();
@@ -414,7 +418,10 @@ export const profilesRouter = router({
     return result;
   }),
 
-  getTokenData: protectedProcedure.query(async ({ ctx }) => {
+  getTokenData: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.id) {
+      return null;
+    }
     const userId = ctx.session.user.id;
     const defaultTokens = 150;
     const RESET_DAY = 1; // Monday
@@ -466,7 +473,10 @@ export const profilesRouter = router({
     return user;
   }),
 
-  getTokenLog: protectedProcedure.query(async ({ ctx }) => {
+  getTokenLog: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.id) {
+      return [];
+    }
     const supabase = await createClient();
 
     const { data, error } = await supabase
@@ -494,10 +504,10 @@ export const profilesRouter = router({
         location: z.string().optional(),
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
-      })
+      }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const { query, minRate, maxRate, location, limit, offset, skills } = input;
+      const { query, minRate, maxRate, location, limit = 20, offset = 0, skills } = input || {};
       // Use admin client to bypass RLS for fetching published profiles
       const supabase = createAdminClient();
 

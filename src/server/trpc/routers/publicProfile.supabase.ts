@@ -213,7 +213,10 @@ function formatProfileData(profile: any) {
 
 export const publicProfileRouter = router({
   // Get full profile data for editing
-  getMyFullProfile: protectedProcedure.query(async ({ ctx }) => {
+  getMyFullProfile: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.id) {
+      return null;
+    }
     const supabase = await createClient();
     const adminSupabase = createAdminClient();
     const userId = ctx.session.user.id;
@@ -929,7 +932,19 @@ export const publicProfileRouter = router({
   // Get profile completeness percentage
   // Checks the EXACT columns saved by BasicInfoCard:
   //   avatar_url, first_name, last_name, full_name, title, address, skills
-  getCompleteness: protectedProcedure.query(async ({ ctx }) => {
+  getCompleteness: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.id) {
+      return {
+        percentage: 0,
+        missingFields: [],
+        completed: 0,
+        total: 5,
+        isComplete: false,
+        detailedChecks: [],
+        optionalCompleted: 0,
+        optionalTotal: 0,
+      };
+    }
     const userId = ctx.session.user.id;
 
     // --- Step 1: Direct fetch from `profiles` with admin fallback ---

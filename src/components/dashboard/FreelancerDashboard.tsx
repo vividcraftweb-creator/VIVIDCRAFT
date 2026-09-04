@@ -127,6 +127,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
   const { data: planSummary, isLoading: planSummaryLoading } = trpc.user.getPlanFeatures.useQuery(undefined, {
     enabled: isAuthenticated,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const sessionUserId = session?.session?.user?.id;
@@ -182,6 +183,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
   const { data: proposals, isLoading: proposalsLoading } =
     trpc.proposals.getProposalsForFreelancer.useQuery(undefined, {
       enabled: isAuthenticated && (view === 'dashboard' || view === 'proposals'),
+      retry: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     });
@@ -224,23 +226,26 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
 
   const { data: messages, isLoading: messagesLoading } = trpc.messages.getMessages.useQuery(
     { receiverId: selectedContact?.id || '' },
-    { enabled: isAuthenticated && !!selectedContact && view === 'messages' }
+    { enabled: isAuthenticated && !!selectedContact && view === 'messages', retry: false }
   );
   const { data: tokenData, isLoading: tokensLoading } =
     trpc.profiles.getTokenData.useQuery(undefined, {
       enabled: isAuthenticated && view === 'dashboard',
+      retry: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     });
   const { data: profileCompletenessData, isLoading: completenessLoading, refetch: refetchCompleteness } =
     trpc.publicProfile.getCompleteness.useQuery(undefined, {
       enabled: isAuthenticated && view === 'dashboard',
+      retry: false,
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
       staleTime: 0,
     });
   const { data: contacts } = trpc.profiles.getContacts.useQuery(undefined, {
     enabled: isAuthenticated && view === 'messages',
+    retry: false,
   });
   const { data: myProfile, refetch: refetchMyProfile } = trpc.profiles.getMyProfile.useQuery(undefined, {
     enabled: isAuthenticated,

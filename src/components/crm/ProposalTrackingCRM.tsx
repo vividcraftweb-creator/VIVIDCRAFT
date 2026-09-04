@@ -99,7 +99,7 @@ export default function ProposalTrackingCRM() {
   const utils = trpc.useUtils();
 
   // Check plan access
-  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery();
+  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, { retry: false });
   const hasCRMAccess = planSummary?.permissions.hasTeamCollaboration ?? false;
 
   // Queries

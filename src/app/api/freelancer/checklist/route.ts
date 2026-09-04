@@ -30,13 +30,7 @@ export async function GET() {
       .from('User')
       .select(`
         *,
-        Profile (
-          *,
-          PortfolioItem (*),
-          ExperienceItem (*),
-          EducationItem (*),
-          Certification (*)
-        )
+        Profile (*)
       `)
       .eq('id', session.user.id)
       .single();
@@ -49,21 +43,42 @@ export async function GET() {
       return NextResponse.json({ error: 'Please verify your email address to access this feature' }, { status: 403 });
     }
 
+    // Also fetch from profiles table
+    let profilesRow: any = null;
+    try {
+      const { data: pData } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .or(`id.eq.${session.user.id},userId.eq.${session.user.id}`)
+        .maybeSingle();
+      profilesRow = pData;
+    } catch {}
+
     const checklist: ChecklistItem[] = [];
     let completedCount = 0;
 
-    // Get the profile (Supabase returns array for one-to-one relations)
-    const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
-    const portfolioItems = profile?.PortfolioItem || [];
-    const experienceItems = profile?.ExperienceItem || [];
-    const educationItems = profile?.EducationItem || [];
+    // Get merged profile
+    const legacyProfile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
+    const profile = {
+      ...(legacyProfile || {}),
+      ...(profilesRow || {}),
+      firstName: profilesRow?.first_name || legacyProfile?.firstName || session.user.name?.split(' ')[0] || '',
+      lastName: profilesRow?.last_name || legacyProfile?.lastName || session.user.name?.split(' ').slice(1).join(' ') || '',
+      profilePicture: profilesRow?.avatar_url || profilesRow?.profile_picture || legacyProfile?.profilePicture || '',
+      title: profilesRow?.title || legacyProfile?.title || '',
+      bio: profilesRow?.bio || legacyProfile?.bio || '',
+      location: profilesRow?.address || profilesRow?.location || legacyProfile?.location || '',
+      skills: profilesRow?.skills || legacyProfile?.skills || '',
+      rate: profilesRow?.rate ?? legacyProfile?.rate ?? null,
+      isPublished: profilesRow?.is_published ?? legacyProfile?.isPublished ?? false,
+    };
 
-    // Profile Photo Check
+    // 1. Profile Photo Check
     const hasProfilePhoto = !!profile?.profilePicture;
     checklist.push({
       id: 'profile-photo',
       title: 'Add Profile Photo',
-      description: 'Upload a professional profile photo to increase your profile views by 40%',
+      description: 'Upload a professional profile photo',
       completed: hasProfilePhoto,
       category: 'profile',
       actionLink: '/dashboard?tab=profile',
@@ -71,46 +86,29 @@ export async function GET() {
     });
     if (hasProfilePhoto) completedCount++;
 
-    // Bio Quality Check
-    const bioLength = profile?.bio?.length || 0;
-    const hasQualityBio = bioLength >= 150;
+    // 2. Full Name Check
+    const hasName = !!(profile?.firstName && profile?.lastName);
     checklist.push({
-      id: 'quality-bio',
-      title: hasQualityBio ? 'Bio looks great!' : 'Improve Your Bio',
-      description: hasQualityBio
-        ? 'Your bio is detailed and professional'
-        : `Add a detailed bio (at least 150 characters). Current: ${bioLength} characters`,
-      completed: hasQualityBio,
+      id: 'name',
+      title: hasName ? 'Full name provided' : 'Add Your Full Name',
+      description: hasName
+        ? `${profile.firstName} ${profile.lastName}`
+        : 'Set your first and last name',
+      completed: hasName,
       category: 'profile',
       actionLink: '/dashboard?tab=profile',
       priority: 'high',
     });
-    if (hasQualityBio) completedCount++;
+    if (hasName) completedCount++;
 
-    // Skills Check
-    const skillsArray = (typeof profile?.skills === 'string' ? profile.skills.split(',') : [])
-      .map((skill: string) => skill.trim())
-      .filter((skill: string): skill is string => skill.length > 0);
-    const hasEnoughSkills = skillsArray.length >= 5;
-    checklist.push({
-      id: 'skills',
-      title: hasEnoughSkills ? 'Skills well-defined' : 'Add More Skills',
-      description: hasEnoughSkills
-        ? `You have ${skillsArray.length} skills listed`
-        : `Add at least 5 skills to your profile. Current: ${skillsArray.length}`,
-      completed: hasEnoughSkills,
-      category: 'profile',
-      actionLink: '/dashboard?tab=profile',
-      priority: 'high',
-    });
-    if (hasEnoughSkills) completedCount++;
-
-    // Professional Title Check
+    // 3. Professional Title Check
     const hasTitle = !!profile?.title;
     checklist.push({
       id: 'title',
-      title: 'Add Professional Title',
-      description: 'Set a clear professional title (e.g., "Graphic Designer", "Content Writer", "Marketing Specialist")',
+      title: hasTitle ? 'Professional title set' : 'Add Professional Title',
+      description: hasTitle
+        ? profile.title
+        : 'Set a clear professional title (e.g., "Digital Artist", "Illustrator")',
       completed: hasTitle,
       category: 'profile',
       actionLink: '/dashboard?tab=profile',
@@ -118,101 +116,84 @@ export async function GET() {
     });
     if (hasTitle) completedCount++;
 
-    // Portfolio Items Check
-    const portfolioCount = portfolioItems.length;
-    const hasPortfolio = portfolioCount >= 3;
+    // 4. Bio Check
+    const bioLength = profile?.bio?.length || 0;
+    const hasBio = bioLength >= 20;
     checklist.push({
-      id: 'portfolio',
-      title: hasPortfolio ? 'Portfolio complete' : 'Add Portfolio Items',
-      description: hasPortfolio
-        ? `You have ${portfolioCount} portfolio items`
-        : `Add at least 3 portfolio items to showcase your work. Current: ${portfolioCount}`,
-      completed: hasPortfolio,
-      category: 'portfolio',
+      id: 'bio',
+      title: hasBio ? 'Bio added' : 'Add a Bio',
+      description: hasBio
+        ? 'Your bio is detailed and professional'
+        : 'Tell clients about your creative background and style',
+      completed: hasBio,
+      category: 'profile',
       actionLink: '/dashboard?tab=profile',
       priority: 'high',
     });
-    if (hasPortfolio) completedCount++;
+    if (hasBio) completedCount++;
 
-    // Experience Check
-    const experienceCount = experienceItems.length;
-    const hasExperience = experienceCount >= 1;
+    // 5. Location / Address Check
+    const hasLocation = !!profile?.location;
     checklist.push({
-      id: 'experience',
-      title: hasExperience ? 'Experience added' : 'Add Work Experience',
-      description: hasExperience
-        ? `You have ${experienceCount} experience entries`
-        : 'Add at least one work experience entry',
-      completed: hasExperience,
+      id: 'location',
+      title: hasLocation ? 'Location added' : 'Add Your Location',
+      description: hasLocation
+        ? profile.location
+        : 'Set your city or country',
+      completed: hasLocation,
       category: 'profile',
       actionLink: '/dashboard?tab=profile',
       priority: 'medium',
     });
-    if (hasExperience) completedCount++;
+    if (hasLocation) completedCount++;
 
-    // Education Check
-    const educationCount = educationItems.length;
-    const hasEducation = educationCount >= 1;
+    // 6. Skills Check
+    const skillsArray = (typeof profile?.skills === 'string' ? profile.skills.split(',') : [])
+      .map((skill: string) => skill.trim())
+      .filter((skill: string): skill is string => skill.length > 0);
+    const hasSkills = skillsArray.length > 0;
     checklist.push({
-      id: 'education',
-      title: hasEducation ? 'Education added' : 'Add Education',
-      description: hasEducation
-        ? `You have ${educationCount} education entries`
-        : 'Add your educational background',
-      completed: hasEducation,
-      category: 'profile',
-      actionLink: '/dashboard?tab=profile',
-      priority: 'low',
-    });
-    if (hasEducation) completedCount++;
-
-    // Hourly Rate Check
-    const hasRate = !!profile?.rate;
-    checklist.push({
-      id: 'rate',
-      title: hasRate ? 'Hourly rate set' : 'Set Your Hourly Rate',
-      description: hasRate
-        ? `Your rate: $${profile?.rate}/hour`
-        : 'Set a competitive hourly rate',
-      completed: hasRate,
+      id: 'skills',
+      title: hasSkills ? 'Skills defined' : 'Add Your Skills',
+      description: hasSkills
+        ? `${skillsArray.length} skills listed`
+        : 'Add your creative skills and specializations',
+      completed: hasSkills,
       category: 'profile',
       actionLink: '/dashboard?tab=profile',
       priority: 'high',
     });
+    if (hasSkills) completedCount++;
+
+    // 7. Hourly Rate Check
+    const hasRate = profile?.rate !== null && profile?.rate !== undefined;
+    checklist.push({
+      id: 'rate',
+      title: hasRate ? 'Hourly rate set' : 'Set Your Rate',
+      description: hasRate
+        ? `Your rate: $${profile?.rate}/hour`
+        : 'Set your hourly rate or pricing guidance',
+      completed: hasRate,
+      category: 'profile',
+      actionLink: '/dashboard?tab=profile',
+      priority: 'medium',
+    });
     if (hasRate) completedCount++;
 
-    // Profile Published Check
-    const isPublished = profile?.isPublished || false;
+    // 8. Profile Published Check
+    const isPublished = Boolean(profile?.isPublished);
     checklist.push({
       id: 'published',
       title: isPublished ? 'Profile is live' : 'Publish Your Profile',
       description: isPublished
-        ? 'Your profile is visible to clients'
-        : 'Make your profile public so clients can find you',
+        ? 'Your profile is visible to collectors and clients'
+        : 'Make your profile public so clients can find your work',
       completed: isPublished,
       category: 'profile',
       actionLink: '/dashboard?tab=profile',
       priority: 'high',
     });
     if (isPublished) completedCount++;
-
-    // Subscription Upgrade Suggestion
-    const isPro = user.subscriptionPlan === 'FREELANCER_PRO';
-    const isElite = user.subscriptionPlan === 'FREELANCER_ELITE';
-    const hasUpgradedPlan = isPro || isElite;
-
-    checklist.push({
-      id: 'upgrade-plan',
-      title: hasUpgradedPlan ? 'Premium plan active' : 'Consider Upgrading Your Plan',
-      description: hasUpgradedPlan
-        ? `You're on the ${user.subscriptionPlan.replace('FREELANCER_', '')} plan`
-        : 'Upgrade to Pro or Elite for more visibility and job opportunities',
-      completed: hasUpgradedPlan,
-      category: 'subscription',
-      actionLink: '/dashboard?tab=subscription',
-      priority: 'medium',
-    });
-    if (hasUpgradedPlan) completedCount++;
 
     const totalItems = checklist.length;
     const completionPercentage = Math.round((completedCount / totalItems) * 100);

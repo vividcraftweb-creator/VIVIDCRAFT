@@ -119,6 +119,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
   // Fetch user plan permissions
   const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
     enabled: !!session?.user,
+    retry: false,
     refetchOnWindowFocus: false,
     staleTime: 60000,
   });

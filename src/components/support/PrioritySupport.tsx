@@ -67,6 +67,7 @@ export default function PrioritySupport() {
 
   const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const supportLevel = planSummary?.permissions.clientSupportLevel || planSummary?.permissions.supportLevel || 'email';

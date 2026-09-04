@@ -32,7 +32,7 @@ export default function BusinessProfileForm({ onComplete, onBack }: BusinessProf
   const utils = trpc.useUtils();
 
   // Get profile (use getMyProfile to get all fields including business fields)
-  const { data: profile, isLoading: isLoadingProfile } = trpc.profiles.getMyProfile.useQuery();
+  const { data: profile, isLoading: isLoadingProfile } = trpc.profiles.getMyProfile.useQuery(undefined, { retry: false });
 
   // Update business profile mutation
   const updateBusinessProfile = trpc.profiles.updateBusinessProfile.useMutation({

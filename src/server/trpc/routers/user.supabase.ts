@@ -3,7 +3,7 @@
  * Handles all user account operations using Supabase database
  */
 
-import { router, protectedProcedure } from '../trpc';
+import { router, publicProcedure, protectedProcedure } from '../trpc';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { checkTokenReset, resetUserTokensIndividual, deductTokens, getUserTokenHistory, TOKEN_COSTS } from '../../../lib/token-management';
@@ -12,7 +12,10 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { createNotification } from '@/lib/notifications/create-notification';
 
 export const userRouter = router({
-  getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
+  getCurrentUser: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.id) {
+      return null;
+    }
     // Use admin client to bypass RLS since we removed all User table policies
     const supabase = createAdminClient();
     const userId = ctx.session.user.id;
@@ -111,15 +114,16 @@ export const userRouter = router({
     return user;
   }),
 
-  getPlanFeatures: protectedProcedure.query(async ({ ctx }) => {
+  getPlanFeatures: publicProcedure.query(async ({ ctx }) => {
     try {
+      if (!ctx.session?.user?.id) {
+        return null;
+      }
       const summary = await getPlanFeatureSummary(ctx.session.user.id);
       return summary;
     } catch (error) {
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch plan features',
-      });
+      console.error('getPlanFeatures error:', error);
+      return null;
     }
   }),
 
@@ -182,7 +186,10 @@ export const userRouter = router({
     }),
 
   // Token management routes
-  getTokenStatus: protectedProcedure.query(async ({ ctx }) => {
+  getTokenStatus: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.id) {
+      return null;
+    }
     const userId = ctx.session.user.id;
     return checkTokenReset(userId);
   }),
@@ -202,15 +209,18 @@ export const userRouter = router({
     return resetUserTokensIndividual(userId);
   }),
 
-  getTokenHistory: protectedProcedure
+  getTokenHistory: publicProcedure
     .input(
       z.object({
         limit: z.number().min(1).max(100).default(20),
-      })
+      }).optional()
     )
     .query(async ({ ctx, input }) => {
+      if (!ctx.session?.user?.id) {
+        return [];
+      }
       const userId = ctx.session.user.id;
-      return getUserTokenHistory(userId, input.limit);
+      return getUserTokenHistory(userId, input?.limit ?? 20);
     }),
 
   spendTokens: protectedProcedure
@@ -240,7 +250,7 @@ export const userRouter = router({
       }
     }),
 
-  getTokenCosts: protectedProcedure.query(() => {
+  getTokenCosts: publicProcedure.query(() => {
     return TOKEN_COSTS;
   }),
 
@@ -291,9 +301,12 @@ export const userRouter = router({
     return { success: true, message: 'User verified successfully!' };
   }),
 
-  getUserById: protectedProcedure
-    .input(z.object({ userId: z.string() }))
+  getUserById: publicProcedure
+    .input(z.object({ userId: z.string().optional() }).optional())
     .query(async ({ input }) => {
+      if (!input?.userId) {
+        return null;
+      }
       // Use admin client to bypass RLS since we removed all User table policies
       const supabase = createAdminClient();
 
@@ -317,20 +330,7 @@ export const userRouter = router({
       return user;
     }),
 
-  getNotificationPreferences: protectedProcedure.query(async ({ ctx }) => {
-    // Use admin client to bypass RLS since we removed all User table policies
-    const supabase = createAdminClient();
-
-    const { data: user, error } = await supabase
-      .from('User')
-      .select('notificationPreferences')
-      .eq('id', ctx.session.user.id)
-      .single();
-
-    if (error) {
-    }
-
-    // Return default preferences if none are set
+  getNotificationPreferences: publicProcedure.query(async ({ ctx }) => {
     const defaultPreferences = {
       emailNotifications: true,
       newProposals: true,
@@ -342,7 +342,28 @@ export const userRouter = router({
       marketingEmails: false,
     };
 
-    return user?.notificationPreferences || defaultPreferences;
+    if (!ctx.session?.user?.id) {
+      return defaultPreferences;
+    }
+
+    try {
+      // Use admin client to bypass RLS since we removed all User table policies
+      const supabase = createAdminClient();
+
+      const { data: user, error } = await supabase
+        .from('User')
+        .select('notificationPreferences')
+        .eq('id', ctx.session.user.id)
+        .single();
+
+      if (error) {
+        return defaultPreferences;
+      }
+
+      return user?.notificationPreferences || defaultPreferences;
+    } catch {
+      return defaultPreferences;
+    }
   }),
 
   updateNotificationPreferences: protectedProcedure

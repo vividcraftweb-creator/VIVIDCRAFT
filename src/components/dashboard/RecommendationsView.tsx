@@ -21,7 +21,7 @@ export default function RecommendationsView() {
   const [selectedJobId, setSelectedJobId] = useState<string>('');
 
   // Fetch user plan to determine recommendation limit
-  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery();
+  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, { retry: false });
   const subscriptionPlan = planSummary?.plan;
 
   // Determine recommendation limit based on plan

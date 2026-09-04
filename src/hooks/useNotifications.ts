@@ -41,6 +41,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     undefined,
     {
       enabled,
+      retry: false,
     }
   );
 

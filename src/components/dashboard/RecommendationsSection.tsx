@@ -11,7 +11,7 @@ import Link from 'next/link';
 
 export default function RecommendationsSection() {
   // Fetch user plan
-  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery();
+  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, { retry: false });
   const subscriptionPlan = planSummary?.plan;
   const hasAccess = planSummary?.permissions?.hasAdvancedClientAnalytics;
 

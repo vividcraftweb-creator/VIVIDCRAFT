@@ -15,9 +15,9 @@ interface ReviewSubmitStepProps {
 export default function ReviewSubmitStep({ clientType, onComplete, onBack }: ReviewSubmitStepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: user } = trpc.user.getCurrentUser.useQuery();
-  const { data: profile } = trpc.profiles.getMyProfile.useQuery();
-  const { data: documents } = trpc.verifications.getUserDocuments.useQuery();
+  const { data: user } = trpc.user.getCurrentUser.useQuery(undefined, { retry: false });
+  const { data: profile } = trpc.profiles.getMyProfile.useQuery(undefined, { retry: false });
+  const { data: documents } = trpc.verifications.getUserDocuments.useQuery(undefined, { retry: false });
 
   // Determine if user is freelancer or client for proper labeling
   const userRole = user?.role || 'CLIENT';
