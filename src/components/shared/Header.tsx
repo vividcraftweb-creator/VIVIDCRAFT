@@ -74,7 +74,10 @@ const Header = () => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUser(user);
-        setUserRole(user?.user_metadata?.role || null);
+        const metaRole = (user?.user_metadata?.role || '').toString().trim().toUpperCase();
+        // Normalize artist/creator/seller variants to FREELANCER
+        const normalized = ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
+        setUserRole(normalized || null);
       }
     }).catch(() => {});
 
@@ -82,7 +85,9 @@ const Header = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
         setUser(session.user);
-        setUserRole(session.user?.user_metadata?.role || null);
+        const metaRole = (session.user?.user_metadata?.role || '').toString().trim().toUpperCase();
+        const normalized = ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
+        setUserRole(normalized || null);
       }
     });
 

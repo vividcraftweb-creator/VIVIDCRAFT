@@ -147,12 +147,15 @@ export async function auth() {
 
       if (userRow?.role) {
         dbRole = userRow.role;
+      } else {
+        console.warn('[auth] No role found in any DB table for user:', user.id, '— falling back to user_metadata.role');
       }
-    } catch {
+    } catch (dbErr) {
+      console.error('[auth] DB role lookup failed for user:', user.id, dbErr);
       // Error accessing database - use metadata fallback
     }
 
-    const rawRole = (dbRole || user.user_metadata?.role || '').toUpperCase();
+    const rawRole = (dbRole || user.user_metadata?.role || '').toString().trim().toUpperCase();
     const resolvedRole = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawRole)
       ? 'FREELANCER'
       : (rawRole === 'ADMIN' ? 'ADMIN' : 'CLIENT');

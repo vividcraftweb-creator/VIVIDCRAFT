@@ -38,7 +38,7 @@ export default async function DashboardPage({
     id: session?.user?.id || 'mock-user-id',
     name: session?.user?.name || 'Vivid Craft User',
     email: session?.user?.email || 'vividcraftweb@gmail.com',
-    role: session?.user?.role || 'CLIENT',
+    role: session?.user?.role || 'FREELANCER',
     avatar_url: (session?.user as any)?.avatar_url || (session?.user as any)?.image || '/placeholder-avatar.png'
   };
 
@@ -67,7 +67,10 @@ export default async function DashboardPage({
           .eq('id', authUser.id)
           .single();
 
-        const role = userData?.role || authUser.user_metadata?.role;
+        const rawDbRole = (userData?.role || authUser.user_metadata?.role || '').toString().trim().toUpperCase();
+        const role = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawDbRole)
+          ? 'FREELANCER'
+          : (rawDbRole === 'ADMIN' ? 'ADMIN' : rawDbRole === 'CLIENT' ? 'CLIENT' : null);
 
         // Redirect Buyers / Clients away from Dashboard to Home Page
         if (role === 'CLIENT') {

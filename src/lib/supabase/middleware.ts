@@ -83,7 +83,8 @@ export async function updateSession(request: NextRequest) {
           .eq('id', user.id)
           .single()
 
-        // If user doesn't exist in database OR email is not verified, redirect to verify-email
+        // Only redirect if user exists in DB AND isVerified is explicitly false
+        // If dbUser is null (row doesn't exist yet), let the user through
         if (dbUser && dbUser.isVerified === false) {
           const url = request.nextUrl.clone()
           url.pathname = '/auth/verify-email'
