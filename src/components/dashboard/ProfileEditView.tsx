@@ -23,6 +23,7 @@ export default function ProfileEditView() {
 
   const profileQuery = trpc.profiles.getMyProfile.useQuery(undefined, {
     enabled: !!session?.session?.user,
+    retry: false,
   });
 
   const updateProfileMutation = trpc.profiles.updateProfile.useMutation({
@@ -99,6 +100,7 @@ export default function ProfileEditView() {
               </Label>
               <Input
                 id="firstName"
+                name="firstName"
                 value={profile.firstName || ''}
                 onChange={handleChange}
                 placeholder="John"
@@ -113,6 +115,7 @@ export default function ProfileEditView() {
               </Label>
               <Input
                 id="lastName"
+                name="lastName"
                 value={profile.lastName || ''}
                 onChange={handleChange}
                 placeholder="Doe"
@@ -131,6 +134,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Input
                   id="title"
+                  name="title"
                   value={profile.title || ''}
                   onChange={handleChange}
                   placeholder="e.g., Senior Software Engineer"
@@ -145,6 +149,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Textarea
                   id="bio"
+                  name="bio"
                   value={profile.bio || ''}
                   onChange={handleChange}
                   placeholder="Tell us about yourself..."
@@ -159,6 +164,7 @@ export default function ProfileEditView() {
                 </Label>
                 <LocationAutocompleteInput
                   id="location"
+                  name="location"
                   value={profile.location || ''}
                   onChange={(value) => setProfile((prev) => ({ ...prev, location: value }))}
                   placeholder="e.g., San Francisco, CA"
@@ -174,6 +180,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Input
                   id="phone"
+                  name="phone"
                   value={profile.phone || ''}
                   onChange={handleChange}
                   placeholder="+1 (555) 123-4567"
@@ -188,6 +195,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Input
                   id="skills"
+                  name="skills"
                   value={profile.skills || ''}
                   onChange={handleChange}
                   placeholder="e.g., React, TypeScript, Node.js"
@@ -202,6 +210,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Input
                   id="rate"
+                  name="rate"
                   type="number"
                   value={profile.rate || ''}
                   onChange={handleChange}
@@ -217,6 +226,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Input
                   id="portfolio"
+                  name="portfolio"
                   value={profile.portfolio || ''}
                   onChange={handleChange}
                   placeholder="https://yourportfolio.com"
@@ -231,6 +241,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Input
                   id="experience"
+                  name="experience"
                   value={profile.experience || ''}
                   onChange={handleChange}
                   placeholder="e.g., 5 years"
@@ -250,6 +261,7 @@ export default function ProfileEditView() {
                 </Label>
                 <Input
                   id="location"
+                  name="location"
                   value={profile.location || profile.businessAddressLine1 || ''}
                   onChange={handleChange}
                   placeholder="e.g., 123 Main Street, Suite 400, New York, NY"
@@ -265,6 +277,7 @@ export default function ProfileEditView() {
                   </Label>
                   <Input
                     id="phone"
+                    name="phone"
                     value={profile.phone || profile.businessPhone || ''}
                     onChange={handleChange}
                     placeholder="+1 (555) 123-4567"
@@ -279,6 +292,7 @@ export default function ProfileEditView() {
                   </Label>
                   <Input
                     id="businessEmail"
+                    name="businessEmail"
                     type="email"
                     value={profile.businessEmail || session?.session?.user?.email || ''}
                     onChange={handleChange}

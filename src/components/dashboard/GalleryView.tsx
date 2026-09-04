@@ -107,12 +107,16 @@ export default function GalleryView() {
         {/* Add new image */}
         <div className="flex flex-col gap-3 mb-8 bg-black/20 p-4 rounded-xl border border-white/10">
           <Input
+            id="artwork-title"
+            name="artwork-title"
             placeholder="Artwork Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
           />
           <Input
+            id="artwork-description"
+            name="artwork-description"
             placeholder="Description (Optional)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -124,7 +128,7 @@ export default function GalleryView() {
               disabled={isUploading || createArtwork.isPending || !title.trim()}
               className={`bg-purple-600 hover:bg-purple-700 text-white border-0 ${(!title.trim() || isUploading) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              <label>
+              <label htmlFor="artwork-file">
                 {isUploading || createArtwork.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
@@ -132,6 +136,8 @@ export default function GalleryView() {
                 )}
                 Upload File
                 <input
+                  id="artwork-file"
+                  name="artwork-file"
                   type="file"
                   accept="image/*"
                   className="hidden"

@@ -123,6 +123,7 @@ export default function ClientDashboard() {
   const { data: notifications, isLoading: notificationsLoading } =
     trpc.notifications.getNotifications.useQuery(undefined, {
       enabled: isAuthenticated && activeTab === 'dashboard',
+      retry: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     });

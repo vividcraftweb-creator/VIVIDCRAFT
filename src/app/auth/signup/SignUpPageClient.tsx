@@ -654,6 +654,7 @@ export default function SignUpPage() {
             <Label htmlFor="bio" className="text-gray-200 text-sm font-medium">Professional Bio</Label>
             <textarea
               id="bio"
+              name="bio"
               placeholder="Tell clients about your experience, passion, and what makes you unique..."
               value={formData.bio}
               onChange={(e) => updateFormData('bio', e.target.value)}
@@ -723,6 +724,7 @@ export default function SignUpPage() {
             </Label>
             <textarea
               id="bio"
+              name="bio"
               placeholder="Tell us about yourself and your role..."
               value={formData.bio}
               onChange={(e) => updateFormData('bio', e.target.value)}
@@ -786,6 +788,7 @@ export default function SignUpPage() {
             </Label>
             <textarea
               id="companyInfo"
+              name="companyInfo"
               placeholder="Describe your company, mission, and what you do..."
               value={formData.companyInfo}
               onChange={(e) => updateFormData('companyInfo', e.target.value)}

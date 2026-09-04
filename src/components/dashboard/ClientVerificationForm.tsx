@@ -110,6 +110,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
           </Label>
           <Input
             id="companyName"
+            name="companyName"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="e.g., JobHorizons"
@@ -127,6 +128,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
           </Label>
           <select
             id="industry"
+            name="industry"
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
             required
@@ -190,6 +192,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
           </Label>
           <Input
             id="website"
+            name="website"
             type="url"
             value={website}
             onChange={(e) => setWebsite(e.target.value)}

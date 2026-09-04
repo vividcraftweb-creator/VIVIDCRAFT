@@ -3,7 +3,7 @@
  * Handles all notification operations using Supabase database
  */
 
-import { router, protectedProcedure } from '../trpc';
+import { router, publicProcedure, protectedProcedure } from '../trpc';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -19,7 +19,7 @@ const NotificationTypeEnum = z.enum([
 ]);
 
 export const notificationsRouter = router({
-  getNotifications: protectedProcedure
+  getNotifications: publicProcedure
     .input(
       z
         .object({
@@ -36,53 +36,69 @@ export const notificationsRouter = router({
         .optional()
     )
     .query(async ({ ctx, input }) => {
-      const supabase = createAdminClient();
-      const limit = input?.limit ?? 20;
-      const cursor = input?.cursor;
-      const filters = input?.filters;
+      try {
+        if (!ctx.session?.user?.id) {
+          return {
+            notifications: [],
+            nextCursor: null,
+          };
+        }
 
-      let query = supabase
-        .from('Notification')
-        .select('*')
-        .eq('userId', ctx.session.user.id)
-        .order('createdAt', { ascending: false })
-        .limit(limit + 1); // Fetch one extra to determine if there are more
+        const supabase = createAdminClient();
+        const limit = input?.limit ?? 20;
+        const cursor = input?.cursor;
+        const filters = input?.filters;
 
-      // Apply cursor for pagination
-      if (cursor) {
-        query = query.lt('createdAt', cursor);
+        let query = supabase
+          .from('Notification')
+          .select('*')
+          .eq('userId', ctx.session.user.id)
+          .order('createdAt', { ascending: false })
+          .limit(limit + 1); // Fetch one extra to determine if there are more
+
+        // Apply cursor for pagination
+        if (cursor) {
+          query = query.lt('createdAt', cursor);
+        }
+
+        // Apply filters
+        if (filters?.types && filters.types.length > 0) {
+          query = query.in('type', filters.types);
+        }
+
+        if (filters?.read !== undefined) {
+          query = query.eq('read', filters.read);
+        }
+
+        if (filters?.searchQuery) {
+          query = query.ilike('message', `%${filters.searchQuery}%`);
+        }
+
+        const { data: notifications, error } = await query;
+
+        if (error) {
+          console.error('Failed to fetch notifications from DB:', error);
+          return {
+            notifications: [],
+            nextCursor: null,
+          };
+        }
+
+        const hasMore = (notifications || []).length > limit;
+        const items = hasMore ? notifications!.slice(0, -1) : notifications || [];
+        const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].createdAt : null;
+
+        return {
+          notifications: items,
+          nextCursor,
+        };
+      } catch (err) {
+        console.error('getNotifications error:', err);
+        return {
+          notifications: [],
+          nextCursor: null,
+        };
       }
-
-      // Apply filters
-      if (filters?.types && filters.types.length > 0) {
-        query = query.in('type', filters.types);
-      }
-
-      if (filters?.read !== undefined) {
-        query = query.eq('read', filters.read);
-      }
-
-      if (filters?.searchQuery) {
-        query = query.ilike('message', `%${filters.searchQuery}%`);
-      }
-
-      const { data: notifications, error } = await query;
-
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch notifications',
-        });
-      }
-
-      const hasMore = (notifications || []).length > limit;
-      const items = hasMore ? notifications!.slice(0, -1) : notifications || [];
-      const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].createdAt : null;
-
-      return {
-        notifications: items,
-        nextCursor,
-      };
     }),
 
   markAsRead: protectedProcedure

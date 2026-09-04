@@ -224,6 +224,7 @@ export default function WebhooksView() {
               <Label htmlFor="webhook-url" className="text-white">Endpoint URL *</Label>
               <Input
                 id="webhook-url"
+                name="webhook-url"
                 type="url"
                 placeholder="https://api.yourapp.com/webhooks"
                 value={newWebhookUrl}
@@ -239,6 +240,7 @@ export default function WebhooksView() {
               <Label htmlFor="webhook-description" className="text-white">Description (optional)</Label>
               <Input
                 id="webhook-description"
+                name="webhook-description"
                 placeholder="Production API webhook"
                 value={newWebhookDescription}
                 onChange={(e) => setNewWebhookDescription(e.target.value)}

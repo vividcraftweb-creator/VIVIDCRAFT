@@ -30,6 +30,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     { limit },
     {
       enabled,
+      retry: false,
     }
   );
 

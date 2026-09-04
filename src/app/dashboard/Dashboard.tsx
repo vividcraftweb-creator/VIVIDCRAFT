@@ -96,7 +96,14 @@ export default function Dashboard({ session }: { session: AppSession }) {
 
   // Fetch profile data to get updated name
   const { data: profile } = trpc.profiles.getMyProfile.useQuery(undefined, {
-    enabled: !!session?.user,
+    enabled: !!session,
+    retry: false,
+  });
+
+  // Fetch notifications with session guarding
+  const { data: notificationsData } = trpc.notifications.getNotifications.useQuery(undefined, {
+    enabled: !!session,
+    retry: false,
   });
 
   const userFullName = profile?.firstName && profile?.lastName

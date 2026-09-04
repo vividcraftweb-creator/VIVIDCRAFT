@@ -244,6 +244,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
   });
   const { data: myProfile, refetch: refetchMyProfile } = trpc.profiles.getMyProfile.useQuery(undefined, {
     enabled: isAuthenticated,
+    retry: false,
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
@@ -1290,6 +1291,8 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
 
                 <form onSubmit={handleSendMessage} className="flex gap-2 sm:gap-3">
                   <Input
+                    id="freelancer-message-input"
+                    name="freelancer-message-input"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="Type a message..."

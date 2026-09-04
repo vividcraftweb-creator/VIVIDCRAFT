@@ -179,46 +179,55 @@ export const profilesRouter = router({
       };
     }),
 
-  getMyProfile: protectedProcedure.query(async ({ ctx }) => {
-    // Use admin client to bypass RLS for fetching user's own profile
-    const supabase = createAdminClient();
-
-    let { data, error } = await (supabase as any)
-      .from('profiles')
-      .select('*')
-      .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
-      .maybeSingle();
-
+  getMyProfile: publicProcedure.query(async ({ ctx }) => {
     try {
-      const { data: pData } = await (supabase as any)
-        .from('Profile')
-        .select('*')
-        .eq('userId', ctx.session.user.id)
-        .maybeSingle();
-      if (pData) {
-        data = { ...pData, ...(data || {}) };
+      if (!ctx.session?.user?.id) {
+        return null;
       }
-    } catch {}
 
-    if (error && !data) {
+      // Use admin client to bypass RLS for fetching user's own profile
+      const supabase = createAdminClient();
+
+      let { data, error } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
+        .maybeSingle();
+
+      try {
+        const { data: pData } = await (supabase as any)
+          .from('Profile')
+          .select('*')
+          .eq('userId', ctx.session.user.id)
+          .maybeSingle();
+        if (pData) {
+          data = { ...pData, ...(data || {}) };
+        }
+      } catch {}
+
+      if (error && !data) {
+        return null;
+      }
+
+      if (!data) return null;
+
+      return {
+        ...data,
+        firstName: data.firstName || data.first_name || data.full_name?.split(' ')[0] || '',
+        lastName: data.lastName || data.last_name || (data.full_name ? data.full_name.split(' ').slice(1).join(' ') : '') || '',
+        location: data.location || data.address || '',
+        address: data.address || data.location || '',
+        skills: data.skills || '',
+        title: data.title || '',
+        bio: data.bio || data.description || '',
+        profilePicture: data.profilePicture || data.profile_picture || data.avatar_url || '',
+        avatar_url: data.avatar_url || data.profile_picture || data.profilePicture || '',
+        isPublished: data.is_published ?? data.isPublished ?? false,
+      };
+    } catch (err) {
+      console.error('getMyProfile error:', err);
       return null;
     }
-
-    if (!data) return null;
-
-    return {
-      ...data,
-      firstName: data.firstName || data.first_name || data.full_name?.split(' ')[0] || '',
-      lastName: data.lastName || data.last_name || (data.full_name ? data.full_name.split(' ').slice(1).join(' ') : '') || '',
-      location: data.location || data.address || '',
-      address: data.address || data.location || '',
-      skills: data.skills || '',
-      title: data.title || '',
-      bio: data.bio || data.description || '',
-      profilePicture: data.profilePicture || data.profile_picture || data.avatar_url || '',
-      avatar_url: data.avatar_url || data.profile_picture || data.profilePicture || '',
-      isPublished: data.is_published ?? data.isPublished ?? false,
-    };
   }),
 
   updateProfile: protectedProcedure

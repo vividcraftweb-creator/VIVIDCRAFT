@@ -194,6 +194,8 @@ export default function ApiKeysView() {
 
           <div className="flex items-center gap-2">
             <Input
+              id="generated-api-key"
+              name="generated-api-key"
               type="text"
               value={newApiKey}
               readOnly
@@ -235,10 +237,12 @@ export default function ApiKeysView() {
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-300 mb-2 block">
+            <label htmlFor="api-key-name" className="text-sm font-medium text-slate-300 mb-2 block">
               Key Name
             </label>
             <Input
+              id="api-key-name"
+              name="api-key-name"
               type="text"
               placeholder="e.g., Production API Key"
               value={keyName}

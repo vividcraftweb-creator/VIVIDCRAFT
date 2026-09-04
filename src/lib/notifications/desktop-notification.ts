@@ -21,8 +21,8 @@ export function showDesktopNotification(params: {
 
   const notification = new Notification(params.title, {
     body: params.body,
-    icon: params.icon || '/vivid-art-logo.webp',
-    badge: '/vivid-art-logo.webp',
+    icon: params.icon || '/jobhorizons-logo.webp',
+    badge: '/favicon-32x32.png',
     tag: 'vivid-art-notification',
   });
 

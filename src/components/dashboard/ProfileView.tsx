@@ -35,6 +35,7 @@ export default function ProfileView() {
 
   const { data: profile, isLoading } = trpc.profiles.getMyProfile.useQuery(undefined, {
     enabled: status === 'authenticated' && !!session?.session?.user,
+    retry: false,
   });
 
   const { data: verification } = trpc.verifications.getVerificationStatus.useQuery(undefined, {

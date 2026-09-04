@@ -463,6 +463,8 @@ export default function MessagesView() {
               ) : (
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <Input
+                    id="chat-message-input"
+                    name="chat-message-input"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type a message..."
