@@ -40,7 +40,7 @@ export function NotificationList({ filters, onMarkRead, selectionEnabled = false
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-  } = trpc.notifications.getNotifications.useInfiniteQuery(
+  } = (trpc.notifications.getNotifications as any).useInfiniteQuery(
     {
       limit: 20,
       filters: {
@@ -50,7 +50,7 @@ export function NotificationList({ filters, onMarkRead, selectionEnabled = false
       },
     },
     {
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
     }
   );
 
@@ -72,15 +72,20 @@ export function NotificationList({ filters, onMarkRead, selectionEnabled = false
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const allNotifications = data?.pages.flatMap((page) => page.notifications) || [];
-  const groupedNotifications = groupingEnabled ? groupNotifications(allNotifications) : allNotifications.map(n => ({
-    id: n.id,
-    type: 'single' as const,
-    count: 1,
-    summary: n.message,
-    notifications: [n],
-    latestTimestamp: new Date(n.createdAt),
-  }));
+  const allNotifications: any[] =
+    data?.pages?.flatMap((page: any) =>
+      Array.isArray(page) ? page : page?.notifications || []
+    ) || [];
+  const groupedNotifications = groupingEnabled
+    ? groupNotifications(allNotifications)
+    : allNotifications.map((n: any) => ({
+        id: n.id,
+        type: 'single' as const,
+        count: 1,
+        summary: n.message,
+        notifications: [n],
+        latestTimestamp: new Date(n.createdAt),
+      }));
 
   // Bulk action mutations
   const markManyAsReadMutation = trpc.notifications.markManyAsRead.useMutation({

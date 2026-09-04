@@ -23,26 +23,28 @@ export const notificationsRouter = router({
     .input(
       z
         .object({
-          limit: z.number().min(1).max(50).default(20).optional(),
-          cursor: z.string().optional(), // ISO timestamp
+          limit: z.number().min(1).max(50).optional().nullable(),
+          cursor: z.string().optional().nullable(), // ISO timestamp
           filters: z
             .object({
-              types: z.array(NotificationTypeEnum).optional(),
-              read: z.boolean().optional(),
-              searchQuery: z.string().optional(),
+              types: z.array(NotificationTypeEnum).optional().nullable(),
+              read: z.boolean().optional().nullable(),
+              searchQuery: z.string().optional().nullable(),
             })
-            .optional(),
+            .optional()
+            .nullable(),
         })
         .optional()
+        .nullable()
     )
     .query(async ({ ctx, input }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return {
-            notifications: [],
-            nextCursor: null,
-          };
+          const fallback: any = [];
+          fallback.notifications = [];
+          fallback.nextCursor = null;
+          return fallback;
         }
 
         let items: any[] = [];
@@ -111,16 +113,16 @@ export const notificationsRouter = router({
             ? items[items.length - 1]?.createdAt || items[items.length - 1]?.created_at || null
             : null;
 
-        return {
-          notifications: items,
-          nextCursor,
-        };
+        const result: any = items;
+        result.notifications = items;
+        result.nextCursor = nextCursor;
+        return result;
       } catch (err) {
         console.error('getNotifications error caught gracefully:', err);
-        return {
-          notifications: [],
-          nextCursor: null,
-        };
+        const fallback: any = [];
+        fallback.notifications = [];
+        fallback.nextCursor = null;
+        return fallback;
       }
     }),
 
@@ -165,7 +167,14 @@ export const notificationsRouter = router({
   }),
 
   getUnreadNotificationCount: publicProcedure
-    .input(z.any().optional().nullable())
+    .input(
+      z
+        .object({})
+        .passthrough()
+        .optional()
+        .nullable()
+        .or(z.any().optional().nullable())
+    )
     .query(async ({ ctx }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
@@ -214,12 +223,19 @@ export const notificationsRouter = router({
     }),
 
   getUnreadCount: publicProcedure
-    .input(z.any().optional().nullable())
+    .input(
+      z
+        .object({})
+        .passthrough()
+        .optional()
+        .nullable()
+        .or(z.any().optional().nullable())
+    )
     .query(async ({ ctx }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return { unreadCount: 0 };
+          return { count: 0, unreadCount: 0 };
         }
 
         let count = 0;
@@ -255,15 +271,22 @@ export const notificationsRouter = router({
           console.warn('Supabase admin client error in getUnreadCount:', e);
         }
 
-        return { unreadCount: count };
+        return { count, unreadCount: count };
       } catch (err) {
         console.error('getUnreadCount error caught gracefully:', err);
-        return { unreadCount: 0 };
+        return { count: 0, unreadCount: 0 };
       }
     }),
 
   unreadCount: publicProcedure
-    .input(z.any().optional().nullable())
+    .input(
+      z
+        .object({})
+        .passthrough()
+        .optional()
+        .nullable()
+        .or(z.any().optional().nullable())
+    )
     .query(async ({ ctx }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
@@ -277,7 +300,14 @@ export const notificationsRouter = router({
     }),
 
   list: publicProcedure
-    .input(z.any().optional().nullable())
+    .input(
+      z
+        .object({})
+        .passthrough()
+        .optional()
+        .nullable()
+        .or(z.any().optional().nullable())
+    )
     .query(async ({ ctx }) => {
       return [];
     }),

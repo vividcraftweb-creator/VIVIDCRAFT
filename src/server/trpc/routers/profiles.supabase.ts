@@ -229,7 +229,16 @@ export const profilesRouter = router({
     }),
 
   getMyProfile: publicProcedure
-    .input(z.any().optional().nullable())
+    .input(
+      z
+        .object({
+          userId: z.string().optional().nullable(),
+        })
+        .passthrough()
+        .optional()
+        .nullable()
+        .or(z.any().optional().nullable())
+    )
     .query(async ({ ctx, input }) => {
       const user = (ctx as any).user || ctx.session?.user;
       if (!user?.id) {
@@ -283,6 +292,7 @@ export const profilesRouter = router({
           try {
             const newProfileRecord = {
               id: user.id,
+              user_id: user.id,
               role: 'artist',
               email: user.email || '',
               first_name: defaultFirstName,
@@ -297,18 +307,18 @@ export const profilesRouter = router({
 
             const { data: inserted, error: insertError } = await (supabase as any)
               .from('profiles')
-              .insert(newProfileRecord)
+              .upsert(newProfileRecord, { onConflict: 'id' })
               .select()
               .maybeSingle();
 
             if (!insertError && inserted) {
               data = inserted;
             } else {
-              // Try legacy Profile table fallback if profiles table insert fails
+              // Try legacy Profile table fallback if profiles table upsert fails
               try {
                 const { data: pInserted } = await (supabase as any)
                   .from('Profile')
-                  .insert({
+                  .upsert({
                     id: user.id,
                     userId: user.id,
                     role: 'artist',
@@ -317,7 +327,7 @@ export const profilesRouter = router({
                     lastName: defaultLastName,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
-                  })
+                  }, { onConflict: 'id' })
                   .select()
                   .maybeSingle();
                 if (pInserted) data = pInserted;

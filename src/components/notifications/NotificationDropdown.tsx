@@ -108,7 +108,7 @@ export function NotificationDropdown({
 
           {!isLoading && notifications.length > 0 && (
             <div className="divide-y divide-white/5">
-              {notifications.map((notification) => (
+              {notifications.map((notification: any) => (
                 <NotificationItem
                   key={notification.id}
                   notification={notification}

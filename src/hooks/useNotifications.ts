@@ -60,11 +60,11 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       const previousCount = utils.notifications.getUnreadNotificationCount.getData();
 
       // Optimistically update notifications
-      utils.notifications.getNotifications.setData({ limit }, (old) => {
+      utils.notifications.getNotifications.setData({ limit }, (old: any) => {
         if (!old) return old;
         return {
           ...old,
-          notifications: old.notifications.map((notif) =>
+          notifications: (old.notifications || []).map((notif: any) =>
             notif.id === notificationId ? { ...notif, read: true } : notif
           ),
         };
@@ -115,11 +115,11 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       const previousCount = utils.notifications.getUnreadNotificationCount.getData();
 
       // Optimistically update all notifications to read
-      utils.notifications.getNotifications.setData({ limit }, (old) => {
+      utils.notifications.getNotifications.setData({ limit }, (old: any) => {
         if (!old) return old;
         return {
           ...old,
-          notifications: old.notifications.map((notif) => ({ ...notif, read: true })),
+          notifications: (old.notifications || []).map((notif: any) => ({ ...notif, read: true })),
         };
       });
 
