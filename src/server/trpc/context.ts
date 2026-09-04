@@ -6,6 +6,7 @@ import type { Database } from '@/types/database.types';
 
 export type Context = {
   session: Awaited<ReturnType<typeof auth>>;
+  user: Awaited<ReturnType<typeof auth>> extends { user: infer U } ? U | null : any;
   req: Request | undefined;
   res: undefined;
   supabase: SupabaseClient<Database>;
@@ -30,6 +31,7 @@ export const createContext = async (opts?: FetchCreateContextFnOptions): Promise
 
   return {
     session,
+    user: session?.user || null,
     req: opts?.req as Request | undefined,
     res: undefined,
     supabase,

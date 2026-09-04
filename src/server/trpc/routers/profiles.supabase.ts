@@ -228,29 +228,31 @@ export const profilesRouter = router({
       }
     }),
 
-  getMyProfile: publicProcedure.query(async ({ ctx }) => {
-    try {
-      const user = ctx.session?.user;
+  getMyProfile: publicProcedure
+    .input(z.any().optional().nullable())
+    .query(async ({ ctx, input }) => {
+      const user = (ctx as any).user || ctx.session?.user;
       if (!user?.id) {
         return null;
       }
 
-      const userName = user.name || '';
+      const userName = user.name || 'New Artist';
       const nameParts = userName.split(' ');
-      const defaultFirstName = nameParts[0] || 'studio';
-      const defaultLastName = nameParts.slice(1).join(' ') || 'One';
+      const defaultFirstName = nameParts[0] || 'New';
+      const defaultLastName = nameParts.slice(1).join(' ') || 'Artist';
       const userImage = (user as any)?.image || '';
 
-      const fallbackObject = {
+      const safeDefaultObject = {
         id: user.id,
         userId: user.id,
+        name: userName,
         email: user.email || '',
-        role: String(user.role || 'artist').toLowerCase(),
+        role: 'artist',
         firstName: defaultFirstName,
         lastName: defaultLastName,
         first_name: defaultFirstName,
         last_name: defaultLastName,
-        title: '',
+        title: 'Artist',
         bio: '',
         location: '',
         address: '',
@@ -266,68 +268,96 @@ export const profilesRouter = router({
         slug: user.id,
       };
 
-      let data: any = null;
       try {
         const supabase = createAdminClient();
-        data = await findProfileSafely(supabase, user.id);
+        let data: any = null;
+
+        try {
+          data = await findProfileSafely(supabase, user.id);
+        } catch (queryErr) {
+          console.warn('findProfileSafely in getMyProfile warning:', queryErr);
+        }
+
+        // Auto-create missing profile if no row exists in Supabase
+        if (!data) {
+          try {
+            const newProfileRecord = {
+              id: user.id,
+              role: 'artist',
+              email: user.email || '',
+              first_name: defaultFirstName,
+              last_name: defaultLastName,
+              name: userName,
+              title: 'Artist',
+              bio: '',
+              is_published: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            const { data: inserted, error: insertError } = await (supabase as any)
+              .from('profiles')
+              .insert(newProfileRecord)
+              .select()
+              .maybeSingle();
+
+            if (!insertError && inserted) {
+              data = inserted;
+            } else {
+              // Try legacy Profile table fallback if profiles table insert fails
+              try {
+                const { data: pInserted } = await (supabase as any)
+                  .from('Profile')
+                  .insert({
+                    id: user.id,
+                    userId: user.id,
+                    role: 'artist',
+                    email: user.email || '',
+                    firstName: defaultFirstName,
+                    lastName: defaultLastName,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  })
+                  .select()
+                  .maybeSingle();
+                if (pInserted) data = pInserted;
+              } catch {}
+            }
+          } catch (autoCreateErr) {
+            console.warn('Auto-creating missing profile notice (fallback to default):', autoCreateErr);
+          }
+        }
+
+        if (!data) {
+          return safeDefaultObject;
+        }
+
+        return {
+          ...safeDefaultObject,
+          ...(data || {}),
+          id: user.id,
+          userId: user.id,
+          name: userName || data?.name || `${data?.firstName || ''} ${data?.lastName || ''}`.trim() || 'New Artist',
+          email: user.email || data?.email || '',
+          role: String(data?.role || user.role || 'artist').toLowerCase(),
+          firstName: data?.firstName || data?.first_name || defaultFirstName,
+          lastName: data?.lastName || data?.last_name || defaultLastName,
+          first_name: data?.first_name || data?.firstName || defaultFirstName,
+          last_name: data?.last_name || data?.lastName || defaultLastName,
+          location: data?.location || data?.address || '',
+          address: data?.address || data?.location || '',
+          skills: data?.skills || '',
+          title: data?.title || 'Artist',
+          bio: data?.bio || data?.description || '',
+          profilePicture: data?.profilePicture || data?.profile_picture || data?.avatar_url || userImage || '',
+          avatar_url: data?.avatar_url || data?.profile_picture || data?.profilePicture || userImage || '',
+          isPublished: data?.is_published ?? data?.isPublished ?? true,
+        };
       } catch (err) {
-        console.warn('findProfileSafely in getMyProfile warning:', err);
+        console.error('getMyProfile error caught gracefully:', err);
+        return safeDefaultObject;
       }
-
-      if (!data) {
-        return fallbackObject;
-      }
-
-      return {
-        ...fallbackObject,
-        ...(data || {}),
-        id: user.id,
-        userId: user.id,
-        email: user.email || data?.email || '',
-        role: String(data?.role || user.role || 'artist').toLowerCase(),
-        firstName: data?.firstName || data?.first_name || defaultFirstName,
-        lastName: data?.lastName || data?.last_name || defaultLastName,
-        first_name: data?.first_name || data?.firstName || defaultFirstName,
-        last_name: data?.last_name || data?.lastName || defaultLastName,
-        location: data?.location || data?.address || '',
-        address: data?.address || data?.location || '',
-        skills: data?.skills || '',
-        title: data?.title || '',
-        bio: data?.bio || data?.description || '',
-        profilePicture: data?.profilePicture || data?.profile_picture || data?.avatar_url || userImage || '',
-        avatar_url: data?.avatar_url || data?.profile_picture || data?.profilePicture || userImage || '',
-        isPublished: data?.is_published ?? data?.isPublished ?? true,
-      };
-    } catch (err) {
-      console.error('getMyProfile error caught gracefully:', err);
-      const user = ctx.session?.user;
-      if (!user?.id) return null;
-      return {
-        id: user.id,
-        userId: user.id,
-        email: user.email || '',
-        role: 'artist',
-        firstName: 'studio',
-        lastName: 'One',
-        first_name: 'studio',
-        last_name: 'One',
-        skills: '',
-        title: '',
-        bio: '',
-        location: '',
-        address: '',
-        avatar_url: '',
-        profilePicture: '',
-        isPublished: true,
-        companyName: null,
-        companyInfo: null,
-        portfolio: null,
-        verified: false,
-        rate: null,
-        slug: user.id,
-      };
-    }
-  }),
+    }),
 
   updateProfile: protectedProcedure
     .input(
