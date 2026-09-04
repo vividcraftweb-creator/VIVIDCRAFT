@@ -8,7 +8,10 @@ function cleanEnv(val?: string): string {
 }
 
 export async function createClient() {
-  const supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
+  let supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
+  if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+    supabaseUrl = `https://${supabaseUrl}`;
+  }
   const supabaseAnonKey = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 'placeholder';
 
   try {
@@ -47,17 +50,30 @@ export async function createClient() {
 
 // Create admin client with service role key (or anon key fallback)
 export function createAdminClient() {
-  const supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
+  let supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
+  if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+    supabaseUrl = `https://${supabaseUrl}`;
+  }
   const serviceRoleKey = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY) || cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 'placeholder';
 
-  return createSupabaseClient(
-    supabaseUrl,
-    serviceRoleKey,
-    {
+  try {
+    return createSupabaseClient(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+  } catch (err) {
+    console.error('Failed to create Supabase admin client:', err);
+    return createSupabaseClient('https://placeholder.supabase.co', 'placeholder', {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
+        persistSession: false,
+      },
+    });
+  }
 }

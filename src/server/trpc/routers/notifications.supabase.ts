@@ -69,7 +69,7 @@ export const notificationsRouter = router({
             query = query.in('type', filters.types);
           }
 
-          if (filters?.read !== undefined) {
+          if (filters?.read !== undefined && filters?.read !== null) {
             query = query.eq('read', filters.read);
           }
 
@@ -78,7 +78,7 @@ export const notificationsRouter = router({
           }
 
           const { data, error } = await query;
-          if (!error && data) {
+          if (!error && data && Array.isArray(data)) {
             hasMore = data.length > limit;
             items = hasMore ? data.slice(0, -1) : data;
           }
@@ -89,13 +89,13 @@ export const notificationsRouter = router({
         // Secondary fallback: 'notifications' table with snake_case
         if (items.length === 0) {
           try {
-            const { data } = await supabase
+            const { data, error } = await supabase
               .from('notifications')
               .select('*')
               .eq('user_id', ctx.session.user.id)
               .order('created_at', { ascending: false })
               .limit(limit);
-            if (data && Array.isArray(data)) {
+            if (!error && data && Array.isArray(data)) {
               items = data;
             }
           } catch {}
@@ -180,13 +180,13 @@ export const notificationsRouter = router({
 
       if (count === 0) {
         try {
-          const { count: c } = await supabase
+          const { count: c, error } = await supabase
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', ctx.session.user.id)
             .eq('read', false);
 
-          if (typeof c === 'number') {
+          if (!error && typeof c === 'number') {
             count = c;
           }
         } catch {}
@@ -196,6 +196,48 @@ export const notificationsRouter = router({
     } catch (err) {
       console.error('getUnreadNotificationCount error caught gracefully:', err);
       return 0;
+    }
+  }),
+
+  getUnreadCount: publicProcedure.query(async ({ ctx }) => {
+    try {
+      if (!ctx.session?.user?.id) {
+        return { unreadCount: 0 };
+      }
+
+      const supabase = createAdminClient();
+      let count = 0;
+
+      try {
+        const { count: c, error } = await supabase
+          .from('Notification')
+          .select('*', { count: 'exact', head: true })
+          .eq('userId', ctx.session.user.id)
+          .eq('read', false);
+
+        if (!error && typeof c === 'number') {
+          count = c;
+        }
+      } catch {}
+
+      if (count === 0) {
+        try {
+          const { count: c, error } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', ctx.session.user.id)
+            .eq('read', false);
+
+          if (!error && typeof c === 'number') {
+            count = c;
+          }
+        } catch {}
+      }
+
+      return { unreadCount: count };
+    } catch (err) {
+      console.error('getUnreadCount error caught gracefully:', err);
+      return { unreadCount: 0 };
     }
   }),
 

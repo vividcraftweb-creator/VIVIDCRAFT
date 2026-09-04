@@ -13,8 +13,19 @@ export type Context = {
 };
 
 export const createContext = async (opts?: FetchCreateContextFnOptions): Promise<Context> => {
-  const session = await auth();
-  const adminSupabase = createAdminClient();
+  let session: Awaited<ReturnType<typeof auth>> = null;
+  try {
+    session = await auth();
+  } catch (err) {
+    console.error('[createContext] auth error caught gracefully:', err);
+  }
+
+  let adminSupabase: any = null;
+  try {
+    adminSupabase = createAdminClient();
+  } catch (err) {
+    console.error('[createContext] createAdminClient error caught gracefully:', err);
+  }
   const supabase = adminSupabase;
 
   return {

@@ -203,7 +203,7 @@ export default function ClientDashboard() {
     [conversations],
   );
   const recentNotifications = useMemo(
-    () => (Array.isArray(notifications) ? notifications.slice(0, 3) : []),
+    () => (Array.isArray(notifications) ? notifications.slice(0, 3) : ((notifications as any)?.notifications?.slice(0, 3) || [])),
     [notifications],
   );
 
@@ -529,7 +529,7 @@ export default function ClientDashboard() {
                   ))}
                 </div>
               ) : recentNotifications.length > 0 ? (
-                recentNotifications.map((notification) => (
+                recentNotifications.map((notification: any) => (
                   <div key={notification.id} className="p-3 bg-white/5 rounded-xl border border-white/10">
                     <p className="text-sm text-white">{notification.message}</p>
                     <p className="text-[10px] uppercase tracking-wide text-slate-500 mt-1">
