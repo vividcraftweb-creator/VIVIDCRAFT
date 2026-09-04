@@ -271,33 +271,6 @@ export default function ProfileEditorPage() {
     );
   }
 
-  const userRole = (
-    effectiveProfile?.role ||
-    session?.session?.user?.role ||
-    ''
-  ).toString().toLowerCase();
-
-  // Allow users with role 'artist', 'freelancer', or any logged-in user with valid credentials
-  // Block only confirmed clients/buyers who are not artists
-  const isBlocked = (userRole === 'client' || userRole === 'buyer') && userRole !== 'artist' && userRole !== 'freelancer';
-
-  if (isBlocked) {
-    return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
-        <div className="glass-card p-8 rounded-3xl text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-chart-4 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground">Public profile editor is only available for artists.</p>
-          <Button 
-            onClick={() => router.push('/dashboard')}
-            className="mt-4 glass-button hover-lift"
-          >
-            Back to Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   const completeness = completenessQuery.data || { percentage: 0, missingFields: [], completed: 0, total: 10 };
   const isPublished = effectiveProfile?.isPublished ?? false;

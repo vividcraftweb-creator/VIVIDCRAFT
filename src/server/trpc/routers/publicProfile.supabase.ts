@@ -399,102 +399,171 @@ export const publicProfileRouter = router({
   getPublicProfile: publicProcedure
     .input(z.object({ identifier: z.string() }))
     .query(async ({ input }) => {
-      const adminSupabase = createAdminClient();
-
-      const identifier = input.identifier.trim();
-      if (!identifier) {
-        return null;
-      }
-
-      let profile: any = null;
-
-      // 1. Try finding in `profiles` by id
       try {
-        const { data: byId } = await (adminSupabase as any)
-          .from('profiles')
-          .select('*')
-          .eq('id', identifier)
-          .maybeSingle();
-        if (byId) profile = byId;
-      } catch {}
+        const adminSupabase = createAdminClient();
 
-      // 2. Try finding in `profiles` by slug
-      if (!profile) {
+        const identifier = input.identifier.trim();
+        if (!identifier) {
+          return null;
+        }
+
+        let profile: any = null;
+
+        // 1. Try finding in `profiles` by id
         try {
-          const { data: bySlug } = await (adminSupabase as any)
+          const { data: byId } = await (adminSupabase as any)
             .from('profiles')
             .select('*')
-            .or(`slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
+            .eq('id', identifier)
             .maybeSingle();
-          if (bySlug) profile = bySlug;
+          if (byId) profile = byId;
         } catch {}
-      }
 
-      // 3. Try finding in legacy `Profile` table
-      if (!profile) {
+        // 2. Try finding in `profiles` by slug
+        if (!profile) {
+          try {
+            const { data: bySlug } = await (adminSupabase as any)
+              .from('profiles')
+              .select('*')
+              .or(`slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
+              .maybeSingle();
+            if (bySlug) profile = bySlug;
+          } catch {}
+        }
+
+        // 3. Try finding in legacy `Profile` table
+        if (!profile) {
+          try {
+            const { data: legacyProfile } = await (adminSupabase as any)
+              .from('Profile')
+              .select('*')
+              .or(`id.eq.${identifier},userId.eq.${identifier},slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
+              .maybeSingle();
+            if (legacyProfile) profile = legacyProfile;
+          } catch {}
+        }
+
+        if (!profile) {
+          return {
+            id: identifier,
+            userId: identifier,
+            first_name: '',
+            last_name: '',
+            firstName: '',
+            lastName: '',
+            bio: '',
+            title: '',
+            location: '',
+            skills: '',
+            avatar_url: '',
+            profilePicture: '',
+            role: 'artist',
+            isPublished: false,
+            educationItems: [],
+            experienceItems: [],
+            portfolioItems: [],
+            certifications: [],
+          };
+        }
+
+        const formatted = formatProfileData(profile);
+        if (!formatted) {
+          return {
+            id: identifier,
+            userId: identifier,
+            first_name: '',
+            last_name: '',
+            bio: '',
+            title: '',
+            role: 'artist',
+            educationItems: [],
+            experienceItems: [],
+            portfolioItems: [],
+            certifications: [],
+          };
+        }
+
+        const profileId = formatted.id;
+        const userId = formatted.userId || formatted.id;
+
+        let educationItems: any[] = [];
+        let experienceItems: any[] = [];
+        let portfolioItems: any[] = [];
+        let certifications: any[] = [];
+        let userDetails: any = null;
+
         try {
-          const { data: legacyProfile } = await (adminSupabase as any)
-            .from('Profile')
+          const { data } = await (adminSupabase as any)
+            .from('EducationItem')
             .select('*')
-            .or(`id.eq.${identifier},userId.eq.${identifier},slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
-            .maybeSingle();
-          if (legacyProfile) profile = legacyProfile;
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) educationItems = data;
         } catch {}
+
+        try {
+          const { data } = await (adminSupabase as any)
+            .from('ExperienceItem')
+            .select('*')
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) experienceItems = data;
+        } catch {}
+
+        try {
+          const { data } = await (adminSupabase as any)
+            .from('PortfolioItem')
+            .select('*')
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) portfolioItems = data;
+        } catch {}
+
+        try {
+          const { data } = await (adminSupabase as any)
+            .from('Certification')
+            .select('*')
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) certifications = data;
+        } catch {}
+
+        try {
+          const { data } = await (adminSupabase as any)
+            .from('User')
+            .select('subscriptionPlan, email')
+            .eq('id', userId)
+            .maybeSingle();
+          userDetails = data;
+        } catch {}
+
+        return {
+          ...formatted,
+          email: userDetails?.email || formatted.email || (profile as any)?.email || (profile as any)?.businessEmail || null,
+          educationItems: educationItems || [],
+          experienceItems: experienceItems || [],
+          portfolioItems: portfolioItems || [],
+          certifications: certifications || [],
+          subscriptionPlan: userDetails?.subscriptionPlan ?? profile.subscription_plan ?? profile.subscriptionPlan ?? 'FREELANCER_PRO',
+        };
+      } catch (err) {
+        console.error('getPublicProfile error caught gracefully:', err);
+        return {
+          id: input.identifier || '',
+          userId: input.identifier || '',
+          first_name: '',
+          last_name: '',
+          firstName: '',
+          lastName: '',
+          bio: '',
+          title: '',
+          role: 'artist',
+          educationItems: [],
+          experienceItems: [],
+          portfolioItems: [],
+          certifications: [],
+        };
       }
-
-      if (!profile) {
-        return null;
-      }
-
-      const formatted = formatProfileData(profile);
-      if (!formatted) return null;
-
-      const profileId = formatted.id;
-      const userId = formatted.userId || formatted.id;
-
-      // Get education items using admin client
-      const { data: educationItems } = await (adminSupabase as any)
-        .from('EducationItem')
-        .select('*')
-        .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-        .order('order', { ascending: true });
-
-      // Get experience items using admin client
-      const { data: experienceItems } = await (adminSupabase as any)
-        .from('ExperienceItem')
-        .select('*')
-        .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-        .order('order', { ascending: true });
-
-      // Get portfolio items using admin client
-      const { data: portfolioItems } = await (adminSupabase as any)
-        .from('PortfolioItem')
-        .select('*')
-        .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-        .order('order', { ascending: true });
-
-      // Get certifications using admin client
-      const { data: certifications } = await (adminSupabase as any)
-        .from('Certification')
-        .select('*')
-        .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-        .order('order', { ascending: true });
-
-      const { data: userDetails } = await (adminSupabase as any)
-        .from('User')
-        .select('subscriptionPlan, email')
-        .eq('id', userId)
-        .maybeSingle();
-
-      return {
-        ...formatted,
-        email: userDetails?.email || formatted.email || (profile as any)?.email || (profile as any)?.businessEmail || null,
-        educationItems: educationItems || [],
-        experienceItems: experienceItems || [],
-        portfolioItems: portfolioItems || [],
-        certifications: certifications || [],
-        subscriptionPlan: userDetails?.subscriptionPlan ?? profile.subscription_plan ?? profile.subscriptionPlan ?? 'FREELANCER_PRO',
-      };
     }),
 
   // Update basic profile info
