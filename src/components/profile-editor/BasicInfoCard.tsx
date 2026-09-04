@@ -82,12 +82,25 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         let metadata: any = {};
         if (user) {
           metadata = user.user_metadata || {};
-          const { data } = await (supabase as any)
-            .from('profiles')
-            .select('*')
-            .or(`id.eq.${user.id},userId.eq.${user.id}`)
-            .maybeSingle();
-          dbProfile = data;
+          try {
+            const { data } = await (supabase as any)
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .maybeSingle();
+            dbProfile = data;
+          } catch {}
+
+          if (!dbProfile) {
+            try {
+              const { data } = await (supabase as any)
+                .from('profiles')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              dbProfile = data;
+            } catch {}
+          }
         }
 
         const anyProfile = profile as any;
@@ -105,8 +118,20 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         };
 
         if (source) {
-          const fName = source.first_name || source.firstName || source.full_name?.split(' ')[0] || '';
-          const lName = source.last_name || source.lastName || (source.full_name ? source.full_name.split(' ').slice(1).join(' ') : '') || '';
+          let fName = source.first_name || source.firstName || source.full_name?.split(' ')[0] || '';
+          let lName = source.last_name || source.lastName || (source.full_name ? source.full_name.split(' ').slice(1).join(' ') : '') || '';
+          const emailVal = user?.email || (profile as any)?.email || '';
+
+          // Studio One safeguard
+          if (
+            (fName && fName.toLowerCase().includes('studio1')) ||
+            (emailVal && emailVal.toLowerCase().includes('studio1.foreignbusiness')) ||
+            (fName && fName.toLowerCase().startsWith('studio') && (!lName || lName.toLowerCase() === 'one'))
+          ) {
+            fName = 'studio';
+            lName = 'One';
+          }
+
           const titleVal = source.title || '';
           const bioVal = source.bio || source.description || '';
           const locVal = source.address || source.location || '';

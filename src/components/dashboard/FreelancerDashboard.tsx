@@ -286,11 +286,26 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
 
       const metadata = user?.user_metadata || {};
 
-      const { data } = await (supabase as any)
-        .from('profiles')
-        .select('*')
-        .or(`id.eq.${targetUserId},userId.eq.${targetUserId}`)
-        .maybeSingle();
+      let data: any = null;
+      try {
+        const { data: d } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .eq('id', targetUserId)
+          .maybeSingle();
+        data = d;
+      } catch {}
+
+      if (!data) {
+        try {
+          const { data: d } = await (supabase as any)
+            .from('profiles')
+            .select('*')
+            .eq('user_id', targetUserId)
+            .maybeSingle();
+          data = d;
+        } catch {}
+      }
 
       const isPub = (data?.is_published ?? metadata.is_published) ?? (data?.status === 'published');
 

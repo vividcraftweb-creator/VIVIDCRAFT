@@ -20,8 +20,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== 'FREELANCER') {
-      return NextResponse.json({ error: 'Only freelancers can access this checklist' }, { status: 403 });
+    const userRole = (session.user.role || '').toString().toLowerCase();
+    const isArtist =
+      userRole === 'artist' ||
+      userRole === 'freelancer' ||
+      userRole === 'creator' ||
+      (userRole !== 'client' && userRole !== 'buyer');
+
+    if (!isArtist) {
+      return NextResponse.json({ error: 'Only artists can access this checklist' }, { status: 403 });
     }
 
     const supabase = await createClient();
@@ -49,10 +56,20 @@ export async function GET() {
       const { data: pData } = await (supabase as any)
         .from('profiles')
         .select('*')
-        .or(`id.eq.${session.user.id},userId.eq.${session.user.id}`)
+        .eq('id', session.user.id)
         .maybeSingle();
       profilesRow = pData;
     } catch {}
+    if (!profilesRow) {
+      try {
+        const { data: pData } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        profilesRow = pData;
+      } catch {}
+    }
 
     const checklist: ChecklistItem[] = [];
     let completedCount = 0;

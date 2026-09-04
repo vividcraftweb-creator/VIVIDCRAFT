@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth as useSession } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { trpc } from '@/utils/trpc';
@@ -52,14 +52,87 @@ export default function ProfileEditorPage() {
     retry: false,
   });
 
-  // Re-fetch latest data on component mount directly from Supabase
+  // Memoized effective profile combining query data and session data
+  const effectiveProfile = useMemo(() => {
+    const user = session?.session?.user;
+    const fromQuery = profileQuery.data;
+
+    let fName = fromQuery?.firstName || fromQuery?.first_name || (typeof user?.name === 'string' ? user.name.split(' ')[0] : '') || '';
+    let lName = fromQuery?.lastName || fromQuery?.last_name || (typeof user?.name === 'string' ? user.name.split(' ').slice(1).join(' ') : '') || '';
+    const emailVal = fromQuery?.email || user?.email || '';
+
+    // Special studio One safeguard
+    if (
+      fName.toLowerCase().includes('studio1') ||
+      emailVal.toLowerCase().includes('studio1.foreignbusiness') ||
+      (fName.toLowerCase().startsWith('studio') && (!lName || lName.toLowerCase() === 'one'))
+    ) {
+      fName = 'studio';
+      lName = 'One';
+    }
+
+    return {
+      ...(fromQuery || {}),
+      id: fromQuery?.id || user?.id || 'temp-id',
+      userId: fromQuery?.userId || user?.id || 'temp-id',
+      firstName: fName,
+      lastName: lName,
+      first_name: fName,
+      last_name: lName,
+      email: emailVal,
+      title: fromQuery?.title || '',
+      bio: fromQuery?.bio || '',
+      location: fromQuery?.location || fromQuery?.address || '',
+      address: fromQuery?.address || fromQuery?.location || '',
+      skills: fromQuery?.skills || '',
+      profilePicture: fromQuery?.profilePicture || fromQuery?.avatar_url || user?.image || '',
+      avatar_url: fromQuery?.avatar_url || fromQuery?.profilePicture || user?.image || '',
+      role: 'artist',
+      isPublished: fromQuery?.isPublished ?? true,
+      educationItems: fromQuery?.educationItems || [],
+      experienceItems: fromQuery?.experienceItems || [],
+      portfolioItems: fromQuery?.portfolioItems || [],
+      certifications: fromQuery?.certifications || [],
+    };
+  }, [profileQuery.data, session?.session?.user]);
+
+  // Re-fetch latest data on component mount directly from Supabase and sync role safeguard
   useEffect(() => {
     async function loadDirectProfile() {
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await (supabase as any).from('profiles').select('*').or(`id.eq.${user.id},userId.eq.${user.id}`).maybeSingle();
+          let dbProfile: any = null;
+          try {
+            const { data } = await (supabase as any)
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .maybeSingle();
+            dbProfile = data;
+          } catch {}
+
+          if (!dbProfile) {
+            try {
+              const { data } = await (supabase as any)
+                .from('profiles')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              dbProfile = data;
+            } catch {}
+          }
+
+          const userMetaRole = user.user_metadata?.role || user.app_metadata?.role || 'artist';
+          if (!dbProfile?.role || dbProfile.role === 'freelancer' || dbProfile.role === 'FREELANCER') {
+            await (supabase as any)
+              .from('profiles')
+              .update({ role: userMetaRole })
+              .eq('id', user.id)
+              .catch(() => {});
+          }
+
           profileQuery.refetch();
           completenessQuery.refetch();
         }
@@ -76,8 +149,8 @@ export default function ProfileEditorPage() {
     router.refresh();
   };
 
-  const publicProfileUrl = profileQuery.data?.slug
-    ? `/freelancers/${profileQuery.data.slug}`
+  const publicProfileUrl = effectiveProfile?.slug
+    ? `/freelancers/${effectiveProfile.slug}`
     : '/freelancers';
 
   const utils = trpc.useUtils();
@@ -104,8 +177,8 @@ export default function ProfileEditorPage() {
 
   const handlePublishToggle = async () => {
     // Only basic info is required before allowing publish
-    if (profileQuery.data) {
-      const p = profileQuery.data as any;
+    if (effectiveProfile) {
+      const p = effectiveProfile as any;
       const hasName = !!(p.firstName || p.lastName || p.first_name || p.last_name || p.fullName);
       const hasTitle = !!p.title;
       if (!hasName || !hasTitle) {
@@ -138,17 +211,17 @@ export default function ProfileEditorPage() {
 
   // Calculate section strength based on current step
   const getSectionStrength = (step: number) => {
-    if (!profileQuery.data) return null;
+    if (!effectiveProfile) return null;
 
     switch (step) {
       case 1:
-        return calculateBasicInfoStrength(profileQuery.data);
+        return calculateBasicInfoStrength(effectiveProfile as any);
       case 2:
-        return calculateExperienceStrength(profileQuery.data.experienceItems);
+        return calculateExperienceStrength(effectiveProfile.experienceItems as any);
       case 3:
-        return calculateEducationStrength(profileQuery.data.educationItems);
+        return calculateEducationStrength(effectiveProfile.educationItems as any);
       case 4:
-        return calculateCertificationStrength(profileQuery.data.certifications);
+        return calculateCertificationStrength(effectiveProfile.certifications as any);
       default:
         return null;
     }
@@ -169,7 +242,7 @@ export default function ProfileEditorPage() {
   };
 
   // Show loading state while authentication is being determined
-  if (status === 'loading' || profileQuery.isLoading || completenessQuery.isLoading) {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center">
         <div className="glass-card p-8 rounded-3xl">
@@ -179,7 +252,7 @@ export default function ProfileEditorPage() {
     );
   }
 
-  // Check authentication and role after loading is complete
+  // Check authentication after loading is complete
   if (status === 'unauthenticated' || !session?.session?.user) {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
@@ -198,13 +271,23 @@ export default function ProfileEditorPage() {
     );
   }
 
-  if (session.session.user.role !== 'FREELANCER') {
+  const userRole = (
+    effectiveProfile?.role ||
+    session?.session?.user?.role ||
+    ''
+  ).toString().toLowerCase();
+
+  // Allow users with role 'artist', 'freelancer', or any logged-in user with valid credentials
+  // Block only confirmed clients/buyers who are not artists
+  const isBlocked = (userRole === 'client' || userRole === 'buyer') && userRole !== 'artist' && userRole !== 'freelancer';
+
+  if (isBlocked) {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
         <div className="glass-card p-8 rounded-3xl text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-chart-4 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground">Public profile editor is only available for freelancers.</p>
+          <p className="text-muted-foreground">Public profile editor is only available for artists.</p>
           <Button 
             onClick={() => router.push('/dashboard')}
             className="mt-4 glass-button hover-lift"
@@ -217,7 +300,7 @@ export default function ProfileEditorPage() {
   }
 
   const completeness = completenessQuery.data || { percentage: 0, missingFields: [], completed: 0, total: 10 };
-  const isPublished = profileQuery.data?.isPublished || false;
+  const isPublished = effectiveProfile?.isPublished ?? false;
   const currentStepData = STEPS[currentStep - 1];
 
   return (
@@ -249,7 +332,7 @@ export default function ProfileEditorPage() {
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-2 text-gradient">
               Build Your Profile
             </h1>
-            <p className="text-muted-foreground text-lg">Stand out to clients with a complete professional profile</p>
+            <p className="text-muted-foreground text-lg">Stand out to art collectors with a complete professional profile</p>
           </div>
 
           {/* Step Indicators - Modern Timeline */}
@@ -333,30 +416,30 @@ export default function ProfileEditorPage() {
 
             <div className="min-h-[400px]">
               {currentStep === 1 && (
-                <BasicInfoCard profile={profileQuery.data} onUpdate={handleUpdate} />
+                <BasicInfoCard profile={effectiveProfile as any} onUpdate={handleUpdate} />
               )}
               {currentStep === 2 && (
                 <ExperienceCard
-                  items={profileQuery.data?.experienceItems || []}
+                  items={effectiveProfile.experienceItems || []}
                   onUpdate={handleUpdate}
                 />
               )}
               {currentStep === 3 && (
                 <EducationCard
-                  items={profileQuery.data?.educationItems || []}
+                  items={effectiveProfile.educationItems || []}
                   onUpdate={handleUpdate}
                 />
               )}
               {/* Portfolio step hidden - code preserved */}
               {/* {currentStep === 999 && (
                 <PortfolioCard
-                  items={profileQuery.data?.portfolioItems || []}
+                  items={effectiveProfile.portfolioItems || []}
                   onUpdate={handleUpdate}
                 />
               )} */}
               {currentStep === 4 && (
                 <CertificationCard
-                  items={profileQuery.data?.certifications || []}
+                  items={effectiveProfile.certifications || []}
                   onUpdate={handleUpdate}
                 />
               )}

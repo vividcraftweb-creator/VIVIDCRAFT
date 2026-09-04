@@ -38,6 +38,13 @@ export default function ProfileEditView() {
     },
   });
 
+  const rawRole = (session?.session?.user?.role || (profileQuery.data as any)?.role || '').toString().toLowerCase();
+  const isArtist =
+    rawRole === 'artist' ||
+    rawRole === 'freelancer' ||
+    rawRole === 'creator' ||
+    (rawRole !== 'client' && rawRole !== 'buyer');
+
   useEffect(() => {
     if (profileQuery.data) {
       // Use profile data with session metadata as fallback for missing fields
@@ -124,8 +131,8 @@ export default function ProfileEditView() {
             </div>
           </div>
 
-          {/* Freelancer specific fields */}
-          {session?.session?.user.role === 'FREELANCER' && (
+          {/* Artist specific fields */}
+          {isArtist && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="title" className="text-white font-medium flex items-center gap-2">
@@ -252,7 +259,7 @@ export default function ProfileEditView() {
           )}
 
           {/* Client / Buyer specific fields */}
-          {session?.session?.user.role !== 'FREELANCER' && (
+          {!isArtist && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="location" className="text-white font-medium flex items-center gap-2">

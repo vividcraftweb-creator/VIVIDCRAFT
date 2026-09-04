@@ -65,13 +65,20 @@ export default function FreelancerChecklistPage() {
       return;
     }
 
-    if (status === 'authenticated' && session?.session?.user?.role !== 'FREELANCER') {
+    const rawRole = (session?.session?.user?.role || '').toString().toLowerCase();
+    const isArtist =
+      rawRole === 'artist' ||
+      rawRole === 'freelancer' ||
+      rawRole === 'creator' ||
+      (rawRole !== 'client' && rawRole !== 'buyer');
+
+    if (status === 'authenticated' && !isArtist) {
       hasRedirected.current = true;
       router.push('/dashboard');
       return;
     }
 
-    if (status === 'authenticated' && session?.session?.user?.role === 'FREELANCER') {
+    if (status === 'authenticated' && isArtist) {
       fetchChecklist();
     }
   }, [status, session?.session?.user?.role, router]);

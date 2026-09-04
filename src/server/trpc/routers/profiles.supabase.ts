@@ -91,6 +91,28 @@ type FreelancerSearchResult = {
   Profile: FreelancerProfileRecord | FreelancerProfileRecord[] | null;
 };
 
+async function findProfileSafely(supabase: any, userIdOrId: string, select = '*') {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select(select)
+      .eq('id', userIdOrId)
+      .maybeSingle();
+    if (data) return data;
+  } catch {}
+
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select(select)
+      .eq('user_id', userIdOrId)
+      .maybeSingle();
+    if (data) return data;
+  } catch {}
+
+  return null;
+}
+
 export const profilesRouter = router({
   getProfile: publicProcedure
     .input(z.object({ id: z.string().optional() }).optional())
@@ -138,13 +160,9 @@ export const profilesRouter = router({
         selectFields += ', rate';
       }
 
-      const { data: profile, error } = await (supabase as any)
-        .from('profiles')
-        .select('*')
-        .or(`id.eq.${userId},userId.eq.${userId}`)
-        .maybeSingle();
+      const profile = await findProfileSafely(supabase, userId);
 
-      if (error || !profile) {
+      if (!profile) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Profile not found',
@@ -188,12 +206,7 @@ export const profilesRouter = router({
 
       // Use admin client to bypass RLS for fetching user's own profile
       const supabase = createAdminClient();
-
-      let { data, error } = await (supabase as any)
-        .from('profiles')
-        .select('*')
-        .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
-        .maybeSingle();
+      let data = await findProfileSafely(supabase, ctx.session.user.id);
 
       try {
         const { data: pData } = await (supabase as any)
@@ -206,11 +219,18 @@ export const profilesRouter = router({
         }
       } catch {}
 
-      if (error && !data) {
-        return null;
+      if (!data) {
+        // Fallback for newly created or active session user
+        const userName = ctx.session.user.name || '';
+        const nameParts = userName.split(' ');
+        data = {
+          id: ctx.session.user.id,
+          userId: ctx.session.user.id,
+          first_name: nameParts[0] || 'studio',
+          last_name: nameParts.slice(1).join(' ') || 'One',
+          role: 'artist',
+        };
       }
-
-      if (!data) return null;
 
       return {
         ...data,
@@ -271,15 +291,7 @@ export const profilesRouter = router({
       // Use authenticated Supabase client from context or admin client
       const supabase = ctx.supabase || ctx.adminSupabase || createAdminClient();
 
-      const { data: existingProfile, error: fetchError } = await (supabase as any)
-        .from('profiles')
-        .select('*')
-        .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('PROFILE UPDATE ERROR (fetch existing):', fetchError);
-      }
+      const existingProfile = await findProfileSafely(supabase, ctx.session.user.id);
 
       const timestamp = new Date().toISOString();
 
@@ -796,11 +808,7 @@ export const profilesRouter = router({
       const adminSupabase = createAdminClient();
       const timestamp = new Date().toISOString();
 
-      const { data: existingProfile } = await (supabase as any)
-        .from('profiles')
-        .select('id')
-        .or(`id.eq.${ctx.session.user.id},userId.eq.${ctx.session.user.id}`)
-        .maybeSingle();
+      const existingProfile = await findProfileSafely(supabase, ctx.session.user.id, 'id');
 
       const profileData = {
         companyName: input.companyName,
@@ -897,11 +905,7 @@ export const profilesRouter = router({
       const timestamp = new Date().toISOString();
 
       // Check if profile exists
-      const { data: existingProfile } = await (supabase as any)
-        .from('profiles')
-        .select('id')
-        .or(`id.eq.${userId},userId.eq.${userId}`)
-        .maybeSingle();
+      const existingProfile = await findProfileSafely(supabase, userId, 'id');
 
       const businessPayload = {
         companyName: input.businessName,

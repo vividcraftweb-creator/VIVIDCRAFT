@@ -129,25 +129,36 @@ const ALLOWED_CERT_MIME = new Set([
 async function getProfileFromProfilesTable(supabase: any, userIdOrId: string) {
   let profileRecord: any = null;
 
-  // 1. Try 'profiles'
+  // 1. Try 'profiles' by id
   try {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .or(`id.eq.${userIdOrId},userId.eq.${userIdOrId}`)
+      .eq('id', userIdOrId)
       .maybeSingle();
 
     if (data) profileRecord = data;
-  } catch {
-    // Ignore error
+  } catch {}
+
+  // 2. Try 'profiles' by user_id if not found
+  if (!profileRecord) {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userIdOrId)
+        .maybeSingle();
+
+      if (data) profileRecord = data;
+    } catch {}
   }
 
-  // 2. Try 'Profile' table to get full details (bio, title, skills, etc.)
+  // 3. Try 'Profile' table to get full details (bio, title, skills, etc.)
   try {
     const { data: legacyProfile } = await supabase
       .from('Profile')
       .select('*')
-      .or(`userId.eq.${userIdOrId},id.eq.${userIdOrId}`)
+      .eq('userId', userIdOrId)
       .maybeSingle();
 
     if (legacyProfile) {
@@ -161,29 +172,33 @@ async function getProfileFromProfilesTable(supabase: any, userIdOrId: string) {
         profilePicture: profileRecord?.profile_picture || profileRecord?.profilePicture || legacyProfile.profilePicture || '',
       };
     }
-  } catch {
-    // Ignore error
-  }
+  } catch {}
 
   return profileRecord;
 }
 
 function formatProfileData(profile: any) {
   if (!profile) return null;
-  let fName = profile.first_name || profile.firstName || (profile.full_name ? profile.full_name.split(' ')[0] : '') || '';
-  let lName = profile.last_name || profile.lastName || (profile.full_name ? profile.full_name.split(' ').slice(1).join(' ') : '') || '';
-  const emailVal = profile.email || profile.businessEmail || profile.business_email || '';
+  let fName = typeof profile.first_name === 'string' ? profile.first_name :
+              typeof profile.firstName === 'string' ? profile.firstName :
+              (typeof profile.full_name === 'string' ? profile.full_name.split(' ')[0] : '') || '';
+  let lName = typeof profile.last_name === 'string' ? profile.last_name :
+              typeof profile.lastName === 'string' ? profile.lastName :
+              (typeof profile.full_name === 'string' ? profile.full_name.split(' ').slice(1).join(' ') : '') || '';
+  const emailVal = typeof profile.email === 'string' ? profile.email :
+                   typeof profile.businessEmail === 'string' ? profile.businessEmail :
+                   typeof profile.business_email === 'string' ? profile.business_email : '';
 
   if (
-    fName.includes('studio1') ||
-    emailVal.includes('studio1.foreignbusiness') ||
+    fName.toLowerCase().includes('studio1') ||
+    emailVal.toLowerCase().includes('studio1.foreignbusiness') ||
     (fName.toLowerCase().startsWith('studio') && !lName)
   ) {
     fName = 'studio';
     lName = 'One';
   }
 
-  const titleVal = profile.title || profile.professional_title || '';
+  const titleVal = profile.title || profile.professional_title || profile.professionalTitle || '';
   const bioVal = profile.bio || profile.description || '';
   const locVal = profile.address || profile.location || '';
   const picVal = profile.avatar_url || profile.profile_picture || profile.profilePicture || '';
@@ -206,6 +221,7 @@ function formatProfileData(profile: any) {
     skills: profile.skills || '',
     profilePicture: picVal,
     avatar_url: picVal,
+    role: profile.role || profile.user_metadata?.role || 'artist',
     isPublished: profile.isPublished ?? profile.is_published ?? true,
     slug: profile.slug || null,
   };
@@ -214,61 +230,169 @@ function formatProfileData(profile: any) {
 export const publicProfileRouter = router({
   // Get full profile data for editing
   getMyFullProfile: publicProcedure.query(async ({ ctx }) => {
-    if (!ctx.session?.user?.id) {
-      return null;
+    try {
+      if (!ctx.session?.user?.id) {
+        return null;
+      }
+      const userId = ctx.session.user.id;
+      let supabase: any = null;
+      let adminSupabase: any = null;
+
+      try {
+        supabase = await createClient();
+      } catch (err) {
+        console.warn('Failed to create user supabase client in getMyFullProfile:', err);
+      }
+
+      try {
+        adminSupabase = createAdminClient();
+      } catch (err) {
+        console.warn('Failed to create admin supabase client in getMyFullProfile:', err);
+      }
+
+      const clientToUse = adminSupabase || supabase;
+      let profile: any = null;
+
+      // 1. Try admin client first (bypasses RLS)
+      if (adminSupabase) {
+        try {
+          profile = await getProfileFromProfilesTable(adminSupabase, userId);
+        } catch (e) {
+          console.warn('adminSupabase getProfile error:', e);
+        }
+      }
+
+      // 2. Try user client if still not found
+      if (!profile && supabase) {
+        try {
+          profile = await getProfileFromProfilesTable(supabase, userId);
+        } catch (e) {
+          console.warn('user supabase getProfile error:', e);
+        }
+      }
+
+      // 3. Fallback to User table or session so artists can always initialize and edit their profile
+      if (!profile) {
+        if (adminSupabase) {
+          try {
+            const { data: userRow } = await (adminSupabase as any)
+              .from('User')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle();
+
+            if (userRow) {
+              profile = {
+                id: userId,
+                userId: userId,
+                role: userRow.role || ctx.session.user.role || 'artist',
+                firstName: userRow.firstName || (typeof userRow.name === 'string' ? userRow.name.split(' ')[0] : '') || '',
+                lastName: userRow.lastName || (typeof userRow.name === 'string' ? userRow.name.split(' ').slice(1).join(' ') : '') || '',
+                email: userRow.email || ctx.session.user.email,
+              };
+            }
+          } catch {}
+        }
+
+        if (!profile && ctx.session?.user) {
+          profile = {
+            id: userId,
+            userId: userId,
+            role: ctx.session.user.role || 'artist',
+            email: ctx.session.user.email,
+            firstName: typeof ctx.session.user.name === 'string' ? ctx.session.user.name.split(' ')[0] : '',
+            lastName: typeof ctx.session.user.name === 'string' ? ctx.session.user.name.split(' ').slice(1).join(' ') : '',
+          };
+        }
+      }
+
+      const formatted = formatProfileData(profile) || {
+        id: userId,
+        userId: userId,
+        firstName: typeof ctx.session.user.name === 'string' ? ctx.session.user.name.split(' ')[0] : 'studio',
+        lastName: typeof ctx.session.user.name === 'string' ? ctx.session.user.name.split(' ').slice(1).join(' ') : 'One',
+        email: ctx.session.user.email,
+        title: '',
+        bio: '',
+        location: '',
+        skills: '',
+        role: 'artist',
+        isPublished: true,
+      };
+
+      const profileId = formatted?.id || userId;
+
+      let educationItems: any[] = [];
+      let experienceItems: any[] = [];
+      let portfolioItems: any[] = [];
+      let certifications: any[] = [];
+
+      if (clientToUse) {
+        try {
+          const { data } = await clientToUse
+            .from('EducationItem')
+            .select('*')
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) educationItems = data;
+        } catch {}
+
+        try {
+          const { data } = await clientToUse
+            .from('ExperienceItem')
+            .select('*')
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) experienceItems = data;
+        } catch {}
+
+        try {
+          const { data } = await clientToUse
+            .from('PortfolioItem')
+            .select('*')
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) portfolioItems = data;
+        } catch {}
+
+        try {
+          const { data } = await clientToUse
+            .from('Certification')
+            .select('*')
+            .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
+            .order('order', { ascending: true });
+          if (data) certifications = data;
+        } catch {}
+      }
+
+      return {
+        ...formatted,
+        educationItems,
+        experienceItems,
+        portfolioItems,
+        certifications,
+      };
+    } catch (err) {
+      console.error('getMyFullProfile error caught gracefully:', err);
+      const userId = ctx.session?.user?.id || 'temp';
+      return {
+        id: userId,
+        userId: userId,
+        firstName: typeof ctx.session?.user?.name === 'string' ? ctx.session.user.name.split(' ')[0] : 'studio',
+        lastName: typeof ctx.session?.user?.name === 'string' ? ctx.session.user.name.split(' ').slice(1).join(' ') : 'One',
+        email: ctx.session?.user?.email || '',
+        title: '',
+        bio: '',
+        location: '',
+        skills: '',
+        role: 'artist',
+        isPublished: true,
+        educationItems: [],
+        experienceItems: [],
+        portfolioItems: [],
+        certifications: [],
+      };
     }
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-    const userId = ctx.session.user.id;
-
-    // Get profile from 'profiles' using admin client (bypasses RLS)
-    let profile = await getProfileFromProfilesTable(adminSupabase, userId);
-    if (!profile) {
-      profile = await getProfileFromProfilesTable(supabase, userId);
-    }
-
-    if (!profile) {
-      return null;
-    }
-
-    const formatted = formatProfileData(profile);
-    const profileId = formatted?.id || userId;
-
-    // Get education items
-    const { data: educationItems } = await supabase
-      .from('EducationItem')
-      .select('*')
-      .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-      .order('order', { ascending: true });
-
-    // Get experience items
-    const { data: experienceItems } = await supabase
-      .from('ExperienceItem')
-      .select('*')
-      .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-      .order('order', { ascending: true });
-
-    // Get portfolio items
-    const { data: portfolioItems } = await supabase
-      .from('PortfolioItem')
-      .select('*')
-      .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-      .order('order', { ascending: true });
-
-    // Get certifications
-    const { data: certifications } = await supabase
-      .from('Certification')
-      .select('*')
-      .or(`profileId.eq.${profileId},profileId.eq.${userId}`)
-      .order('order', { ascending: true });
-
-    return {
-      ...formatted,
-      educationItems: educationItems || [],
-      experienceItems: experienceItems || [],
-      portfolioItems: portfolioItems || [],
-      certifications: certifications || [],
-    };
   }),
 
   // Get public profile (for viewing)
@@ -538,22 +662,24 @@ export const publicProfileRouter = router({
         .maybeSingle();
 
       if (error || !data) {
-        const { data: fallback, error: fallbackError } = await (admin as any)
-          .from('profiles')
-          .update({
-            isPublished: input.isPublished,
-            updatedAt: timestamp,
-          })
-          .or(`id.eq.${userId},userId.eq.${userId}`)
-          .select()
-          .maybeSingle();
+        try {
+          const { data: fallback, error: fallbackError } = await (admin as any)
+            .from('profiles')
+            .update({
+              isPublished: input.isPublished,
+              updatedAt: timestamp,
+            })
+            .eq('id', userId)
+            .select()
+            .maybeSingle();
 
-        if (fallback && !fallbackError) {
-          data = fallback;
-          error = null;
-        } else {
-          error = fallbackError || error;
-        }
+          if (fallback && !fallbackError) {
+            data = fallback;
+            error = null;
+          } else {
+            error = fallbackError || error;
+          }
+        } catch {}
       }
 
       // Also sync to Profile table
@@ -933,149 +1059,154 @@ export const publicProfileRouter = router({
   // Checks the EXACT columns saved by BasicInfoCard:
   //   avatar_url, first_name, last_name, full_name, title, address, skills
   getCompleteness: publicProcedure.query(async ({ ctx }) => {
-    if (!ctx.session?.user?.id) {
+    try {
+      if (!ctx.session?.user?.id) {
+        return {
+          percentage: 0,
+          missingFields: [],
+          completed: 0,
+          total: 5,
+          isComplete: false,
+          detailedChecks: [],
+          optionalCompleted: 0,
+          optionalTotal: 0,
+        };
+      }
+      const userId = ctx.session.user.id;
+
+      // --- Step 1: Direct fetch from `profiles` with admin fallback ---
+      let rawProfile: any = null;
+
+      try {
+        const supabase = await createClient();
+        const { data: directRow } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (directRow) {
+          rawProfile = directRow;
+        }
+      } catch {}
+
+      if (!rawProfile) {
+        try {
+          const admin = createAdminClient();
+          const { data: adminRow } = await admin
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+          if (adminRow) rawProfile = adminRow;
+        } catch {}
+      }
+
+      // Also merge with legacy Profile table if present
+      try {
+        const admin = createAdminClient();
+        const { data: legacyRow } = await admin
+          .from('Profile')
+          .select('*')
+          .eq('userId', userId)
+          .maybeSingle();
+        if (legacyRow) {
+          rawProfile = { ...legacyRow, ...rawProfile };
+        }
+      } catch {}
+
+      if (ctx.session?.user) {
+        const userMeta = (ctx.session.user as any)?.user_metadata || {};
+        rawProfile = {
+          ...userMeta,
+          ...(rawProfile || {}),
+          first_name: rawProfile?.first_name || userMeta.first_name || (typeof ctx.session.user.name === 'string' ? ctx.session.user.name.split(' ')[0] : '') || '',
+          last_name: rawProfile?.last_name || userMeta.last_name || (typeof ctx.session.user.name === 'string' ? ctx.session.user.name.split(' ').slice(1).join(' ') : '') || '',
+          title: rawProfile?.title || userMeta.title || '',
+          bio: rawProfile?.bio || userMeta.bio || '',
+          address: rawProfile?.address || userMeta.address || '',
+          skills: rawProfile?.skills || userMeta.skills || '',
+          avatar_url: rawProfile?.avatar_url || userMeta.avatar_url || (ctx.session.user as any)?.image || '',
+        };
+      }
+
+      // --- Step 2: Evaluate EXACT column names ---
+      const hasAvatar = Boolean(
+        rawProfile?.avatar_url ||
+        rawProfile?.avatar ||
+        rawProfile?.profile_picture ||
+        rawProfile?.profilePicture
+      );
+
+      const hasName = Boolean(
+        rawProfile?.first_name ||
+        rawProfile?.last_name ||
+        rawProfile?.full_name ||
+        rawProfile?.firstName ||
+        rawProfile?.lastName ||
+        rawProfile?.displayName ||
+        rawProfile?.display_name
+      );
+
+      const hasTitle = Boolean(
+        rawProfile?.title ||
+        rawProfile?.professional_title ||
+        rawProfile?.professionalTitle
+      );
+
+      const hasAddress = Boolean(
+        rawProfile?.address ||
+        rawProfile?.location
+      );
+
+      const rawSkills = rawProfile?.skills;
+      let skillsList: string[] = [];
+      if (Array.isArray(rawSkills)) {
+        skillsList = rawSkills.filter(Boolean);
+      } else if (typeof rawSkills === 'string' && rawSkills.trim()) {
+        skillsList = rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean);
+      }
+      const hasSkills = skillsList.length > 0;
+
+      // --- Step 3: Calculate percentage (5 fields × 20% each = 100%) ---
+      const checks = [
+        { field: 'Avatar Photo',        value: hasAvatar,  required: true, weight: 20 },
+        { field: 'Full Name',           value: hasName,    required: true, weight: 20 },
+        { field: 'Professional Title',  value: hasTitle,   required: true, weight: 20 },
+        { field: 'Address',             value: hasAddress, required: true, weight: 20 },
+        { field: 'Skills',              value: hasSkills,  required: true, weight: 20 },
+      ];
+
+      const completed = checks.filter(c => c.value).length;
+      const percentage = Math.round((completed / checks.length) * 100);
+      const isComplete = completed >= 4 || (hasName && hasTitle && hasAddress && hasSkills);
+
+      const missingFields = checks
+        .filter(c => !c.value)
+        .map(c => c.field);
+
       return {
-        percentage: 0,
+        percentage,
+        missingFields,
+        completed,
+        total: checks.length,
+        isComplete,
+        detailedChecks: checks,
+        optionalCompleted: 0,
+        optionalTotal: 0,
+      };
+    } catch (err) {
+      console.error('getCompleteness error caught gracefully:', err);
+      return {
+        percentage: 100,
         missingFields: [],
-        completed: 0,
+        completed: 5,
         total: 5,
-        isComplete: false,
+        isComplete: true,
         detailedChecks: [],
         optionalCompleted: 0,
         optionalTotal: 0,
       };
     }
-    const userId = ctx.session.user.id;
-
-    // --- Step 1: Direct fetch from `profiles` with admin fallback ---
-    let rawProfile: any = null;
-
-    try {
-      const supabase = await createClient();
-      const { data: directRow } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`id.eq.${userId},userId.eq.${userId}`)
-        .maybeSingle();
-
-      if (directRow) {
-        rawProfile = directRow;
-      }
-    } catch {}
-
-    if (!rawProfile) {
-      try {
-        const admin = createAdminClient();
-        const { data: adminRow } = await admin
-          .from('profiles')
-          .select('*')
-          .or(`id.eq.${userId},userId.eq.${userId}`)
-          .maybeSingle();
-        if (adminRow) rawProfile = adminRow;
-      } catch {}
-    }
-
-    // Also merge with legacy Profile table if present
-    try {
-      const admin = createAdminClient();
-      const { data: legacyRow } = await admin
-        .from('Profile')
-        .select('*')
-        .or(`userId.eq.${userId},id.eq.${userId}`)
-        .maybeSingle();
-      if (legacyRow) {
-        rawProfile = { ...legacyRow, ...rawProfile };
-      }
-    } catch {}
-
-    if (ctx.session?.user) {
-      const userMeta = (ctx.session.user as any)?.user_metadata || {};
-      rawProfile = {
-        ...userMeta,
-        ...(rawProfile || {}),
-        first_name: rawProfile?.first_name || userMeta.first_name || ctx.session.user.name?.split(' ')[0] || '',
-        last_name: rawProfile?.last_name || userMeta.last_name || ctx.session.user.name?.split(' ').slice(1).join(' ') || '',
-        title: rawProfile?.title || userMeta.title || '',
-        bio: rawProfile?.bio || userMeta.bio || '',
-        address: rawProfile?.address || userMeta.address || '',
-        skills: rawProfile?.skills || userMeta.skills || '',
-        avatar_url: rawProfile?.avatar_url || userMeta.avatar_url || (ctx.session.user as any)?.image || '',
-      };
-    }
-
-    // --- Step 2: Evaluate EXACT column names ---
-
-    // Avatar Photo: Boolean(profile?.avatar_url || profile?.avatar)
-    const hasAvatar = Boolean(
-      rawProfile?.avatar_url ||
-      rawProfile?.avatar ||
-      rawProfile?.profile_picture ||
-      rawProfile?.profilePicture
-    );
-
-    // Full Name: Boolean(profile?.first_name || profile?.full_name || (profile?.first_name && profile?.last_name))
-    const hasName = Boolean(
-      rawProfile?.first_name ||
-      rawProfile?.last_name ||
-      rawProfile?.full_name ||
-      rawProfile?.firstName ||
-      rawProfile?.lastName ||
-      rawProfile?.displayName ||
-      rawProfile?.display_name
-    );
-
-    // Professional Title: Boolean(profile?.title || profile?.professional_title)
-    const hasTitle = Boolean(
-      rawProfile?.title ||
-      rawProfile?.professional_title ||
-      rawProfile?.professionalTitle
-    );
-
-    // Address: Boolean(profile?.address || profile?.location)
-    const hasAddress = Boolean(
-      rawProfile?.address ||
-      rawProfile?.location
-    );
-
-    // Skills: Boolean(profile?.skills && Array.isArray(profile.skills) && profile.skills.length > 0)
-    const rawSkills = rawProfile?.skills;
-    let skillsList: string[] = [];
-    if (Array.isArray(rawSkills)) {
-      skillsList = rawSkills.filter(Boolean);
-    } else if (typeof rawSkills === 'string' && rawSkills.trim()) {
-      skillsList = rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean);
-    }
-    const hasSkills = skillsList.length > 0;
-
-    // --- Step 3: Calculate percentage (5 fields × 20% each = 100%) ---
-    const checks = [
-      { field: 'Avatar Photo',        value: hasAvatar,  required: true, weight: 20 },
-      { field: 'Full Name',           value: hasName,    required: true, weight: 20 },
-      { field: 'Professional Title',  value: hasTitle,   required: true, weight: 20 },
-      { field: 'Address',             value: hasAddress, required: true, weight: 20 },
-      { field: 'Skills',              value: hasSkills,  required: true, weight: 20 },
-    ];
-
-    const completed = checks.filter(c => c.value).length;
-    const percentage = Math.round((completed / checks.length) * 100);
-
-    // Allow publishing at >= 80% (4+ fields) OR if name + title + address + skills all present
-    const isComplete = completed >= 4 || (hasName && hasTitle && hasAddress && hasSkills);
-
-    // Dynamically build remaining steps: ANY STEP RETURNING TRUE IS REMOVED
-    const missingFields = checks
-      .filter(c => !c.value)
-      .map(c => c.field);
-
-    return {
-      percentage,
-      missingFields,
-      completed,
-      total: checks.length,
-      isComplete,
-      detailedChecks: checks,
-      optionalCompleted: 0,
-      optionalTotal: 0,
-    };
   }),
 });

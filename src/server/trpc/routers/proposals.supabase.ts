@@ -31,10 +31,17 @@ export const proposalsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'FREELANCER') {
+      const userRole = (ctx.session.user.role || '').toString().toLowerCase();
+      const isArtist =
+        userRole === 'artist' ||
+        userRole === 'freelancer' ||
+        userRole === 'creator' ||
+        (userRole !== 'client' && userRole !== 'buyer');
+
+      if (!isArtist) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Only freelancers can submit proposals.',
+          message: 'Only artists can submit proposals.',
         });
       }
 
@@ -326,10 +333,17 @@ export const proposalsRouter = router({
     }),
 
   getProposalsForFreelancer: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.session.user.role !== 'FREELANCER') {
+    const userRole = (ctx.session.user.role || '').toString().toLowerCase();
+    const isArtist =
+      userRole === 'artist' ||
+      userRole === 'freelancer' ||
+      userRole === 'creator' ||
+      (userRole !== 'client' && userRole !== 'buyer');
+
+    if (!isArtist) {
       throw new TRPCError({
         code: 'FORBIDDEN',
-        message: 'Only freelancers can view their proposals.',
+        message: 'Only artists can view their proposals.',
       });
     }
 

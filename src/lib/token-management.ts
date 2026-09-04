@@ -115,8 +115,10 @@ export async function resetUserTokensById(userId: string) {
       throw new Error(`User not found: ${userId}`);
     }
 
-    if (existingUser.role !== 'FREELANCER') {
-      throw new Error('Only freelancers have tokens to reset');
+    const rawRole = (existingUser.role || '').toString().toLowerCase();
+    const isArtist = rawRole === 'artist' || rawRole === 'freelancer' || rawRole === 'creator' || (rawRole !== 'client' && rawRole !== 'buyer');
+    if (!isArtist) {
+      throw new Error('Only artists have tokens to reset');
     }
 
     // Get plan-specific token amount

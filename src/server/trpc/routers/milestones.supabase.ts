@@ -232,7 +232,7 @@ export const milestonesRouter = router({
       if (newStatus === 'SUBMITTED' && !isFreelancer && userRole !== 'ADMIN') {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Only freelancers can submit completed work.',
+          message: 'Only artists can submit completed work.',
         });
       }
 

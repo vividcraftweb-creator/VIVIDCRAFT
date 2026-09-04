@@ -173,7 +173,7 @@ export const verificationsRouter = router({
             verified: true,
             updated_at: new Date().toISOString(),
           })
-          .or(`id.eq.${verification.userId},userId.eq.${verification.userId}`);
+          .eq('id', verification.userId);
       }
 
       return true;
@@ -237,7 +237,7 @@ export const verificationsRouter = router({
           verified: true,
           updated_at: new Date().toISOString(),
         })
-        .or(`id.eq.${verification.userId},userId.eq.${verification.userId}`);
+        .eq('id', verification.userId);
 
       // Update user verified status
       await supabase
@@ -518,11 +518,25 @@ export const verificationsRouter = router({
       .single();
 
     // Get profile separately to avoid join issues
-    let { data: profileData } = await (adminSupabase as any)
-      .from('profiles')
-      .select('firstName, lastName, first_name, last_name')
-      .or(`id.eq.${userId},userId.eq.${userId}`)
-      .maybeSingle();
+    let profileData: any = null;
+    try {
+      const { data } = await (adminSupabase as any)
+        .from('profiles')
+        .select('firstName, lastName, first_name, last_name')
+        .eq('id', userId)
+        .maybeSingle();
+      profileData = data;
+    } catch {}
+    if (!profileData) {
+      try {
+        const { data } = await (adminSupabase as any)
+          .from('profiles')
+          .select('firstName, lastName, first_name, last_name')
+          .eq('user_id', userId)
+          .maybeSingle();
+        profileData = data;
+      } catch {}
+    }
 
     // Combine the results
     let resolvedUser: { id: string; clientType: string | null; email: string; role: string | null; Profile: Array<{ firstName: string | null; lastName: string | null }> } | null = userData ? {
@@ -578,11 +592,25 @@ export const verificationsRouter = router({
           .eq('id', userId)
           .single();
 
-        const { data: freshProfileData } = await (adminSupabase as any)
-          .from('profiles')
-          .select('firstName, lastName, first_name, last_name')
-          .or(`id.eq.${userId},userId.eq.${userId}`)
-          .maybeSingle();
+        let freshProfileData: any = null;
+        try {
+          const { data } = await (adminSupabase as any)
+            .from('profiles')
+            .select('firstName, lastName, first_name, last_name')
+            .eq('id', userId)
+            .maybeSingle();
+          freshProfileData = data;
+        } catch {}
+        if (!freshProfileData) {
+          try {
+            const { data } = await (adminSupabase as any)
+              .from('profiles')
+              .select('firstName, lastName, first_name, last_name')
+              .eq('user_id', userId)
+              .maybeSingle();
+            freshProfileData = data;
+          } catch {}
+        }
 
         if (!freshUserData) {
           throw new TRPCError({

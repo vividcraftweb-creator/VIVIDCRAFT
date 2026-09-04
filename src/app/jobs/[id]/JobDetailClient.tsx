@@ -209,12 +209,19 @@ function JobDetailClient() {
     },
   );
 
+  const rawRole = (session?.session?.user?.role || '').toString().toLowerCase();
+  const isArtist =
+    rawRole === 'artist' ||
+    rawRole === 'freelancer' ||
+    rawRole === 'creator' ||
+    (rawRole !== 'client' && rawRole !== 'buyer');
+
   const {
     data: verification,
     isLoading: verificationLoading,
     isFetching: verificationFetching,
   } = trpc.verifications.getVerificationStatus.useQuery(undefined, {
-    enabled: !!session?.session?.user && session.session.user.role === 'FREELANCER',
+    enabled: !!session?.session?.user && isArtist,
     retry: false,
     staleTime: 60_000,
   });
@@ -306,7 +313,7 @@ function JobDetailClient() {
   const isVerificationLoading = verificationLoading || verificationFetching;
   const isVerified = verification?.status === 'APPROVED';
   const canApply =
-    session?.session?.user?.role === 'FREELANCER' && !isOwner && !isVerificationLoading && isVerified && !hasApplied;
+    isArtist && !isOwner && !isVerificationLoading && isVerified && !hasApplied;
 
   const primaryLocation =
     job.locationVisibility === 'hidden'
