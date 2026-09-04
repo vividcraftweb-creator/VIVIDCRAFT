@@ -157,23 +157,30 @@ export const notificationsRouter = router({
     return { success: true };
   }),
 
-  getUnreadNotificationCount: protectedProcedure.query(async ({ ctx }) => {
-    const supabase = createAdminClient();
+  getUnreadNotificationCount: publicProcedure.query(async ({ ctx }) => {
+    try {
+      if (!ctx.session?.user?.id) {
+        return 0;
+      }
 
-    const { count, error } = await supabase
-      .from('Notification')
-      .select('*', { count: 'exact', head: true })
-      .eq('userId', ctx.session.user.id)
-      .eq('read', false);
+      const supabase = createAdminClient();
 
-    if (error) {
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to get unread notification count',
-      });
+      const { count, error } = await supabase
+        .from('Notification')
+        .select('*', { count: 'exact', head: true })
+        .eq('userId', ctx.session.user.id)
+        .eq('read', false);
+
+      if (error) {
+        console.error('Failed to get unread notification count:', error);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (err) {
+      console.error('getUnreadNotificationCount error:', err);
+      return 0;
     }
-
-    return count || 0;
   }),
 
   markManyAsRead: protectedProcedure
