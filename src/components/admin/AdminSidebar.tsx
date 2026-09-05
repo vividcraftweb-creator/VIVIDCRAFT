@@ -63,12 +63,15 @@ export default function AdminSidebar() {
       document.cookie = 'mock_admin_session=; path=/; max-age=0; SameSite=Lax';
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       const supabase = createClient();
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'global' });
     } catch (error) {
       console.error('Sign out error:', error);
     } finally {
-      router.push('/');
-      router.refresh();
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = '/login';
     }
   };
 

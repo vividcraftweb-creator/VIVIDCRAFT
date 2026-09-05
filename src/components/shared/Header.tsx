@@ -153,17 +153,17 @@ const Header = () => {
     try {
       document.cookie = 'is_admin=; path=/; max-age=0; SameSite=Lax';
       document.cookie = 'mock_admin_session=; path=/; max-age=0; SameSite=Lax';
-      localStorage.removeItem('user');
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       const supabase = createClient();
-      await supabase.auth.signOut();
-    } catch (error) {
-      // Ignore sign out errors
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (err) {
+      console.error('Sign out error', err);
     } finally {
-      setUser(null);
-      setUserRole(null);
-      router.push('/');
-      router.refresh();
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = '/login';
     }
   };
 

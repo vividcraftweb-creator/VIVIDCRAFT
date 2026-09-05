@@ -54,10 +54,18 @@ export default function UnverifiedEmailPage({ email }: UnverifiedEmailPageProps)
   const router = useRouter();
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/auth/signin');
-    router.refresh();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (err) {
+      console.error('Sign out error:', err);
+    } finally {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = '/login';
+    }
   };
 
   return (

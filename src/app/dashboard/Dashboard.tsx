@@ -292,12 +292,15 @@ export default function Dashboard({ session }: { session: AppSession }) {
       document.cookie = 'mock_admin_session=; path=/; max-age=0; SameSite=Lax';
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       const supabase = createClient();
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'global' });
     } catch (err) {
       console.error('Sign out error:', err);
     } finally {
-      router.push('/');
-      router.refresh();
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = '/login';
     }
   };
 

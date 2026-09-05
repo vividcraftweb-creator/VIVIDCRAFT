@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { usePathname } from 'next/navigation';
 
@@ -29,30 +29,20 @@ const PROTECTED_PREFIXES = [
 
 export default function SessionProvider({ children }: SessionProviderProps) {
   const pathname = usePathname();
+  const isSigningOutRef = useRef(false);
 
   useEffect(() => {
     const supabase = createClient();
 
-    const clearAllClientAuth = async (shouldRedirect = false) => {
-      try {
-        await supabase.auth.signOut();
-      } catch {}
-
-      // Clear localStorage auth items
+    const cleanClientStorage = (shouldRedirect = false) => {
+      // Clear localStorage explicitly
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
-          const keysToRemove: string[] = [];
-          for (let i = 0; i < window.localStorage.length; i++) {
-            const key = window.localStorage.key(i);
-            if (key && (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth'))) {
-              keysToRemove.push(key);
-            }
-          }
-          keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+          localStorage.clear();
         }
       } catch {}
 
-      // Clear sessionStorage
+      // Clear sessionStorage explicitly
       try {
         if (typeof window !== 'undefined' && window.sessionStorage) {
           window.sessionStorage.clear();
@@ -80,7 +70,7 @@ export default function SessionProvider({ children }: SessionProviderProps) {
         const currentPath = window.location.pathname;
         const isProtected = PROTECTED_PREFIXES.some((prefix) => currentPath.startsWith(prefix));
         if (isProtected) {
-          window.location.href = `/auth/login?logged_out=1&callbackUrl=${encodeURIComponent(currentPath)}`;
+          window.location.href = '/login';
         }
       }
     };
@@ -93,17 +83,22 @@ export default function SessionProvider({ children }: SessionProviderProps) {
           msg.includes('user not found') ||
           msg.includes('user_not_found');
 
-        if (isUserDeleted) {
+        if (isUserDeleted && !isSigningOutRef.current) {
+          isSigningOutRef.current = true;
           console.warn('[SessionProvider] User not found in Supabase Auth. Forcing logout...');
-          clearAllClientAuth(true);
+          supabase.auth.signOut({ scope: 'global' }).catch(() => {}).finally(() => {
+            cleanClientStorage(true);
+          });
         }
       }
     }).catch(() => {});
 
-    // Listen for client-side auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Listen for client-side auth state changes (strictly avoiding recursive signOut calls)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        clearAllClientAuth(true);
+        if (isSigningOutRef.current) return;
+        isSigningOutRef.current = true;
+        cleanClientStorage(true);
       }
     });
 
