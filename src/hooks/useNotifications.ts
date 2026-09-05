@@ -45,8 +45,14 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     }
   );
 
+  const numericUnreadCount = typeof unreadCount === 'number'
+    ? unreadCount
+    : (typeof unreadCount === 'object' && unreadCount !== null
+        ? ((unreadCount as any).unreadCount ?? (unreadCount as any).count ?? 0)
+        : 0);
+
   // Update browser tab title with unread count
-  useNotificationTitle(unreadCount || 0);
+  useNotificationTitle(numericUnreadCount);
 
   // Mark single notification as read
   const markAsReadMutation = trpc.notifications.markAsRead.useMutation({
@@ -156,7 +162,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   return {
     notifications: notifications || [],
-    unreadCount: unreadCount || 0,
+    unreadCount: numericUnreadCount,
     isLoading,
     error,
     refetch,

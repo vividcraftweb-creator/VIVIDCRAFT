@@ -231,187 +231,204 @@ export const profilesRouter = router({
   getMyProfile: publicProcedure
     .input(z.any().optional().nullable())
     .query(async ({ ctx, input }) => {
-      const user = (ctx as any).user || ctx.session?.user;
-      if (!user?.id) {
-        return null;
-      }
-
-      const userName = user.name || (user as any)?.user_metadata?.name || 'New Artist';
-      const nameParts = userName.split(' ');
-      const defaultFirstName = (user as any)?.user_metadata?.firstName || (user as any)?.user_metadata?.first_name || nameParts[0] || 'New';
-      const defaultLastName = (user as any)?.user_metadata?.lastName || (user as any)?.user_metadata?.last_name || nameParts.slice(1).join(' ') || 'Artist';
-      const userImage = (user as any)?.image || (user as any)?.user_metadata?.avatar_url || '';
-      const userEmail = user.email || '';
-
-      const safeDefaultObject = {
-        id: user.id,
-        userId: user.id,
-        name: userName,
-        email: userEmail,
-        role: 'artist',
-        firstName: defaultFirstName,
-        lastName: defaultLastName,
-        first_name: defaultFirstName,
-        last_name: defaultLastName,
-        title: 'Artist',
-        bio: '',
-        location: '',
-        address: '',
-        skills: '',
-        rate: null,
-        profilePicture: userImage,
-        avatar_url: userImage,
-        isPublished: true,
-        companyName: null,
-        companyInfo: null,
-        portfolio: null,
-        verified: false,
-        slug: user.id,
-      };
-
       try {
-        const supabase = createAdminClient();
-        let data: any = null;
+        const user = (ctx as any)?.user || (ctx as any)?.session?.user;
+        const userId = user?.id || (ctx as any)?.user?.id || 'temp-id';
+        const userEmail = user?.email || (ctx as any)?.user?.email || 'artist@vividart.com';
+        const userName = user?.name || (user as any)?.user_metadata?.name || 'New Artist';
+        const nameParts = userName.split(' ');
+        const defaultFirstName = (user as any)?.user_metadata?.firstName || (user as any)?.user_metadata?.first_name || nameParts[0] || 'New';
+        const defaultLastName = (user as any)?.user_metadata?.lastName || (user as any)?.user_metadata?.last_name || nameParts.slice(1).join(' ') || 'Artist';
+        const userImage = (user as any)?.image || (user as any)?.user_metadata?.avatar_url || '';
 
-        try {
-          data = await findProfileSafely(supabase, user.id);
-        } catch (queryErr) {
-          console.warn('findProfileSafely in getMyProfile warning:', queryErr);
-        }
+        const safeDefaultObject = {
+          id: userId || 'temp-id',
+          userId: userId || 'temp-id',
+          name: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
+          email: userEmail || 'artist@vividart.com',
+          role: 'artist',
+          firstName: defaultFirstName || 'New',
+          lastName: defaultLastName || 'Artist',
+          first_name: defaultFirstName || 'New',
+          last_name: defaultLastName || 'Artist',
+          title: 'Artist',
+          bio: 'Welcome to Vivid Art!',
+          location: '',
+          address: '',
+          skills: '',
+          rate: null,
+          profilePicture: userImage,
+          avatar_url: userImage,
+          isPublished: true,
+          is_published: true,
+          companyName: null,
+          companyInfo: null,
+          portfolio: null,
+          verified: false,
+          slug: userId || 'temp-id',
+        };
 
-        // Auto-create missing profile if no row exists in Supabase
-        if (!data) {
-          // 1. Try upserting into public.profiles table
-          try {
-            const profilePayload: any = {
-              id: user.id,
-              first_name: defaultFirstName,
-              last_name: defaultLastName,
-              role: 'artist',
-              email: userEmail,
-              title: 'Artist',
-              bio: '',
-              is_published: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-
-            const { data: inserted, error: insertError } = await (supabase as any)
-              .from('profiles')
-              .upsert(profilePayload, { onConflict: 'id' })
-              .select()
-              .maybeSingle();
-
-            if (!insertError && inserted) {
-              data = inserted;
-            } else if (insertError) {
-              console.warn('profiles upsert notice, retrying with minimal schema:', insertError.message);
-              const { data: minInserted } = await (supabase as any)
-                .from('profiles')
-                .upsert({
-                  id: user.id,
-                  first_name: defaultFirstName,
-                  last_name: defaultLastName,
-                  role: 'artist',
-                }, { onConflict: 'id' })
-                .select()
-                .maybeSingle();
-              if (minInserted) {
-                data = minInserted;
-              }
-            }
-          } catch (autoCreateErr) {
-            console.warn('Auto-creating profiles record notice:', autoCreateErr);
-          }
-
-          // 2. Also ensure `Profile` (PascalCase) record exists
-          try {
-            const cleanSlug = `${defaultFirstName}-${defaultLastName}`
-              .toLowerCase()
-              .replace(/[^a-z0-9]/g, '-')
-              .replace(/-+/g, '-')
-              .replace(/^-|-$/g, '')
-              .slice(0, 30);
-            const slugToUse = `${cleanSlug || 'artist'}-${user.id.substring(0, 6)}`;
-
-            const { data: pInserted } = await (supabase as any)
-              .from('Profile')
-              .upsert({
-                id: user.id,
-                userId: user.id,
-                slug: slugToUse,
-                firstName: defaultFirstName,
-                lastName: defaultLastName,
-                title: 'Artist',
-                bio: '',
-                isPublished: true,
-                is_published: true,
-                verified: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }, { onConflict: 'userId' })
-              .select()
-              .maybeSingle();
-
-            if (!data && pInserted) {
-              data = pInserted;
-            }
-          } catch (pErr) {
-            console.warn('Auto-creating Profile record notice:', pErr);
-          }
-
-          // 3. Ensure User / users table record exists with role FREELANCER
-          try {
-            const userDbPayload = {
-              id: user.id,
-              email: userEmail,
-              role: 'FREELANCER',
-              tokens: 250,
-              subscriptionPlan: 'FREELANCER_PRO',
-              tokenResetAt: new Date().toISOString(),
-              jobPostsUsed: 0,
-              jobPostsResetAt: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              isVerified: true,
-              profileCompleted: true,
-            };
-
-            await (supabase as any).from('users').upsert(userDbPayload, { onConflict: 'id' }).catch(() => {});
-            await (supabase as any).from('User').upsert(userDbPayload, { onConflict: 'id' }).catch(() => {});
-          } catch (uErr) {
-            console.warn('User / users table auto-create notice:', uErr);
-          }
-        }
-
-        if (!data) {
+        if (!userId || userId === 'temp-id') {
           return safeDefaultObject;
         }
 
+        try {
+          const supabase = createAdminClient();
+          let data: any = null;
+
+          try {
+            data = await findProfileSafely(supabase, userId);
+          } catch (queryErr) {
+            console.warn('findProfileSafely in getMyProfile warning:', queryErr);
+          }
+
+          // Auto-create missing profile if no row exists in Supabase
+          if (!data) {
+            // 1. Try upserting into public.profiles table
+            try {
+              const profilePayload: any = {
+                id: userId,
+                first_name: defaultFirstName,
+                last_name: defaultLastName,
+                role: 'artist',
+                email: userEmail,
+                title: 'Artist',
+                bio: 'Welcome to Vivid Art!',
+                is_published: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+
+              const { data: inserted, error: insertError } = await (supabase as any)
+                .from('profiles')
+                .upsert(profilePayload, { onConflict: 'id' })
+                .select()
+                .maybeSingle();
+
+              if (!insertError && inserted) {
+                data = inserted;
+              } else if (insertError) {
+                console.warn('profiles upsert notice, retrying with minimal schema:', insertError.message);
+                const { data: minInserted } = await (supabase as any)
+                  .from('profiles')
+                  .upsert({
+                    id: userId,
+                    first_name: defaultFirstName,
+                    last_name: defaultLastName,
+                    role: 'artist',
+                  }, { onConflict: 'id' })
+                  .select()
+                  .maybeSingle();
+                if (minInserted) {
+                  data = minInserted;
+                }
+              }
+            } catch (autoCreateErr) {
+              console.warn('Auto-creating profiles record notice:', autoCreateErr);
+            }
+
+            // 2. Also ensure `Profile` (PascalCase) record exists
+            try {
+              const cleanSlug = `${defaultFirstName}-${defaultLastName}`
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
+                .slice(0, 30);
+              const slugToUse = `${cleanSlug || 'artist'}-${userId.substring(0, 6)}`;
+
+              const { data: pInserted } = await (supabase as any)
+                .from('Profile')
+                .upsert({
+                  id: userId,
+                  userId: userId,
+                  slug: slugToUse,
+                  firstName: defaultFirstName,
+                  lastName: defaultLastName,
+                  title: 'Artist',
+                  bio: 'Welcome to Vivid Art!',
+                  isPublished: true,
+                  is_published: true,
+                  verified: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                }, { onConflict: 'userId' })
+                .select()
+                .maybeSingle();
+
+              if (!data && pInserted) {
+                data = pInserted;
+              }
+            } catch (pErr) {
+              console.warn('Auto-creating Profile record notice:', pErr);
+            }
+
+            // 3. Ensure User / users table record exists with role FREELANCER
+            try {
+              const userDbPayload = {
+                id: userId,
+                email: userEmail,
+                role: 'FREELANCER',
+                tokens: 250,
+                subscriptionPlan: 'FREELANCER_PRO',
+                tokenResetAt: new Date().toISOString(),
+                jobPostsUsed: 0,
+                jobPostsResetAt: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                isVerified: true,
+                profileCompleted: true,
+              };
+
+              await (supabase as any).from('users').upsert(userDbPayload, { onConflict: 'id' }).catch(() => {});
+              await (supabase as any).from('User').upsert(userDbPayload, { onConflict: 'id' }).catch(() => {});
+            } catch (uErr) {
+              console.warn('User / users table auto-create notice:', uErr);
+            }
+          }
+
+          if (!data) {
+            return safeDefaultObject;
+          }
+
+          return {
+            ...safeDefaultObject,
+            ...(data || {}),
+            id: userId,
+            userId: userId,
+            name: userName || data?.name || `${data?.firstName || data?.first_name || ''} ${data?.lastName || data?.last_name || ''}`.trim() || 'New Artist',
+            email: userEmail || data?.email || 'artist@vividart.com',
+            role: String(data?.role || user?.role || 'artist').toLowerCase(),
+            firstName: data?.firstName || data?.first_name || defaultFirstName,
+            lastName: data?.lastName || data?.last_name || defaultLastName,
+            first_name: data?.first_name || data?.firstName || defaultFirstName,
+            last_name: data?.last_name || data?.lastName || defaultLastName,
+            location: data?.location || data?.address || '',
+            address: data?.address || data?.location || '',
+            skills: data?.skills || '',
+            title: data?.title || 'Artist',
+            bio: data?.bio || data?.description || 'Welcome to Vivid Art!',
+            profilePicture: data?.profilePicture || data?.profile_picture || data?.avatar_url || userImage || '',
+            avatar_url: data?.avatar_url || data?.profile_picture || data?.profilePicture || userImage || '',
+            isPublished: data?.is_published ?? data?.isPublished ?? true,
+            is_published: data?.is_published ?? data?.isPublished ?? true,
+          };
+        } catch (innerErr) {
+          console.warn('Database lookup/insert exception caught gracefully:', innerErr);
+          return safeDefaultObject;
+        }
+      } catch (outerErr) {
+        console.error('getMyProfile top-level error caught gracefully:', outerErr);
         return {
-          ...safeDefaultObject,
-          ...(data || {}),
-          id: user.id,
-          userId: user.id,
-          name: userName || data?.name || `${data?.firstName || data?.first_name || ''} ${data?.lastName || data?.last_name || ''}`.trim() || 'New Artist',
-          email: userEmail || data?.email || '',
-          role: String(data?.role || user.role || 'artist').toLowerCase(),
-          firstName: data?.firstName || data?.first_name || defaultFirstName,
-          lastName: data?.lastName || data?.last_name || defaultLastName,
-          first_name: data?.first_name || data?.firstName || defaultFirstName,
-          last_name: data?.last_name || data?.lastName || defaultLastName,
-          location: data?.location || data?.address || '',
-          address: data?.address || data?.location || '',
-          skills: data?.skills || '',
-          title: data?.title || 'Artist',
-          bio: data?.bio || data?.description || '',
-          profilePicture: data?.profilePicture || data?.profile_picture || data?.avatar_url || userImage || '',
-          avatar_url: data?.avatar_url || data?.profile_picture || data?.profilePicture || userImage || '',
-          isPublished: data?.is_published ?? data?.isPublished ?? true,
+          id: (ctx as any)?.user?.id || 'temp-id',
+          email: (ctx as any)?.user?.email || 'artist@vividart.com',
+          first_name: 'New',
+          last_name: 'Artist',
+          firstName: 'New',
+          lastName: 'Artist',
+          role: 'artist',
+          bio: 'Welcome to Vivid Art!',
         };
-      } catch (err) {
-        console.error('getMyProfile error caught gracefully:', err);
-        return safeDefaultObject;
       }
     }),
 

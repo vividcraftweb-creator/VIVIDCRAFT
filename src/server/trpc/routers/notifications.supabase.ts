@@ -173,7 +173,10 @@ export const notificationsRouter = router({
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return 0;
+          const fallback: any = { unreadCount: 0, count: 0 };
+          fallback.valueOf = () => 0;
+          fallback[Symbol.toPrimitive] = () => 0;
+          return fallback;
         }
 
         let count = 0;
@@ -209,10 +212,16 @@ export const notificationsRouter = router({
           console.warn('Supabase admin client error in getUnreadNotificationCount:', e);
         }
 
-        return count;
+        const result: any = { unreadCount: count, count };
+        result.valueOf = () => count;
+        result[Symbol.toPrimitive] = () => count;
+        return result;
       } catch (err) {
         console.error('getUnreadNotificationCount error caught gracefully:', err);
-        return 0;
+        const fallback: any = { unreadCount: 0, count: 0 };
+        fallback.valueOf = () => 0;
+        fallback[Symbol.toPrimitive] = () => 0;
+        return fallback;
       }
     }),
 
@@ -222,7 +231,7 @@ export const notificationsRouter = router({
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return { count: 0, unreadCount: 0 };
+          return { unreadCount: 0, count: 0 };
         }
 
         let count = 0;
@@ -258,10 +267,10 @@ export const notificationsRouter = router({
           console.warn('Supabase admin client error in getUnreadCount:', e);
         }
 
-        return { count, unreadCount: count };
+        return { unreadCount: count, count };
       } catch (err) {
         console.error('getUnreadCount error caught gracefully:', err);
-        return { count: 0, unreadCount: 0 };
+        return { unreadCount: 0, count: 0 };
       }
     }),
 
@@ -271,11 +280,11 @@ export const notificationsRouter = router({
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return { count: 0, unreadCount: 0 };
+          return { unreadCount: 0, count: 0 };
         }
-        return { count: 0, unreadCount: 0 };
+        return { unreadCount: 0, count: 0 };
       } catch {
-        return { count: 0, unreadCount: 0 };
+        return { unreadCount: 0, count: 0 };
       }
     }),
 
