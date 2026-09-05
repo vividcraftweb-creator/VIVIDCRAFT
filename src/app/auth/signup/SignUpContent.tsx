@@ -115,30 +115,30 @@ export default function SignUpContent() {
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
 
     try {
-      // 1. Explicitly register with Supabase Auth preserving the selected role in options.data
+      // STEP 1: Register with Supabase Auth — stamp role in user_metadata immediately
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
           data: {
-            role: selectedRole || 'artist',
+            role: selectedRole,
             full_name: fullName,
             name: fullName,
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            user_type: selectedRole || 'artist',
-            userRole: selectedRole || 'artist',
-            role_name: selectedRole || 'artist',
-            account_type: selectedRole || 'artist',
+            user_type: selectedRole,
+            userRole: selectedRole,
+            role_name: selectedRole,
+            account_type: selectedRole,
             location: userCountry,
             country: userCountry,
           },
         },
       });
 
-      // Handle user already exists
+      // Handle user already exists (Supabase returns 0 identities or explicit error)
       const isAlreadyExists =
         (authError && (
           authError.message.toLowerCase().includes('already registered') ||
@@ -164,84 +164,48 @@ export default function SignUpContent() {
         throw authError;
       }
 
-      // 2. Immediately after successful sign up, execute a direct database upsert into public.profiles
-      if (data?.user) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: data.user.id,
-            email: formData.email.trim(),
-            role: selectedRole || 'artist',
-            first_name: formData.firstName.trim(),
-            last_name: formData.lastName.trim(),
-            title: formData.title?.trim() || 'Artist',
-            bio: 'Welcome to Vivid Art!',
-            location: userCountry,
-            address: userCountry,
-            is_published: true,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'id' });
-        } catch (profileUpsertErr) {
-          console.warn('Direct profiles upsert notice:', profileUpsertErr);
-        }
+      // STEP 2: Sign in immediately to establish a live session.
+      // This is critical — the session is required for RLS on profiles,
+      // and for /api/auth/provision-user to verify the caller's identity.
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
 
-        // Also ensure PascalCase Profile record exists
-        try {
-          const baseSlug = `${formData.firstName.trim()}-${formData.lastName.trim()}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
-          await supabase.from('Profile').upsert({
-            id: data.user.id,
-            userId: data.user.id,
-            slug: `${baseSlug || 'artist'}-${data.user.id.substring(0, 6)}`,
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
-            title: formData.title?.trim() || 'Artist',
-            bio: 'Welcome to Vivid Art!',
-            location: userCountry,
-            country: userCountry,
-            isPublished: true,
-            is_published: true,
-            verified: false,
-            updatedAt: new Date().toISOString(),
-          }, { onConflict: 'userId' });
-        } catch (pErr) {
-          console.warn('Direct Profile table upsert notice:', pErr);
-        }
+      if (signInError) {
+        console.warn('[signup] signInWithPassword warning:', signInError.message);
       }
 
-      // 3. Call backend /api/auth/signup to ensure server-side tables (User, users) are synced
+      // STEP 3: Call /api/auth/provision-user to write the artist role to ALL DB tables
+      // using adminClient (bypasses RLS). The endpoint reads userId from the live session.
+      // This also permanently stamps user_metadata.role = 'artist'.
       try {
-        await fetch('/api/auth/signup', {
+        await fetch('/api/auth/provision-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: formData.email.trim(),
-            password: formData.password,
-            role: selectedRole || 'artist',
+            role: selectedRole,
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            title: formData.title?.trim() || undefined,
+            title: formData.title?.trim() || 'Artist',
             location: userCountry,
             country: userCountry,
           }),
         });
-      } catch (backendSyncErr) {
-        console.warn('Backend API signup sync notice:', backendSyncErr);
-      }
-
-      // 4. Ensure active session with signInWithPassword
-      if (!data?.session) {
-        await supabase.auth.signInWithPassword({
-          email: formData.email.trim(),
-          password: formData.password,
-        });
+      } catch (provisionErr) {
+        console.warn('[signup] provision-user API notice:', provisionErr);
       }
 
       toast.success('Account created successfully!', {
         description: 'Welcome to Vivid Craft! Redirecting to your artist dashboard...',
       });
 
-      router.push('/dashboard');
+      // STEP 4: Hard redirect to dashboard. window.location.replace triggers a full
+      // page reload so Next.js server re-reads the auth session including the freshly
+      // provisioned 'artist' role from profiles table → resolves to FREELANCER view.
+      window.location.replace('/dashboard');
     } catch (err: any) {
-      console.error("SIGNUP ERROR:", err?.message, err);
+      console.error('SIGNUP ERROR:', err?.message, err);
       const msg = err?.message || 'An unexpected registration error occurred.';
       if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')) {
         const existMsg = 'An account with this email already exists. Please Sign In.';
