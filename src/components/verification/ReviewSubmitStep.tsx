@@ -16,7 +16,7 @@ export default function ReviewSubmitStep({ clientType, onComplete, onBack }: Rev
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: user } = trpc.user.getCurrentUser.useQuery(undefined, { retry: false });
-  const { data: profile } = trpc.profiles.getMyProfile.useQuery(undefined, { retry: false });
+  const { data: profile } = trpc.profiles.getMyProfile.useQuery({}, { retry: false });
   const { data: documents } = trpc.verifications.getUserDocuments.useQuery(undefined, { retry: false });
 
   // Determine if user is freelancer or client for proper labeling

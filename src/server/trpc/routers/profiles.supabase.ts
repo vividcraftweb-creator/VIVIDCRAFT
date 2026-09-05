@@ -229,16 +229,7 @@ export const profilesRouter = router({
     }),
 
   getMyProfile: publicProcedure
-    .input(
-      z
-        .object({
-          userId: z.string().optional().nullable(),
-        })
-        .passthrough()
-        .optional()
-        .nullable()
-        .or(z.any().optional().nullable())
-    )
+    .input(z.any().optional().nullable())
     .query(async ({ ctx, input }) => {
       const user = (ctx as any).user || ctx.session?.user;
       if (!user?.id) {

@@ -247,7 +247,7 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
     enabled: isAuthenticated && view === 'messages',
     retry: false,
   });
-  const { data: myProfile, refetch: refetchMyProfile } = trpc.profiles.getMyProfile.useQuery(undefined, {
+  const { data: myProfile, refetch: refetchMyProfile } = trpc.profiles.getMyProfile.useQuery({}, {
     enabled: isAuthenticated,
     retry: false,
     refetchOnWindowFocus: true,

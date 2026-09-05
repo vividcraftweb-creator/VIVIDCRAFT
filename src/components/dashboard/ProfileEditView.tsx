@@ -21,7 +21,7 @@ export default function ProfileEditView() {
 
   const utils = trpc.useUtils();
 
-  const profileQuery = trpc.profiles.getMyProfile.useQuery(undefined, {
+  const profileQuery = trpc.profiles.getMyProfile.useQuery({}, {
     enabled: !!session?.session?.user,
     retry: false,
   });

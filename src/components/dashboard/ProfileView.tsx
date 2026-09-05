@@ -33,7 +33,7 @@ export default function ProfileView() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const { data: profile, isLoading } = trpc.profiles.getMyProfile.useQuery(undefined, {
+  const { data: profile, isLoading } = trpc.profiles.getMyProfile.useQuery({}, {
     enabled: status === 'authenticated' && !!session?.session?.user,
     retry: false,
   });

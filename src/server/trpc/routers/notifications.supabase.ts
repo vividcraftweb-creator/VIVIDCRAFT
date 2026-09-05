@@ -36,6 +36,7 @@ export const notificationsRouter = router({
         })
         .optional()
         .nullable()
+        .or(z.any().optional().nullable())
     )
     .query(async ({ ctx, input }) => {
       try {
@@ -167,14 +168,7 @@ export const notificationsRouter = router({
   }),
 
   getUnreadNotificationCount: publicProcedure
-    .input(
-      z
-        .object({})
-        .passthrough()
-        .optional()
-        .nullable()
-        .or(z.any().optional().nullable())
-    )
+    .input(z.any().optional().nullable())
     .query(async ({ ctx }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
@@ -223,14 +217,7 @@ export const notificationsRouter = router({
     }),
 
   getUnreadCount: publicProcedure
-    .input(
-      z
-        .object({})
-        .passthrough()
-        .optional()
-        .nullable()
-        .or(z.any().optional().nullable())
-    )
+    .input(z.any().optional().nullable())
     .query(async ({ ctx }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
@@ -279,14 +266,7 @@ export const notificationsRouter = router({
     }),
 
   unreadCount: publicProcedure
-    .input(
-      z
-        .object({})
-        .passthrough()
-        .optional()
-        .nullable()
-        .or(z.any().optional().nullable())
-    )
+    .input(z.any().optional().nullable())
     .query(async ({ ctx }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
@@ -300,14 +280,7 @@ export const notificationsRouter = router({
     }),
 
   list: publicProcedure
-    .input(
-      z
-        .object({})
-        .passthrough()
-        .optional()
-        .nullable()
-        .or(z.any().optional().nullable())
-    )
+    .input(z.any().optional().nullable())
     .query(async ({ ctx }) => {
       return [];
     }),

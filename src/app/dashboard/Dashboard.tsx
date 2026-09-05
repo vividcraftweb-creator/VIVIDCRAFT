@@ -96,13 +96,13 @@ export default function Dashboard({ session }: { session: AppSession }) {
   }, [mounted, role, router]);
 
   // Fetch profile data to get updated name
-  const { data: profile } = trpc.profiles.getMyProfile.useQuery(undefined, {
+  const { data: profile } = trpc.profiles.getMyProfile.useQuery({}, {
     enabled: !!session,
     retry: false,
   });
 
   // Fetch notifications with session guarding
-  const { data: notificationsData } = trpc.notifications.getNotifications.useQuery(undefined, {
+  const { data: notificationsData } = trpc.notifications.getNotifications.useQuery({}, {
     enabled: !!session,
     retry: false,
   });

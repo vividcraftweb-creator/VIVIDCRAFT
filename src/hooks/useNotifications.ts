@@ -38,7 +38,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   // Fetch unread count
   const { data: unreadCount } = trpc.notifications.getUnreadNotificationCount.useQuery(
-    undefined,
+    {},
     {
       enabled,
       retry: false,
@@ -73,7 +73,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // Optimistically update count
       if (previousCount !== undefined && previousCount > 0) {
         utils.notifications.getUnreadNotificationCount.setData(
-          undefined,
+          {},
           previousCount - 1
         );
       }
@@ -90,7 +90,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
       if (context?.previousCount !== undefined) {
         utils.notifications.getUnreadNotificationCount.setData(
-          undefined,
+          {},
           context.previousCount
         );
       }
@@ -124,7 +124,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       });
 
       // Optimistically set count to 0
-      utils.notifications.getUnreadNotificationCount.setData(undefined, 0);
+      utils.notifications.getUnreadNotificationCount.setData({}, 0);
 
       return { previousNotifications, previousCount };
     },
@@ -141,7 +141,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
       if (context?.previousCount !== undefined) {
         utils.notifications.getUnreadNotificationCount.setData(
-          undefined,
+          {},
           context.previousCount
         );
       }

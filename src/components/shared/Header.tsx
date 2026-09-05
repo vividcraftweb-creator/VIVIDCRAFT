@@ -108,7 +108,7 @@ const Header = () => {
   const hasUser = !!user;
 
   // Fetch profile data for avatar and name
-  const { data: profile, isLoading: isProfileLoading } = trpc.profiles.getMyProfile.useQuery(undefined, {
+  const { data: profile, isLoading: isProfileLoading } = trpc.profiles.getMyProfile.useQuery({}, {
     enabled: hasUser && userRole !== 'ADMIN',
     retry: false,
   });
