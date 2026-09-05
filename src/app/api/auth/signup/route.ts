@@ -178,23 +178,17 @@ export async function POST(req: Request) {
       console.error('SUPABASE AUTH SIGNUP ERROR:', authError.message, authError);
       loggers.auth.error({ error: authError, email }, 'Supabase auth.signUp failed');
 
-      if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already exists')) {
-        // Try resending verification email for unconfirmed accounts
-        try {
-          await supabase.auth.resend({
-            type: 'signup',
-            email,
-            options: {
-              emailRedirectTo: `${appOrigin}/auth/callback?role=${metadataRole}`,
-            },
-          });
-        } catch (resendErr) {}
+      const isAlreadyExists = 
+        authError.message.toLowerCase().includes('already registered') || 
+        authError.message.toLowerCase().includes('already exists') ||
+        (authError as any).code === 'user_already_exists';
 
+      if (isAlreadyExists) {
         return NextResponse.json({ 
-          message: 'Account already created. A new verification link has been sent to your email.',
-          userExists: false,
-          unconfirmed: true,
-        }, { status: 200 });
+          message: 'An account with this email already exists. Please Sign In.',
+          userExists: true,
+          error: 'user_already_exists',
+        }, { status: 409 });
       }
 
       return NextResponse.json({ 
@@ -207,23 +201,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Failed to create user — no user data returned from auth' }, { status: 500 });
     }
 
-    // Check if Supabase returned 0 identities (signals existing unconfirmed user)
+    // Check if Supabase returned 0 identities (signals existing user)
     if (authData.user.identities && authData.user.identities.length === 0) {
-      try {
-        await supabase.auth.resend({
-          type: 'signup',
-          email,
-          options: {
-            emailRedirectTo: `${appOrigin}/auth/callback?role=${metadataRole}`,
-          },
-        });
-      } catch (resendErr) {}
-
       return NextResponse.json({ 
-        message: 'Account already registered. A new verification link has been sent to your email.',
-        userExists: false,
-        unconfirmed: true,
-      }, { status: 200 });
+        message: 'An account with this email already exists. Please Sign In.',
+        userExists: true,
+        error: 'user_already_exists',
+      }, { status: 409 });
     }
 
     // Create or update user record in Supabase database using admin client to bypass RLS
@@ -446,8 +430,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      message: 'Account created successfully! Please check your email to verify your account.',
+      message: 'Account created successfully!',
       user: { id: authData.user.id, email },
+      session: authData.session || null,
     }, { status: 201 });
   } catch (error) {
     // Log unexpected errors with full context

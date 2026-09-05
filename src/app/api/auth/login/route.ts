@@ -62,13 +62,55 @@ export async function POST(req: Request) {
       });
 
       if (error) {
+        const isUnconfirmed = 
+          error.message.toLowerCase().includes('not confirmed') ||
+          error.message.toLowerCase().includes('unconfirmed') ||
+          (error as any)?.code === 'email_not_confirmed';
+
+        if (isUnconfirmed) {
+          return NextResponse.json({
+            message: 'This legacy account state requires resetting. Click here to reset password or sign up with updated details.',
+            error: 'email_not_confirmed',
+            legacyUnconfirmed: true,
+          }, { status: 403 });
+        }
+
         return NextResponse.json(
           { message: error.message || 'Invalid credentials' },
           { status: 401 }
         );
       }
 
-      let userRole = data?.user?.user_metadata?.role || 'CLIENT';
+      // Ensure Clean Metadata Sync on Sign-In
+      const metadata = data?.user?.user_metadata || {};
+      const rawMetaRole = metadata.role || metadata.userRole || '';
+      const cleanMetaRole = String(rawMetaRole).trim().toLowerCase();
+      const isClient = cleanMetaRole === 'client' || cleanMetaRole === 'buyer' || cleanMetaRole === 'customer';
+      const roleToUse = isClient ? 'client' : 'artist';
+      const fullName = metadata.full_name || metadata.name || '';
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = metadata.first_name || metadata.firstName || nameParts[0] || (roleToUse === 'artist' ? 'New' : 'Client');
+      const lastName = metadata.last_name || metadata.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '') || (roleToUse === 'artist' ? 'Artist' : 'User');
+      const userLocation = metadata.location || metadata.country || 'Sri Lanka';
+
+      try {
+        await (supabase as any).from('profiles').upsert({
+          id: data.user.id,
+          first_name: firstName,
+          last_name: lastName,
+          role: roleToUse,
+          email: data.user.email || null,
+          location: userLocation,
+          address: userLocation,
+          title: roleToUse === 'artist' ? 'Artist' : 'Buyer',
+          is_published: true,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+      } catch (syncErr) {
+        console.warn('API login profile metadata sync notice:', syncErr);
+      }
+
+      let userRole = roleToUse;
       try {
         let dbUser = (await (supabase as any).from('users').select('role').eq('id', data.user.id).maybeSingle())?.data;
         if (!dbUser) {

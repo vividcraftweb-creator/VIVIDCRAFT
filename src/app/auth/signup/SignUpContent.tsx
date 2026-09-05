@@ -133,6 +133,27 @@ export default function SignUpContent() {
 
       const responseData = await res.json();
 
+      // Explicitly check for user already exists (409 status or flags)
+      const isAlreadyRegistered = 
+        res.status === 409 || 
+        responseData.userExists || 
+        responseData.error === 'user_already_exists' || 
+        responseData.message?.toLowerCase().includes('already exists') || 
+        responseData.message?.toLowerCase().includes('already registered');
+
+      if (isAlreadyRegistered) {
+        const existMsg = 'An account with this email already exists. Please Sign In.';
+        setErrorMessage(existMsg);
+        toast.error('Account already exists', {
+          description: existMsg,
+          duration: 4000,
+        });
+        setTimeout(() => {
+          router.push(`/auth/login?email=${encodeURIComponent(formData.email.trim())}`);
+        }, 1500);
+        return;
+      }
+
       if (!res.ok) {
         // Handle specific error cases
         if (res.status === 429) {
@@ -146,27 +167,54 @@ export default function SignUpContent() {
         throw new Error(responseData.message || 'Signup failed');
       }
 
-      // Check if user already exists (200 status with userExists flag)
-      if (responseData.userExists && !responseData.unconfirmed) {
-        toast.error('Account already exists', {
-          description: 'Please sign in instead.',
-          duration: 3000,
-        });
-        setTimeout(() => {
-          router.push(`/auth/signin?email=${encodeURIComponent(formData.email)}&message=account_exists`);
-        }, 1500);
-        return;
+      // Handle Successful Auto-Sign-Up (Verification Off):
+      // Log the user in to establish client session immediately
+      const { data: signInData } = await supabase.auth.signInWithPassword({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+
+      // Synchronize metadata to profiles table directly
+      if (signInData?.user) {
+        try {
+          await supabase.from('profiles').upsert({
+            id: signInData.user.id,
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
+            role: 'artist',
+            email: formData.email.trim(),
+            title: formData.title?.trim() || 'Artist',
+            bio: 'Welcome to Vivid Art!',
+            location: userCountry,
+            address: userCountry,
+            is_published: true,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+        } catch (syncErr) {
+          console.warn('Post-signup profiles sync note:', syncErr);
+        }
       }
 
-      // Success / Resent verification link
-      const successText = responseData.message || 'Account created successfully! Please check your email to verify your account.';
-      setSuccessMessage(successText);
-      toast.success(responseData.unconfirmed ? 'Verification Link Sent!' : 'Account created!', {
-        description: successText,
+      toast.success('Account created successfully!', {
+        description: 'Welcome to Vivid Craft! Redirecting to dashboard...',
       });
+
+      router.push('/dashboard');
     } catch (err: any) {
       console.error("SIGNUP ERROR:", err?.message, err);
       const msg = err?.message || 'An unexpected registration error occurred.';
+      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')) {
+        const existMsg = 'An account with this email already exists. Please Sign In.';
+        setErrorMessage(existMsg);
+        toast.error('Account already exists', {
+          description: existMsg,
+          duration: 4000,
+        });
+        setTimeout(() => {
+          router.push(`/auth/login?email=${encodeURIComponent(formData.email.trim())}`);
+        }, 1500);
+        return;
+      }
       setErrorMessage(msg);
       toast.error(`Sign up failed: ${msg}`);
     } finally {

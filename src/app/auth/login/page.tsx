@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (!error) return fallback;
@@ -21,19 +21,49 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function LoginContent() {
-  const [email, setEmail] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const emailParam = searchParams?.get('email') || '';
+  const redirectTo = searchParams?.get('redirect') || searchParams?.get('next') || '';
+
+  const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams?.get('redirect') || searchParams?.get('next') || '';
+  const [legacyError, setLegacyError] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
   const supabase = createClient();
+
+  const handlePasswordResetRequest = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      toast.error('Please enter your email address above first.');
+      return;
+    }
+    setIsResettingPassword(true);
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${origin}/auth/callback?next=/settings`,
+      });
+      if (error) throw error;
+      toast.success('Password reset link sent!', {
+        description: 'Please check your email inbox to reset your password.',
+      });
+    } catch (err: any) {
+      toast.error('Failed to send reset email', {
+        description: err?.message || 'Please try again later.',
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLegacyError(false);
 
     // Direct Dev Admin condition check - redirects to home page (/)
     if (email === 'vividcraftweb@gmail.com' && password === 'VividCraftAdmin#2026!') {
@@ -68,19 +98,63 @@ function LoginContent() {
       }
 
       if (data?.user) {
+        // Ensure Clean Metadata Sync on Sign-In
+        const metadata = data.user.user_metadata || {};
+        const rawRole = metadata.role || metadata.userRole || '';
+        const cleanRole = String(rawRole).trim().toLowerCase();
+        const isClient = cleanRole === 'client' || cleanRole === 'buyer' || cleanRole === 'customer';
+        const roleToUse = isClient ? 'client' : 'artist';
+        const fullName = metadata.full_name || metadata.name || '';
+        const nameParts = fullName.trim().split(/\s+/);
+        const firstName = metadata.first_name || metadata.firstName || nameParts[0] || (roleToUse === 'artist' ? 'New' : 'Client');
+        const lastName = metadata.last_name || metadata.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '') || (roleToUse === 'artist' ? 'Artist' : 'User');
+        const userLocation = metadata.location || metadata.country || 'Sri Lanka';
+
+        try {
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            first_name: firstName,
+            last_name: lastName,
+            role: roleToUse,
+            email: data.user.email || null,
+            location: userLocation,
+            address: userLocation,
+            title: roleToUse === 'artist' ? 'Artist' : 'Buyer',
+            is_published: true,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+        } catch (syncErr) {
+          console.warn('Sign-in profiles sync notice:', syncErr);
+        }
+
+        const isArtist = roleToUse === 'artist';
+        const dest = redirectTo || (isArtist ? '/dashboard' : '/');
+
         toast.success('Signed in successfully', {
-          description: 'Redirecting to home page...',
+          description: isArtist ? 'Redirecting to dashboard...' : 'Redirecting to home page...',
         });
 
-        // Direct redirection to home page (/) or explicit return destination
-        router.push(redirectTo || '/');
+        router.push(dest);
         router.refresh();
       }
     } catch (error: any) {
       const message = getErrorMessage(error, 'Invalid email or password. Please try again.');
-      toast.error('Sign in failed', {
-        description: message,
-      });
+      const isUnconfirmed = 
+        message.toLowerCase().includes('not confirmed') ||
+        message.toLowerCase().includes('unconfirmed') ||
+        error?.code === 'email_not_confirmed';
+
+      if (isUnconfirmed) {
+        setLegacyError(true);
+        toast.error('Legacy Account State Requires Reset', {
+          description: 'This legacy account state requires resetting. Click below to reset password or sign up with updated details.',
+          duration: 6000,
+        });
+      } else {
+        toast.error('Sign in failed', {
+          description: message,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -130,6 +204,38 @@ function LoginContent() {
             Log in to access your Vivid Art account
           </p>
         </div>
+
+        {/* Legacy Account State Alert */}
+        {legacyError && (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-3 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-sm text-amber-300">Action Required for Legacy Account</p>
+                <p className="text-xs text-amber-200/90 leading-relaxed">
+                  This legacy account state requires resetting. Click below to reset password or sign up with updated details.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handlePasswordResetRequest}
+                disabled={isResettingPassword}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isResettingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Reset Password
+              </button>
+              <Link
+                href={`/auth/signup?email=${encodeURIComponent(email.trim())}`}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+              >
+                Sign Up with Updated Details
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Email & Password Form */}
         <form onSubmit={(e) => handleEmailSignIn(e)} className="space-y-4">

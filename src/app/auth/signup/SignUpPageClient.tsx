@@ -298,28 +298,36 @@ export default function SignUpPage() {
 
       const responseData = await res.json();
 
+      // Check if user already exists (409 or userExists flag)
+      const isExistingUser = 
+        res.status === 409 || 
+        responseData.userExists || 
+        responseData.error === 'user_already_exists' || 
+        responseData.message?.toLowerCase().includes('already exists') || 
+        responseData.message?.toLowerCase().includes('already registered');
+
+      if (isExistingUser) {
+        const errMsg = 'An account with this email already exists. Please Sign In.';
+        toast.error('Account already exists', {
+          description: errMsg,
+          duration: 4000,
+        });
+        setTimeout(() => {
+          router.push(`/auth/login?email=${encodeURIComponent(formData.email.trim())}`);
+        }, 1500);
+        return;
+      }
+
       if (res.ok) {
-        // Check if user already exists (200 status with userExists flag)
-        if (responseData.userExists) {
-          toast.error('Account already exists', {
-            description: 'Redirecting to sign in...',
-            duration: 2000,
-          });
-          setTimeout(() => {
-            router.push(`/auth/signin?email=${encodeURIComponent(formData.email)}&message=account_exists`);
-          }, 1500);
-        } else {
-          // Successful signup
-          toast.success('Account created successfully!', {
-            description: 'Please check your email to verify your account.'
-          });
+        toast.success('Account created successfully!', {
+          description: 'Welcome to Vivid Craft! Redirecting...',
+        });
 
-          // Track successful sign up
-          analytics.signUp('email');
+        // Track successful sign up
+        analytics.signUp('email');
 
-          // Redirect to verify email page
-          router.push(`/auth/verify-email-sent?email=${encodeURIComponent(formData.email)}`);
-        }
+        // Redirect directly to dashboard
+        router.push('/dashboard');
       } else {
         // Handle other errors
         const errMsg = typeof responseData?.message === 'string'

@@ -107,21 +107,16 @@ export default function RegisterForm() {
       });
 
       if (authError) {
-        if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already exists')) {
-          try {
-            await supabase.auth.resend({
-              type: 'signup',
-              email: formData.email.trim(),
-              options: {
-                emailRedirectTo: `${origin}/auth/callback?role=artist`,
-              },
-            });
-          } catch (e) {}
-
-          setSuccessMessage('Account already registered. A new verification link has been sent to your email.');
-          toast.success('Verification link sent!', {
-            description: 'Please check your email inbox to confirm your account.',
+        if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already exists') || (authError as any).code === 'user_already_exists') {
+          const existMsg = 'An account with this email already exists. Please Sign In.';
+          setErrorMessage(existMsg);
+          toast.error('Account already exists', {
+            description: existMsg,
+            duration: 4000,
           });
+          setTimeout(() => {
+            router.push(`/auth/login?email=${encodeURIComponent(formData.email.trim())}`);
+          }, 1500);
           return;
         }
 
@@ -132,20 +127,15 @@ export default function RegisterForm() {
       }
 
       if (data?.user && data.user.identities && data.user.identities.length === 0) {
-        try {
-          await supabase.auth.resend({
-            type: 'signup',
-            email: formData.email.trim(),
-            options: {
-              emailRedirectTo: `${origin}/auth/callback?role=artist`,
-            },
-          });
-        } catch (e) {}
-
-        setSuccessMessage('Account registered. A new verification link has been sent to your email.');
-        toast.success('Verification link sent!', {
-          description: 'Please check your email inbox to confirm your account.',
+        const existMsg = 'An account with this email already exists. Please Sign In.';
+        setErrorMessage(existMsg);
+        toast.error('Account already exists', {
+          description: existMsg,
+          duration: 4000,
         });
+        setTimeout(() => {
+          router.push(`/auth/login?email=${encodeURIComponent(formData.email.trim())}`);
+        }, 1500);
         return;
       }
 
@@ -192,15 +182,18 @@ export default function RegisterForm() {
         }
       }
 
-      // Handle active session vs email confirmation notification
-      if (data.session) {
-        router.push('/dashboard');
-      } else {
-        setSuccessMessage('Verification link sent! Please check your email inbox to confirm your account.');
-        toast.success('Verification link sent!', {
-          description: 'Please check your email inbox to confirm your account.',
+      // Handle active session and redirect immediately since verification is disabled
+      if (!data.session) {
+        await supabase.auth.signInWithPassword({
+          email: formData.email.trim(),
+          password: formData.password,
         });
       }
+
+      toast.success('Account created successfully!', {
+        description: 'Welcome to Vivid Craft! Redirecting...',
+      });
+      router.push('/dashboard');
     } catch (err: any) {
       console.error("SUPABASE SIGNUP ERROR:", err?.message, err);
       const msg = err?.message || 'An unexpected registration error occurred.';
