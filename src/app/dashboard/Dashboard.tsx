@@ -82,7 +82,24 @@ export default function Dashboard({ session }: { session: AppSession }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const role = session.user?.role as 'CLIENT' | 'FREELANCER' | 'ADMIN';
+  // Fetch profile data to get updated name & role
+  const { data: profile } = trpc.profiles.getMyProfile.useQuery({}, {
+    enabled: !!session,
+    retry: false,
+  });
+
+  const profileRole = (profile?.role || '').toString().trim().toUpperCase();
+  const sessionRole = (session?.user?.role || '').toString().trim().toUpperCase();
+
+  const isClientRole = (profileRole === 'CLIENT' || profileRole === 'BUYER' || profileRole === 'CUSTOMER') ||
+    (!profileRole && (sessionRole === 'CLIENT' || sessionRole === 'BUYER' || sessionRole === 'CUSTOMER'));
+  const isAdminRole = profileRole === 'ADMIN' || sessionRole === 'ADMIN';
+
+  const role: 'CLIENT' | 'FREELANCER' | 'ADMIN' = isAdminRole
+    ? 'ADMIN'
+    : isClientRole
+      ? 'CLIENT'
+      : 'FREELANCER';
 
   useEffect(() => {
     setMounted(true);
@@ -94,12 +111,6 @@ export default function Dashboard({ session }: { session: AppSession }) {
       router.push('/admin');
     }
   }, [mounted, role, router]);
-
-  // Fetch profile data to get updated name
-  const { data: profile } = trpc.profiles.getMyProfile.useQuery({}, {
-    enabled: !!session,
-    retry: false,
-  });
 
   // Fetch notifications with session guarding
   const { data: notificationsData } = trpc.notifications.getNotifications.useQuery({}, {

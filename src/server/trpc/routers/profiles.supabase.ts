@@ -397,8 +397,13 @@ export const profilesRouter = router({
             return safeDefaultObject;
           }
 
-          const rawResolvedRole = data?.role || fallbackRole || 'artist';
-          const normalizedRole = String(rawResolvedRole).toLowerCase();
+          const rawDbRole = data?.role ? String(data.role).trim().toLowerCase() : '';
+          const resolvedRole = (rawDbRole === 'client' || rawDbRole === 'buyer' || rawDbRole === 'customer')
+            ? 'client'
+            : (rawDbRole === 'artist' || rawDbRole === 'freelancer')
+              ? 'artist'
+              : fallbackRole || 'artist';
+          const normalizedRole = resolvedRole;
 
           return {
             ...safeDefaultObject,

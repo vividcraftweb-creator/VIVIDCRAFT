@@ -111,37 +111,43 @@ export default function SignUpContent() {
     setSuccessMessage(null);
 
     const userCountry = formData.location?.trim() || 'Sri Lanka';
+    const selectedRole = 'artist';
+    const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
 
     try {
-      // Call the signup API route which creates auth user + User + Profile records atomically
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // 1. Explicitly register with Supabase Auth preserving the selected role in options.data
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: formData.email.trim(),
+        password: formData.password,
+        options: {
+          data: {
+            role: selectedRole || 'artist',
+            full_name: fullName,
+            name: fullName,
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            user_type: selectedRole || 'artist',
+            userRole: selectedRole || 'artist',
+            role_name: selectedRole || 'artist',
+            account_type: selectedRole || 'artist',
+            location: userCountry,
+            country: userCountry,
+          },
         },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password,
-          role: 'artist',
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          title: formData.title?.trim() || undefined,
-          location: userCountry,
-          country: userCountry,
-        }),
       });
 
-      const responseData = await res.json();
+      // Handle user already exists
+      const isAlreadyExists =
+        (authError && (
+          authError.message.toLowerCase().includes('already registered') ||
+          authError.message.toLowerCase().includes('already exists') ||
+          (authError as any).code === 'user_already_exists'
+        )) ||
+        (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
 
-      // Explicitly check for user already exists (409 status or flags)
-      const isAlreadyRegistered = 
-        res.status === 409 || 
-        responseData.userExists || 
-        responseData.error === 'user_already_exists' || 
-        responseData.message?.toLowerCase().includes('already exists') || 
-        responseData.message?.toLowerCase().includes('already registered');
-
-      if (isAlreadyRegistered) {
+      if (isAlreadyExists) {
         const existMsg = 'An account with this email already exists. Please Sign In.';
         setErrorMessage(existMsg);
         toast.error('Account already exists', {
@@ -154,35 +160,19 @@ export default function SignUpContent() {
         return;
       }
 
-      if (!res.ok) {
-        // Handle specific error cases
-        if (res.status === 429) {
-          setErrorMessage(responseData.message || 'Too many signup attempts. Please try again later.');
-          toast.error('Rate Limited', {
-            description: responseData.message,
-          });
-          return;
-        }
-
-        throw new Error(responseData.message || 'Signup failed');
+      if (authError) {
+        throw authError;
       }
 
-      // Handle Successful Auto-Sign-Up (Verification Off):
-      // Log the user in to establish client session immediately
-      const { data: signInData } = await supabase.auth.signInWithPassword({
-        email: formData.email.trim(),
-        password: formData.password,
-      });
-
-      // Synchronize metadata to profiles table directly
-      if (signInData?.user) {
+      // 2. Immediately after successful sign up, execute a direct database upsert into public.profiles
+      if (data?.user) {
         try {
           await supabase.from('profiles').upsert({
-            id: signInData.user.id,
+            id: data.user.id,
+            email: formData.email.trim(),
+            role: selectedRole || 'artist',
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
-            role: 'artist',
-            email: formData.email.trim(),
             title: formData.title?.trim() || 'Artist',
             bio: 'Welcome to Vivid Art!',
             location: userCountry,
@@ -190,13 +180,63 @@ export default function SignUpContent() {
             is_published: true,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
-        } catch (syncErr) {
-          console.warn('Post-signup profiles sync note:', syncErr);
+        } catch (profileUpsertErr) {
+          console.warn('Direct profiles upsert notice:', profileUpsertErr);
+        }
+
+        // Also ensure PascalCase Profile record exists
+        try {
+          const baseSlug = `${formData.firstName.trim()}-${formData.lastName.trim()}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
+          await supabase.from('Profile').upsert({
+            id: data.user.id,
+            userId: data.user.id,
+            slug: `${baseSlug || 'artist'}-${data.user.id.substring(0, 6)}`,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            title: formData.title?.trim() || 'Artist',
+            bio: 'Welcome to Vivid Art!',
+            location: userCountry,
+            country: userCountry,
+            isPublished: true,
+            is_published: true,
+            verified: false,
+            updatedAt: new Date().toISOString(),
+          }, { onConflict: 'userId' });
+        } catch (pErr) {
+          console.warn('Direct Profile table upsert notice:', pErr);
         }
       }
 
+      // 3. Call backend /api/auth/signup to ensure server-side tables (User, users) are synced
+      try {
+        await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            password: formData.password,
+            role: selectedRole || 'artist',
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            title: formData.title?.trim() || undefined,
+            location: userCountry,
+            country: userCountry,
+          }),
+        });
+      } catch (backendSyncErr) {
+        console.warn('Backend API signup sync notice:', backendSyncErr);
+      }
+
+      // 4. Ensure active session with signInWithPassword
+      if (!data?.session) {
+        await supabase.auth.signInWithPassword({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+      }
+
       toast.success('Account created successfully!', {
-        description: 'Welcome to Vivid Craft! Redirecting to dashboard...',
+        description: 'Welcome to Vivid Craft! Redirecting to your artist dashboard...',
       });
 
       router.push('/dashboard');
