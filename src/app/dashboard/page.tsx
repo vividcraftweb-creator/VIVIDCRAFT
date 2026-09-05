@@ -55,17 +55,18 @@ export default async function DashboardPage({
           }
         } catch {}
 
-        // Fallback to User table
-        if (!dbRole) {
+        // HARDCODE: profiles table is the ONLY source for role (set by provision-user on signup).
+        // User/users tables are only read for isVerified and email — NOT for role.
+        // This prevents a stale CLIENT in users/User from ever overriding artist signup.
+
+        // Fetch isVerified and email from User table only
+        if (!isVerified || !userEmail) {
           try {
             const { data: userData } = await supabase
               .from('User')
-              .select('role, isVerified, email')
+              .select('isVerified, email')
               .eq('id', authUser.id)
               .maybeSingle();
-            if (userData?.role) {
-              dbRole = userData.role;
-            }
             if (userData?.isVerified !== undefined) {
               isVerified = userData.isVerified;
             }
@@ -75,32 +76,21 @@ export default async function DashboardPage({
           } catch {}
         }
 
-        // Fallback to users table
-        if (!dbRole) {
-          try {
-            const { data: usersRow } = await (supabase as any)
-              .from('users')
-              .select('role')
-              .eq('id', authUser.id)
-              .maybeSingle();
-            if (usersRow?.role) {
-              dbRole = usersRow.role;
-            }
-          } catch {}
-        }
-
-        const rawRole = (
+        // Role comes from profiles.role → user_metadata → FREELANCER (never from users/User table)
+        const rawRoleStr = (
           dbRole ||
           authUser.user_metadata?.role ||
           authUser.user_metadata?.userRole ||
           authUser.user_metadata?.user_type ||
-          activeSession.user.role ||
           'FREELANCER'
         ).toString().trim().toUpperCase();
 
-        const role = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawRole)
-          ? 'FREELANCER'
-          : (rawRole === 'ADMIN' ? 'ADMIN' : (rawRole === 'CLIENT' || rawRole === 'BUYER' ? 'CLIENT' : 'FREELANCER'));
+        // HARDCODE: only CLIENT if explicitly CLIENT/BUYER in profiles or user_metadata
+        const role = rawRoleStr === 'ADMIN'
+          ? 'ADMIN'
+          : (rawRoleStr === 'CLIENT' || rawRoleStr === 'BUYER' || rawRoleStr === 'CUSTOMER')
+            ? 'CLIENT'
+            : 'FREELANCER'; // Missing, ARTIST, FREELANCER, CREATOR → always FREELANCER
 
         activeSession.user.role = role;
 

@@ -91,15 +91,18 @@ export default function Dashboard({ session }: { session: AppSession }) {
   const profileRole = (profile?.role || '').toString().trim().toUpperCase();
   const sessionRole = (session?.user?.role || '').toString().trim().toUpperCase();
 
-  const isClientRole = (profileRole === 'CLIENT' || profileRole === 'BUYER' || profileRole === 'CUSTOMER') ||
-    (!profileRole && (sessionRole === 'CLIENT' || sessionRole === 'BUYER' || sessionRole === 'CUSTOMER'));
+  // HARDCODE: profile.role is the ONLY authoritative source for CLIENT routing.
+  // sessionRole alone can NEVER trigger CLIENT view — this prevents the flash of
+  // ClientDashboard while getMyProfile is still loading (profileRole = '').
+  // Missing/null/empty profileRole always defaults to FREELANCER (Artist view).
+  const isClientRole = (profileRole === 'CLIENT' || profileRole === 'BUYER' || profileRole === 'CUSTOMER');
   const isAdminRole = profileRole === 'ADMIN' || sessionRole === 'ADMIN';
 
   const role: 'CLIENT' | 'FREELANCER' | 'ADMIN' = isAdminRole
     ? 'ADMIN'
     : isClientRole
       ? 'CLIENT'
-      : 'FREELANCER';
+      : 'FREELANCER'; // Default: FREELANCER (Artist) — never CLIENT on ambiguous/missing role
 
   useEffect(() => {
     setMounted(true);

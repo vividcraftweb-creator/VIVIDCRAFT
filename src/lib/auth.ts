@@ -133,45 +133,55 @@ export async function auth() {
     // Get session for tokens (needed for document uploads)
     const session = await getSession();
 
-    // Try to read authoritative role from the User table
+    // Try to read authoritative role — profiles table is the single source of truth for role
     let dbRole: string | null = null;
     try {
       const adminSupabase = createAdminClient();
-      let userRow = (await (adminSupabase as any).from('users').select('role').eq('id', user.id).maybeSingle())?.data;
-      if (!userRow) {
-        userRow = (await (adminSupabase as any).from('profiles').select('role').eq('id', user.id).maybeSingle())?.data;
-      }
-      if (!userRow) {
-        userRow = (await adminSupabase.from('User').select('role').eq('id', user.id).maybeSingle())?.data;
-      }
-      if (!userRow) {
-        const profileRow = (await (adminSupabase as any).from('Profile').select('id').eq('userId', user.id).maybeSingle())?.data;
-        if (profileRow) userRow = { role: 'FREELANCER' };
+
+      // 1. profiles table is the PRIMARY source of truth for role (set during signup by provision-user)
+      const profilesRow = (await (adminSupabase as any).from('profiles').select('role').eq('id', user.id).maybeSingle())?.data;
+      if (profilesRow?.role) {
+        dbRole = profilesRow.role;
       }
 
-      if (userRow?.role) {
-        dbRole = userRow.role;
-      } else {
-        console.warn('[auth] No role found in any DB table for user:', user.id, '— falling back to user_metadata');
+      // 2. user_metadata is stamped by provision-user — check before hitting users/User tables
+      if (!dbRole) {
+        const metaRole = user.user_metadata?.role || user.user_metadata?.userRole || user.user_metadata?.user_type || user.user_metadata?.role_name || user.user_metadata?.account_type;
+        if (metaRole) {
+          dbRole = String(metaRole);
+        }
+      }
+
+      // 3. Fall back to users / User tables only if profiles + metadata both missing
+      if (!dbRole) {
+        const userRow = (await (adminSupabase as any).from('users').select('role').eq('id', user.id).maybeSingle())?.data;
+        if (userRow?.role) {
+          dbRole = userRow.role;
+        }
+      }
+      if (!dbRole) {
+        const userRow2 = (await adminSupabase.from('User').select('role').eq('id', user.id).maybeSingle())?.data;
+        if (userRow2?.role) {
+          dbRole = userRow2.role;
+        }
+      }
+
+      if (!dbRole) {
+        console.warn('[auth] No role found anywhere for user:', user.id, '— defaulting to FREELANCER (artist)');
       }
     } catch (dbErr) {
       console.error('[auth] DB role lookup failed for user:', user.id, dbErr);
-      // Error accessing database - use metadata fallback
     }
 
-    const rawRole = (
-      dbRole ||
-      user.user_metadata?.role ||
-      user.user_metadata?.userRole ||
-      user.user_metadata?.role_name ||
-      user.user_metadata?.account_type ||
-      user.user_metadata?.user_type ||
-      'FREELANCER'
-    ).toString().trim().toUpperCase();
+    // Resolve: only CLIENT if explicitly 'CLIENT' or 'BUYER' in the authoritative source
+    // Everything else (ARTIST, FREELANCER, CREATOR, SELLER, empty, undefined) → FREELANCER
+    const rawRole = (dbRole || 'FREELANCER').toString().trim().toUpperCase();
 
-    const resolvedRole = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawRole)
-      ? 'FREELANCER'
-      : (rawRole === 'ADMIN' ? 'ADMIN' : (rawRole === 'CLIENT' ? 'CLIENT' : 'FREELANCER'));
+    const resolvedRole = rawRole === 'ADMIN'
+      ? 'ADMIN'
+      : (rawRole === 'CLIENT' || rawRole === 'BUYER' || rawRole === 'CUSTOMER')
+        ? 'CLIENT'
+        : 'FREELANCER'; // ARTIST, FREELANCER, CREATOR, SELLER, missing → always FREELANCER
 
     return {
       user: {
