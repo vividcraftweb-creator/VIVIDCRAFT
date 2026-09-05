@@ -82,17 +82,20 @@ export default function RegisterForm() {
 
     try {
       // 1. Register artist with Supabase Auth (passing role: 'artist' in options.data)
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
           emailRedirectTo: `${origin}/auth/callback?role=artist`,
           data: {
+            role: 'artist',
+            full_name: fullName,
+            name: fullName,
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            role: 'artist',
             user_type: 'artist',
             role_name: 'artist',
             userRole: 'artist',
@@ -146,39 +149,51 @@ export default function RegisterForm() {
         return;
       }
 
-      // 2. Handle Email Confirmation vs Active Session
-      if (data.session) {
-        if (data.user) {
-          try {
-            await supabase.from('profiles').upsert([
-              {
-                id: data.user.id,
-                first_name: formData.firstName.trim(),
-                last_name: formData.lastName.trim(),
-                role: 'artist',
-                email: formData.email.trim(),
-                address: userCountry,
-                location: userCountry,
-                updated_at: new Date().toISOString(),
-              },
-            ]);
+      // Immediately execute explicit Database insert/upsert into public.profiles
+      if (data?.user) {
+        try {
+          await supabase.from('profiles').upsert([
+            {
+              id: data.user.id,
+              first_name: formData.firstName.trim(),
+              last_name: formData.lastName.trim(),
+              role: 'artist',
+              email: formData.email.trim(),
+              address: userCountry,
+              location: userCountry,
+              title: 'Artist',
+              bio: 'Welcome to Vivid Art!',
+              is_published: true,
+              updated_at: new Date().toISOString(),
+            },
+          ]);
 
-            await supabase.from('Profile').upsert([
-              {
-                id: data.user.id,
-                userId: data.user.id,
-                firstName: formData.firstName.trim(),
-                lastName: formData.lastName.trim(),
-                companyName: formData.company?.trim() || null,
-                country: userCountry,
-                location: userCountry,
-                updatedAt: new Date().toISOString(),
-              },
-            ]);
-          } catch (profileCatchError: any) {
-            console.warn('Profile upsert exception:', profileCatchError?.message || profileCatchError);
-          }
+          const baseSlug = `${formData.firstName.trim()}-${formData.lastName.trim()}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
+          await supabase.from('Profile').upsert([
+            {
+              id: data.user.id,
+              userId: data.user.id,
+              slug: `${baseSlug || 'artist'}-${data.user.id.substring(0, 6)}`,
+              firstName: formData.firstName.trim(),
+              lastName: formData.lastName.trim(),
+              title: 'Artist',
+              bio: 'Welcome to Vivid Art!',
+              companyName: formData.company?.trim() || null,
+              country: userCountry,
+              location: userCountry,
+              isPublished: true,
+              is_published: true,
+              verified: false,
+              updatedAt: new Date().toISOString(),
+            },
+          ]);
+        } catch (profileCatchError: any) {
+          console.warn('Profile upsert exception:', profileCatchError?.message || profileCatchError);
         }
+      }
+
+      // Handle active session vs email confirmation notification
+      if (data.session) {
         router.push('/dashboard');
       } else {
         setSuccessMessage('Verification link sent! Please check your email inbox to confirm your account.');

@@ -97,11 +97,18 @@ export async function POST(req: Request) {
       website
     } = validationResult.data;
 
-    // Normalize role
+    // Sanitize text inputs
+    const sanitizedFirstName = sanitizeInput(firstName);
+    const sanitizedLastName = sanitizeInput(lastName);
+    const sanitizedTitle = sanitizeInput(title);
+    const sanitizedBio = sanitizeInput(bio);
+
+    // Normalize role - default to 'artist' if missing or undefined
     const rawRole = String(role || '').trim().toLowerCase();
-    const isArtist = ['freelancer', 'artist', 'creator', 'seller'].includes(rawRole);
-    const dbRole: 'FREELANCER' | 'CLIENT' = isArtist ? 'FREELANCER' : 'CLIENT';
-    const metadataRole = isArtist ? 'artist' : 'client';
+    const isClient = rawRole === 'client' || rawRole === 'buyer';
+    const dbRole: 'FREELANCER' | 'CLIENT' = isClient ? 'CLIENT' : 'FREELANCER';
+    const metadataRole = isClient ? 'client' : 'artist';
+    const fullName = `${sanitizedFirstName} ${sanitizedLastName}`.trim();
 
     // Sensible fallback defaults for client accounts so signup never blocks
     const resolvedCountry = (country && country.trim() !== '')
@@ -121,12 +128,6 @@ export async function POST(req: Request) {
     const resolvedCompanyName = (companyName && companyName.trim() !== '')
       ? companyName.trim()
       : `${firstName || 'Client'}'s Studio`;
-
-    // Sanitize text inputs
-    const sanitizedFirstName = sanitizeInput(firstName);
-    const sanitizedLastName = sanitizeInput(lastName);
-    const sanitizedTitle = sanitizeInput(title);
-    const sanitizedBio = sanitizeInput(bio);
     const sanitizedSkills = sanitizeInput(skills);
     const sanitizedPhone = sanitizeInput(phone);
     const sanitizedLocation = sanitizeInput(location) || resolvedCountry;
@@ -156,6 +157,8 @@ export async function POST(req: Request) {
       options: {
         data: {
           role: metadataRole,
+          full_name: fullName,
+          name: fullName,
           user_type: metadataRole,
           role_name: metadataRole,
           userRole: metadataRole,
@@ -273,11 +276,13 @@ export async function POST(req: Request) {
           first_name: sanitizedFirstName,
           last_name: sanitizedLastName,
           role: metadataRole,
-          title: sanitizedTitle,
-          bio: sanitizedBio,
+          title: sanitizedTitle || (metadataRole === 'artist' ? 'Artist' : 'Buyer'),
+          bio: sanitizedBio || (metadataRole === 'artist' ? 'Welcome to Vivid Art!' : ''),
           email: email,
           address: sanitizedLocation,
           location: sanitizedLocation,
+          is_published: true,
+          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
     } catch (pErr) {

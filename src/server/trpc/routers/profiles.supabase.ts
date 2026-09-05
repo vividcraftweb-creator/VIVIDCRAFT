@@ -241,18 +241,23 @@ export const profilesRouter = router({
         const defaultLastName = (user as any)?.user_metadata?.lastName || (user as any)?.user_metadata?.last_name || nameParts.slice(1).join(' ') || 'Artist';
         const userImage = (user as any)?.image || (user as any)?.user_metadata?.avatar_url || '';
 
+        // Extract and normalize role from user metadata with 'artist' as the absolute default
+        const rawMetaRole = (user as any)?.user_metadata?.role || (user as any)?.user_metadata?.userRole || (user as any)?.role;
+        const cleanMetaRole = rawMetaRole ? String(rawMetaRole).trim().toLowerCase() : '';
+        const fallbackRole = (cleanMetaRole === 'client' || cleanMetaRole === 'buyer' || cleanMetaRole === 'customer') ? 'client' : 'artist';
+
         const safeDefaultObject = {
           id: userId || 'temp-id',
           userId: userId || 'temp-id',
           name: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
           email: userEmail || 'artist@vividart.com',
-          role: 'artist',
+          role: fallbackRole,
           firstName: defaultFirstName || 'New',
           lastName: defaultLastName || 'Artist',
           first_name: defaultFirstName || 'New',
           last_name: defaultLastName || 'Artist',
-          title: 'Artist',
-          bio: 'Welcome to Vivid Art!',
+          title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
+          bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
           location: '',
           address: '',
           skills: '',
@@ -290,10 +295,10 @@ export const profilesRouter = router({
                 id: userId,
                 first_name: defaultFirstName,
                 last_name: defaultLastName,
-                role: 'artist',
+                role: fallbackRole,
                 email: userEmail,
-                title: 'Artist',
-                bio: 'Welcome to Vivid Art!',
+                title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
+                bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
                 is_published: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -315,7 +320,7 @@ export const profilesRouter = router({
                     id: userId,
                     first_name: defaultFirstName,
                     last_name: defaultLastName,
-                    role: 'artist',
+                    role: fallbackRole,
                   }, { onConflict: 'id' })
                   .select()
                   .maybeSingle();
@@ -335,7 +340,7 @@ export const profilesRouter = router({
                 .replace(/-+/g, '-')
                 .replace(/^-|-$/g, '')
                 .slice(0, 30);
-              const slugToUse = `${cleanSlug || 'artist'}-${userId.substring(0, 6)}`;
+              const slugToUse = `${cleanSlug || (fallbackRole === 'artist' ? 'artist' : 'client')}-${userId.substring(0, 6)}`;
 
               const { data: pInserted } = await (supabase as any)
                 .from('Profile')
@@ -345,8 +350,8 @@ export const profilesRouter = router({
                   slug: slugToUse,
                   firstName: defaultFirstName,
                   lastName: defaultLastName,
-                  title: 'Artist',
-                  bio: 'Welcome to Vivid Art!',
+                  title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
+                  bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
                   isPublished: true,
                   is_published: true,
                   verified: false,
@@ -363,14 +368,15 @@ export const profilesRouter = router({
               console.warn('Auto-creating Profile record notice:', pErr);
             }
 
-            // 3. Ensure User / users table record exists with role FREELANCER
+            // 3. Ensure User / users table record exists with role FREELANCER or CLIENT
             try {
+              const isClient = fallbackRole === 'client';
               const userDbPayload = {
                 id: userId,
                 email: userEmail,
-                role: 'FREELANCER',
-                tokens: 250,
-                subscriptionPlan: 'FREELANCER_PRO',
+                role: isClient ? 'CLIENT' : 'FREELANCER',
+                tokens: isClient ? 0 : 250,
+                subscriptionPlan: isClient ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO',
                 tokenResetAt: new Date().toISOString(),
                 jobPostsUsed: 0,
                 jobPostsResetAt: new Date().toISOString(),
@@ -391,14 +397,17 @@ export const profilesRouter = router({
             return safeDefaultObject;
           }
 
+          const rawResolvedRole = data?.role || fallbackRole || 'artist';
+          const normalizedRole = String(rawResolvedRole).toLowerCase();
+
           return {
             ...safeDefaultObject,
             ...(data || {}),
             id: userId,
             userId: userId,
-            name: userName || data?.name || `${data?.firstName || data?.first_name || ''} ${data?.lastName || data?.last_name || ''}`.trim() || 'New Artist',
+            name: userName || data?.name || `${data?.firstName || data?.first_name || ''} ${data?.lastName || data?.last_name || ''}`.trim() || (normalizedRole === 'artist' ? 'New Artist' : 'New Client'),
             email: userEmail || data?.email || 'artist@vividart.com',
-            role: String(data?.role || user?.role || 'artist').toLowerCase(),
+            role: normalizedRole,
             firstName: data?.firstName || data?.first_name || defaultFirstName,
             lastName: data?.lastName || data?.last_name || defaultLastName,
             first_name: data?.first_name || data?.firstName || defaultFirstName,
@@ -406,8 +415,8 @@ export const profilesRouter = router({
             location: data?.location || data?.address || '',
             address: data?.address || data?.location || '',
             skills: data?.skills || '',
-            title: data?.title || 'Artist',
-            bio: data?.bio || data?.description || 'Welcome to Vivid Art!',
+            title: data?.title || (normalizedRole === 'artist' ? 'Artist' : 'Buyer'),
+            bio: data?.bio || data?.description || (normalizedRole === 'artist' ? 'Welcome to Vivid Art!' : ''),
             profilePicture: data?.profilePicture || data?.profile_picture || data?.avatar_url || userImage || '',
             avatar_url: data?.avatar_url || data?.profile_picture || data?.profilePicture || userImage || '',
             isPublished: data?.is_published ?? data?.isPublished ?? true,

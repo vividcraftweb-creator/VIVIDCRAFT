@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -10,8 +10,11 @@ import { Mail, Lock, User, Eye, EyeOff, Loader2, Palette, ShoppingBag, Sparkles,
 
 export default function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryRole = searchParams?.get('role')?.toLowerCase();
+  const initialRole: 'CLIENT' | 'FREELANCER' = (queryRole === 'client' || queryRole === 'buyer') ? 'CLIENT' : 'FREELANCER';
 
-  const [role, setRole] = useState<'CLIENT' | 'FREELANCER'>('CLIENT');
+  const [role, setRole] = useState<'CLIENT' | 'FREELANCER'>(initialRole);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -36,8 +39,8 @@ export default function SignUpContent() {
   };
 
   const handleGoogleSignUp = async (roleOverride?: 'CLIENT' | 'FREELANCER') => {
-    const roleToUse = roleOverride || role;
-    const normalizedParam = roleToUse === 'FREELANCER' ? 'artist' : 'client';
+    const roleToUse = roleOverride || role || 'FREELANCER';
+    const normalizedParam = roleToUse === 'CLIENT' ? 'client' : 'artist';
     setIsGoogleLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);

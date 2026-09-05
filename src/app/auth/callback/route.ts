@@ -5,12 +5,12 @@ import { slugFromName, ensureUniqueSlug } from '@/lib/slug';
 import crypto from 'crypto';
 
 function normalizeRole(roleRaw?: string | null): 'CLIENT' | 'FREELANCER' {
-  if (!roleRaw) return 'CLIENT';
+  if (!roleRaw) return 'FREELANCER';
   const clean = roleRaw.trim().toUpperCase();
-  if (['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(clean)) {
-    return 'FREELANCER';
+  if (['CLIENT', 'BUYER', 'CUSTOMER'].includes(clean)) {
+    return 'CLIENT';
   }
-  return 'CLIENT';
+  return 'FREELANCER';
 }
 
 export async function GET(request: NextRequest) {
@@ -114,6 +114,9 @@ export async function GET(request: NextRequest) {
             email: user.email || null,
             address: userCountry,
             location: userCountry,
+            is_published: true,
+            title: metadataRole === 'artist' ? 'Artist' : 'Buyer',
+            bio: metadataRole === 'artist' ? 'Welcome to Vivid Art!' : '',
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
         } catch (pErr) {
