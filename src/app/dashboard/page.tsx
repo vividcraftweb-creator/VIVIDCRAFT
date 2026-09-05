@@ -11,13 +11,6 @@ export const metadata: Metadata = createAuthPageMetadata({
   description: 'View your Vivid Art dashboard, manage your projects, and track your creative commissions.',
 });
 
-const withTimeout = <T,>(promise: Promise<T>, ms = 2000): Promise<T | null> => {
-  return Promise.race([
-    promise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
-  ]);
-};
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -28,7 +21,7 @@ export default async function DashboardPage({
 
   let session = null;
   try {
-    session = await withTimeout(auth(), 2000);
+    session = await auth();
   } catch (error) {
     session = null;
   }
@@ -40,38 +33,28 @@ export default async function DashboardPage({
   const activeSession: AppSession = session;
 
   try {
-    const supabase = await withTimeout(createClient(), 2000);
+    const supabase = await createClient();
     if (supabase) {
-      const userRes = await withTimeout(supabase.auth.getUser(), 2000);
+      const userRes = await supabase.auth.getUser();
       const authUser = userRes?.data?.user;
-      const userError = userRes?.error;
 
-      if (!authUser || userError) {
-        redirect('/auth/login?callbackUrl=/dashboard&logged_out=1');
-      }
-
-      if (authUser && !userError) {
+      if (authUser) {
         const { data: userData } = await supabase
           .from('User')
           .select('role, isVerified, email')
           .eq('id', authUser.id)
-          .single();
+          .maybeSingle();
 
-        const rawDbRole = (userData?.role || authUser.user_metadata?.role || '').toString().trim().toUpperCase();
+        const rawDbRole = (userData?.role || authUser.user_metadata?.role || activeSession.user.role || '').toString().trim().toUpperCase();
         const role = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawDbRole)
           ? 'FREELANCER'
-          : (rawDbRole === 'ADMIN' ? 'ADMIN' : rawDbRole === 'CLIENT' ? 'CLIENT' : null);
-
-        // Redirect Buyers / Clients away from Dashboard to Home Page
-        if (role === 'CLIENT') {
-          redirect('/');
-        }
+          : (rawDbRole === 'ADMIN' ? 'ADMIN' : (rawDbRole === 'CLIENT' ? 'CLIENT' : 'FREELANCER'));
 
         if (role === 'ADMIN' && currentTab === 'overview') {
           redirect('/admin');
         }
 
-        if (userData && !userData.isVerified) {
+        if (userData && userData.isVerified === false) {
           const { default: UnverifiedEmailPage } = await import('./UnverifiedEmailPage');
           return <UnverifiedEmailPage email={userData.email || authUser.email || ''} />;
         }
@@ -81,11 +64,7 @@ export default async function DashboardPage({
     if ((err as any)?.digest?.startsWith('NEXT_REDIRECT')) {
       throw err;
     }
-    // If Supabase connection fails or user is offline, proceed with validated session
-  }
-
-  if (activeSession.user.role === 'CLIENT') {
-    redirect('/');
+    // If Supabase connection fails, proceed with validated session
   }
 
   return <DashboardWrapper session={activeSession} />;

@@ -89,19 +89,12 @@ export default function SessionProvider({ children }: SessionProviderProps) {
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (error) {
         const msg = (error.message || '').toLowerCase();
-        const isMissingOrInvalid =
+        const isUserDeleted =
           msg.includes('user not found') ||
-          msg.includes('user_not_found') ||
-          msg.includes('invalid claim') ||
-          msg.includes('jwt') ||
-          msg.includes('token is expired') ||
-          msg.includes('sub claim') ||
-          error.status === 401 ||
-          error.status === 403 ||
-          error.status === 404;
+          msg.includes('user_not_found');
 
-        if (isMissingOrInvalid) {
-          console.warn('[SessionProvider] User not found or session invalid in Supabase Auth. Forcing logout...');
+        if (isUserDeleted) {
+          console.warn('[SessionProvider] User not found in Supabase Auth. Forcing logout...');
           clearAllClientAuth(true);
         }
       }
@@ -109,7 +102,7 @@ export default function SessionProvider({ children }: SessionProviderProps) {
 
     // Listen for client-side auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || (!session && (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED'))) {
+      if (event === 'SIGNED_OUT') {
         clearAllClientAuth(true);
       }
     });

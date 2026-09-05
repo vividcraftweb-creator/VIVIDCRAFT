@@ -107,9 +107,14 @@ export async function updateSession(request: NextRequest) {
     ];
     const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
 
-    // Handle deleted user or invalid session:
-    // If the browser supplied auth cookies but Supabase rejected them (User not found, invalid token, etc.)
-    if (hasAuthCookies && (!user || userError)) {
+    // Handle deleted user:
+    // If the browser supplied auth cookies but Supabase explicitly rejected them with user not found
+    const isUserNotFound = userError && (
+      userError.message?.toLowerCase().includes('user not found') ||
+      userError.message?.toLowerCase().includes('user_not_found')
+    );
+
+    if (hasAuthCookies && isUserNotFound) {
       clearAuthCookies(supabaseResponse, request);
 
       if (isProtectedRoute) {

@@ -236,17 +236,18 @@ export const profilesRouter = router({
         return null;
       }
 
-      const userName = user.name || 'New Artist';
+      const userName = user.name || (user as any)?.user_metadata?.name || 'New Artist';
       const nameParts = userName.split(' ');
-      const defaultFirstName = nameParts[0] || 'New';
-      const defaultLastName = nameParts.slice(1).join(' ') || 'Artist';
-      const userImage = (user as any)?.image || '';
+      const defaultFirstName = (user as any)?.user_metadata?.firstName || (user as any)?.user_metadata?.first_name || nameParts[0] || 'New';
+      const defaultLastName = (user as any)?.user_metadata?.lastName || (user as any)?.user_metadata?.last_name || nameParts.slice(1).join(' ') || 'Artist';
+      const userImage = (user as any)?.image || (user as any)?.user_metadata?.avatar_url || '';
+      const userEmail = user.email || '';
 
       const safeDefaultObject = {
         id: user.id,
         userId: user.id,
         name: userName,
-        email: user.email || '',
+        email: userEmail,
         role: 'artist',
         firstName: defaultFirstName,
         lastName: defaultLastName,
@@ -280,15 +281,14 @@ export const profilesRouter = router({
 
         // Auto-create missing profile if no row exists in Supabase
         if (!data) {
+          // 1. Try upserting into public.profiles table
           try {
-            const newProfileRecord = {
+            const profilePayload: any = {
               id: user.id,
-              user_id: user.id,
-              role: 'artist',
-              email: user.email || '',
               first_name: defaultFirstName,
               last_name: defaultLastName,
-              name: userName,
+              role: 'artist',
+              email: userEmail,
               title: 'Artist',
               bio: '',
               is_published: true,
@@ -298,34 +298,89 @@ export const profilesRouter = router({
 
             const { data: inserted, error: insertError } = await (supabase as any)
               .from('profiles')
-              .upsert(newProfileRecord, { onConflict: 'id' })
+              .upsert(profilePayload, { onConflict: 'id' })
               .select()
               .maybeSingle();
 
             if (!insertError && inserted) {
               data = inserted;
-            } else {
-              // Try legacy Profile table fallback if profiles table upsert fails
-              try {
-                const { data: pInserted } = await (supabase as any)
-                  .from('Profile')
-                  .upsert({
-                    id: user.id,
-                    userId: user.id,
-                    role: 'artist',
-                    email: user.email || '',
-                    firstName: defaultFirstName,
-                    lastName: defaultLastName,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  }, { onConflict: 'id' })
-                  .select()
-                  .maybeSingle();
-                if (pInserted) data = pInserted;
-              } catch {}
+            } else if (insertError) {
+              console.warn('profiles upsert notice, retrying with minimal schema:', insertError.message);
+              const { data: minInserted } = await (supabase as any)
+                .from('profiles')
+                .upsert({
+                  id: user.id,
+                  first_name: defaultFirstName,
+                  last_name: defaultLastName,
+                  role: 'artist',
+                }, { onConflict: 'id' })
+                .select()
+                .maybeSingle();
+              if (minInserted) {
+                data = minInserted;
+              }
             }
           } catch (autoCreateErr) {
-            console.warn('Auto-creating missing profile notice (fallback to default):', autoCreateErr);
+            console.warn('Auto-creating profiles record notice:', autoCreateErr);
+          }
+
+          // 2. Also ensure `Profile` (PascalCase) record exists
+          try {
+            const cleanSlug = `${defaultFirstName}-${defaultLastName}`
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '')
+              .slice(0, 30);
+            const slugToUse = `${cleanSlug || 'artist'}-${user.id.substring(0, 6)}`;
+
+            const { data: pInserted } = await (supabase as any)
+              .from('Profile')
+              .upsert({
+                id: user.id,
+                userId: user.id,
+                slug: slugToUse,
+                firstName: defaultFirstName,
+                lastName: defaultLastName,
+                title: 'Artist',
+                bio: '',
+                isPublished: true,
+                is_published: true,
+                verified: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }, { onConflict: 'userId' })
+              .select()
+              .maybeSingle();
+
+            if (!data && pInserted) {
+              data = pInserted;
+            }
+          } catch (pErr) {
+            console.warn('Auto-creating Profile record notice:', pErr);
+          }
+
+          // 3. Ensure User / users table record exists with role FREELANCER
+          try {
+            const userDbPayload = {
+              id: user.id,
+              email: userEmail,
+              role: 'FREELANCER',
+              tokens: 250,
+              subscriptionPlan: 'FREELANCER_PRO',
+              tokenResetAt: new Date().toISOString(),
+              jobPostsUsed: 0,
+              jobPostsResetAt: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isVerified: true,
+              profileCompleted: true,
+            };
+
+            await (supabase as any).from('users').upsert(userDbPayload, { onConflict: 'id' }).catch(() => {});
+            await (supabase as any).from('User').upsert(userDbPayload, { onConflict: 'id' }).catch(() => {});
+          } catch (uErr) {
+            console.warn('User / users table auto-create notice:', uErr);
           }
         }
 
@@ -338,8 +393,8 @@ export const profilesRouter = router({
           ...(data || {}),
           id: user.id,
           userId: user.id,
-          name: userName || data?.name || `${data?.firstName || ''} ${data?.lastName || ''}`.trim() || 'New Artist',
-          email: user.email || data?.email || '',
+          name: userName || data?.name || `${data?.firstName || data?.first_name || ''} ${data?.lastName || data?.last_name || ''}`.trim() || 'New Artist',
+          email: userEmail || data?.email || '',
           role: String(data?.role || user.role || 'artist').toLowerCase(),
           firstName: data?.firstName || data?.first_name || defaultFirstName,
           lastName: data?.lastName || data?.last_name || defaultLastName,

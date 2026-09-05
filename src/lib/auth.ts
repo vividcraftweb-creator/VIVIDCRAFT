@@ -144,21 +144,34 @@ export async function auth() {
       if (!userRow) {
         userRow = (await adminSupabase.from('User').select('role').eq('id', user.id).maybeSingle())?.data;
       }
+      if (!userRow) {
+        const profileRow = (await (adminSupabase as any).from('Profile').select('id').eq('userId', user.id).maybeSingle())?.data;
+        if (profileRow) userRow = { role: 'FREELANCER' };
+      }
 
       if (userRow?.role) {
         dbRole = userRow.role;
       } else {
-        console.warn('[auth] No role found in any DB table for user:', user.id, '— falling back to user_metadata.role');
+        console.warn('[auth] No role found in any DB table for user:', user.id, '— falling back to user_metadata');
       }
     } catch (dbErr) {
       console.error('[auth] DB role lookup failed for user:', user.id, dbErr);
       // Error accessing database - use metadata fallback
     }
 
-    const rawRole = (dbRole || user.user_metadata?.role || '').toString().trim().toUpperCase();
+    const rawRole = (
+      dbRole ||
+      user.user_metadata?.role ||
+      user.user_metadata?.userRole ||
+      user.user_metadata?.role_name ||
+      user.user_metadata?.account_type ||
+      user.user_metadata?.user_type ||
+      'FREELANCER'
+    ).toString().trim().toUpperCase();
+
     const resolvedRole = ['FREELANCER', 'ARTIST', 'CREATOR', 'SELLER'].includes(rawRole)
       ? 'FREELANCER'
-      : (rawRole === 'ADMIN' ? 'ADMIN' : 'CLIENT');
+      : (rawRole === 'ADMIN' ? 'ADMIN' : (rawRole === 'CLIENT' ? 'CLIENT' : 'FREELANCER'));
 
     return {
       user: {
@@ -172,12 +185,7 @@ export async function auth() {
       expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
     };
   } catch (error) {
-    try {
-      const supabase = await createClient();
-      await supabase.auth.signOut();
-    } catch {
-      // Ignore
-    }
+    console.error('[auth] Auth session error caught gracefully:', error);
     return null;
   }
 }
