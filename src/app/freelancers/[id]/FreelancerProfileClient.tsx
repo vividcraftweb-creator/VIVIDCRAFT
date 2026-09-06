@@ -222,9 +222,18 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
   }, [profile]);
 
   const avatarUrl = useMemo(() => {
-    const rawPic = (profile as any)?.avatar_url || profile?.profilePicture || (profile as any)?.profile_picture;
+    const rawPic =
+      (profile as any)?.avatar_url ||
+      profile?.profilePicture ||
+      (profile as any)?.profile_picture ||
+      (profile as any)?.avatar ||
+      (profile as any)?.image;
     if (!rawPic) return undefined;
-    return getProfilePictureUrl(profile?.userId || profile?.id, rawPic) || rawPic;
+    const trimmed = String(rawPic).trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+      return trimmed;
+    }
+    return getProfilePictureUrl(profile?.userId || profile?.id, trimmed) || trimmed;
   }, [profile]);
 
   const initials = useMemo(() => {
@@ -451,17 +460,26 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
               <div className="absolute inset-0 bg-white/[0.02] rounded-4xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
 
               <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:items-center">
-                <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28 md:h-30 md:w-30 lg:mx-0 lg:h-32 lg:w-32 transition-transform hover:scale-105">
-                  <Avatar className="h-full w-full rounded-[28px] border-2 border-primary/20 ring-4 ring-primary/10 shadow-2xl shadow-primary/25 overflow-hidden">
-                    <AvatarImage
+                <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28 md:h-30 md:w-30 lg:mx-0 lg:h-32 lg:w-32 transition-transform hover:scale-105 rounded-[28px] border-2 border-primary/20 ring-4 ring-primary/10 shadow-2xl shadow-primary/25 overflow-hidden bg-primary">
+                  {avatarUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
                       src={avatarUrl}
                       alt={`${displayName} avatar`}
-                      className="object-cover h-full w-full"
+                      className="object-cover h-full w-full rounded-[28px]"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                        const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback') as HTMLElement | null;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
                     />
-                    <AvatarFallback className="flex h-full w-full items-center justify-center bg-primary text-3xl font-semibold uppercase tracking-widest text-white rounded-none">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
+                  ) : null}
+                  <div
+                    className="avatar-fallback flex h-full w-full items-center justify-center bg-primary text-3xl font-semibold uppercase tracking-widest text-white rounded-[28px]"
+                    style={{ display: avatarUrl ? 'none' : 'flex' }}
+                  >
+                    {initials}
+                  </div>
                 </div>
 
                 <div className="flex-1 space-y-2 text-center lg:text-left">

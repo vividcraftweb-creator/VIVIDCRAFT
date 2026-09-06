@@ -177,8 +177,9 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
       const { data } = await supabase
         .from('profiles')
         .select(select)
-        .ilike('first_name', '%studio%')
+        .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
         .not('avatar_url', 'is', null)
+        .neq('avatar_url', '')
         .limit(1)
         .maybeSingle();
       if (data) return data;
@@ -188,7 +189,19 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
       const { data } = await supabase
         .from('profiles')
         .select(select)
-        .ilike('first_name', '%studio%')
+        .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
+        .limit(1)
+        .maybeSingle();
+      if (data) return data;
+    } catch {}
+
+    // Fallback: any profile with an avatar_url
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select(select)
+        .not('avatar_url', 'is', null)
+        .neq('avatar_url', '')
         .limit(1)
         .maybeSingle();
       if (data) return data;
@@ -394,12 +407,70 @@ export const profilesRouter = router({
 
         const supabase = createAdminClient();
         const profile = await findProfileSafely(supabase, identifier);
+        const initialDetails = profile ? extractProfileDetails(profile) : ({} as any);
+        let resolvedAvatarUrl = initialDetails?.avatar_url || profile?.avatar_url || profile?.avatar || profile?.image || profile?.profile_picture || profile?.profilePicture || '';
+
+        // If avatar is empty, query Supabase Storage 'avatars' bucket directly
+        const checkId = profile?.id || profile?.user_id || profile?.userId || identifier;
+        if (!resolvedAvatarUrl && checkId) {
+          try {
+            const { data: files } = await supabase.storage.from('avatars').list(checkId, {
+              limit: 3,
+              sortBy: { column: 'created_at', order: 'desc' },
+            });
+            if (files && files.length > 0) {
+              const f = files.find((item: any) => item.name && !item.name.startsWith('.'));
+              if (f) {
+                const { data: pUrl } = supabase.storage.from('avatars').getPublicUrl(`${checkId}/${f.name}`);
+                if (pUrl?.publicUrl) resolvedAvatarUrl = pUrl.publicUrl;
+              }
+            }
+          } catch {}
+        }
+
+        // Also check if any avatar is in root of avatars bucket
+        if (!resolvedAvatarUrl && (identifier.toLowerCase().includes('studio') || profile?.first_name?.toLowerCase().includes('studio') || fallbackProfile.email.includes('studio'))) {
+          try {
+            const { data: rootItems } = await supabase.storage.from('avatars').list('', { limit: 10 });
+            if (rootItems && rootItems.length > 0) {
+              for (const item of rootItems) {
+                if (item.name && !item.name.startsWith('.')) {
+                  if (item.name.match(/\.(png|jpe?g|webp|gif|svg)$/i)) {
+                    const { data: pUrl } = supabase.storage.from('avatars').getPublicUrl(item.name);
+                    if (pUrl?.publicUrl) {
+                      resolvedAvatarUrl = pUrl.publicUrl;
+                      break;
+                    }
+                  } else {
+                    const { data: subFiles } = await supabase.storage.from('avatars').list(item.name, { limit: 2 });
+                    const f = subFiles?.find((sf: any) => sf.name && !sf.name.startsWith('.') && sf.name.match(/\.(png|jpe?g|webp|gif|svg)$/i));
+                    if (f) {
+                      const { data: pUrl } = supabase.storage.from('avatars').getPublicUrl(`${item.name}/${f.name}`);
+                      if (pUrl?.publicUrl) {
+                        resolvedAvatarUrl = pUrl.publicUrl;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch {}
+        }
 
         if (!profile) {
-          return fallbackProfile;
+          return {
+            ...fallbackProfile,
+            avatar_url: resolvedAvatarUrl || fallbackProfile.avatar_url,
+            avatar: resolvedAvatarUrl || fallbackProfile.avatar,
+            image: resolvedAvatarUrl || fallbackProfile.image,
+            profilePicture: resolvedAvatarUrl || fallbackProfile.profilePicture,
+            profile_picture: resolvedAvatarUrl || fallbackProfile.profile_picture,
+          };
         }
 
         const details = extractProfileDetails(profile);
+        const finalAvatar = resolvedAvatarUrl || details.avatar_url || fallbackProfile.avatar_url;
 
         return {
           ...fallbackProfile,
@@ -415,11 +486,11 @@ export const profilesRouter = router({
           skills: profile.skills || fallbackProfile.skills,
           isPublished: profile.is_published ?? profile.isPublished ?? true,
           is_published: profile.is_published ?? profile.isPublished ?? true,
-          avatar_url: details.avatar_url || profile.avatar_url || profile.avatar || profile.image || profile.profile_picture || profile.profilePicture || fallbackProfile.avatar_url,
-          avatar: details.avatar || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.avatar,
-          image: details.image || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.image,
-          profilePicture: details.profilePicture || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.profilePicture,
-          profile_picture: details.profile_picture || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.profile_picture,
+          avatar_url: finalAvatar,
+          avatar: finalAvatar,
+          image: finalAvatar,
+          profilePicture: finalAvatar,
+          profile_picture: finalAvatar,
           first_name: details.first_name || profile.first_name || fallbackProfile.first_name,
           last_name: details.last_name || profile.last_name || fallbackProfile.last_name,
           full_name: details.full_name || profile.full_name || fallbackProfile.full_name,

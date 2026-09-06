@@ -526,13 +526,14 @@ export const publicProfileRouter = router({
         }
 
         // 6. Special match for studio artist if identifier mentions studio
-        if (!profile && identifier.toLowerCase().includes('studio')) {
+        if (!profile && (identifier.toLowerCase().includes('studio') || ['default', 'mock-admin-id', 'artist-id', 'studio', 'studio1', 'studio-one'].includes(identifier.toLowerCase()))) {
           try {
             const { data: byStudioWithAvatar } = await (adminSupabase as any)
               .from('profiles')
               .select('*')
-              .ilike('first_name', '%studio%')
+              .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
               .not('avatar_url', 'is', null)
+              .neq('avatar_url', '')
               .limit(1)
               .maybeSingle();
             if (byStudioWithAvatar) profile = byStudioWithAvatar;
@@ -543,10 +544,24 @@ export const publicProfileRouter = router({
               const { data: byStudio } = await (adminSupabase as any)
                 .from('profiles')
                 .select('*')
-                .ilike('first_name', '%studio%')
+                .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
                 .limit(1)
                 .maybeSingle();
               if (byStudio) profile = byStudio;
+            } catch {}
+          }
+
+          // Fallback: any profile with an avatar_url
+          if (!profile) {
+            try {
+              const { data: anyWithAvatar } = await (adminSupabase as any)
+                .from('profiles')
+                .select('*')
+                .not('avatar_url', 'is', null)
+                .neq('avatar_url', '')
+                .limit(1)
+                .maybeSingle();
+              if (anyWithAvatar) profile = anyWithAvatar;
             } catch {}
           }
         }
@@ -562,32 +577,6 @@ export const publicProfileRouter = router({
               .maybeSingle();
             if (legacyProfile) profile = legacyProfile;
           } catch {}
-        }
-
-        // 8. Generic fallback match for artist/studio
-        if (!profile && ['default', 'mock-admin-id', 'artist-id', 'studio', 'studio1', 'studio-one'].includes(identifier.toLowerCase())) {
-          try {
-            const { data: fallbackMatchWithAvatar } = await (adminSupabase as any)
-              .from('profiles')
-              .select('*')
-              .ilike('first_name', '%studio%')
-              .not('avatar_url', 'is', null)
-              .limit(1)
-              .maybeSingle();
-            if (fallbackMatchWithAvatar) profile = fallbackMatchWithAvatar;
-          } catch {}
-
-          if (!profile) {
-            try {
-              const { data: fallbackMatch } = await (adminSupabase as any)
-                .from('profiles')
-                .select('*')
-                .ilike('first_name', '%studio%')
-                .limit(1)
-                .maybeSingle();
-              if (fallbackMatch) profile = fallbackMatch;
-            } catch {}
-          }
         }
 
         if (!profile) {
@@ -689,7 +678,7 @@ export const publicProfileRouter = router({
           userDetails = data;
         } catch {}
 
-        const pic =
+        let pic =
           formatted.avatar_url ||
           (profile as any)?.avatar_url ||
           (profile as any)?.avatar ||
@@ -697,6 +686,17 @@ export const publicProfileRouter = router({
           (profile as any)?.profile_picture ||
           (profile as any)?.profilePicture ||
           '';
+
+        if (!pic && (profileId || userId || identifier)) {
+          const cId = profileId || userId || identifier;
+          try {
+            const { data: files } = await (adminSupabase as any).storage.from('avatars').list(cId, { limit: 1 });
+            if (files && files.length > 0 && files[0]?.name) {
+              const { data: pUrl } = (adminSupabase as any).storage.from('avatars').getPublicUrl(`${cId}/${files[0].name}`);
+              if (pUrl?.publicUrl) pic = pUrl.publicUrl;
+            }
+          } catch {}
+        }
 
         return {
           ...formatted,

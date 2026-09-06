@@ -68,12 +68,39 @@ export default function PublicArtistProfileClient() {
               .limit(1)
               .maybeSingle();
 
-            if (ownProfile) {
+            let avatar =
+              ownProfile?.avatar_url ||
+              ownProfile?.profile_picture ||
+              ownProfile?.avatar ||
+              ownProfile?.image ||
+              userMeta?.avatar_url ||
+              userMeta?.profile_picture ||
+              userMeta?.picture;
+
+            if (!avatar && user.id) {
+              try {
+                const { data: storageFiles } = await supabase.storage.from('avatars').list(user.id, {
+                  limit: 1,
+                  sortBy: { column: 'created_at', order: 'desc' },
+                });
+                if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
+                  const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${user.id}/${storageFiles[0].name}`);
+                  if (pubData?.publicUrl) avatar = pubData.publicUrl;
+                }
+              } catch {}
+            }
+
+            if (ownProfile || avatar) {
               setDirectProfile({
-                ...ownProfile,
-                avatar_url: ownProfile.avatar_url || ownProfile.profile_picture || userMeta.avatar_url,
-                avatar: ownProfile.avatar || ownProfile.avatar_url || userMeta.avatar_url,
-                image: ownProfile.image || ownProfile.avatar_url || userMeta.avatar_url,
+                ...(ownProfile || {}),
+                id: user.id,
+                first_name: ownProfile?.first_name || userMeta?.first_name || 'studio',
+                last_name: ownProfile?.last_name || userMeta?.last_name || 'One',
+                full_name: ownProfile?.full_name || 'studio One',
+                avatar_url: avatar,
+                avatar: avatar,
+                profile_picture: avatar,
+                image: avatar,
               });
               return;
             }
@@ -91,7 +118,20 @@ export default function PublicArtistProfileClient() {
           .maybeSingle();
 
         if (byId) {
-          setDirectProfile(byId);
+          let avatar = byId.avatar_url || byId.avatar || byId.profile_picture || byId.image;
+          if (!avatar && byId.id) {
+            try {
+              const { data: storageFiles } = await supabase.storage.from('avatars').list(byId.id, {
+                limit: 1,
+                sortBy: { column: 'created_at', order: 'desc' },
+              });
+              if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
+                const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${byId.id}/${storageFiles[0].name}`);
+                if (pubData?.publicUrl) avatar = pubData.publicUrl;
+              }
+            } catch {}
+          }
+          setDirectProfile({ ...byId, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
           return;
         }
 
@@ -104,7 +144,8 @@ export default function PublicArtistProfileClient() {
           .maybeSingle();
 
         if (bySlug) {
-          setDirectProfile(bySlug);
+          let avatar = bySlug.avatar_url || bySlug.avatar || bySlug.profile_picture || bySlug.image;
+          setDirectProfile({ ...bySlug, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
           return;
         }
 
@@ -117,7 +158,8 @@ export default function PublicArtistProfileClient() {
           .maybeSingle();
 
         if (byUsername) {
-          setDirectProfile(byUsername);
+          let avatar = byUsername.avatar_url || byUsername.avatar || byUsername.profile_picture || byUsername.image;
+          setDirectProfile({ ...byUsername, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
           return;
         }
 
@@ -125,22 +167,24 @@ export default function PublicArtistProfileClient() {
         const { data: byFallback } = await (supabase as any)
           .from('profiles')
           .select('*')
-          .or(`email.eq.${profileId},first_name.ilike.%${profileId}%`)
+          .or(`email.eq.${profileId},first_name.ilike.%${profileId}%,full_name.ilike.%${profileId}%`)
           .limit(1)
           .maybeSingle();
 
         if (byFallback) {
-          setDirectProfile(byFallback);
+          let avatar = byFallback.avatar_url || byFallback.avatar || byFallback.profile_picture || byFallback.image;
+          setDirectProfile({ ...byFallback, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
           return;
         }
 
-        // Match studio if id contains studio
-        if (profileId.toLowerCase().includes('studio')) {
+        // Match studio if id contains studio or is fallback
+        if (profileId.toLowerCase().includes('studio') || ['default', 'artist-id', 'studio-one', 'studio1'].includes(profileId.toLowerCase())) {
           const { data: byStudioWithAvatar } = await (supabase as any)
             .from('profiles')
             .select('*')
-            .ilike('first_name', '%studio%')
+            .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
             .not('avatar_url', 'is', null)
+            .neq('avatar_url', '')
             .limit(1)
             .maybeSingle();
 
@@ -152,13 +196,70 @@ export default function PublicArtistProfileClient() {
           const { data: byStudio } = await (supabase as any)
             .from('profiles')
             .select('*')
-            .ilike('first_name', '%studio%')
+            .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
             .limit(1)
             .maybeSingle();
 
           if (byStudio) {
-            setDirectProfile(byStudio);
+            let avatar = byStudio.avatar_url || byStudio.profile_picture;
+            if (!avatar && byStudio.id) {
+              try {
+                const { data: storageFiles } = await supabase.storage.from('avatars').list(byStudio.id, {
+                  limit: 1,
+                  sortBy: { column: 'created_at', order: 'desc' },
+                });
+                if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
+                  const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${byStudio.id}/${storageFiles[0].name}`);
+                  if (pubData?.publicUrl) avatar = pubData.publicUrl;
+                }
+              } catch {}
+            }
+            setDirectProfile({ ...byStudio, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
+            return;
           }
+
+          // Fallback check: any file in avatars bucket
+          try {
+            const { data: rootItems } = await supabase.storage.from('avatars').list('', { limit: 10 });
+            if (rootItems && rootItems.length > 0) {
+              for (const item of rootItems) {
+                if (item.name && !item.name.startsWith('.')) {
+                  if (item.name.match(/\.(png|jpe?g|webp|gif|svg)$/i)) {
+                    const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(item.name);
+                    if (pubData?.publicUrl) {
+                      setDirectProfile((prev: any) => ({
+                        ...(prev || {}),
+                        first_name: 'studio',
+                        last_name: 'One',
+                        full_name: 'studio One',
+                        avatar_url: pubData.publicUrl,
+                        avatar: pubData.publicUrl,
+                        profile_picture: pubData.publicUrl,
+                      }));
+                      return;
+                    }
+                  } else {
+                    const { data: subFiles } = await supabase.storage.from('avatars').list(item.name, { limit: 1 });
+                    if (subFiles && subFiles.length > 0 && subFiles[0]?.name) {
+                      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${item.name}/${subFiles[0].name}`);
+                      if (pubData?.publicUrl) {
+                        setDirectProfile((prev: any) => ({
+                          ...(prev || {}),
+                          first_name: 'studio',
+                          last_name: 'One',
+                          full_name: 'studio One',
+                          avatar_url: pubData.publicUrl,
+                          avatar: pubData.publicUrl,
+                          profile_picture: pubData.publicUrl,
+                        }));
+                        return;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch {}
         }
       } catch (err) {
         console.warn('Direct profile fallback notice:', err);
@@ -229,17 +330,23 @@ export default function PublicArtistProfileClient() {
     );
 
     const rawPic =
-      rawProfile?.avatar_url ||
-      rawProfile?.avatar ||
-      rawProfile?.image ||
-      rawProfile?.profile_picture ||
-      rawProfile?.profilePicture ||
+      (rawProfile?.avatar_url && typeof rawProfile.avatar_url === 'string' && rawProfile.avatar_url.trim()) ||
+      (rawProfile?.avatar && typeof rawProfile.avatar === 'string' && rawProfile.avatar.trim()) ||
+      (rawProfile?.profile_picture && typeof rawProfile.profile_picture === 'string' && rawProfile.profile_picture.trim()) ||
+      (rawProfile?.profilePicture && typeof rawProfile.profilePicture === 'string' && rawProfile.profilePicture.trim()) ||
+      (rawProfile?.image && typeof rawProfile.image === 'string' && rawProfile.image.trim()) ||
       (isOwner ? ((session?.session?.user?.user_metadata as any)?.avatar_url || (session?.session?.user as any)?.image) : null) ||
       null;
 
-    const resolvedAvatar = rawPic
-      ? getProfilePictureUrl(rawProfile?.id || id, rawPic) || rawPic
-      : null;
+    let resolvedAvatar: string | null = null;
+    if (rawPic) {
+      const trimmed = String(rawPic).trim();
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+        resolvedAvatar = trimmed;
+      } else {
+        resolvedAvatar = getProfilePictureUrl(rawProfile?.id || id, trimmed) || trimmed;
+      }
+    }
 
     const rawSkills = rawProfile?.skills || '';
     const skillsList: string[] = Array.isArray(rawSkills)
@@ -369,24 +476,27 @@ export default function PublicArtistProfileClient() {
         <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-background/90 via-background/70 to-background/50 p-6 sm:p-8 lg:p-10 shadow-2xl backdrop-blur-md">
           <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 lg:gap-8">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left flex-1 min-w-0">
-              {/* Avatar Component */}
-              <div className="relative h-28 w-28 sm:h-32 sm:w-32 flex-shrink-0">
-                <Avatar
-                  {...({
-                    src: rawProfile?.avatar_url || rawProfile?.avatar || rawProfile?.image || avatarUrl || undefined,
-                    alt: rawProfile?.full_name || fullName,
-                  } as any)}
-                  className="h-full w-full rounded-full border-2 border-primary/30 ring-4 ring-primary/10 shadow-xl overflow-hidden"
-                >
-                  <AvatarImage
-                    src={avatarUrl || rawProfile?.avatar_url || rawProfile?.avatar || rawProfile?.image || undefined}
+              {/* Profile Avatar Component: Inspects avatar_url, avatar, and profile_picture. If valid image URL is present, renders <img> directly instead of fallback initials box */}
+              <div className="relative h-28 w-28 sm:h-32 sm:w-32 flex-shrink-0 rounded-full border-2 border-primary/30 ring-4 ring-primary/10 shadow-xl overflow-hidden bg-muted">
+                {avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={avatarUrl}
                     alt={`${fullName} profile picture`}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover rounded-full"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                      const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback') as HTMLElement | null;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
                   />
-                  <AvatarFallback className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-chart-1 text-3xl sm:text-4xl font-bold tracking-wider text-white">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+                ) : null}
+                <div
+                  className="avatar-fallback flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-chart-1 text-3xl sm:text-4xl font-bold tracking-wider text-white rounded-full"
+                  style={{ display: avatarUrl ? 'none' : 'flex' }}
+                >
+                  {initials}
+                </div>
               </div>
 
               {/* Identity & Metadata */}

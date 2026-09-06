@@ -17,19 +17,38 @@ export function getProfilePictureUrl(
   filename: string | undefined | null,
   options?: { bustCache?: boolean }
 ): string | undefined {
-  if (!filename) {
+  if (!filename || typeof filename !== 'string') {
     return undefined;
   }
 
-  let baseUrl = filename;
+  const trimmed = filename.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  let baseUrl = trimmed;
   // If it's already a full URL or data URI, use it directly
-  if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:') || filename.startsWith('blob:')) {
-    baseUrl = filename;
-  } else if (filename.startsWith('/')) {
-    baseUrl = filename;
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    baseUrl = trimmed;
+  } else if (trimmed.startsWith('/')) {
+    baseUrl = trimmed;
   } else {
-    if (!userId) return undefined;
-    baseUrl = `/uploads/documents/${userId}/${filename}`;
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+    if (supabaseUrl && (trimmed.startsWith('avatars/') || trimmed.includes('/'))) {
+      const cleanPath = trimmed.startsWith('avatars/') ? trimmed.replace(/^avatars\//, '') : trimmed;
+      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
+    } else if (supabaseUrl && trimmed.match(/\.(png|jpe?g|webp|gif|svg)$/i)) {
+      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${userId ? `${userId}/` : ''}${trimmed}`;
+    } else if (!userId) {
+      return undefined;
+    } else {
+      baseUrl = `/uploads/documents/${userId}/${trimmed}`;
+    }
   }
 
   if (options?.bustCache) {
