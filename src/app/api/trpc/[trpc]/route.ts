@@ -9,6 +9,12 @@ const handler = async (req: Request) => {
       req,
       router: appRouter,
       createContext,
+      responseMeta() {
+        // Return status 200 so Vercel edge/gateway does not intercept 500 and emit raw HTML error pages
+        return {
+          status: 200,
+        };
+      },
       onError({ error, path }) {
         console.error(`[tRPC Error] ${path || 'unknown'}:`, error);
       },

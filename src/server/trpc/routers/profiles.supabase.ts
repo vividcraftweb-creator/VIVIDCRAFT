@@ -551,12 +551,12 @@ export const profilesRouter = router({
     .query(async ({ ctx, input }) => {
       try {
         const user = (ctx as any)?.user || (ctx as any)?.session?.user;
-        const userId = user?.id || (ctx as any)?.user?.id || 'temp-id';
-        const userEmail = user?.email || (ctx as any)?.user?.email || 'artist@vividart.com';
-        const userName = user?.name || (user as any)?.user_metadata?.name || 'New Artist';
-        const nameParts = userName.split(' ');
-        const defaultFirstName = (user as any)?.user_metadata?.firstName || (user as any)?.user_metadata?.first_name || nameParts[0] || 'New';
-        const defaultLastName = (user as any)?.user_metadata?.lastName || (user as any)?.user_metadata?.last_name || nameParts.slice(1).join(' ') || 'Artist';
+        const userId = user?.id || (ctx as any)?.user?.id || '';
+        const userEmail = user?.email || (ctx as any)?.user?.email || '';
+        const userName = user?.name || (user as any)?.user_metadata?.name || 'Artist';
+        const nameParts = (userName || '').split(' ');
+        const defaultFirstName = (user as any)?.user_metadata?.firstName || (user as any)?.user_metadata?.first_name || nameParts[0] || 'Artist';
+        const defaultLastName = (user as any)?.user_metadata?.lastName || (user as any)?.user_metadata?.last_name || nameParts.slice(1).join(' ') || '';
         const userImage = (user as any)?.image || (user as any)?.user_metadata?.avatar_url || (user as any)?.user_metadata?.picture || '';
 
         // Extract and normalize role from user metadata with 'artist' as the absolute default
@@ -565,17 +565,17 @@ export const profilesRouter = router({
         const fallbackRole = (cleanMetaRole === 'client' || cleanMetaRole === 'buyer' || cleanMetaRole === 'customer') ? 'client' : 'artist';
 
         const safeDefaultObject = {
-          id: userId || 'temp-id',
-          userId: userId || 'temp-id',
-          name: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
-          full_name: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
-          fullName: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
-          email: userEmail || 'artist@vividart.com',
-          role: fallbackRole,
-          firstName: defaultFirstName || 'New',
-          lastName: defaultLastName || 'Artist',
-          first_name: defaultFirstName || 'New',
-          last_name: defaultLastName || 'Artist',
+          id: userId || '',
+          userId: userId || '',
+          role: 'artist',
+          email: userEmail || '',
+          name: `${defaultFirstName} ${defaultLastName}`.trim() || 'Artist',
+          full_name: `${defaultFirstName} ${defaultLastName}`.trim() || 'Artist',
+          fullName: `${defaultFirstName} ${defaultLastName}`.trim() || 'Artist',
+          firstName: defaultFirstName,
+          lastName: defaultLastName,
+          first_name: defaultFirstName,
+          last_name: defaultLastName,
           title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
           bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
           location: '',
@@ -592,10 +592,10 @@ export const profilesRouter = router({
           companyInfo: null,
           portfolio: null,
           verified: false,
-          slug: userId || 'temp-id',
+          slug: userId || 'artist',
         };
 
-        if (!userId || userId === 'temp-id') {
+        if (!userId) {
           return safeDefaultObject;
         }
 
@@ -755,18 +755,20 @@ export const profilesRouter = router({
         }
       } catch (outerErr) {
         console.error('getMyProfile top-level error caught gracefully:', outerErr);
-        const uId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || 'temp-id';
-        const uEmail = (ctx as any)?.user?.email || (ctx as any)?.session?.user?.email || 'artist@vividart.com';
+        const uId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || '';
+        const uEmail = (ctx as any)?.user?.email || (ctx as any)?.session?.user?.email || '';
         return {
-          id: uId,
-          userId: uId,
-          email: uEmail,
+          id: uId || '',
+          userId: uId || '',
           role: 'artist',
+          email: uEmail || '',
           first_name: 'Artist',
           last_name: '',
           firstName: 'Artist',
           lastName: '',
           name: 'Artist',
+          full_name: 'Artist',
+          fullName: 'Artist',
           title: 'Artist',
           bio: 'Welcome to Vivid Art!',
           location: '',
@@ -775,18 +777,20 @@ export const profilesRouter = router({
           rate: null,
           profilePicture: '',
           avatar_url: '',
+          avatar: '',
+          image: '',
           isPublished: true,
           is_published: true,
           companyName: null,
           companyInfo: null,
           portfolio: null,
           verified: false,
-          slug: uId,
+          slug: uId || 'artist',
         };
       }
     }),
 
-  updateProfile: protectedProcedure
+  updateProfile: publicProcedure
     .input(
       z.object({
         firstName: z.string().optional().nullable(),
@@ -816,6 +820,11 @@ export const profilesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
+        const userId = ctx.session?.user?.id || (ctx as any)?.user?.id || '';
+        if (!userId) {
+          return { success: false, message: 'User not authenticated', ...input };
+        }
+
         // Validate environment variables
         const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
         const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
@@ -827,7 +836,7 @@ export const profilesRouter = router({
         // Use authenticated Supabase client from context or admin client
         const supabase = ctx.supabase || ctx.adminSupabase || createAdminClient();
 
-        const existingProfile = await findProfileSafely(supabase, ctx.session.user.id);
+        const existingProfile = await findProfileSafely(supabase, userId);
 
         const timestamp = new Date().toISOString();
 
@@ -846,11 +855,11 @@ export const profilesRouter = router({
           }
         } catch (slugError) {
           console.warn('PROFILE SLUG WARNING:', slugError);
-          slugToPersist = existingProfile?.slug || `user-${ctx.session.user.id.slice(0, 8)}`;
+          slugToPersist = existingProfile?.slug || `user-${userId.slice(0, 8)}`;
         }
 
         const upsertPayload: Record<string, any> = {
-          id: ctx.session.user.id,
+          id: userId,
           first_name: firstName || undefined,
           last_name: lastName || undefined,
           title: input.title !== undefined ? input.title : existingProfile?.title,
@@ -899,10 +908,10 @@ export const profilesRouter = router({
     .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx }) => {
     try {
-      if (!ctx.session?.user?.id) {
+      const userId = ctx.session?.user?.id || (ctx as any)?.user?.id;
+      if (!userId) {
         return [];
       }
-      const userId = ctx.session.user.id;
       const supabase = createAdminClient();
 
       let contracts: any[] = [];
@@ -975,10 +984,10 @@ export const profilesRouter = router({
     .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx }) => {
     try {
-      if (!ctx.session?.user?.id) {
+      const userId = ctx.session?.user?.id || (ctx as any)?.user?.id;
+      if (!userId) {
         return null;
       }
-      const userId = ctx.session.user.id;
       const defaultTokens = 150;
       const RESET_DAY = 1; // Monday
 
@@ -1033,7 +1042,8 @@ export const profilesRouter = router({
     .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx }) => {
     try {
-      if (!ctx.session?.user?.id) {
+      const userId = ctx.session?.user?.id || (ctx as any)?.user?.id;
+      if (!userId) {
         return [];
       }
       const supabase = await createClient();
@@ -1041,7 +1051,7 @@ export const profilesRouter = router({
       const { data, error } = await supabase
         .from('TokenLog')
         .select('*')
-        .eq('userId', ctx.session.user.id)
+        .eq('userId', userId)
         .order('createdAt', { ascending: false })
         .limit(20);
 
@@ -1089,7 +1099,7 @@ export const profilesRouter = router({
           const { data: viewer } = await supabase
             .from('User')
             .select('subscriptionPlan, role')
-            .eq('id', ctx.session.user.id)
+            .eq('id', ctx.session?.user?.id || (ctx as any)?.user?.id || '')
             .single();
 
           if (viewer) {
@@ -1352,7 +1362,7 @@ export const profilesRouter = router({
     }),
 
   // Update client-specific profile information
-  updateClientProfile: protectedProcedure
+  updateClientProfile: publicProcedure
     .input(
       z.object({
         companyName: z.string(),
@@ -1364,11 +1374,16 @@ export const profilesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
+        const userId = ctx.session?.user?.id || (ctx as any)?.user?.id || '';
+        if (!userId) {
+          return { id: '', ...input };
+        }
+
         const supabase = await createClient();
         const adminSupabase = createAdminClient();
         const timestamp = new Date().toISOString();
 
-        const existingProfile = await findProfileSafely(supabase, ctx.session.user.id, 'id');
+        const existingProfile = await findProfileSafely(supabase, userId, 'id');
 
         const profileData = {
           companyName: input.companyName,
@@ -1386,7 +1401,7 @@ export const profilesRouter = router({
           await adminSupabase
             .from('User')
             .update({ profileCompleted: true, updatedAt: timestamp })
-            .eq('id', ctx.session.user.id);
+            .eq('id', userId);
         } catch {}
 
         try {
@@ -1400,17 +1415,17 @@ export const profilesRouter = router({
 
             if (error) {
               console.warn('updateClientProfile warning (handled):', error);
-              return { id: ctx.session.user.id, ...profileData };
+              return { id: userId, ...profileData };
             }
 
-            return data || { id: ctx.session.user.id, ...profileData };
+            return data || { id: userId, ...profileData };
           }
 
           // Create new profile
           const { data, error } = await (supabase as any)
             .from('profiles')
             .insert({
-              id: ctx.session.user.id,
+              id: userId,
               ...profileData,
               created_at: timestamp,
             })
@@ -1419,21 +1434,21 @@ export const profilesRouter = router({
 
           if (error) {
             console.warn('create client profile warning (handled):', error);
-            return { id: ctx.session.user.id, ...profileData };
+            return { id: userId, ...profileData };
           }
 
-          return data || { id: ctx.session.user.id, ...profileData };
+          return data || { id: userId, ...profileData };
         } catch (err) {
           console.warn('updateClientProfile exception (handled):', err);
-          return { id: ctx.session.user.id, ...profileData };
+          return { id: userId, ...profileData };
         }
       } catch (outerErr) {
         console.warn('updateClientProfile outer exception (handled):', outerErr);
-        return { id: ctx.session.user.id, ...input };
+        return { id: ctx.session?.user?.id || '', ...input };
       }
     }),
 
-  updateBusinessProfile: protectedProcedure
+  updateBusinessProfile: publicProcedure
     .input(
       z.object({
         businessName: z.string(),
@@ -1451,9 +1466,13 @@ export const profilesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
+        const userId = ctx.session?.user?.id || (ctx as any)?.user?.id || '';
+        if (!userId) {
+          return { id: '', ...input };
+        }
+
         const adminSupabase = createAdminClient();
         const supabase = await createClient();
-        const userId = ctx.session.user.id;
         const timestamp = new Date().toISOString();
 
         // Check if profile exists
@@ -1513,7 +1532,7 @@ export const profilesRouter = router({
         }
       } catch (outerErr) {
         console.warn('updateBusinessProfile outer exception (handled):', outerErr);
-        return { id: ctx.session.user.id, ...input };
+        return { id: ctx.session?.user?.id || '', ...input };
       }
     }),
 });

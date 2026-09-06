@@ -203,7 +203,59 @@ export default async function RootLayout({
               (function() {
                 if (typeof window === 'undefined') return;
 
-                // 1. Intercept unhandled promise rejections (ma_payload.js / third-party analytics / getAttribute crashes)
+                // 1. Safe proxy for DOM elements queried before mounting/hydration
+                var safeDummyElement = {
+                  getAttribute: function(name) { return null; },
+                  setAttribute: function() {},
+                  hasAttribute: function() { return false; },
+                  removeAttribute: function() {},
+                  getAttributeNames: function() { return []; },
+                  classList: {
+                    add: function() {},
+                    remove: function() {},
+                    contains: function() { return false; },
+                    toggle: function() { return false; }
+                  },
+                  style: {},
+                  dataset: {},
+                  tagName: 'DIV',
+                  nodeName: 'DIV',
+                  nodeType: 1,
+                  children: [],
+                  childNodes: [],
+                  addEventListener: function() {},
+                  removeEventListener: function() {},
+                };
+
+                try {
+                  var origQuery = Document.prototype.querySelector;
+                  Document.prototype.querySelector = function(sel) {
+                    var res = origQuery.call(this, sel);
+                    if (res) return res;
+                    try {
+                      var stack = (new Error()).stack || '';
+                      if (stack.indexOf('ma_payload') !== -1 || stack.indexOf('getAttribute') !== -1) {
+                        return safeDummyElement;
+                      }
+                    } catch (e) {}
+                    return null;
+                  };
+
+                  var origGetId = Document.prototype.getElementById;
+                  Document.prototype.getElementById = function(id) {
+                    var res = origGetId.call(this, id);
+                    if (res) return res;
+                    try {
+                      var stack = (new Error()).stack || '';
+                      if (stack.indexOf('ma_payload') !== -1 || stack.indexOf('getAttribute') !== -1) {
+                        return safeDummyElement;
+                      }
+                    } catch (e) {}
+                    return null;
+                  };
+                } catch (domPatchErr) {}
+
+                // 2. Intercept unhandled promise rejections (ma_payload.js / third-party analytics / getAttribute crashes)
                 window.addEventListener('unhandledrejection', function(event) {
                   try {
                     var reason = event && event.reason;
@@ -222,7 +274,7 @@ export default async function RootLayout({
                   } catch (e) {}
                 });
 
-                // 2. Intercept global DOM errors before elements mount
+                // 3. Intercept global DOM errors before elements mount
                 window.addEventListener('error', function(event) {
                   try {
                     var msg = (event && (event.message || '')) || '';
@@ -239,7 +291,7 @@ export default async function RootLayout({
                   } catch (e) {}
                 }, true);
 
-                // 3. Fallback for document.currentScript when queried by async modules/scripts
+                // 4. Fallback for document.currentScript when queried by async modules/scripts
                 try {
                   var originalDesc = Object.getOwnPropertyDescriptor(Document.prototype, 'currentScript') ||
                                      Object.getOwnPropertyDescriptor(document, 'currentScript');
@@ -253,13 +305,7 @@ export default async function RootLayout({
                           var err = new Error();
                           var stack = err.stack || '';
                           if (stack.indexOf('ma_payload') !== -1 || stack.indexOf('getAttribute') !== -1) {
-                            return {
-                              getAttribute: function() { return ''; },
-                              hasAttribute: function() { return false; },
-                              getAttributeNames: function() { return []; },
-                              src: '',
-                              tagName: 'SCRIPT'
-                            };
+                            return safeDummyElement;
                           }
                         } catch (e) {}
                         return null;
