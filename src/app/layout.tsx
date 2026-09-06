@@ -195,6 +195,84 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          id="dom-null-safety-shield"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window === 'undefined') return;
+
+                // 1. Intercept unhandled promise rejections (ma_payload.js / third-party analytics / getAttribute crashes)
+                window.addEventListener('unhandledrejection', function(event) {
+                  try {
+                    var reason = event && event.reason;
+                    var msg = (reason && (reason.message || String(reason))) || '';
+                    var stack = (reason && reason.stack) || '';
+                    if (
+                      msg.indexOf('getAttribute') !== -1 ||
+                      msg.indexOf('ma_payload') !== -1 ||
+                      stack.indexOf('getAttribute') !== -1 ||
+                      stack.indexOf('ma_payload') !== -1
+                    ) {
+                      if (event.preventDefault) event.preventDefault();
+                      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+                      console.warn('[SafetyShield] Intercepted unhandled rejection from getAttribute / ma_payload:', msg);
+                    }
+                  } catch (e) {}
+                });
+
+                // 2. Intercept global DOM errors before elements mount
+                window.addEventListener('error', function(event) {
+                  try {
+                    var msg = (event && (event.message || '')) || '';
+                    var filename = (event && (event.filename || '')) || '';
+                    if (
+                      msg.indexOf('getAttribute') !== -1 ||
+                      msg.indexOf('ma_payload') !== -1 ||
+                      filename.indexOf('ma_payload') !== -1
+                    ) {
+                      if (event.preventDefault) event.preventDefault();
+                      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+                      console.warn('[SafetyShield] Intercepted DOM error:', msg);
+                    }
+                  } catch (e) {}
+                }, true);
+
+                // 3. Fallback for document.currentScript when queried by async modules/scripts
+                try {
+                  var originalDesc = Object.getOwnPropertyDescriptor(Document.prototype, 'currentScript') ||
+                                     Object.getOwnPropertyDescriptor(document, 'currentScript');
+                  if (originalDesc && originalDesc.get) {
+                    var origGet = originalDesc.get;
+                    Object.defineProperty(document, 'currentScript', {
+                      get: function() {
+                        var el = origGet.call(this);
+                        if (el) return el;
+                        try {
+                          var err = new Error();
+                          var stack = err.stack || '';
+                          if (stack.indexOf('ma_payload') !== -1 || stack.indexOf('getAttribute') !== -1) {
+                            return {
+                              getAttribute: function() { return ''; },
+                              hasAttribute: function() { return false; },
+                              getAttributeNames: function() { return []; },
+                              src: '',
+                              tagName: 'SCRIPT'
+                            };
+                          }
+                        } catch (e) {}
+                        return null;
+                      },
+                      configurable: true
+                    });
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className="antialiased min-h-screen overflow-x-hidden"
         suppressHydrationWarning

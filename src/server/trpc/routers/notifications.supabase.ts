@@ -178,10 +178,7 @@ export const notificationsRouter = router({
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          const fallback: any = { unreadCount: 0, count: 0 };
-          fallback.valueOf = () => 0;
-          fallback[Symbol.toPrimitive] = () => 0;
-          return fallback;
+          return { unreadCount: 0, count: 0 };
         }
 
         let count = 0;
@@ -217,16 +214,10 @@ export const notificationsRouter = router({
           console.warn('Supabase admin client error in getUnreadNotificationCount:', e);
         }
 
-        const result: any = { unreadCount: count, count };
-        result.valueOf = () => count;
-        result[Symbol.toPrimitive] = () => count;
-        return result;
+        return { unreadCount: count, count };
       } catch (err) {
         console.error('getUnreadNotificationCount error caught gracefully:', err);
-        const fallback: any = { unreadCount: 0, count: 0 };
-        fallback.valueOf = () => 0;
-        fallback[Symbol.toPrimitive] = () => 0;
-        return fallback;
+        return { unreadCount: 0, count: 0 };
       }
     }),
 

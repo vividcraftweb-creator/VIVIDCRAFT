@@ -77,10 +77,14 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       });
 
       // Optimistically update count
-      if (previousCount !== undefined && previousCount > 0) {
+      const currentVal = typeof previousCount === 'number'
+        ? previousCount
+        : ((previousCount as any)?.unreadCount ?? (previousCount as any)?.count ?? 0);
+      if (currentVal > 0) {
+        const nextVal = Math.max(0, currentVal - 1);
         utils.notifications.getUnreadNotificationCount.setData(
           {},
-          previousCount - 1
+          { unreadCount: nextVal, count: nextVal } as any
         );
       }
 
@@ -130,7 +134,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       });
 
       // Optimistically set count to 0
-      utils.notifications.getUnreadNotificationCount.setData({}, 0);
+      utils.notifications.getUnreadNotificationCount.setData({}, { unreadCount: 0, count: 0 } as any);
 
       return { previousNotifications, previousCount };
     },
