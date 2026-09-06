@@ -100,41 +100,43 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
       .from('profiles')
       .select(select)
       .eq('id', userIdOrId)
+      .limit(1)
       .maybeSingle();
     if (!error && data) return data;
   } catch {}
 
-  // 2. Match by email in profiles
+  // 2. Match by slug in profiles
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(select)
+      .or(`slug.eq.${userIdOrId},slug.eq.${userIdOrId.toLowerCase()}`)
+      .limit(1)
+      .maybeSingle();
+    if (!error && data) return data;
+  } catch {}
+
+  // 3. Match by username in profiles
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(select)
+      .eq('username', userIdOrId)
+      .limit(1)
+      .maybeSingle();
+    if (!error && data) return data;
+  } catch {}
+
+  // 4. Match by email in profiles
   try {
     const { data, error } = await supabase
       .from('profiles')
       .select(select)
       .eq('email', userIdOrId)
+      .limit(1)
       .maybeSingle();
     if (!error && data) return data;
   } catch {}
-
-  // 3. Match by first_name (exact or ilike)
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(select)
-      .ilike('first_name', `%${userIdOrId}%`)
-      .maybeSingle();
-    if (!error && data) return data;
-  } catch {}
-
-  // 4. Special match for studio artist if query mentions studio
-  if (userIdOrId.toLowerCase().includes('studio')) {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(select)
-        .ilike('first_name', '%studio%')
-        .maybeSingle();
-      if (!error && data) return data;
-    } catch {}
-  }
 
   // 5. Match by user_id if column exists
   try {
@@ -142,36 +144,52 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
       .from('profiles')
       .select(select)
       .eq('user_id', userIdOrId)
+      .limit(1)
       .maybeSingle();
     if (!error && data) return data;
   } catch {}
 
-  // 6. Check legacy Profile table if present
+  // 6. Match by first_name (exact or ilike)
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(select)
+      .ilike('first_name', `%${userIdOrId}%`)
+      .limit(1)
+      .maybeSingle();
+    if (!error && data) return data;
+  } catch {}
+
+  // 7. Check legacy Profile table if present
   try {
     const { data, error } = await supabase
       .from('Profile')
       .select(select)
-      .eq('userId', userIdOrId)
+      .or(`id.eq.${userIdOrId},userId.eq.${userIdOrId},slug.eq.${userIdOrId}`)
+      .limit(1)
       .maybeSingle();
     if (!error && data) return data;
   } catch {}
 
-  try {
-    const { data, error } = await supabase
-      .from('Profile')
-      .select(select)
-      .eq('id', userIdOrId)
-      .maybeSingle();
-    if (!error && data) return data;
-  } catch {}
-
-  // 7. If identifier is a generic fallback or studio-related, fetch first matching artist/client in profiles
-  if (['default', 'mock-admin-id', 'artist-id', 'studio', 'studio1', 'studio-one'].includes(userIdOrId.toLowerCase())) {
+  // 8. Special match for studio artist if identifier mentions studio or is a fallback
+  if (['default', 'mock-admin-id', 'artist-id', 'studio', 'studio1', 'studio-one'].includes(userIdOrId.toLowerCase()) || userIdOrId.toLowerCase().includes('studio')) {
     try {
       const { data } = await supabase
         .from('profiles')
         .select(select)
         .ilike('first_name', '%studio%')
+        .not('avatar_url', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      if (data) return data;
+    } catch {}
+
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select(select)
+        .ilike('first_name', '%studio%')
+        .limit(1)
         .maybeSingle();
       if (data) return data;
     } catch {}
@@ -222,6 +240,8 @@ function extractProfileDetails(profile: any, fallbackName = 'studio One') {
 
   const avatarUrl =
     profile?.avatar_url ||
+    profile?.avatar ||
+    profile?.image ||
     profile?.profile_picture ||
     profile?.profilePicture ||
     '';
@@ -236,6 +256,8 @@ function extractProfileDetails(profile: any, fallbackName = 'studio One') {
     name: fullName,
     username: username,
     avatar_url: avatarUrl,
+    avatar: avatarUrl,
+    image: avatarUrl,
     profilePicture: avatarUrl,
     profile_picture: avatarUrl,
   };
@@ -243,9 +265,10 @@ function extractProfileDetails(profile: any, fallbackName = 'studio One') {
 
 export const profilesRouter = router({
   getProfile: publicProcedure
-    .input(z.object({ id: z.string().optional() }).nullish())
+    .input(z.union([z.object({ id: z.string().optional() }).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx, input }) => {
-      const fallbackId = input?.id || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || 'default';
+      const parsedId = typeof input === 'string' ? input : (input as any)?.id;
+      const fallbackId = parsedId || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || 'default';
       const fallbackProfile = {
         id: fallbackId,
         userId: fallbackId,
@@ -271,20 +294,22 @@ export const profilesRouter = router({
         rate: null,
         profilePicture: '',
         avatar_url: '',
+        avatar: '',
+        image: '',
         isPublished: true,
         is_published: true,
       };
 
       try {
-        if (!input?.id) {
+        if (!parsedId) {
           return fallbackProfile;
         }
 
         let userId: string;
         try {
-          userId = SecureId.ensureId(input.id);
+          userId = SecureId.ensureId(parsedId);
         } catch {
-          userId = input.id;
+          userId = parsedId;
         }
 
         const supabase = createAdminClient();
@@ -314,9 +339,20 @@ export const profilesRouter = router({
     }),
 
   getPublicProfile: publicProcedure
-    .input(z.union([z.object({ identifier: z.string().optional() }), z.object({ id: z.string().optional() }), z.string()]).nullish())
+    .input(
+      z
+        .union([
+          z.object({ identifier: z.string().optional(), id: z.string().optional() }).passthrough(),
+          z.string(),
+          z.undefined(),
+          z.null(),
+        ])
+        .optional()
+        .nullable()
+    )
     .query(async ({ ctx, input }) => {
-      const identifier = typeof input === 'string' ? input : (input as any)?.identifier || (input as any)?.id || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || '';
+      const rawInput = input as any;
+      const identifier = (typeof input === 'string' ? input : rawInput?.identifier || rawInput?.id || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || '')?.toString?.().trim?.() || '';
       const fallbackId = identifier || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || 'artist-id';
       const fallbackProfile = {
         id: fallbackId,
@@ -337,7 +373,10 @@ export const profilesRouter = router({
         address: '',
         skills: 'Digital Art, Creative Direction, Illustration',
         profilePicture: '',
+        profile_picture: '',
         avatar_url: '',
+        avatar: '',
+        image: '',
         isPublished: true,
         is_published: true,
         educationItems: [],
@@ -376,6 +415,15 @@ export const profilesRouter = router({
           skills: profile.skills || fallbackProfile.skills,
           isPublished: profile.is_published ?? profile.isPublished ?? true,
           is_published: profile.is_published ?? profile.isPublished ?? true,
+          avatar_url: details.avatar_url || profile.avatar_url || profile.avatar || profile.image || profile.profile_picture || profile.profilePicture || fallbackProfile.avatar_url,
+          avatar: details.avatar || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.avatar,
+          image: details.image || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.image,
+          profilePicture: details.profilePicture || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.profilePicture,
+          profile_picture: details.profile_picture || profile.avatar_url || profile.avatar || profile.image || fallbackProfile.profile_picture,
+          first_name: details.first_name || profile.first_name || fallbackProfile.first_name,
+          last_name: details.last_name || profile.last_name || fallbackProfile.last_name,
+          full_name: details.full_name || profile.full_name || fallbackProfile.full_name,
+          username: details.username || profile.username || fallbackProfile.username,
         };
       } catch (err) {
         console.error('profiles.getPublicProfile error caught gracefully:', err);
@@ -479,7 +527,7 @@ export const profilesRouter = router({
     }),
 
   getMyProfile: publicProcedure
-    .input(z.any().optional().nullable())
+    .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx, input }) => {
       try {
         const user = (ctx as any)?.user || (ctx as any)?.session?.user;
@@ -489,7 +537,7 @@ export const profilesRouter = router({
         const nameParts = userName.split(' ');
         const defaultFirstName = (user as any)?.user_metadata?.firstName || (user as any)?.user_metadata?.first_name || nameParts[0] || 'New';
         const defaultLastName = (user as any)?.user_metadata?.lastName || (user as any)?.user_metadata?.last_name || nameParts.slice(1).join(' ') || 'Artist';
-        const userImage = (user as any)?.image || (user as any)?.user_metadata?.avatar_url || '';
+        const userImage = (user as any)?.image || (user as any)?.user_metadata?.avatar_url || (user as any)?.user_metadata?.picture || '';
 
         // Extract and normalize role from user metadata with 'artist' as the absolute default
         const rawMetaRole = (user as any)?.user_metadata?.role || (user as any)?.user_metadata?.userRole || (user as any)?.role;
@@ -500,6 +548,8 @@ export const profilesRouter = router({
           id: userId || 'temp-id',
           userId: userId || 'temp-id',
           name: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
+          full_name: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
+          fullName: `${defaultFirstName || 'New'} ${defaultLastName || 'Artist'}`.trim(),
           email: userEmail || 'artist@vividart.com',
           role: fallbackRole,
           firstName: defaultFirstName || 'New',
@@ -514,6 +564,8 @@ export const profilesRouter = router({
           rate: null,
           profilePicture: userImage,
           avatar_url: userImage,
+          avatar: userImage,
+          image: userImage,
           isPublished: true,
           is_published: true,
           companyName: null,

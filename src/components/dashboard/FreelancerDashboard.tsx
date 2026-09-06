@@ -143,24 +143,18 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: verifDocs } = await supabase
-            .from('Verification')
-            .select('*')
-            .eq('userId', user.id);
-
           const { data: prof } = await (supabase as any)
             .from('profiles')
-            .select('isVerified, is_verified')
+            .select('*')
             .eq('id', user.id)
+            .limit(1)
             .maybeSingle();
 
-          const isApproved = Boolean(prof?.isVerified || prof?.is_verified || verifDocs?.some((d: any) => d.status === 'APPROVED'));
-          const isPending = Boolean(verifDocs?.some((d: any) => d.status === 'PENDING'));
-          const isRejected = Boolean(verifDocs?.some((d: any) => d.status === 'REJECTED'));
+          const isApproved = Boolean(prof?.is_verified || prof?.verified);
 
           setDirectVerification({
             isVerified: isApproved,
-            status: isApproved ? 'approved' : isPending ? 'pending' : isRejected ? 'rejected' : 'not_started',
+            status: isApproved ? 'approved' : 'not_started',
           });
         }
       } catch (e) {}

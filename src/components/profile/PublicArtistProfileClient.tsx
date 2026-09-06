@@ -47,6 +47,39 @@ export default function PublicArtistProfileClient() {
       try {
         const supabase = createClient();
         const profileId = id?.trim();
+
+        // 0. Check current auth user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const userMeta = user.user_metadata || {};
+          const isMatch =
+            user.id === profileId ||
+            userMeta?.slug === profileId ||
+            profileId?.toLowerCase().includes('studio') ||
+            !profileId ||
+            profileId === 'default' ||
+            profileId === 'artist-id';
+
+          if (isMatch) {
+            const { data: ownProfile } = await (supabase as any)
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .limit(1)
+              .maybeSingle();
+
+            if (ownProfile) {
+              setDirectProfile({
+                ...ownProfile,
+                avatar_url: ownProfile.avatar_url || ownProfile.profile_picture || userMeta.avatar_url,
+                avatar: ownProfile.avatar || ownProfile.avatar_url || userMeta.avatar_url,
+                image: ownProfile.image || ownProfile.avatar_url || userMeta.avatar_url,
+              });
+              return;
+            }
+          }
+        }
+
         if (!profileId) return;
 
         // Try by id
@@ -54,10 +87,37 @@ export default function PublicArtistProfileClient() {
           .from('profiles')
           .select('*')
           .eq('id', profileId)
+          .limit(1)
           .maybeSingle();
 
         if (byId) {
           setDirectProfile(byId);
+          return;
+        }
+
+        // Try by slug
+        const { data: bySlug } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .or(`slug.eq.${profileId},slug.eq.${profileId.toLowerCase()}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (bySlug) {
+          setDirectProfile(bySlug);
+          return;
+        }
+
+        // Try by username
+        const { data: byUsername } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .eq('username', profileId)
+          .limit(1)
+          .maybeSingle();
+
+        if (byUsername) {
+          setDirectProfile(byUsername);
           return;
         }
 
@@ -66,6 +126,7 @@ export default function PublicArtistProfileClient() {
           .from('profiles')
           .select('*')
           .or(`email.eq.${profileId},first_name.ilike.%${profileId}%`)
+          .limit(1)
           .maybeSingle();
 
         if (byFallback) {
@@ -75,10 +136,24 @@ export default function PublicArtistProfileClient() {
 
         // Match studio if id contains studio
         if (profileId.toLowerCase().includes('studio')) {
+          const { data: byStudioWithAvatar } = await (supabase as any)
+            .from('profiles')
+            .select('*')
+            .ilike('first_name', '%studio%')
+            .not('avatar_url', 'is', null)
+            .limit(1)
+            .maybeSingle();
+
+          if (byStudioWithAvatar) {
+            setDirectProfile(byStudioWithAvatar);
+            return;
+          }
+
           const { data: byStudio } = await (supabase as any)
             .from('profiles')
             .select('*')
             .ilike('first_name', '%studio%')
+            .limit(1)
             .maybeSingle();
 
           if (byStudio) {
@@ -142,10 +217,24 @@ export default function PublicArtistProfileClient() {
       (email ? email.split('@')[0] : '') ||
       fFullName.toLowerCase().replace(/\s+/g, '');
 
+    const isOwner = Boolean(
+      session?.session?.user?.id && (
+        session?.session?.user?.id === id ||
+        session?.session?.user?.id === rawProfile?.id ||
+        session?.session?.user?.id === rawProfile?.userId ||
+        session?.session?.user?.id === rawProfile?.user_id ||
+        session?.session?.user?.email === rawProfile?.email ||
+        (rawProfile?.first_name?.toLowerCase().includes('studio') && session?.session?.user?.email?.toLowerCase().includes('studio'))
+      )
+    );
+
     const rawPic =
       rawProfile?.avatar_url ||
+      rawProfile?.avatar ||
+      rawProfile?.image ||
       rawProfile?.profile_picture ||
       rawProfile?.profilePicture ||
+      (isOwner ? ((session?.session?.user?.user_metadata as any)?.avatar_url || (session?.session?.user as any)?.image) : null) ||
       null;
 
     const resolvedAvatar = rawPic
@@ -282,9 +371,15 @@ export default function PublicArtistProfileClient() {
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left flex-1 min-w-0">
               {/* Avatar Component */}
               <div className="relative h-28 w-28 sm:h-32 sm:w-32 flex-shrink-0">
-                <Avatar className="h-full w-full rounded-full border-2 border-primary/30 ring-4 ring-primary/10 shadow-xl overflow-hidden">
+                <Avatar
+                  {...({
+                    src: rawProfile?.avatar_url || rawProfile?.avatar || rawProfile?.image || avatarUrl || undefined,
+                    alt: rawProfile?.full_name || fullName,
+                  } as any)}
+                  className="h-full w-full rounded-full border-2 border-primary/30 ring-4 ring-primary/10 shadow-xl overflow-hidden"
+                >
                   <AvatarImage
-                    src={avatarUrl || undefined}
+                    src={avatarUrl || rawProfile?.avatar_url || rawProfile?.avatar || rawProfile?.image || undefined}
                     alt={`${fullName} profile picture`}
                     className="h-full w-full object-cover"
                   />

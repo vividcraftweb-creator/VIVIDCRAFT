@@ -264,7 +264,7 @@ export default function ProfileView() {
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mt-4" style={{ minHeight: '28px' }}>
                 {planSummary?.plan && (
-                  <PlanBadge plan={planSummary.plan} />
+                  <PlanBadge plan={planSummary.plan as any} />
                 )}
                 {verification?.status === 'APPROVED' && (
                   <Badge className="bg-green-500/20 text-green-300 border-green-500/30">

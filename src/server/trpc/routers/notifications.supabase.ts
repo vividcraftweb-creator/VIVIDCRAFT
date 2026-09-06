@@ -22,37 +22,38 @@ export const notificationsRouter = router({
   getNotifications: publicProcedure
     .input(
       z
-        .object({
-          limit: z.number().min(1).max(50).optional().nullable(),
-          cursor: z.string().optional().nullable(), // ISO timestamp
-          filters: z
+        .union([
+          z
             .object({
-              types: z.array(NotificationTypeEnum).optional().nullable(),
-              read: z.boolean().optional().nullable(),
-              searchQuery: z.string().optional().nullable(),
+              limit: z.number().min(1).max(50).optional().nullable(),
+              cursor: z.string().optional().nullable(), // ISO timestamp
+              filters: z.any().optional().nullable(),
             })
-            .optional()
-            .nullable(),
-        })
+            .passthrough(),
+          z.undefined(),
+          z.null(),
+        ])
         .optional()
         .nullable()
-        .or(z.any().optional().nullable())
     )
     .query(async ({ ctx, input }) => {
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          const fallback: any = [];
-          fallback.notifications = [];
-          fallback.nextCursor = null;
-          return fallback;
+          return {
+            notifications: [],
+            items: [],
+            count: 0,
+            nextCursor: null,
+          };
         }
 
         let items: any[] = [];
         let hasMore = false;
-        const limit = input?.limit ?? 20;
-        const cursor = input?.cursor;
-        const filters = input?.filters;
+        const rawInput = input as any;
+        const limit = rawInput?.limit ?? 20;
+        const cursor = rawInput?.cursor;
+        const filters = rawInput?.filters;
 
         try {
           const supabase = createAdminClient();
@@ -114,16 +115,20 @@ export const notificationsRouter = router({
             ? items[items.length - 1]?.createdAt || items[items.length - 1]?.created_at || null
             : null;
 
-        const result: any = items;
-        result.notifications = items;
-        result.nextCursor = nextCursor;
-        return result;
+        return {
+          notifications: items,
+          items: items,
+          count: items.length,
+          nextCursor,
+        };
       } catch (err) {
         console.error('getNotifications error caught gracefully:', err);
-        const fallback: any = [];
-        fallback.notifications = [];
-        fallback.nextCursor = null;
-        return fallback;
+        return {
+          notifications: [],
+          items: [],
+          count: 0,
+          nextCursor: null,
+        };
       }
     }),
 

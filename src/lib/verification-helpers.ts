@@ -29,28 +29,35 @@ export async function checkUserVerification(
 ): Promise<VerificationCheckResult> {
   const supabase = createAdminClient();
 
-  // Get user's client type from User table
-  let { data: user } = await supabase
-    .from('User')
-    .select('clientType, role, isVerified')
-    .eq('id', userId)
-    .maybeSingle();
+  let user: any = null;
+  try {
+    const { data, error } = await supabase
+      .from('User')
+      .select('clientType, role, isVerified')
+      .eq('id', userId)
+      .limit(1)
+      .maybeSingle();
+    if (!error && data) user = data;
+  } catch {}
 
   // Fallback to profiles table if User table doesn't have the record
   if (!user) {
-    const { data: profile } = await (supabase as any)
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .maybeSingle();
+    try {
+      const { data: profile } = await (supabase as any)
+        .from('profiles')
+        .select('role, is_verified, verified')
+        .eq('id', userId)
+        .limit(1)
+        .maybeSingle();
 
-    if (profile) {
-      user = {
-        clientType: 'INDIVIDUAL',
-        role: profile.role || 'FREELANCER',
-        isVerified: false,
-      } as any;
-    }
+      if (profile) {
+        user = {
+          clientType: 'INDIVIDUAL',
+          role: profile.role || 'FREELANCER',
+          isVerified: Boolean(profile.is_verified || profile.verified),
+        } as any;
+      }
+    } catch {}
   }
 
   // Only skip verification check if requireClientRole is true AND user is not a CLIENT
@@ -68,11 +75,15 @@ export async function checkUserVerification(
 
   const clientType = user?.clientType || 'INDIVIDUAL';
 
-  // Get user's verification documents
-  const { data: documents } = await supabase
-    .from('Verification')
-    .select('*')
-    .eq('userId', userId);
+  // Get user's verification documents safely
+  let documents: any[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('Verification')
+      .select('*')
+      .eq('userId', userId);
+    if (!error && data) documents = data;
+  } catch {}
 
   const docs = documents || [];
   const uploadedTypes = docs.map(d => d.verificationType).filter(Boolean);

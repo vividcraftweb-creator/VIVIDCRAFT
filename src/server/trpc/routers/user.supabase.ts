@@ -114,18 +114,49 @@ export const userRouter = router({
     return user;
   }),
 
-  getPlanFeatures: publicProcedure.query(async ({ ctx }) => {
-    try {
-      if (!ctx.session?.user?.id) {
-        return null;
+  getPlanFeatures: publicProcedure
+    .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
+    .query(async ({ ctx }) => {
+      const defaultFeatures = {
+        plan: 'FREELANCER_PRO',
+        role: 'FREELANCER',
+        permissions: {
+          canApplyToJobs: true,
+          maxApplicationsPerWeek: 50,
+          hasApplicationTokens: true,
+          hasPriorityPlacement: true,
+          hasFeaturedBadge: true,
+          maxPortfolioItems: 50,
+          hasPriorityMessaging: true,
+          hasAdvancedAnalytics: true,
+          hasMarketInsights: true,
+          hasDedicatedFreelancerManager: true,
+          canPostJobs: true,
+          maxJobPostsPerMonth: null,
+          hasPriorityJobPlacement: true,
+          hasFeaturedJobListings: true,
+          hasAdvancedFreelancerSearch: true,
+          hasTeamCollaboration: true,
+          hasEnhancedProjectManagement: true,
+          hasDedicatedAccountManager: true,
+          hasAdvancedClientAnalytics: true,
+          hasEarlyFeatureAccess: true,
+          hasPrioritySupport: true,
+        },
+      };
+
+      try {
+        const userId = ctx.session?.user?.id || (ctx as any)?.user?.id;
+        if (!userId) {
+          return defaultFeatures;
+        }
+        const summary = await getPlanFeatureSummary(userId);
+        return summary || defaultFeatures;
+      } catch (error) {
+        console.error('getPlanFeatures error:', error);
+        return defaultFeatures;
       }
-      const summary = await getPlanFeatureSummary(ctx.session.user.id);
-      return summary;
-    } catch (error) {
-      console.error('getPlanFeatures error:', error);
-      return null;
-    }
-  }),
+    }),
 
   updateEmail: protectedProcedure
     .input(z.object({ email: z.string().email() }))

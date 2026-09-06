@@ -79,32 +79,35 @@ export const verificationsRouter = router({
       return verification;
     }),
 
-  getVerificationStatus: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.session?.user?.id) {
-      return null;
-    }
+  getVerificationStatus: protectedProcedure
+    .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
+    .query(async ({ ctx }) => {
+      if (!ctx.session?.user?.id) {
+        return null;
+      }
 
-    const supabase = await createClient();
+      try {
+        const supabase = await createClient();
 
-    // Only get the overall verification submission (where verificationType is NULL)
-    // Not individual document uploads (which have verificationType set)
-    const { data: verification, error } = await supabase
-      .from('Verification')
-      .select('*')
-      .eq('userId', ctx.session.user.id)
-      .is('verificationType', null)
-      .maybeSingle();
+        // Only get the overall verification submission (where verificationType is NULL)
+        // Not individual document uploads (which have verificationType set)
+        const { data: verification, error } = await supabase
+          .from('Verification')
+          .select('*')
+          .eq('userId', ctx.session.user.id)
+          .is('verificationType', null)
+          .limit(1)
+          .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 is "not found", which is okay
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch verification status',
-      });
-    }
+        if (error) {
+          return null;
+        }
 
-    return verification || null;
-  }),
+        return verification || null;
+      } catch (err) {
+        return null;
+      }
+    }),
 
   getPendingVerifications: adminProcedure.query(async ({ ctx }) => {
     try {
@@ -818,8 +821,22 @@ export const verificationsRouter = router({
   /**
    * Check user's verification status
    */
-  checkVerificationStatus: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-    return await checkUserVerification(userId, false); // Allow all roles to verify
-  }),
+  checkVerificationStatus: protectedProcedure
+    .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
+    .query(async ({ ctx }) => {
+      try {
+        const userId = ctx.session.user.id;
+        return await checkUserVerification(userId, false); // Allow all roles to verify
+      } catch (e) {
+        return {
+          isVerified: false,
+          status: 'not_started' as const,
+          message: 'Upload a government-issued ID to fully activate your account.',
+          requiredDocs: ['ID_FRONT', 'ID_BACK', 'SELFIE'],
+          uploadedDocs: [],
+          missingDocs: ['ID_FRONT', 'ID_BACK', 'SELFIE'],
+          rejectedDocs: [],
+        };
+      }
+    }),
 });

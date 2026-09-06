@@ -70,7 +70,8 @@ export default function PrioritySupport() {
     retry: false,
   });
 
-  const supportLevel = planSummary?.permissions.clientSupportLevel || planSummary?.permissions.supportLevel || 'email';
+  const permissions = planSummary?.permissions as any;
+  const supportLevel = permissions?.clientSupportLevel || permissions?.supportLevel || 'email';
   const hasPrioritySupport = supportLevel !== 'email';
 
   // Fetch support tickets
