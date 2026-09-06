@@ -12,8 +12,16 @@ export function useAuth() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Get initial user
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
+    // 1. Check local session immediately to avoid unauthenticated flicker
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (currentSession?.user) {
+        setUser(currentSession.user);
+        setLoading(false);
+      }
+    }).catch(() => {});
+
+    // 2. Validate current user with Supabase
+    supabase.auth.getUser().then(({ data: { user: currentUser }, error }) => {
       if (error) {
         const msg = (error.message || '').toLowerCase();
         if (
@@ -28,10 +36,11 @@ export function useAuth() {
           return;
         }
       }
-      setUser(user);
+      if (currentUser) {
+        setUser(currentUser);
+      }
       setLoading(false);
     }).catch(() => {
-      setUser(null);
       setLoading(false);
     });
 

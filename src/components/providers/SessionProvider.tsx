@@ -32,9 +32,6 @@ export default function SessionProvider({ children }: SessionProviderProps) {
   const isSigningOutRef = useRef(false);
 
   useEffect(() => {
-    // Proactively clean bloated cookies on mount
-    cleanBloatedAuthCookies();
-
     const supabase = createClient();
 
     const cleanClientStorage = (shouldRedirect = false) => {

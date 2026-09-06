@@ -6,8 +6,8 @@ function cleanEnv(val?: string): string {
 }
 
 /**
- * Purge bloated cookies (such as serialized base64 data URIs or orphaned chunk cookies)
- * to prevent Vercel 494 REQUEST_HEADER_TOO_LARGE errors.
+ * Purge truly bloated cookies (specifically serialized base64 data URIs or runaway chunk cookies)
+ * to prevent Vercel 494 REQUEST_HEADER_TOO_LARGE errors without destroying normal auth sessions.
  */
 export function cleanBloatedAuthCookies() {
   if (typeof document === 'undefined') return;
@@ -18,11 +18,12 @@ export function cleanBloatedAuthCookies() {
       const name = parts[0]?.trim() || '';
       const value = parts.slice(1).join('=');
 
+      // Only purge cookies that actually contain base64 image data or extreme chunk indices (> 8)
+      // Standard Supabase session tokens are ~3180 bytes per chunk and must NOT be purged.
       const isBloated =
         value.includes('data%3Aimage') ||
         value.includes('data:image') ||
-        value.length > 3000 ||
-        (name.includes('auth-token.') && parseInt(name.split('.').pop() || '0', 10) > 4);
+        (name.includes('auth-token.') && parseInt(name.split('.').pop() || '0', 10) > 8);
 
       if (isBloated) {
         console.warn(`[Supabase Auth] Purging bloated cookie header: ${name} (${value.length} bytes)`);
@@ -43,10 +44,6 @@ export function cleanBloatedAuthCookies() {
 }
 
 export function createClient() {
-  if (typeof document !== 'undefined') {
-    cleanBloatedAuthCookies();
-  }
-
   let supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
   if (supabaseUrl && !supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
     supabaseUrl = `https://${supabaseUrl}`;
@@ -66,6 +63,12 @@ export function createClient() {
     supabaseUrl,
     supabaseKey,
     {
+      auth: {
+        flowType: 'pkce',
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
       global: {
         fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
           if (!isConfigured) {

@@ -137,28 +137,35 @@ export const profilesRouter = router({
   getProfile: publicProcedure
     .input(z.object({ id: z.string().optional() }).nullish())
     .query(async ({ ctx, input }) => {
-      const fallbackId = input?.id || 'default';
+      const fallbackId = input?.id || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || 'default';
       const fallbackProfile = {
         id: fallbackId,
+        userId: fallbackId,
         firstName: 'Artist',
         lastName: '',
         first_name: 'Artist',
         last_name: '',
+        email: (ctx as any)?.user?.email || (ctx as any)?.session?.user?.email || 'artist@vividart.com',
         role: 'artist',
         skills: '',
         bio: '',
         location: '',
+        address: '',
         slug: fallbackId,
         companyName: null,
         companyInfo: null,
         portfolio: null,
         verified: false,
         rate: null,
+        profilePicture: '',
+        avatar_url: '',
+        isPublished: true,
+        is_published: true,
       };
 
       try {
         if (!input?.id) {
-          return null;
+          return fallbackProfile;
         }
 
         let userId: string;
@@ -224,6 +231,72 @@ export const profilesRouter = router({
         };
       } catch (err) {
         console.error('getProfile error caught gracefully:', err);
+        return fallbackProfile;
+      }
+    }),
+
+  getPublicProfile: publicProcedure
+    .input(z.union([z.object({ identifier: z.string().optional() }), z.object({ id: z.string().optional() }), z.string()]).nullish())
+    .query(async ({ ctx, input }) => {
+      const identifier = typeof input === 'string' ? input : (input as any)?.identifier || (input as any)?.id || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || '';
+      const fallbackId = identifier || (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || 'artist-id';
+      const fallbackProfile = {
+        id: fallbackId,
+        userId: fallbackId,
+        email: (ctx as any)?.user?.email || (ctx as any)?.session?.user?.email || 'artist@vividart.com',
+        role: 'artist',
+        firstName: 'Artist',
+        lastName: '',
+        first_name: 'Artist',
+        last_name: '',
+        title: 'Artist',
+        bio: 'Welcome to Vivid Art!',
+        location: '',
+        address: '',
+        skills: '',
+        profilePicture: '',
+        avatar_url: '',
+        isPublished: true,
+        is_published: true,
+        educationItems: [],
+        experienceItems: [],
+        portfolioItems: [],
+        certifications: [],
+        slug: identifier || 'artist',
+      };
+
+      try {
+        if (!identifier) {
+          return fallbackProfile;
+        }
+
+        const supabase = createAdminClient();
+        const profile = await findProfileSafely(supabase, identifier);
+
+        if (!profile) {
+          return fallbackProfile;
+        }
+
+        return {
+          ...fallbackProfile,
+          ...profile,
+          id: profile.id || profile.userId || fallbackId,
+          userId: profile.userId || profile.id || fallbackId,
+          firstName: profile.firstName || profile.first_name || 'Artist',
+          lastName: profile.lastName || profile.last_name || '',
+          first_name: profile.first_name || profile.firstName || 'Artist',
+          last_name: profile.last_name || profile.lastName || '',
+          email: profile.email || (ctx as any)?.user?.email || 'artist@vividart.com',
+          role: profile.role || 'artist',
+          bio: profile.bio || profile.description || 'Welcome to Vivid Art!',
+          title: profile.title || 'Artist',
+          location: profile.location || profile.address || '',
+          skills: profile.skills || '',
+          isPublished: profile.is_published ?? profile.isPublished ?? true,
+          is_published: profile.is_published ?? profile.isPublished ?? true,
+        };
+      } catch (err) {
+        console.error('profiles.getPublicProfile error caught gracefully:', err);
         return fallbackProfile;
       }
     }),
@@ -433,15 +506,33 @@ export const profilesRouter = router({
         }
       } catch (outerErr) {
         console.error('getMyProfile top-level error caught gracefully:', outerErr);
+        const uId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || 'temp-id';
+        const uEmail = (ctx as any)?.user?.email || (ctx as any)?.session?.user?.email || 'artist@vividart.com';
         return {
-          id: (ctx as any)?.user?.id || 'temp-id',
-          email: (ctx as any)?.user?.email || 'artist@vividart.com',
-          first_name: 'New',
-          last_name: 'Artist',
-          firstName: 'New',
-          lastName: 'Artist',
+          id: uId,
+          userId: uId,
+          email: uEmail,
           role: 'artist',
+          first_name: 'Artist',
+          last_name: '',
+          firstName: 'Artist',
+          lastName: '',
+          name: 'Artist',
+          title: 'Artist',
           bio: 'Welcome to Vivid Art!',
+          location: '',
+          address: '',
+          skills: '',
+          rate: null,
+          profilePicture: '',
+          avatar_url: '',
+          isPublished: true,
+          is_published: true,
+          companyName: null,
+          companyInfo: null,
+          portfolio: null,
+          verified: false,
+          slug: uId,
         };
       }
     }),

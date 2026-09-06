@@ -35,26 +35,60 @@ export default function ProfileEditorPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [directUser, setDirectUser] = useState<any>(null);
+  const [isVerifyingDirectAuth, setIsVerifyingDirectAuth] = useState(true);
 
-  // Google Maps script is loaded by BasicInfoCard component
+  // Set up standard Supabase client listener to persist session without aggressive cookie purging
+  useEffect(() => {
+    let isMounted = true;
+    const supabase = createClient();
 
-  const sessionUserId = session?.session?.user?.id;
+    // 1. Immediate local session check
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (isMounted) {
+        if (currentSession?.user) {
+          setDirectUser(currentSession.user);
+        }
+        setIsVerifyingDirectAuth(false);
+      }
+    }).catch(() => {
+      if (isMounted) setIsVerifyingDirectAuth(false);
+    });
+
+    // 2. Auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (isMounted) {
+        if (currentSession?.user) {
+          setDirectUser(currentSession.user);
+        }
+        setIsVerifyingDirectAuth(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const activeUser = session?.session?.user || directUser;
+  const sessionUserId = activeUser?.id;
 
   // Fetch full profile with all sections
   const profileQuery = trpc.publicProfile.getMyFullProfile.useQuery(undefined, {
-    enabled: !!session?.session?.user,
+    enabled: !!activeUser,
     retry: false,
   });
 
   // Fetch profile completeness
   const completenessQuery = trpc.publicProfile.getCompleteness.useQuery(undefined, {
-    enabled: !!session?.session?.user,
+    enabled: !!activeUser,
     retry: false,
   });
 
   // Memoized effective profile combining query data and session data
   const effectiveProfile = useMemo(() => {
-    const user = session?.session?.user;
+    const user = activeUser;
     const fromQuery = profileQuery.data;
 
     let fName = fromQuery?.firstName || fromQuery?.first_name || (typeof user?.name === 'string' ? user.name.split(' ')[0] : '') || '';
@@ -242,7 +276,9 @@ export default function ProfileEditorPage() {
   };
 
   // Show loading state while authentication is being determined
-  if (status === 'loading') {
+  const isAuthLoading = status === 'loading' || (isVerifyingDirectAuth && !activeUser);
+
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center">
         <div className="glass-card p-8 rounded-3xl">
@@ -253,7 +289,7 @@ export default function ProfileEditorPage() {
   }
 
   // Check authentication after loading is complete
-  if (status === 'unauthenticated' || !session?.session?.user) {
+  if (!activeUser && status === 'unauthenticated' && !isVerifyingDirectAuth) {
     return (
       <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
         <div className="glass-card p-8 rounded-3xl text-center max-w-md">
