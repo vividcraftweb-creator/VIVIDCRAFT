@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clearing Session...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 480px;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+    p { color: #a0a0a0; margin-bottom: 1.5rem; line-height: 1.6; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #333;
+      border-top: 3px solid #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status { color: #4ade80; font-weight: 600; }
+    .error { color: #f87171; }
+    a { color: #60a5fa; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner" id="spinner"></div>
+    <h1>Clearing Session Data</h1>
+    <p id="message">Removing oversized authentication cookies...</p>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    (function() {
+      var cleared = 0;
+      var statusEl = document.getElementById('status');
+      var messageEl = document.getElementById('message');
+      var spinnerEl = document.getElementById('spinner');
+
+      try {
+        // Get all cookies for this domain
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+          var cookie = cookies[i].trim();
+          var name = cookie.split('=')[0];
+          if (!name) continue;
+
+          // Clear ALL Supabase auth cookies (sb-*-auth-token chunks)
+          // Also clear any cookie that is suspiciously large
+          var shouldClear = name.indexOf('sb-') === 0 || cookie.length > 3000;
+
+          if (shouldClear) {
+            // Clear with multiple path variations to ensure removal
+            var paths = ['/', '/api', '/auth', '/profile-editor', '/dashboard'];
+            for (var p = 0; p < paths.length; p++) {
+              document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=' + paths[p];
+              document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=' + paths[p] + '; domain=' + location.hostname;
+              // Also try parent domain for subdomains
+              var parts = location.hostname.split('.');
+              if (parts.length > 2) {
+                var parentDomain = '.' + parts.slice(-2).join('.');
+                document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=' + paths[p] + '; domain=' + parentDomain;
+              }
+            }
+            cleared++;
+          }
+        }
+
+        // Also try to clear localStorage/sessionStorage auth data
+        try {
+          var keysToRemove = [];
+          for (var j = 0; j < localStorage.length; j++) {
+            var key = localStorage.key(j);
+            if (key && (key.indexOf('sb-') === 0 || key.indexOf('supabase') !== -1)) {
+              keysToRemove.push(key);
+            }
+          }
+          for (var k = 0; k < keysToRemove.length; k++) {
+            localStorage.removeItem(keysToRemove[k]);
+          }
+          keysToRemove = [];
+          for (var j = 0; j < sessionStorage.length; j++) {
+            var key = sessionStorage.key(j);
+            if (key && (key.indexOf('sb-') === 0 || key.indexOf('supabase') !== -1)) {
+              keysToRemove.push(key);
+            }
+          }
+          for (var k = 0; k < keysToRemove.length; k++) {
+            sessionStorage.removeItem(keysToRemove[k]);
+          }
+        } catch(e) {}
+
+        spinnerEl.style.display = 'none';
+        if (cleared > 0) {
+          statusEl.innerHTML = '<span class="status">✓ Cleared ' + cleared + ' cookie(s) successfully.</span>';
+          messageEl.textContent = 'Redirecting to homepage...';
+          setTimeout(function() {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          statusEl.innerHTML = '<span class="status">✓ No bloated cookies found.</span>';
+          messageEl.innerHTML = 'Your session looks clean. <a href="/">Go to homepage</a>';
+        }
+      } catch(e) {
+        spinnerEl.style.display = 'none';
+        statusEl.innerHTML = '<span class="error">Error: ' + e.message + '</span>';
+        messageEl.innerHTML = 'Please <a href="javascript:location.reload()">try again</a> or manually clear cookies in browser settings.';
+      }
+    })();
+  </script>
+</body>
+</html>
