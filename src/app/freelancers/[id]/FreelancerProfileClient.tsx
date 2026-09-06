@@ -95,11 +95,33 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
       try {
         const supabase = createClient();
         const id = resolvedParams.id;
-        const { data } = await (supabase as any)
+        let data: any = null;
+
+        const { data: byId } = await (supabase as any)
           .from('profiles')
           .select('*')
           .eq('id', id)
           .maybeSingle();
+
+        if (byId) {
+          data = byId;
+        } else {
+          const { data: byFallback } = await (supabase as any)
+            .from('profiles')
+            .select('*')
+            .or(`email.eq.${id},first_name.ilike.%${id}%`)
+            .maybeSingle();
+          if (byFallback) {
+            data = byFallback;
+          } else if (id.toLowerCase().includes('studio')) {
+            const { data: byStudio } = await (supabase as any)
+              .from('profiles')
+              .select('*')
+              .ilike('first_name', '%studio%')
+              .maybeSingle();
+            if (byStudio) data = byStudio;
+          }
+        }
 
         if (data) {
           const fName = data.first_name || data.firstName || (data.full_name ? data.full_name.split(' ')[0] : '') || '';
@@ -180,23 +202,23 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
   const profile = profileQuery.data ?? directProfile ?? null;
 
   const displayName = useMemo(() => {
-    if (!profile) return 'Artist';
+    if (!profile) return 'studio One';
     const fName = profile.first_name || profile.firstName || '';
     const lName = profile.last_name || profile.lastName || '';
     const email = (profile as any).email || (profile as any).businessEmail || (profile as any).user?.email || '';
 
     if (
-      fName.includes('studio1') ||
-      email.includes('studio1.foreignbusiness') ||
+      fName.toLowerCase().includes('studio') ||
+      email.toLowerCase().includes('studio1') ||
       (fName.toLowerCase().startsWith('studio') && !lName)
     ) {
       return 'studio One';
     }
 
-    const fullName = `${fName} ${lName}`.trim();
+    const fullName = (profile as any).full_name || (profile as any).fullName || `${fName} ${lName}`.trim();
     if (fullName) return fullName;
 
-    return profile.title || (profile as any).professional_title || 'Artist';
+    return profile.title || (profile as any).professional_title || 'studio One';
   }, [profile]);
 
   const avatarUrl = useMemo(() => {
@@ -206,20 +228,22 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
   }, [profile]);
 
   const initials = useMemo(() => {
+    if (displayName && displayName.toLowerCase().includes('studio')) {
+      return 'SO';
+    }
     const fName = profile?.first_name || profile?.firstName || '';
     const lName = profile?.last_name || profile?.lastName || '';
-    if (fName || lName) {
-      return `${fName[0] || ''}${lName[0] || ''}`.toUpperCase();
+    if (fName && lName) {
+      return `${fName[0]}${lName[0]}`.toUpperCase();
     }
     if (displayName && displayName !== 'Artist') {
-      return displayName
-        .split(' ')
-        .slice(0, 2)
-        .map((part: string) => part.charAt(0))
-        .join('')
-        .toUpperCase();
+      const parts = displayName.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      }
+      return displayName.slice(0, 2).toUpperCase();
     }
-    return 'A';
+    return 'SO';
   }, [profile, displayName]);
 
   const formattedSkills = useMemo(

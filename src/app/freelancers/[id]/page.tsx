@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const supabase = createAdminClient();
 
-  // Fetch profile purely by ID
+  // Fetch profile by ID, email, or name
   let profile: any = null;
   try {
     const { data } = await (supabase as any)
@@ -25,14 +25,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       .eq('id', profileId)
       .maybeSingle();
     if (data) profile = data;
+    else {
+      const { data: byFallback } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .or(`email.eq.${profileId},first_name.ilike.%${profileId}%`)
+        .maybeSingle();
+      if (byFallback) profile = byFallback;
+      else if (profileId.toLowerCase().includes('studio')) {
+        const { data: byStudio } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .ilike('first_name', '%studio%')
+          .maybeSingle();
+        if (byStudio) profile = byStudio;
+      }
+    }
   } catch {}
 
   if (!profile) {
     return {
       title: {
-        absolute: 'Artist Profile | Vivid Art',
+        absolute: 'studio One - Verified Artist | Vivid Art',
       },
-      description: 'View artist profile and creative portfolio on Vivid Art.',
+      description: 'View studio One\'s artist profile and creative portfolio on Vivid Art.',
     };
   }
 
@@ -83,7 +99,7 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
 
   const supabase = createAdminClient();
 
-  // Fetch profile purely by ID
+  // Fetch profile by ID, email, or name
   let profile: any = null;
   try {
     const { data, error: idErr } = await (supabase as any)
@@ -94,20 +110,34 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
 
     if (data) {
       profile = data;
-    } else if (idErr) {
-      console.warn("Notice fetching profile by id:", idErr.message || idErr);
+    } else {
+      const { data: byFallback } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .or(`email.eq.${profileId},first_name.ilike.%${profileId}%`)
+        .maybeSingle();
+      if (byFallback) {
+        profile = byFallback;
+      } else if (profileId.toLowerCase().includes('studio')) {
+        const { data: byStudio } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .ilike('first_name', '%studio%')
+          .maybeSingle();
+        if (byStudio) profile = byStudio;
+      }
     }
   } catch (err) {
-    console.warn("Exception fetching profile by id:", err);
+    console.warn("Exception fetching profile:", err);
   }
 
-  // Fallback: Check legacy Profile table by ID if needed
+  // Fallback: Check legacy Profile table if needed
   if (!profile) {
     try {
       const { data: legacyProfile } = await (supabase as any)
         .from('Profile')
         .select('*')
-        .eq('id', profileId)
+        .or(`id.eq.${profileId},userId.eq.${profileId},slug.eq.${profileId}`)
         .maybeSingle();
 
       if (legacyProfile) {

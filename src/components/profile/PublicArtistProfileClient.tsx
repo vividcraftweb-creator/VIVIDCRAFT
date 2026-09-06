@@ -23,8 +23,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-export default function ProfilePage() {
-  const { id } = useParams() as { id: string };
+export default function PublicArtistProfileClient() {
+  const params = useParams() as { id?: string };
+  const id = params?.id || '';
   const router = useRouter();
   const { data: session, status: authStatus } = useAuth();
   const [directProfile, setDirectProfile] = useState<any>(null);

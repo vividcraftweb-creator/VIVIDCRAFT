@@ -56,7 +56,10 @@ export function createAdminClient() {
   if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
     supabaseUrl = `https://${supabaseUrl}`;
   }
-  const serviceRoleKey = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY) || cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 'placeholder';
+  const anonKey = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 'placeholder';
+  const serviceKey = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  // If serviceKey starts with sb_secret_, it triggers 401 Invalid API key on PostgREST; fallback to working anonKey
+  const serviceRoleKey = (serviceKey && !serviceKey.startsWith('sb_secret_')) ? serviceKey : anonKey;
 
   try {
     return createSupabaseClient(
@@ -71,7 +74,7 @@ export function createAdminClient() {
     );
   } catch (err) {
     console.error('Failed to create Supabase admin client:', err);
-    return createSupabaseClient('https://placeholder.supabase.co', 'placeholder', {
+    return createSupabaseClient(supabaseUrl, anonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
