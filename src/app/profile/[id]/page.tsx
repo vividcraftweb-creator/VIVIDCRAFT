@@ -31,8 +31,8 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  // 1. Fetch using profiles.getPublicProfile
-  const profileQuery = trpc.profiles.getPublicProfile.useQuery(
+  // 1. Fetch using publicProfile.getPublicProfile (public-safe, session-independent)
+  const profileQuery = trpc.publicProfile.getPublicProfile.useQuery(
     { identifier: id },
     {
       staleTime: 60000,
@@ -269,6 +269,7 @@ export default function ProfilePage() {
   }, [id]);
 
   const rawProfile = profileQuery.data || directProfile;
+  const artistData = rawProfile;
 
   // 3. Dynamic Name Construction & Field Mapping
   const {
@@ -475,24 +476,20 @@ export default function ProfilePage() {
         <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-background/90 via-background/70 to-background/50 p-6 sm:p-8 lg:p-10 shadow-2xl backdrop-blur-md">
           <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 lg:gap-8">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left flex-1 min-w-0">
-              {/* Profile Avatar Component: Inspects avatar_url, avatar, and profile_picture. If valid image URL is present, renders <img> directly instead of fallback initials box */}
+              {/* Profile Avatar Component: Bound explicitly to artistData / avatarUrl / /default-avatar.png */}
               <div className="relative h-28 w-28 sm:h-32 sm:w-32 flex-shrink-0 rounded-full border-2 border-primary/30 ring-4 ring-primary/10 shadow-xl overflow-hidden bg-muted">
-                {avatarUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={avatarUrl}
-                    alt={`${fullName} profile picture`}
-                    className="h-full w-full object-cover rounded-full"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                      const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback') as HTMLElement | null;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={artistData?.avatar_url || (artistData as any)?.image || avatarUrl || '/default-avatar.png'}
+                  alt={`${fullName} profile picture`}
+                  className="h-full w-full object-cover rounded-full"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/default-avatar.png';
+                  }}
+                />
                 <div
                   className="avatar-fallback flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-chart-1 text-3xl sm:text-4xl font-bold tracking-wider text-white rounded-full"
-                  style={{ display: avatarUrl ? 'none' : 'flex' }}
+                  style={{ display: (artistData?.avatar_url || (artistData as any)?.image || avatarUrl) ? 'none' : 'flex' }}
                 >
                   {initials}
                 </div>

@@ -42,7 +42,7 @@ const handler = async (req: Request) => {
             return {
               result: {
                 data: {
-                  json: { id: '', role: 'artist', full_name: 'Artist' },
+                  json: { id: '', role: 'artist', avatar_url: null, full_name: '' },
                 },
               },
             };
@@ -51,7 +51,7 @@ const handler = async (req: Request) => {
             return {
               result: {
                 data: {
-                  json: { notifications: [], unreadCount: 0 },
+                  json: { notifications: [], count: 0 },
                 },
               },
             };

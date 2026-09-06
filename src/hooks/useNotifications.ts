@@ -16,6 +16,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const utils = trpc.useUtils();
   const { data } = useAuth();
   const session = data?.session;
+  const hasUser = !!session?.user?.id;
+  const isQueryEnabled = hasUser && enabled;
 
   // Enable real-time notifications
   useRealtimeNotifications(session?.user?.id);
@@ -29,7 +31,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   } = trpc.notifications.getNotifications.useQuery(
     { limit },
     {
-      enabled,
+      enabled: isQueryEnabled,
       retry: false,
     }
   );
@@ -40,7 +42,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const { data: unreadCount } = trpc.notifications.getUnreadNotificationCount.useQuery(
     {},
     {
-      enabled,
+      enabled: isQueryEnabled,
       retry: false,
     }
   );

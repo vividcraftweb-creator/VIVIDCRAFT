@@ -637,27 +637,27 @@ export const profilesRouter = router({
 
         const effectiveUserId = ctx.session?.user?.id || (ctx as any)?.user?.id || userId || '';
         const safeDefaultObject = {
-          id: effectiveUserId,
-          userId: effectiveUserId,
+          id: effectiveUserId || '',
           role: 'artist',
-          full_name: 'Artist',
-          fullName: 'Artist',
-          name: `${defaultFirstName} ${defaultLastName}`.trim() || 'Artist',
+          avatar_url: null,
+          full_name: '',
+          userId: effectiveUserId || '',
+          fullName: '',
+          name: '',
           email: ctx.session?.user?.email || userEmail || '',
           firstName: defaultFirstName,
           lastName: defaultLastName,
           first_name: defaultFirstName,
           last_name: defaultLastName,
-          title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
-          bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
+          title: 'Artist',
+          bio: 'Welcome to Vivid Art!',
           location: '',
           address: '',
           skills: '',
           rate: null,
-          profilePicture: userImage,
-          avatar_url: userImage,
-          avatar: userImage,
-          image: userImage,
+          profilePicture: null,
+          avatar: null,
+          image: null,
           isPublished: true,
           is_published: true,
           companyName: null,
@@ -668,7 +668,13 @@ export const profilesRouter = router({
         };
 
         if (!userId) {
-          return safeDefaultObject;
+          return {
+            ...safeDefaultObject,
+            id: '',
+            role: 'artist',
+            avatar_url: null,
+            full_name: '',
+          };
         }
 
         try {
@@ -823,7 +829,13 @@ export const profilesRouter = router({
           };
         } catch (innerErr) {
           console.warn('Database lookup/insert exception caught gracefully:', innerErr);
-          return safeDefaultObject;
+          return {
+            ...safeDefaultObject,
+            id: '',
+            role: 'artist',
+            avatar_url: null,
+            full_name: '',
+          };
         }
       } catch (outerErr) {
         console.error('getMyProfile top-level error caught gracefully:', outerErr);
@@ -831,15 +843,16 @@ export const profilesRouter = router({
         const uEmail = (ctx as any)?.user?.email || (ctx as any)?.session?.user?.email || '';
         return {
           id: uId || '',
-          userId: uId || '',
           role: 'artist',
+          avatar_url: null,
+          full_name: '',
+          userId: uId || '',
           email: uEmail || '',
           first_name: 'Artist',
           last_name: '',
           firstName: 'Artist',
           lastName: '',
           name: 'Artist',
-          full_name: 'Artist',
           fullName: 'Artist',
           title: 'Artist',
           bio: 'Welcome to Vivid Art!',
@@ -847,17 +860,16 @@ export const profilesRouter = router({
           address: '',
           skills: '',
           rate: null,
-          profilePicture: '',
-          avatar_url: '',
-          avatar: '',
-          image: '',
+          profilePicture: null,
+          avatar: null,
+          image: null,
           isPublished: true,
           is_published: true,
           companyName: null,
           companyInfo: null,
           portfolio: null,
           verified: false,
-          slug: uId || 'artist',
+          slug: 'artist',
         };
       }
     }),

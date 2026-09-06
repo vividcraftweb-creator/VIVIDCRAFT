@@ -106,10 +106,14 @@ const Header = () => {
   }, []);
 
   const hasUser = !!user;
+  const isPublicProfilePage =
+    Boolean(pathname?.startsWith('/artist') ||
+    pathname?.startsWith('/freelancers/') ||
+    (pathname?.startsWith('/profile/') && !pathname?.startsWith('/profile/edit')));
 
-  // Fetch profile data for avatar and name
+  // Fetch profile data for avatar and name (disabled on public artist profile pages to prevent unauthenticated batch crashes)
   const { data: profile, isLoading: isProfileLoading } = trpc.profiles.getMyProfile.useQuery({}, {
-    enabled: hasUser && userRole !== 'ADMIN',
+    enabled: hasUser && userRole !== 'ADMIN' && !isPublicProfilePage,
     retry: false,
   });
 
