@@ -42,16 +42,16 @@ const handler = async (req: Request) => {
             return {
               result: {
                 data: {
-                  json: { id: '', role: 'artist', avatar_url: null, full_name: '' },
+                  json: { id: null, role: 'artist', avatar_url: null, full_name: '' },
                 },
               },
             };
           }
-          if (proc.includes('getNotifications')) {
+          if (proc.toLowerCase().includes('notification')) {
             return {
               result: {
                 data: {
-                  json: { notifications: [], count: 0 },
+                  json: { notifications: [], unreadCount: 0, count: 0 },
                 },
               },
             };

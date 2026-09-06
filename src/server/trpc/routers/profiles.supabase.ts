@@ -667,10 +667,11 @@ export const profilesRouter = router({
           slug: userId || 'artist',
         };
 
+        const fallbackAuthId = (ctx as any)?.user?.id || ctx.session?.user?.id || null;
         if (!userId) {
           return {
             ...safeDefaultObject,
-            id: '',
+            id: fallbackAuthId,
             role: 'artist',
             avatar_url: null,
             full_name: '',
@@ -794,7 +795,12 @@ export const profilesRouter = router({
           }
 
           if (!data) {
-            return safeDefaultObject;
+            return {
+              ...safeDefaultObject,
+              id: fallbackAuthId || userId || null,
+              role: 'artist',
+              avatar_url: null,
+            };
           }
 
           const rawDbRole = data?.role ? String(data.role).trim().toLowerCase() : '';
@@ -831,18 +837,17 @@ export const profilesRouter = router({
           console.warn('Database lookup/insert exception caught gracefully:', innerErr);
           return {
             ...safeDefaultObject,
-            id: '',
+            id: fallbackAuthId || userId || null,
             role: 'artist',
             avatar_url: null,
-            full_name: '',
           };
         }
       } catch (outerErr) {
         console.error('getMyProfile top-level error caught gracefully:', outerErr);
-        const uId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || '';
+        const uId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || null;
         const uEmail = (ctx as any)?.user?.email || (ctx as any)?.session?.user?.email || '';
         return {
-          id: uId || '',
+          id: uId,
           role: 'artist',
           avatar_url: null,
           full_name: '',

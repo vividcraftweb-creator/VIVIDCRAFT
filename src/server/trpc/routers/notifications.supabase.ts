@@ -181,7 +181,7 @@ export const notificationsRouter = router({
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return { unreadCount: 0, count: 0 };
+          return { notifications: [], unreadCount: 0, count: 0 };
         }
 
         let count = 0;
@@ -217,10 +217,10 @@ export const notificationsRouter = router({
           console.warn('Supabase admin client error in getUnreadNotificationCount:', e);
         }
 
-        return { unreadCount: count, count };
+        return { notifications: [], unreadCount: count, count };
       } catch (err) {
         console.error('getUnreadNotificationCount error caught gracefully:', err);
-        return { unreadCount: 0, count: 0 };
+        return { notifications: [], unreadCount: 0, count: 0 };
       }
     }),
 
@@ -230,7 +230,7 @@ export const notificationsRouter = router({
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return { unreadCount: 0, count: 0 };
+          return { notifications: [], unreadCount: 0, count: 0 };
         }
 
         let count = 0;
@@ -266,10 +266,10 @@ export const notificationsRouter = router({
           console.warn('Supabase admin client error in getUnreadCount:', e);
         }
 
-        return { unreadCount: count, count };
+        return { notifications: [], unreadCount: count, count };
       } catch (err) {
         console.error('getUnreadCount error caught gracefully:', err);
-        return { unreadCount: 0, count: 0 };
+        return { notifications: [], unreadCount: 0, count: 0 };
       }
     }),
 
@@ -279,11 +279,11 @@ export const notificationsRouter = router({
       try {
         const userId = (ctx as any).user?.id || ctx.session?.user?.id;
         if (!userId) {
-          return { unreadCount: 0, count: 0 };
+          return { notifications: [], unreadCount: 0, count: 0 };
         }
-        return { unreadCount: 0, count: 0 };
+        return { notifications: [], unreadCount: 0, count: 0 };
       } catch {
-        return { unreadCount: 0, count: 0 };
+        return { notifications: [], unreadCount: 0, count: 0 };
       }
     }),
 

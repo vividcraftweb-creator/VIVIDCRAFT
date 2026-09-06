@@ -36,8 +36,12 @@ export function NotificationDropdown({
     isMarkingAllRead,
   } = useNotifications({
     limit: 10,
-    enabled: !!session?.user?.id,
+    enabled: !!session,
   });
+
+  if (!session) {
+    return null;
+  }
 
   const hasUnreadNotifications = unreadCount > 0;
 

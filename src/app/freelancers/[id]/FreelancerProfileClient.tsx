@@ -200,6 +200,7 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
   }, [resolvedParams.id]);
 
   const profile = profileQuery.data ?? directProfile ?? null;
+  const data = profile;
   const artistData = profile;
 
   const displayName = useMemo(() => {
@@ -462,18 +463,30 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
 
               <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:items-center">
                 <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28 md:h-30 md:w-30 lg:mx-0 lg:h-32 lg:w-32 transition-transform hover:scale-105 rounded-[28px] border-2 border-primary/20 ring-4 ring-primary/10 shadow-2xl shadow-primary/25 overflow-hidden bg-primary">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={artistData?.avatar_url || (artistData as any)?.image || avatarUrl || '/default-avatar.png'}
-                    alt={`${displayName} avatar`}
-                    className="object-cover h-full w-full rounded-[28px]"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = '/default-avatar.png';
-                    }}
-                  />
+                  {data?.avatar_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={data.avatar_url}
+                      alt={`${displayName} avatar`}
+                      className="object-cover h-full w-full rounded-[28px]"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/default-avatar.png';
+                      }}
+                    />
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={(data as any)?.image || avatarUrl || '/default-avatar.png'}
+                      alt={`${displayName} avatar`}
+                      className="object-cover h-full w-full rounded-[28px]"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/default-avatar.png';
+                      }}
+                    />
+                  )}
                   <div
                     className="avatar-fallback flex h-full w-full items-center justify-center bg-primary text-3xl font-semibold uppercase tracking-widest text-white rounded-none"
-                    style={{ display: (artistData?.avatar_url || (artistData as any)?.image || avatarUrl) ? 'none' : 'flex' }}
+                    style={{ display: (data?.avatar_url || (data as any)?.image || avatarUrl) ? 'none' : 'flex' }}
                   >
                     {initials}
                   </div>
