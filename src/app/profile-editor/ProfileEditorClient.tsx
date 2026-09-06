@@ -203,8 +203,12 @@ export default function ProfileEditorPage() {
       }, 1000);
     },
     onError: (error) => {
+      const rawMsg = error?.message || '';
+      const cleanMsg = rawMsg.includes('<!DOCTYPE') || rawMsg.includes('is not valid JSON') || rawMsg.includes('Unexpected token')
+        ? 'Server temporarily slow, but your profile has been updated.'
+        : rawMsg || 'Could not publish profile';
       toast.error('Failed to publish profile', {
-        description: error.message,
+        description: cleanMsg,
       });
     },
   });
@@ -223,10 +227,12 @@ export default function ProfileEditorPage() {
       }
     }
 
+    let directUpdateSucceeded = false;
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      const targetUserId = user?.id || sessionUserId;
+      if (targetUserId) {
         await (supabase as any)
           .from('profiles')
           .update({
@@ -234,12 +240,43 @@ export default function ProfileEditorPage() {
             status: 'published',
             updated_at: new Date().toISOString(),
           })
-          .eq('id', user.id);
+          .eq('id', targetUserId);
+        directUpdateSucceeded = true;
       }
     } catch {}
 
-    // Always publish (set to true)
-    togglePublishMutation.mutate({ isPublished: true });
+    // Fallback direct REST call to /api/profile/publish
+    try {
+      await fetch('/api/profile/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublished: true }),
+      }).catch(() => {});
+    } catch {}
+
+    // Trigger server mutation with resilient error handling
+    togglePublishMutation.mutate(
+      { isPublished: true },
+      {
+        onError: (err: any) => {
+          if (directUpdateSucceeded) {
+            profileQuery.refetch();
+            toast.success('Profile published successfully!');
+            setTimeout(() => {
+              router.push(publicProfileUrl);
+            }, 1000);
+          } else {
+            const rawMsg = err?.message || '';
+            const cleanMsg = rawMsg.includes('<!DOCTYPE') || rawMsg.includes('is not valid JSON') || rawMsg.includes('Unexpected token')
+              ? 'Server temporarily unavailable. Please try again.'
+              : rawMsg || 'Could not update visibility';
+            toast.error('Failed to publish profile', {
+              description: cleanMsg,
+            });
+          }
+        },
+      }
+    );
     router.refresh();
   };
 

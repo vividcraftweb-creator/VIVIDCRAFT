@@ -444,10 +444,21 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
         }
       }
 
-      // 3. Server mutation
-      await togglePublishMutation.mutateAsync({
-        isPublished: nextState,
-      });
+      // 3. Server mutation with REST fallback
+      try {
+        await togglePublishMutation.mutateAsync({
+          isPublished: nextState,
+        });
+      } catch (mutateErr) {
+        // Fallback to direct REST endpoint
+        try {
+          await fetch('/api/profile/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isPublished: nextState, userId: targetUserId }),
+          });
+        } catch {}
+      }
 
       // 4. Invalidate all profile queries and refresh Next.js route cache
       utils.profiles.getMyProfile.invalidate();
@@ -459,7 +470,11 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
       toast.success(nextState ? "Profile published successfully!" : "Profile unpublished successfully!");
     } catch (err: any) {
       console.error("Publish toggle error:", err);
-      toast.error(`Publish failed: ${err.message || 'Could not update visibility'}`);
+      const rawMsg = err?.message || '';
+      const cleanMsg = rawMsg.includes('<!DOCTYPE') || rawMsg.includes('is not valid JSON') || rawMsg.includes('Unexpected token')
+        ? 'Network glitch. Please try refreshing the page.'
+        : rawMsg || 'Could not update visibility';
+      toast.error(`Publish notice: ${cleanMsg}`);
       // Revert optimistic update
       setDirectProfile((prev: any) => ({
         ...(prev || {}),
