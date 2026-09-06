@@ -18,7 +18,9 @@ export function getMiddlewareClient(request: NextRequest, response: NextResponse
       cookies: {
         getAll() {
           try {
-            return request.cookies.getAll()
+            return request.cookies.getAll().filter(c => {
+              return !c.value.includes('data%3Aimage') && !c.value.includes('data:image') && c.value.length < 3500;
+            });
           } catch {
             return []
           }
@@ -56,6 +58,26 @@ export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
+
+  // Clean bloated cookies that would trigger 494 REQUEST_HEADER_TOO_LARGE
+  try {
+    const allCookies = request.cookies.getAll();
+    for (const cookie of allCookies) {
+      const isBloated =
+        cookie.value.includes('data%3Aimage') ||
+        cookie.value.includes('data:image') ||
+        cookie.value.length > 3000 ||
+        (cookie.name.includes('auth-token.') && parseInt(cookie.name.split('.').pop() || '0', 10) > 4);
+
+      if (isBloated) {
+        supabaseResponse.cookies.set(cookie.name, '', {
+          maxAge: 0,
+          path: '/',
+          expires: new Date(0),
+        });
+      }
+    }
+  } catch {}
 
   try {
     const { pathname } = request.nextUrl;

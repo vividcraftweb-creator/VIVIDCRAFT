@@ -28,6 +28,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string>('');
   const [profileData, setProfileData] = useState<{
     first_name?: string;
     last_name?: string;
@@ -166,9 +167,13 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             setSelectedSkills([]);
           }
 
-          if (picVal) {
+          if (picVal && !picVal.startsWith('data:') && picVal.length < 500) {
             const resolved = getProfilePictureUrl(user?.id || profile?.userId, picVal) || picVal;
             setAvatarUrl(resolved);
+          } else if (picVal && picVal.startsWith('data:')) {
+            try {
+              supabase.auth.updateUser({ data: { avatar_url: null } }).catch(() => {});
+            } catch {}
           }
         }
       } catch (err) {
@@ -191,24 +196,6 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     },
     onError: (error) => {
       toast.error('Failed to update basic information', {
-        description: error.message,
-      });
-    },
-  });
-
-  const uploadDocumentMutation = trpc.documents.uploadDocument.useMutation({
-    onSuccess: (data) => {
-      if (data) {
-        setFormData(prev => ({ ...prev, profilePicture: data.fileName }));
-        utils.publicProfile.getMyFullProfile.invalidate();
-        setLastUploadTimestamp(Date.now());
-      }
-      setIsUploadingPicture(false);
-      toast.success('Profile picture uploaded successfully!');
-    },
-    onError: (error) => {
-      setIsUploadingPicture(false);
-      toast.error('Failed to upload profile picture', {
         description: error.message,
       });
     },
@@ -238,6 +225,11 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         return;
       }
 
+      const rawAvatar = avatarUrl || formData.profilePicture || '';
+      const cleanAvatarUrl = (rawAvatar && rawAvatar.startsWith('http') && rawAvatar.length < 500)
+        ? rawAvatar
+        : null;
+
       try {
         await supabase.auth.updateUser({
           data: {
@@ -245,10 +237,10 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             last_name: formData.lastName || null,
             name: `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
             title: formData.title || null,
-            bio: formData.bio || null,
+            bio: formData.bio ? (formData.bio.length > 500 ? formData.bio.slice(0, 500) : formData.bio) : null,
             address: formData.location || null,
-            skills: skillsString || null,
-            avatar_url: avatarUrl || formData.profilePicture || null,
+            skills: skillsString ? (skillsString.length > 300 ? skillsString.slice(0, 300) : skillsString) : null,
+            avatar_url: cleanAvatarUrl,
           },
         });
       } catch (authMetaErr) {
@@ -263,7 +255,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         title: formData.title || null,
         bio: formData.bio || null,
         skills: skillsString || null,
-        avatar_url: avatarUrl || formData.profilePicture || null,
+        avatar_url: cleanAvatarUrl,
         updated_at: new Date().toISOString(),
       };
 
@@ -334,20 +326,18 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
       toast.error('Only JPG, PNG, and WebP images are allowed');
       return;
     }
 
     setIsUploadingPicture(true);
 
+    // Fast local memory preview using URL.createObjectURL (prevents base64 bloat in headers and cookies)
+    const localPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(localPreviewUrl);
+
     try {
-      const base64 = await fileToBase64(file);
-      const dataUrl = `data:${file.type};base64,${base64}`;
-
-      // 1. Instant preview with data URL
-      setAvatarUrl(dataUrl);
-
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -356,13 +346,14 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         throw new Error('User session not found');
       }
 
-      const fileExt = file.name.split('.').pop() || 'png';
-      const filePath = `${userId}/${Date.now()}.${fileExt}`;
+      let publicAvatarUrl = '';
 
-      let publicAvatarUrl = dataUrl;
-
-      // Try uploading to 'avatars' storage bucket
+      // 1. Direct image upload to Supabase Storage bucket using official @supabase/supabase-js storage client
       try {
+        const fileExt = file.name ? file.name.split('.').pop() || 'png' : 'png';
+        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+        const filePath = `${userId}/${Date.now()}.${cleanExt}`;
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(filePath, file, {
@@ -378,7 +369,33 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             publicAvatarUrl = publicUrlData.publicUrl;
           }
         }
-      } catch {}
+      } catch (directStorageErr) {
+        console.warn('Direct Supabase Storage upload attempt notice:', directStorageErr);
+      }
+
+      // 2. Fallback: send image file via standard FormData (multipart/form-data) in the request body
+      if (!publicAvatarUrl) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
+        uploadFormData.append('userId', userId);
+
+        const response = await fetch('/api/profile/upload', {
+          method: 'POST',
+          body: uploadFormData, // Standard multipart/form-data in request body (NOT headers)
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || 'Failed to upload profile picture via FormData');
+        }
+
+        const result = await response.json();
+        publicAvatarUrl = result.url || result.avatar_url;
+      }
+
+      if (!publicAvatarUrl || publicAvatarUrl.startsWith('data:')) {
+        throw new Error('Failed to retrieve valid public URL for profile picture');
+      }
 
       const now = Date.now();
       const cacheBustedUrl = publicAvatarUrl.startsWith('http')
@@ -396,25 +413,30 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         profilePicture: publicAvatarUrl,
       }));
 
-      // 2. Persist avatar_url to Supabase Auth user metadata
-      try {
-        await supabase.auth.updateUser({
-          data: { avatar_url: publicAvatarUrl },
-        });
-      } catch (authMetaErr) {
-        console.warn('Auth user metadata avatar update notice:', authMetaErr);
-      }
-
-      // 3. Persist to profiles table
+      // 3. Persist to profiles database table
       try {
         await (supabase as any)
           .from('profiles')
           .update({
             avatar_url: publicAvatarUrl,
+            profile_picture: publicAvatarUrl,
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId);
-      } catch {}
+      } catch (dbErr) {
+        console.warn('Profiles table update notice:', dbErr);
+      }
+
+      // 4. Persist clean public URL to Supabase Auth metadata (NEVER base64 payload)
+      if (publicAvatarUrl.startsWith('http') && publicAvatarUrl.length < 500) {
+        try {
+          await supabase.auth.updateUser({
+            data: { avatar_url: publicAvatarUrl },
+          });
+        } catch (authMetaErr) {
+          console.warn('Auth user metadata avatar update notice:', authMetaErr);
+        }
+      }
 
       toast.success('Profile picture updated successfully!');
       onUpdate();
@@ -429,19 +451,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
       });
     } finally {
       setIsUploadingPicture(false);
+      URL.revokeObjectURL(localPreviewUrl);
+      setPreviewUrl('');
     }
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(',')[1]); // Remove data:mime/type;base64, prefix
-      };
-      reader.onerror = error => reject(error);
-    });
   };
 
   const handleCancel = () => {
@@ -488,9 +500,11 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                 <Avatar className="h-24 w-24">
                   <AvatarImage
                     src={
-                      avatarUrl
+                      previewUrl
+                        ? previewUrl
+                        : avatarUrl && !avatarUrl.startsWith('data:')
                         ? avatarUrl
-                        : formData.profilePicture && profile?.userId
+                        : formData.profilePicture && !formData.profilePicture.startsWith('data:') && profile?.userId
                         ? lastUploadTimestamp > 0
                           ? getProfilePictureUrlWithTimestamp(profile.userId, formData.profilePicture, lastUploadTimestamp)
                           : getProfilePictureUrl(profile.userId, formData.profilePicture)
@@ -760,7 +774,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Profile Picture</h3>
             <div className="flex items-center gap-6">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={avatarUrl || profileData.avatar_url || profilePictureUrl || undefined} />
+                <AvatarImage src={(avatarUrl && !avatarUrl.startsWith('data:') ? avatarUrl : undefined) || (profileData.avatar_url && !profileData.avatar_url.startsWith('data:') ? profileData.avatar_url : undefined) || (profilePictureUrl && !profilePictureUrl.startsWith('data:') ? profilePictureUrl : undefined)} />
                 <AvatarFallback className="text-lg">
                   {profileInitials}
                 </AvatarFallback>

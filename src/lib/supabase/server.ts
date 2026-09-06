@@ -23,7 +23,9 @@ export async function createClient() {
       {
         cookies: {
           getAll() {
-            return cookieStore.getAll()
+            return cookieStore.getAll().filter(c => {
+              return !c.value.includes('data%3Aimage') && !c.value.includes('data:image') && c.value.length < 3500;
+            });
           },
           setAll(cookiesToSet) {
             try {

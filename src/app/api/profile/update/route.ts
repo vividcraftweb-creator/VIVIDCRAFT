@@ -147,6 +147,19 @@ export async function POST(request: NextRequest) {
     if (body.portfolio !== undefined) updatePayload.portfolio = body.portfolio;
     if (body.website !== undefined) updatePayload.website = body.website;
 
+    const avatarInput = body.avatar_url ?? body.avatarUrl ?? body.profile_picture ?? body.profilePicture ?? undefined;
+    if (avatarInput !== undefined) {
+      if (typeof avatarInput === 'string' && !avatarInput.startsWith('data:') && avatarInput.length < 500) {
+        updatePayload.avatar_url = avatarInput;
+        updatePayload.profile_picture = avatarInput;
+        updatePayload.profilePicture = avatarInput;
+      } else if (avatarInput === null) {
+        updatePayload.avatar_url = null;
+        updatePayload.profile_picture = null;
+        updatePayload.profilePicture = null;
+      }
+    }
+
     if (existingProfile) {
       let slug = existingProfile.slug;
       try {

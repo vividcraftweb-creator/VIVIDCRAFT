@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, cleanBloatedAuthCookies } from '@/lib/supabase/client';
 import { usePathname } from 'next/navigation';
 
 interface SessionProviderProps {
@@ -32,6 +32,9 @@ export default function SessionProvider({ children }: SessionProviderProps) {
   const isSigningOutRef = useRef(false);
 
   useEffect(() => {
+    // Proactively clean bloated cookies on mount
+    cleanBloatedAuthCookies();
+
     const supabase = createClient();
 
     const cleanClientStorage = (shouldRedirect = false) => {
@@ -89,6 +92,23 @@ export default function SessionProvider({ children }: SessionProviderProps) {
           supabase.auth.signOut({ scope: 'global' }).catch(() => {}).finally(() => {
             cleanClientStorage(true);
           });
+        }
+      } else if (user) {
+        // Sanitize user_metadata to purge any previously stored base64 images or bloated strings
+        const meta = user.user_metadata || {};
+        let needsSanitization = false;
+        const sanitizedUpdates: Record<string, any> = {};
+
+        for (const [key, value] of Object.entries(meta)) {
+          if (typeof value === 'string' && (value.startsWith('data:') || value.length > 800)) {
+            sanitizedUpdates[key] = null;
+            needsSanitization = true;
+          }
+        }
+
+        if (needsSanitization) {
+          console.warn('[SessionProvider] Sanitizing bloated user_metadata payload to reduce cookie headers');
+          supabase.auth.updateUser({ data: sanitizedUpdates }).catch(() => {});
         }
       }
     }).catch(() => {});
