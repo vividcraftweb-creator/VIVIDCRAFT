@@ -564,14 +564,15 @@ export const profilesRouter = router({
         const cleanMetaRole = rawMetaRole ? String(rawMetaRole).trim().toLowerCase() : '';
         const fallbackRole = (cleanMetaRole === 'client' || cleanMetaRole === 'buyer' || cleanMetaRole === 'customer') ? 'client' : 'artist';
 
+        const effectiveUserId = ctx.session?.user?.id || (ctx as any)?.user?.id || userId || '';
         const safeDefaultObject = {
-          id: userId || '',
-          userId: userId || '',
+          id: effectiveUserId,
+          userId: effectiveUserId,
           role: 'artist',
-          email: userEmail || '',
+          full_name: 'Artist',
+          fullName: 'Artist',
           name: `${defaultFirstName} ${defaultLastName}`.trim() || 'Artist',
-          full_name: `${defaultFirstName} ${defaultLastName}`.trim() || 'Artist',
-          fullName: `${defaultFirstName} ${defaultLastName}`.trim() || 'Artist',
+          email: ctx.session?.user?.email || userEmail || '',
           firstName: defaultFirstName,
           lastName: defaultLastName,
           first_name: defaultFirstName,

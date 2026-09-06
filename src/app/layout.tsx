@@ -203,6 +203,28 @@ export default async function RootLayout({
               (function() {
                 if (typeof window === 'undefined') return;
 
+                // Disable and remove any dynamically injected ma_payload.js or tracking scripts
+                try {
+                  var blockObserver = new MutationObserver(function(mutations) {
+                    for (var i = 0; i < mutations.length; i++) {
+                      var added = mutations[i].addedNodes;
+                      for (var j = 0; j < added.length; j++) {
+                        var node = added[j];
+                        if (node && node.tagName === 'SCRIPT') {
+                          var src = node.src || (node.getAttribute && node.getAttribute('src')) || '';
+                          if (src.indexOf('ma_payload') !== -1) {
+                            node.type = 'text/plain';
+                            if (node.parentNode) node.parentNode.removeChild(node);
+                          }
+                        }
+                      }
+                    }
+                  });
+                  if (document.documentElement) {
+                    blockObserver.observe(document.documentElement, { childList: true, subtree: true });
+                  }
+                } catch (e) {}
+
                 // 1. Safe proxy for DOM elements queried before mounting/hydration
                 var safeDummyElement = {
                   getAttribute: function(name) { return null; },

@@ -42,6 +42,7 @@ export const notificationsRouter = router({
         if (!userId) {
           return {
             notifications: [],
+            unreadCount: 0,
             items: [],
             count: 0,
             nextCursor: null,
@@ -117,6 +118,7 @@ export const notificationsRouter = router({
 
         return {
           notifications: items,
+          unreadCount: items.filter((n: any) => !n.read).length,
           items: items,
           count: items.length,
           nextCursor,
@@ -125,6 +127,7 @@ export const notificationsRouter = router({
         console.error('getNotifications error caught gracefully:', err);
         return {
           notifications: [],
+          unreadCount: 0,
           items: [],
           count: 0,
           nextCursor: null,
