@@ -38,7 +38,7 @@ export const notificationsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       try {
-        const userId = (ctx as any).user?.id || ctx.session?.user?.id;
+        const userId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || null;
         if (!userId) {
           return {
             notifications: [],
@@ -179,7 +179,7 @@ export const notificationsRouter = router({
     .input(z.any().optional().nullable())
     .query(async ({ ctx }) => {
       try {
-        const userId = (ctx as any).user?.id || ctx.session?.user?.id;
+        const userId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || null;
         if (!userId) {
           return { notifications: [], unreadCount: 0, count: 0 };
         }
@@ -228,7 +228,7 @@ export const notificationsRouter = router({
     .input(z.any().optional().nullable())
     .query(async ({ ctx }) => {
       try {
-        const userId = (ctx as any).user?.id || ctx.session?.user?.id;
+        const userId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || null;
         if (!userId) {
           return { notifications: [], unreadCount: 0, count: 0 };
         }
@@ -277,7 +277,7 @@ export const notificationsRouter = router({
     .input(z.any().optional().nullable())
     .query(async ({ ctx }) => {
       try {
-        const userId = (ctx as any).user?.id || ctx.session?.user?.id;
+        const userId = (ctx as any)?.user?.id || (ctx as any)?.session?.user?.id || null;
         if (!userId) {
           return { notifications: [], unreadCount: 0, count: 0 };
         }
