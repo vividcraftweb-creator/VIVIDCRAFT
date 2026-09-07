@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Search, MapPin, CheckCircle, Clock, Shield } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
-import { isArtistProfile } from '@/lib/artist-filter';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import ArtistCard, { getPublicUrl } from '@/components/artists/ArtistCard';
 
@@ -26,7 +25,7 @@ export default function FreelancersPageClient({
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profiles, setProfiles] = useState<any[]>(() => {
-    return Array.isArray(initialProfiles) ? initialProfiles.filter(isArtistProfile) : [];
+    return Array.isArray(initialProfiles) ? initialProfiles : [];
   });
   const [loading, setLoading] = useState(initialProfiles.length === 0);
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
@@ -35,69 +34,50 @@ export default function FreelancersPageClient({
     setMounted(true);
   }, []);
 
-  // 1. Direct Supabase Query: Fetch all rows directly from lowercase 'profiles' table
+  // 1. Direct Supabase Query: Fetch all artists directly from 'profiles' table
   useEffect(() => {
     const supabase = createClient();
 
     async function loadAllProfiles() {
       setLoading(true);
       try {
-        const profilesMap = new Map<string, any>();
+        const { data: artists, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'artist');
 
-        // Fetch from 'profiles' table strictly where role = 'artist' (case-insensitive)
-        try {
-          let { data: pRows, error: pErr } = await supabase
-            .from('profiles')
-            .select('*')
-            .or('role.eq.artist,role.eq.Artist,role.ilike.artist')
-            .order('created_at', { ascending: false });
-
-          if (pErr || !pRows) {
-            const res = await supabase
-              .from('profiles')
-              .select('*')
-              .ilike('role', 'artist')
-              .order('created_at', { ascending: false });
-            if (!res.error && res.data) {
-              pRows = res.data;
-              pErr = null;
-            }
+        if (error) {
+          console.error("Error fetching artists from profiles:", error);
+          if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
+            setProfiles(initialProfiles);
           }
-
-          if (pErr) console.warn("profiles table query error:", pErr);
-          if (pRows && Array.isArray(pRows)) {
-            const artistRows = pRows.filter(isArtistProfile);
-            for (const p of artistRows) {
-              const key = p.id || p.userId || p.user_id;
-              if (key) {
-                let avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
-                if (!avatar) {
-                  try {
-                    const { data: storageFiles } = await supabase.storage.from('avatars').list(key, { limit: 1, sortBy: { column: 'created_at', order: 'desc' } });
-                    if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
-                      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${key}/${storageFiles[0].name}`);
-                      if (pubData?.publicUrl) avatar = pubData.publicUrl;
-                    }
-                  } catch {}
-                }
-                profilesMap.set(key, {
-                  ...p,
-                  id: key,
-                  userId: p.user_id || p.userId || key,
-                  avatar_url: avatar,
-                  profile_picture: avatar,
-                });
-              }
-            }
-          }
-        } catch (e) {
-          console.warn("Direct profiles fetch exception:", e);
+          return;
         }
 
-        const all = Array.from(profilesMap.values());
-        setProfiles(all);
+        if (artists && Array.isArray(artists)) {
+          const profilesMap = new Map<string, any>();
+          for (const p of artists) {
+            const key = p.id || p.userId || p.user_id;
+            if (key) {
+              const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
+              profilesMap.set(key, {
+                ...p,
+                id: key,
+                userId: p.user_id || p.userId || key,
+                avatar_url: avatar,
+                profile_picture: avatar,
+              });
+            }
+          }
+          setProfiles(Array.from(profilesMap.values()));
+        } else if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
+          setProfiles(initialProfiles);
+        }
       } catch (err) {
         console.error("Emergency load profiles error:", err);
+        if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
+          setProfiles(initialProfiles);
+        }
       } finally {
         setLoading(false);
       }
@@ -122,17 +102,14 @@ export default function FreelancersPageClient({
     };
   }, []);
 
-  // 2. Filter out Client accounts (like futureminds) and keep Artists (like studio One)
+  // 2. Display all artist profiles without restrictive filters, filtering only on search query
   const displayedArtists = useMemo(() => {
-    // A. Filter only genuine artist accounts using shared isArtistProfile
-    const artistsOnly = profiles.filter(isArtistProfile);
-
     if (!searchQuery.trim()) {
-      return artistsOnly;
+      return profiles;
     }
 
     const q = searchQuery.toLowerCase().trim();
-    return artistsOnly.filter((artist: any) => {
+    return profiles.filter((artist: any) => {
       const fName = artist.first_name || artist.firstName || '';
       const lName = artist.last_name || artist.lastName || '';
       const fullName = artist.full_name || artist.name || '';

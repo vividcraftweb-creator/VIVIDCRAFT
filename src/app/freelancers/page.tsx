@@ -4,7 +4,6 @@ export const revalidate = 0;
 import { Metadata } from 'next';
 import { createPageMetadata } from '@/lib/seo-metadata';
 import { createClient } from '@/lib/supabase/server';
-import { isArtistProfile } from '@/lib/artist-filter';
 import FreelancersPageClient from './FreelancersPageClient';
 
 export const metadata: Metadata = createPageMetadata({
@@ -17,27 +16,17 @@ export default async function FreelancersPage() {
 
   try {
     const supabase = await createClient();
-    let { data, error } = await supabase
+    const { data: artists, error } = await supabase
       .from('profiles')
       .select('*')
-      .or('role.eq.artist,role.eq.Artist,role.ilike.artist')
-      .order('created_at', { ascending: false });
+      .eq('role', 'artist');
 
-    if (error || !data) {
-      const res = await supabase
-        .from('profiles')
-        .select('*')
-        .ilike('role', 'artist')
-        .order('created_at', { ascending: false });
-      if (!res.error && res.data) {
-        data = res.data;
-      }
+    if (error) {
+      console.error("Error fetching artists from profiles:", error);
     }
 
-    if (!error && Array.isArray(data)) {
-      profiles = data.filter(isArtistProfile);
-    } else {
-      profiles = [];
+    if (artists && Array.isArray(artists)) {
+      profiles = artists;
     }
   } catch (err) {
     console.error("Error fetching profiles:", err);
