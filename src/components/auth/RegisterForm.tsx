@@ -80,26 +80,31 @@ export default function RegisterForm() {
       ? window.location.origin
       : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
 
+    // Ensure selectedRole strictly defaults to 'client' if not explicitly chosen as 'artist'
+    const roleNormalized = (selectedRole === 'FREELANCER' || (selectedRole as string).toLowerCase() === 'artist')
+      ? 'artist'
+      : 'client';
+
     try {
-      // 1. Register artist with Supabase Auth (passing role: 'artist' in options.data)
+      // 1. Register with Supabase Auth (strictly passing selectedRole in options.data)
       const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
-          emailRedirectTo: `${origin}/auth/callback?role=artist`,
+          emailRedirectTo: `${origin}/auth/callback?role=${roleNormalized}`,
           data: {
-            role: 'artist',
             full_name: fullName,
             name: fullName,
+            role: roleNormalized, // 'artist' or 'client'
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            user_type: 'artist',
-            role_name: 'artist',
-            userRole: 'artist',
-            account_type: 'artist',
+            user_type: roleNormalized,
+            role_name: roleNormalized,
+            userRole: roleNormalized,
+            account_type: roleNormalized,
             company: formData.company?.trim() || '',
             country: userCountry,
           },
@@ -160,11 +165,11 @@ export default function RegisterForm() {
           const { error: profileUpdateErr } = await supabase
             .from('profiles')
             .update({
-              role: 'artist',
+              role: roleNormalized,
               first_name: formData.firstName.trim(),
               last_name: formData.lastName.trim(),
-              title: 'Artist',
-              bio: 'Welcome to Vivid Art!',
+              title: roleNormalized === 'artist' ? 'Artist' : 'Client',
+              bio: roleNormalized === 'artist' ? 'Welcome to Vivid Art!' : '',
               address: userCountry,
               is_published: true,
               updated_at: new Date().toISOString(),
@@ -178,10 +183,10 @@ export default function RegisterForm() {
                 id: activeUserId,
                 first_name: formData.firstName.trim(),
                 last_name: formData.lastName.trim(),
-                role: 'artist',
+                role: roleNormalized,
                 email: formData.email.trim(),
-                title: 'Artist',
-                bio: 'Welcome to Vivid Art!',
+                title: roleNormalized === 'artist' ? 'Artist' : 'Client',
+                bio: roleNormalized === 'artist' ? 'Welcome to Vivid Art!' : '',
                 address: userCountry,
                 is_published: true,
                 updated_at: new Date().toISOString(),
@@ -194,10 +199,10 @@ export default function RegisterForm() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              role: 'artist',
+              role: roleNormalized,
               firstName: formData.firstName.trim(),
               lastName: formData.lastName.trim(),
-              title: 'Artist',
+              title: roleNormalized === 'artist' ? 'Artist' : 'Client',
               location: userCountry,
               country: userCountry,
             }),
@@ -210,7 +215,8 @@ export default function RegisterForm() {
       toast.success('Account created successfully!', {
         description: 'Welcome to Vivid Craft! Redirecting...',
       });
-      window.location.replace('/dashboard');
+      const destination = roleNormalized === 'artist' ? '/dashboard' : '/freelancers';
+      window.location.replace(destination);
     } catch (err: any) {
       console.error("SUPABASE SIGNUP ERROR:", err?.message, err);
       const msg = err?.message || 'An unexpected registration error occurred.';

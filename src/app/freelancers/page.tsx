@@ -20,27 +20,29 @@ export default async function FreelancersPage() {
     let { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .ilike('role', 'artist')
+      .or('role.eq.artist,role.eq.Artist,role.ilike.artist')
       .order('created_at', { ascending: false });
 
-    if (error || !data || data.length === 0) {
+    if (error || !data) {
       const res = await supabase
         .from('profiles')
         .select('*')
-        .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+        .ilike('role', 'artist')
         .order('created_at', { ascending: false });
       if (!res.error && res.data) {
         data = res.data;
-        error = null;
       }
     }
 
     if (!error && Array.isArray(data)) {
       profiles = data.filter(isArtistProfile);
+    } else {
+      profiles = [];
     }
   } catch (err) {
     console.error("Error fetching profiles:", err);
+    profiles = [];
   }
 
-  return <FreelancersPageClient initialProfiles={profiles} />;
+  return <FreelancersPageClient initialProfiles={profiles ?? []} />;
 }

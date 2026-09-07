@@ -103,11 +103,11 @@ export async function POST(req: Request) {
     const sanitizedTitle = sanitizeInput(title);
     const sanitizedBio = sanitizeInput(bio);
 
-    // Normalize role - default to 'artist' if missing or undefined
+    // Normalize role - strictly default to 'client' if not explicitly chosen as 'artist'
     const rawRole = String(role || '').trim().toLowerCase();
-    const isClient = rawRole === 'client' || rawRole === 'buyer';
-    const dbRole: 'FREELANCER' | 'CLIENT' = isClient ? 'CLIENT' : 'FREELANCER';
-    const metadataRole = isClient ? 'client' : 'artist';
+    const isArtist = rawRole === 'artist' || rawRole === 'freelancer' || rawRole === 'creator';
+    const dbRole: 'FREELANCER' | 'CLIENT' = isArtist ? 'FREELANCER' : 'CLIENT';
+    const metadataRole = isArtist ? 'artist' : 'client';
     const fullName = `${sanitizedFirstName} ${sanitizedLastName}`.trim();
 
     // Sensible fallback defaults for client accounts so signup never blocks

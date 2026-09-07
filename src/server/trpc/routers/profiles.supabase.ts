@@ -1203,20 +1203,20 @@ export const profilesRouter = router({
         }
       }
 
-      // 1. Fetch from `profiles` table strictly where role = 'artist' (case-insensitive)
+      // 1. Fetch from `profiles` table strictly where role = 'artist' (case-insensitive: artist, Artist, LOWER(role) = 'artist')
       const profilesMap = new Map<string, any>();
       try {
         let { data: pRows } = await (supabase as any)
           .from('profiles')
           .select('*')
-          .ilike('role', 'artist');
+          .or('role.eq.artist,role.eq.Artist,role.ilike.artist');
 
-        if (!pRows || pRows.length === 0) {
+        if (!pRows || !Array.isArray(pRows)) {
           const res = await (supabase as any)
             .from('profiles')
             .select('*')
-            .or('role.ilike.artist,role.eq.artist,role.eq.Artist');
-          if (res.data) pRows = res.data;
+            .ilike('role', 'artist');
+          if (res.data && Array.isArray(res.data)) pRows = res.data;
         }
 
         if (pRows && Array.isArray(pRows)) {
@@ -1443,7 +1443,7 @@ export const profilesRouter = router({
       }
     }),
 
-  // Fetch all registered artists strictly where role = 'artist' (case-insensitive)
+  // Fetch all registered artists strictly where role = 'artist' (case-insensitive: artist, Artist, or LOWER(role) = 'artist')
   getArtists: publicProcedure
     .input(
       z
@@ -1460,21 +1460,25 @@ export const profilesRouter = router({
         let { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .ilike('role', 'artist')
+          .or('role.eq.artist,role.eq.Artist,role.ilike.artist')
           .order('created_at', { ascending: false });
 
-        if (error || !data || data.length === 0) {
+        if (error || !data) {
           const res = await supabase
             .from('profiles')
             .select('*')
-            .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+            .ilike('role', 'artist')
             .order('created_at', { ascending: false });
           if (!res.error && res.data) {
             data = res.data;
           }
         }
 
-        let list = (data || []).filter(isArtistProfile);
+        if (!data || !Array.isArray(data)) {
+          return [];
+        }
+
+        let list = data.filter(isArtistProfile);
         if (input?.search) {
           const s = input.search.toLowerCase().trim();
           list = list.filter((p: any) => {
@@ -1485,14 +1489,14 @@ export const profilesRouter = router({
         if (input?.limit && input.limit > 0) {
           list = list.slice(0, input.limit);
         }
-        return list;
+        return list ?? [];
       } catch (err) {
         console.warn('getArtists exception caught gracefully:', err);
         return [];
       }
     }),
 
-  // Fetch public profiles strictly where role = 'artist' (case-insensitive)
+  // Fetch public profiles strictly where role = 'artist' (case-insensitive: artist, Artist, or LOWER(role) = 'artist')
   getPublicProfiles: publicProcedure
     .input(
       z
@@ -1509,21 +1513,25 @@ export const profilesRouter = router({
         let { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .ilike('role', 'artist')
+          .or('role.eq.artist,role.eq.Artist,role.ilike.artist')
           .order('created_at', { ascending: false });
 
-        if (error || !data || data.length === 0) {
+        if (error || !data) {
           const res = await supabase
             .from('profiles')
             .select('*')
-            .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+            .ilike('role', 'artist')
             .order('created_at', { ascending: false });
           if (!res.error && res.data) {
             data = res.data;
           }
         }
 
-        let list = (data || []).filter(isArtistProfile);
+        if (!data || !Array.isArray(data)) {
+          return [];
+        }
+
+        let list = data.filter(isArtistProfile);
         if (input?.search) {
           const s = input.search.toLowerCase().trim();
           list = list.filter((p: any) => {
@@ -1534,7 +1542,7 @@ export const profilesRouter = router({
         if (input?.limit && input.limit > 0) {
           list = list.slice(0, input.limit);
         }
-        return list;
+        return list ?? [];
       } catch (err) {
         console.warn('getPublicProfiles exception caught gracefully:', err);
         return [];

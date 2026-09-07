@@ -49,14 +49,14 @@ export default function FreelancersPageClient({
           let { data: pRows, error: pErr } = await supabase
             .from('profiles')
             .select('*')
-            .ilike('role', 'artist')
+            .or('role.eq.artist,role.eq.Artist,role.ilike.artist')
             .order('created_at', { ascending: false });
 
-          if (pErr || !pRows || pRows.length === 0) {
+          if (pErr || !pRows) {
             const res = await supabase
               .from('profiles')
               .select('*')
-              .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+              .ilike('role', 'artist')
               .order('created_at', { ascending: false });
             if (!res.error && res.data) {
               pRows = res.data;

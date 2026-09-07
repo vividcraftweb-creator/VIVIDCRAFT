@@ -113,29 +113,34 @@ export default function SignUpContent() {
     const userCountry = formData.location?.trim() || 'Sri Lanka';
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
 
+    // Ensure selectedRole strictly defaults to 'client' if not explicitly chosen as 'artist'
+    const selectedRole = (role === 'FREELANCER' || String(role).toLowerCase() === 'artist')
+      ? 'artist'
+      : 'client';
+
     try {
       const origin = typeof window !== 'undefined'
         ? window.location.origin
         : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
 
-      // STEP 1: Register with Supabase Auth — explicitly pass role: 'artist' in options.data
+      // STEP 1: Register with Supabase Auth — strictly passing selectedRole in options.data
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
-          emailRedirectTo: `${origin}/auth/callback?role=artist`,
+          emailRedirectTo: `${origin}/auth/callback?role=${selectedRole}`,
           data: {
-            role: 'artist',
             full_name: fullName,
             name: fullName,
+            role: selectedRole, // 'artist' or 'client'
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            user_type: 'artist',
-            userRole: 'artist',
-            role_name: 'artist',
-            account_type: 'artist',
+            user_type: selectedRole,
+            userRole: selectedRole,
+            role_name: selectedRole,
+            account_type: selectedRole,
             location: userCountry,
             country: userCountry,
           },
@@ -180,7 +185,7 @@ export default function SignUpContent() {
         console.warn('[signup] signInWithPassword warning:', signInError.message);
       }
 
-      // STEP 2.5: Directly update the profiles table setting role = 'artist'
+      // STEP 2.5: Directly update the profiles table setting role = selectedRole
       let activeUserId = signInData?.user?.id || data?.user?.id;
       if (!activeUserId) {
         try {
@@ -193,9 +198,11 @@ export default function SignUpContent() {
         const { error: profileUpdateErr } = await supabase
           .from('profiles')
           .update({
-            role: 'artist',
+            role: selectedRole,
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
+            title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
+            bio: selectedRole === 'artist' ? 'Welcome to Vivid Art!' : '',
             address: userCountry,
             updated_at: new Date().toISOString(),
           })
@@ -205,10 +212,12 @@ export default function SignUpContent() {
           console.warn('[signup] Direct profile update notice, attempting upsert:', profileUpdateErr.message);
           await supabase.from('profiles').upsert({
             id: activeUserId,
-            role: 'artist',
+            role: selectedRole,
             email: formData.email.trim(),
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
+            title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
+            bio: selectedRole === 'artist' ? 'Welcome to Vivid Art!' : '',
             address: userCountry,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
@@ -221,10 +230,10 @@ export default function SignUpContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            role: 'artist',
+            role: selectedRole,
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            title: formData.title?.trim() || 'Artist',
+            title: formData.title?.trim() || (selectedRole === 'artist' ? 'Artist' : 'Client'),
             location: userCountry,
             country: userCountry,
           }),
@@ -234,13 +243,14 @@ export default function SignUpContent() {
       }
 
       toast.success('Account created successfully!', {
-        description: 'Welcome to Vivid Craft! Redirecting to your artist dashboard...',
+        description: selectedRole === 'artist'
+          ? 'Welcome to Vivid Craft! Redirecting to your artist dashboard...'
+          : 'Welcome to Vivid Craft! Redirecting to explore artists...',
       });
 
-      // STEP 4: Hard redirect to dashboard. window.location.replace triggers a full
-      // page reload so Next.js server re-reads the auth session including the freshly
-      // provisioned 'artist' role from profiles table → resolves to FREELANCER view.
-      window.location.replace('/dashboard');
+      // STEP 4: Hard redirect to destination.
+      const destination = selectedRole === 'artist' ? '/dashboard' : '/freelancers';
+      window.location.replace(destination);
     } catch (err: any) {
       console.error('SIGNUP ERROR:', err?.message, err);
       const msg = err?.message || 'An unexpected registration error occurred.';
