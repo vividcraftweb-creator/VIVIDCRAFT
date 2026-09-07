@@ -60,16 +60,31 @@ export async function GET(request: Request) {
       }
     );
 
+    // Check if OAuth provider returned an error directly in query params
+    const providerError = requestUrl.searchParams.get('error_description') || requestUrl.searchParams.get('error');
+    if (providerError) {
+      console.error('OAuth provider error in callback:', providerError);
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(providerError)}`, origin));
+    }
+
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
         console.error('exchangeCodeForSession error:', error.message);
+        return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, origin));
       }
     } else if (tokenHash && type) {
-      await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type: type || 'email',
       });
+      if (error) {
+        console.error('verifyOtp error in callback:', error.message);
+        return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, origin));
+      }
+    } else {
+      console.warn('Callback invoked without code or token_hash');
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent('No authorization code provided.')}`, origin));
     }
 
     // Try to ensure session is active and sync profile/metadata

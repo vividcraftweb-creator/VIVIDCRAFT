@@ -24,6 +24,7 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams?.get('email') || '';
+  const errorParam = searchParams?.get('error') || '';
   const redirectTo = searchParams?.get('redirect') || searchParams?.get('next') || '';
 
   const [email, setEmail] = useState(emailParam);
@@ -32,7 +33,18 @@ function SignInContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [legacyError, setLegacyError] = useState(false);
+  const [oauthError, setOauthError] = useState(errorParam);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+  React.useEffect(() => {
+    if (errorParam) {
+      setOauthError(errorParam);
+      toast.error('Authentication Error', {
+        description: decodeURIComponent(errorParam),
+        duration: 6000,
+      });
+    }
+  }, [errorParam]);
 
   const supabase = createClient();
 
@@ -178,27 +190,31 @@ function SignInContent() {
       e.preventDefault();
     }
     setIsGoogleLoading(true);
+    setOauthError('');
     try {
       const redirectUrl = typeof window !== 'undefined'
         ? `${window.location.origin}/auth/callback`
         : `${process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app'}/auth/callback`;
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined'
-            ? `${window.location.origin}/auth/callback`
-            : `${process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app'}/auth/callback`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account',
           },
         },
       });
-      
-      if (error) throw error;
+
+      if (error) {
+        console.error('Google signInWithOAuth error:', error.message || error);
+        throw error;
+      }
     } catch (error: any) {
+      console.error('handleGoogleSignIn caught error:', error);
       const message = getErrorMessage(error, 'Failed to sign in with Google.');
+      setOauthError(message);
       toast.error('Authentication Error', {
         description: message,
       });
@@ -226,6 +242,21 @@ function SignInContent() {
             Sign in to access your Vivid Art account
           </p>
         </div>
+
+        {/* OAuth Error Alert */}
+        {oauthError && (
+          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 space-y-1 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-semibold text-sm text-red-300">Sign-in Error</p>
+                <p className="text-xs text-red-200/90 leading-relaxed">
+                  {decodeURIComponent(oauthError)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Legacy Account State Alert */}
         {legacyError && (

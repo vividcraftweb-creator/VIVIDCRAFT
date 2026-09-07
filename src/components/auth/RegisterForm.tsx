@@ -51,22 +51,24 @@ export default function RegisterForm() {
         ? `${window.location.origin}/auth/callback`
         : `${process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app'}/auth/callback`;
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined'
-            ? `${window.location.origin}/auth/callback`
-            : `${process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app'}/auth/callback`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account',
             role: selectedRole.toLowerCase(),
           },
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Google signInWithOAuth error:', error.message || error);
+        throw error;
+      }
     } catch (err: any) {
+      console.error('handleGoogleSignUp caught error:', err);
       setErrorMessage(err.message || 'Failed to sign in with Google.');
       toast.error('Google Sign In Failed', {
         description: err.message || 'Failed to sign in with Google.',
