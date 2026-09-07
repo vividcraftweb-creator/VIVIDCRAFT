@@ -150,22 +150,42 @@ export default function RegisterForm() {
         return;
       }
 
-      // 2. Establish live session immediately to satisfy RLS on profiles table
-      let activeUserId = data?.user?.id;
+      // 2. Handle session state gracefully
+      // If signUp() returns a user without an immediate session (e.g. session is null),
+      // do NOT attempt immediate login or throw an error. Show a clear success message and redirect gracefully to /login.
       if (!data?.session) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email.trim(),
-          password: formData.password,
+        if (data?.user?.id) {
+          try {
+            await fetch('/api/auth/provision-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: formData.email.trim(),
+                role: roleNormalized,
+                firstName: formData.firstName.trim(),
+                lastName: formData.lastName.trim(),
+                title: roleNormalized === 'artist' ? 'Artist' : 'Client',
+                location: userCountry,
+                country: userCountry,
+              }),
+            });
+          } catch {}
+        }
+
+        toast.success('Account created successfully!', {
+          description: 'Please sign in to your account to continue.',
+          duration: 4000,
         });
-        if (signInData?.user) {
-          activeUserId = signInData.user.id;
-        }
-        if (signInError) {
-          console.warn('[RegisterForm] signInWithPassword notice:', signInError.message);
-        }
+        setSuccessMessage('Account created successfully! Redirecting to sign in...');
+        setTimeout(() => {
+          router.push(`/auth/login?email=${encodeURIComponent(formData.email.trim())}`);
+        }, 1500);
+        return;
       }
 
-      // 3. Directly update profiles table with authenticated session
+      // 3. Live session is present, sync profiles table
+      const activeUserId = data.session.user.id;
       if (activeUserId) {
         try {
           const { error: profileUpdateErr } = await supabase

@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useRef } from 'react';
 import { createClient, cleanBloatedAuthCookies } from '@/lib/supabase/client';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface SessionProviderProps {
   children: ReactNode;
@@ -29,6 +29,7 @@ const PROTECTED_PREFIXES = [
 
 export default function SessionProvider({ children }: SessionProviderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const isSigningOutRef = useRef(false);
 
   useEffect(() => {
@@ -111,8 +112,13 @@ export default function SessionProvider({ children }: SessionProviderProps) {
     }).catch(() => {});
 
     // Listen for client-side auth state changes (strictly avoiding recursive signOut calls)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        isSigningOutRef.current = false;
+        if (session?.user) {
+          router.refresh();
+        }
+      } else if (event === 'SIGNED_OUT') {
         if (isSigningOutRef.current) return;
         isSigningOutRef.current = true;
         cleanClientStorage(true);

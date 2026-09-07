@@ -1,6 +1,12 @@
-import { createClient, createAdminClient, createRouteHandlerClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/server';
+
+function cleanEnv(val?: string): string {
+  if (!val) return '';
+  return val.trim().replace(/^["']|["']$/g, '');
+}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -10,8 +16,46 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get('next') ?? '/dashboard';
   const queryRole = requestUrl.searchParams.get('role');
 
+  let destination = next;
+  if (!destination || destination.includes('verify-email') || destination.includes('auth-code-error')) {
+    destination = '/dashboard';
+  }
+
+  // Pre-create the redirect response so all auth cookies are explicitly attached to the HTTP redirect response
+  const redirectResponse = NextResponse.redirect(new URL(destination, request.url));
+
   try {
-    const supabase = await createClient();
+    let supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
+    if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+      supabaseUrl = `https://${supabaseUrl}`;
+    }
+    const supabaseAnonKey = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 'placeholder';
+
+    const cookieStore = await cookies();
+
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll().filter(c => {
+              return !c.value.includes('data%3Aimage') && !c.value.includes('data:image');
+            });
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+                redirectResponse.cookies.set(name, value, options);
+              });
+            } catch (err) {
+              console.warn('Cookie set error in route handler:', err);
+            }
+          },
+        },
+      }
+    );
 
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -108,11 +152,15 @@ export async function GET(request: Request) {
     console.error('OAuth code exchange error:', err);
   }
 
-  // Determine final destination: default to /dashboard or next (never verify-email or auth-code-error)
-  let destination = next;
-  if (!destination || destination.includes('verify-email') || destination.includes('auth-code-error')) {
-    destination = '/dashboard';
-  }
+  // Ensure any cookies remaining in cookieStore are attached to the response
+  try {
+    const finalCookieStore = await cookies();
+    finalCookieStore.getAll().forEach((c) => {
+      if (!redirectResponse.cookies.has(c.name)) {
+        redirectResponse.cookies.set(c.name, c.value);
+      }
+    });
+  } catch {}
 
-  return NextResponse.redirect(new URL(destination, request.url));
+  return redirectResponse;
 }

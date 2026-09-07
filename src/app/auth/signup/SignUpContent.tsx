@@ -179,27 +179,42 @@ export default function SignUpContent() {
         throw authError;
       }
 
-      // STEP 2: Sign in immediately to establish a live session.
-      // This is critical — the session is required for RLS on profiles,
-      // and for /api/auth/provision-user to verify the caller's identity.
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email.trim(),
-        password: formData.password,
-      });
+      // STEP 2: Handle session state gracefully
+      // If signUp() returns a user without an immediate session (e.g. session is null),
+      // do NOT attempt immediate login or throw an error. Show a clear success message or redirect gracefully to /login.
+      if (!data?.session) {
+        if (data?.user?.id) {
+          try {
+            await fetch('/api/auth/provision-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: formData.email.trim(),
+                role: selectedRole,
+                firstName: formData.firstName.trim(),
+                lastName: formData.lastName.trim(),
+                title: formData.title?.trim() || (selectedRole === 'artist' ? 'Artist' : 'Client'),
+                location: userCountry,
+                country: userCountry,
+              }),
+            });
+          } catch {}
+        }
 
-      if (signInError) {
-        console.warn('[signup] signInWithPassword warning:', signInError.message);
+        toast.success('Account created successfully!', {
+          description: 'Please sign in to your account to continue.',
+          duration: 4000,
+        });
+        setSuccessMessage('Account created successfully! Redirecting to sign in...');
+        setTimeout(() => {
+          router.push(`/auth/login?email=${encodeURIComponent(formData.email.trim())}`);
+        }, 1500);
+        return;
       }
 
-      // STEP 2.5: Directly update the profiles table setting role = selectedRole
-      let activeUserId = signInData?.user?.id || data?.user?.id;
-      if (!activeUserId) {
-        try {
-          const { data: userData } = await supabase.auth.getUser();
-          activeUserId = userData?.user?.id;
-        } catch {}
-      }
-
+      // STEP 2.5: Live session is present, directly update the profiles table
+      const activeUserId = data.session.user.id;
       if (activeUserId) {
         const { error: profileUpdateErr } = await supabase
           .from('profiles')
