@@ -17,16 +17,23 @@ export default async function SupportPage() {
     redirect('/auth/signin?callbackUrl=/support');
   }
 
-  // Check email verification
-  const supabase = await createClient();
-  const { data: user } = await supabase
-    .from('User')
-    .select('isVerified')
-    .eq('id', session.user.id)
-    .single();
+  // Check email verification (bypassed for Google OAuth / confirmed users)
+  const isGoogleOrConfirmed =
+    (session.user as any)?.app_metadata?.provider === 'google' ||
+    (session.user as any)?.user_metadata?.isVerified === true ||
+    (session.user as any)?.email_confirmed_at;
 
-  if (!user?.isVerified) {
-    redirect('/auth/verify-email');
+  if (!isGoogleOrConfirmed) {
+    const supabase = await createClient();
+    const { data: user } = await supabase
+      .from('User')
+      .select('isVerified')
+      .eq('id', session.user.id)
+      .single();
+
+    if (user && user.isVerified === false) {
+      redirect('/auth/verify-email');
+    }
   }
 
   return (

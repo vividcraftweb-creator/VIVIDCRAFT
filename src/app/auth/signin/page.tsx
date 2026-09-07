@@ -179,11 +179,14 @@ function SignInContent() {
     }
     setIsGoogleLoading(true);
     try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const redirectUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : `${process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app'}/auth/callback`;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${origin}/auth/callback${redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : ''}`,
+          redirectTo: redirectUrl,
         },
       });
       

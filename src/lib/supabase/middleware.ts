@@ -159,9 +159,25 @@ export async function updateSession(request: NextRequest) {
       return redirectRes;
     }
 
+    // Bypass email verification for Google OAuth users and confirmed email accounts
+    const isOAuthOrConfirmed =
+      user?.app_metadata?.provider === 'google' ||
+      user?.app_metadata?.providers?.includes('google') ||
+      Boolean(user?.email_confirmed_at) ||
+      user?.user_metadata?.isVerified === true;
+
+    // If a Google / OAuth or confirmed user visits /auth/verify-email, redirect to dashboard
+    if (user && isOAuthOrConfirmed && pathname.startsWith('/auth/verify-email')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+
     // Check if email is verified for protected routes (using custom isVerified field)
     if (
       user &&
+      !isOAuthOrConfirmed &&
       isProtectedRoute &&
       pathname !== '/auth/verify-email'
     ) {

@@ -46,14 +46,14 @@ export default function SignUpContent() {
     setSuccessMessage(null);
 
     try {
-      const origin = typeof window !== 'undefined'
-        ? window.location.origin
-        : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
+      const redirectUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : `${process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app'}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${origin}/auth/callback?role=${encodeURIComponent(normalizedParam)}`,
+          redirectTo: redirectUrl,
           queryParams: { role: normalizedParam },
         },
       });

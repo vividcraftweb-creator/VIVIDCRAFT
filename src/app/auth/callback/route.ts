@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
 
     if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (!error && data?.session) {
-        session = data.session;
-        user = data.user;
+      if (!error && data) {
+        session = data.session ?? null;
+        user = data.user ?? null;
       } else if (error) {
         console.error('exchangeCodeForSession error:', error);
       }
@@ -39,15 +39,29 @@ export async function GET(request: NextRequest) {
         token_hash: tokenHash,
         type: type || 'email',
       });
-      if (!error && data?.session) {
-        session = data.session;
-        user = data.user;
+      if (!error && data) {
+        session = data.session ?? null;
+        user = data.user ?? null;
       } else if (error) {
         console.error('verifyOtp error:', error);
       }
     }
 
-    if (session && user) {
+    // Fallback: check if session already exists in cookies
+    if (!user) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        session = sessionData.session;
+        user = sessionData.session.user;
+      } else {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          user = userData.user;
+        }
+      }
+    }
+
+    if (user) {
       const metadata = user.user_metadata || {};
       const userRole = normalizeRole(queryRole || metadata.role);
 
@@ -64,23 +78,23 @@ export async function GET(request: NextRequest) {
 
         const metadataRole = userRole === 'FREELANCER' ? 'artist' : 'client';
 
-        // 1. Sync auth user metadata if needed
-        if (metadata.role !== metadataRole && metadata.role !== userRole) {
-          try {
-            await adminClient.auth.admin.updateUserById(user.id, {
-              user_metadata: {
-                ...metadata,
-                role: metadataRole,
-                first_name: firstName,
-                last_name: lastName,
-              },
-            });
-          } catch (authMetaErr) {
-            console.warn('Callback auth metadata update warning:', authMetaErr);
-          }
+        // 1. Sync auth user metadata and auto-confirm email for Google OAuth users
+        try {
+          await adminClient.auth.admin.updateUserById(user.id, {
+            email_confirm: true,
+            user_metadata: {
+              ...metadata,
+              role: metadataRole,
+              first_name: firstName,
+              last_name: lastName,
+              isVerified: true,
+            },
+          });
+        } catch (authMetaErr) {
+          console.warn('Callback auth metadata update warning:', authMetaErr);
         }
 
-        // 2. Ensure User record exists in DB (try `users` first, then `User`)
+        // 2. Ensure User record exists in DB (isVerified: true strictly bypasses email verification)
         const userDbPayload = {
           id: user.id,
           email: user.email || '',
@@ -139,21 +153,22 @@ export async function GET(request: NextRequest) {
         console.warn('Callback profile sync warning:', profileSyncError);
       }
 
-      // Determine destination: Buyers/Clients default to Home (/), Artists/Creators default to /dashboard
+      // Determine destination:
+      // Redirect Google users straight to /dashboard or / instead of sending them to /verify-email
       let destination = next;
       const hasExplicitNext = requestUrl.searchParams.has('next');
-      if (!hasExplicitNext || next === '/dashboard') {
+      if (!hasExplicitNext || next === '/dashboard' || next.includes('verify-email') || next.includes('auth-code-error')) {
         destination = userRole === 'FREELANCER' ? '/dashboard' : '/';
       }
 
-      // Redirect to destination
+      // Redirect straight to destination
       return NextResponse.redirect(new URL(destination, request.url));
     }
   } catch (callbackError) {
     console.error('Error during auth callback:', callbackError);
   }
 
-  // If no code or verification failed, redirect to the auth-code-error page
+  // If no code or verification failed, redirect to auth-code-error page (never verify-email)
   return NextResponse.redirect(new URL('/auth/auth-code-error', request.url));
 }
 
