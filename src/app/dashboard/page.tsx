@@ -76,21 +76,16 @@ export default async function DashboardPage({
           } catch {}
         }
 
-        // Role comes from profiles.role → user_metadata → FREELANCER (never from users/User table)
+        // Set ARTIST as the default fallback profile state regardless of client/collector role
         const rawRoleStr = (
           dbRole ||
           authUser.user_metadata?.role ||
           authUser.user_metadata?.userRole ||
           authUser.user_metadata?.user_type ||
-          'FREELANCER'
+          'ARTIST'
         ).toString().trim().toUpperCase();
 
-        // HARDCODE: only CLIENT if explicitly CLIENT/BUYER in profiles or user_metadata
-        const role = rawRoleStr === 'ADMIN'
-          ? 'ADMIN'
-          : (rawRoleStr === 'CLIENT' || rawRoleStr === 'BUYER' || rawRoleStr === 'CUSTOMER')
-            ? 'CLIENT'
-            : 'FREELANCER'; // Missing, ARTIST, FREELANCER, CREATOR → always FREELANCER
+        const role = rawRoleStr === 'ADMIN' ? 'ADMIN' : 'ARTIST';
 
         activeSession.user.role = role;
 
@@ -112,7 +107,7 @@ export default async function DashboardPage({
   }
 
   if (!activeSession.user.role || activeSession.user.role === 'undefined') {
-    activeSession.user.role = 'FREELANCER';
+    activeSession.user.role = 'ARTIST';
   }
 
   return <DashboardWrapper session={activeSession} />;

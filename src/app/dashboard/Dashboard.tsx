@@ -40,8 +40,7 @@ import { useRouter } from 'next/navigation';
 import type { AppSession } from '@/types/session';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
-import ClientDashboard from '@/components/dashboard/ClientDashboard';
-import FreelancerDashboard from '@/components/dashboard/FreelancerDashboard';
+import ArtistDashboard from '@/components/dashboard/ArtistDashboard';
 const SubscriptionStatusBanner = dynamic(() => import('@/components/dashboard/SubscriptionStatusBanner'), {
   ssr: false,
 });
@@ -90,19 +89,10 @@ export default function Dashboard({ session }: { session: AppSession }) {
 
   const profileRole = (profile?.role || '').toString().trim().toUpperCase();
   const sessionRole = (session?.user?.role || '').toString().trim().toUpperCase();
-
-  // HARDCODE: profile.role is the ONLY authoritative source for CLIENT routing.
-  // sessionRole alone can NEVER trigger CLIENT view — this prevents the flash of
-  // ClientDashboard while getMyProfile is still loading (profileRole = '').
-  // Missing/null/empty profileRole always defaults to FREELANCER (Artist view).
-  const isClientRole = (profileRole === 'CLIENT' || profileRole === 'BUYER' || profileRole === 'CUSTOMER');
   const isAdminRole = profileRole === 'ADMIN' || sessionRole === 'ADMIN';
 
-  const role: 'CLIENT' | 'FREELANCER' | 'ADMIN' = isAdminRole
-    ? 'ADMIN'
-    : isClientRole
-      ? 'CLIENT'
-      : 'FREELANCER'; // Default: FREELANCER (Artist) — never CLIENT on ambiguous/missing role
+  // Force ARTIST as the default fallback profile state regardless of user role (e.g. COLLECTOR / CLIENT)
+  const role: 'ARTIST' | 'ADMIN' = isAdminRole ? 'ADMIN' : 'ARTIST';
 
   useEffect(() => {
     setMounted(true);
@@ -143,126 +133,33 @@ export default function Dashboard({ session }: { session: AppSession }) {
 
   // Define navigation items based on role
   const getNavigationItems = () => {
-    switch (role) {
-      case 'CLIENT': {
-        const baseItems = [
-          { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
-          { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
-          { name: 'Discover Artists', icon: Palette, href: '/freelancers' },
-          { name: 'My Commissions', icon: Briefcase, href: '/dashboard?tab=myjobs' },
-          { name: 'Post Commission', icon: Plus, href: '/jobs/create' },
-          { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages' },
-          { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification' },
-          { name: 'Subscription', icon: CreditCard, href: '/dashboard?tab=subscription' },
-        ];
-
-        // Add premium features if user has access
-        const premiumItems = [];
-
-        // Proposal Tracking CRM - Business/Enterprise only
-        if (planPermissions?.hasTeamCollaboration) {
-          premiumItems.push({
-            name: 'Proposal Tracking',
-            icon: UserCheck,
-            href: '/dashboard?tab=crm',
-            isPremium: true
-          });
-        }
-
-        if (planPermissions?.hasTeamCollaboration) {
-          premiumItems.push({
-            name: 'Team',
-            icon: Users,
-            href: '/dashboard?tab=team',
-            isPremium: true
-          });
-        }
-
-        if (planPermissions?.hasEnhancedProjectManagement) {
-          premiumItems.push({
-            name: 'Projects',
-            icon: FolderOpen,
-            href: '/dashboard?tab=projects',
-            isPremium: true
-          });
-        }
-
-        if (planPermissions?.hasTeamCollaboration) {
-          premiumItems.push({
-            name: 'API Keys',
-            icon: Key,
-            href: '/dashboard?tab=apikeys',
-            isPremium: true
-          });
-          premiumItems.push({
-            name: 'Webhooks',
-            icon: Webhook,
-            href: '/dashboard?tab=webhooks',
-            isPremium: true
-          });
-        }
-
-        if (planPermissions?.hasPrioritySupport) {
-          premiumItems.push({
-            name: 'Priority Support',
-            icon: Headphones,
-            href: '/dashboard?tab=support',
-            isPremium: true
-          });
-        }
-
-        if (planPermissions?.hasAdvancedClientAnalytics) {
-          premiumItems.push({
-            name: 'Analytics',
-            icon: BarChart3,
-            href: '/dashboard?tab=analytics',
-            isPremium: true
-          });
-        }
-
-        const footerItems = [
-          { name: 'Profile', icon: User, href: '/dashboard?tab=profile' },
-          { name: 'Settings', icon: Settings, href: '/dashboard?tab=settings' },
-          { name: 'Sign Out', icon: LogOut, action: 'signout' },
-        ];
-
-        return [...baseItems, ...premiumItems, ...footerItems];
-      }
-      case 'FREELANCER':
-        return [
-          { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
-          { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
-          { name: 'Gallery', icon: ImageIcon, href: '/dashboard?tab=gallery', view: 'gallery' },
-          { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages', view: 'messages' },
-          { name: 'Browse Commissions', icon: Palette, href: '/jobs' },
-          { name: 'My Commissions & Proposals', icon: FileText, href: '/dashboard?tab=proposals', view: 'proposals' },
-          { name: 'Subscription', icon: CreditCard, href: '/dashboard?tab=subscription', view: 'subscription' },
-          { name: 'Profile', icon: User, href: '/dashboard?tab=profile', view: 'profile' },
-          { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification', view: 'verification' },
-          { name: 'Settings', icon: Settings, href: '/dashboard?tab=settings', view: 'settings' },
-          { name: 'Sign Out', icon: LogOut, action: 'signout' },
-        ];
-      case 'ADMIN':
-        return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
-          { name: 'Admin Panel', icon: Shield, href: '/admin' },
-          { name: 'User Management', icon: Users, href: '/admin/users' },
-          { name: 'Job Management', icon: Briefcase, href: '/admin/jobs' },
-          { name: 'Verifications', icon: Shield, href: '/admin/verifications' },
-          { name: 'Messages', icon: MessageSquare, href: '/messages' },
-          { name: 'Profile', icon: User, href: '/profile/edit' },
-          { name: 'Settings', icon: Settings, href: '/settings' },
-          { name: 'Sign Out', icon: LogOut, action: 'signout' },
-        ];
-      default:
-        return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
-          { name: 'Messages', icon: MessageSquare, href: '/messages' },
-          { name: 'Profile', icon: User, href: '/profile/edit' },
-          { name: 'Settings', icon: Settings, href: '/settings' },
-          { name: 'Sign Out', icon: LogOut, action: 'signout' },
-        ];
+    if (role === 'ADMIN') {
+      return [
+        { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
+        { name: 'Admin Panel', icon: Shield, href: '/admin' },
+        { name: 'User Management', icon: Users, href: '/admin/users' },
+        { name: 'Job Management', icon: Briefcase, href: '/admin/jobs' },
+        { name: 'Verifications', icon: Shield, href: '/admin/verifications' },
+        { name: 'Messages', icon: MessageSquare, href: '/messages' },
+        { name: 'Profile', icon: User, href: '/profile/edit' },
+        { name: 'Settings', icon: Settings, href: '/settings' },
+        { name: 'Sign Out', icon: LogOut, action: 'signout' },
+      ];
     }
+
+    return [
+      { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
+      { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
+      { name: 'Gallery', icon: ImageIcon, href: '/dashboard?tab=gallery', view: 'gallery' },
+      { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages', view: 'messages' },
+      { name: 'Browse Commissions', icon: Palette, href: '/jobs' },
+      { name: 'My Commissions & Proposals', icon: FileText, href: '/dashboard?tab=proposals', view: 'proposals' },
+      { name: 'Subscription', icon: CreditCard, href: '/dashboard?tab=subscription', view: 'subscription' },
+      { name: 'Profile', icon: User, href: '/dashboard?tab=profile', view: 'profile' },
+      { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification', view: 'verification' },
+      { name: 'Settings', icon: Settings, href: '/dashboard?tab=settings', view: 'settings' },
+      { name: 'Sign Out', icon: LogOut, action: 'signout' },
+    ];
   };
 
   const navigationItems = getNavigationItems();
@@ -319,29 +216,14 @@ export default function Dashboard({ session }: { session: AppSession }) {
   };
 
   const renderDashboardContent = () => {
-    switch (role) {
-      case 'CLIENT':
-        return <ClientDashboard />;
-      case 'FREELANCER':
-        return <FreelancerDashboard view={currentView} />;
-      case 'ADMIN':
-        return <FreelancerDashboard view={currentView} />;
-      default:
-        return <FreelancerDashboard view={currentView} />;
-    }
+    return <ArtistDashboard view={currentView} />;
   };
 
   const getRoleColor = () => {
-    switch (role) {
-      case 'CLIENT':
-        return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-      case 'FREELANCER':
-        return 'bg-green-500/20 text-green-300 border-green-500/30';
-      case 'ADMIN':
-        return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
-      default:
-        return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+    if (role === 'ADMIN') {
+      return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
     }
+    return 'bg-green-500/20 text-green-300 border-green-500/30';
   };
 
   return (
@@ -424,7 +306,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   {session.user?.email}
                 </p>
                 <Badge className={`w-fit text-xs mt-1 ${getRoleColor()}`}>
-                  {role === 'FREELANCER' ? 'ARTIST' : role === 'CLIENT' ? 'COLLECTOR' : role}
+                  {role === 'ADMIN' ? 'ADMIN' : 'ARTIST'}
                 </Badge>
               </div>
             </div>
@@ -518,7 +400,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
             </Button>
             <div className="flex-1">
               <h1 className="text-lg font-semibold text-white">
-                {role === 'CLIENT' ? 'Client' : role === 'FREELANCER' ? 'Freelancer' : 'Admin'} Dashboard
+                {role === 'ADMIN' ? 'Admin' : 'Artist'} Dashboard
               </h1>
             </div>
             <NotificationDropdown />
@@ -533,7 +415,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">
-                    {role === 'CLIENT' ? 'Client' : role === 'FREELANCER' ? 'Freelancer' : 'Admin'} Dashboard
+                    {role === 'ADMIN' ? 'Admin' : 'Artist'} Dashboard
                   </h1>
                   <p className="text-gray-400 text-lg">
                     Welcome back, {userFirstName}

@@ -100,7 +100,8 @@ interface FreelancerDashboardProps {
   view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'verification' | 'settings' | 'subscription' | 'gallery';
 }
 
-export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardProps) {
+export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardProps) {
+
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -1486,3 +1487,6 @@ export default function FreelancerDashboard({ view = 'dashboard' }: FreelancerDa
     </TooltipProvider>
   );
 }
+
+export { FreelancerDashboard as ArtistDashboard };
+export default FreelancerDashboard;
