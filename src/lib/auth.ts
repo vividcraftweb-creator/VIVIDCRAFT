@@ -47,6 +47,13 @@ export async function getUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
 
     if (error || !user) {
+      // Fallback: Check getSession() in case token hydration is delayed
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          return session.user;
+        }
+      } catch {}
       return null;
     }
 

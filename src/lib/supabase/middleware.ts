@@ -55,9 +55,23 @@ function clearAuthCookies(res: NextResponse, req: NextRequest) {
 }
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Ensure /auth/callback and /api/auth/callback are completely bypassed by Middleware
+  if (pathname.startsWith('/auth/callback') || pathname.startsWith('/api/auth/callback')) {
+    return NextResponse.next({ request });
+  }
+
+  // Handle /login alias redirect
+  if (pathname === '/login') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
-  })
+  });
 
   // Clean bloated base64 cookies that would trigger 494 REQUEST_HEADER_TOO_LARGE
   try {
@@ -79,15 +93,6 @@ export async function updateSession(request: NextRequest) {
   } catch {}
 
   try {
-    const { pathname } = request.nextUrl;
-
-    // Handle /login alias redirect
-    if (pathname === '/login') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/auth/login';
-      return NextResponse.redirect(url);
-    }
-
     const isMockAdmin =
       request.cookies.get('is_admin')?.value === 'true' ||
       request.cookies.get('mock_admin_session')?.value === 'true';
@@ -97,16 +102,50 @@ export async function updateSession(request: NextRequest) {
       return supabaseResponse;
     }
 
-    const hasAuthCookies = request.cookies.getAll().some(
-      c => c.name.startsWith('sb-') || c.name.includes('auth-token') || c.name.includes('supabase')
+    let supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+    if (supabaseUrl && !supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+      supabaseUrl = `https://${supabaseUrl}`;
+    }
+    if (!supabaseUrl) {
+      supabaseUrl = 'https://placeholder.supabase.co';
+    }
+    const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim() || 'placeholder';
+
+    // Standard @supabase/ssr updateSession client
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            try {
+              return request.cookies.getAll().filter(c => {
+                return !c.value.includes('data%3Aimage') && !c.value.includes('data:image');
+              });
+            } catch {
+              return [];
+            }
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+              supabaseResponse = NextResponse.next({
+                request,
+              });
+              cookiesToSet.forEach(({ name, value, options }) =>
+                supabaseResponse.cookies.set(name, value, options)
+              );
+            } catch {}
+          },
+        },
+      }
     );
 
-    const supabase = getMiddlewareClient(request, supabaseResponse)
-
+    // Refresh and read Supabase session using @supabase/ssr
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
     // Protected routes that require authentication
     const protectedPaths = [
@@ -126,7 +165,11 @@ export async function updateSession(request: NextRequest) {
       '/invoices',
       '/orders',
     ];
-    const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
+    const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path));
+
+    const hasAuthCookies = request.cookies.getAll().some(
+      c => (c.name.startsWith('sb-') || c.name.includes('auth-token') || c.name.includes('supabase')) && c.value && c.value.length > 20
+    );
 
     // Handle deleted user:
     // If the browser supplied auth cookies but Supabase explicitly rejected them with user not found
@@ -149,13 +192,17 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    // Redirect to login if unauthenticated and accessing protected routes
-    if ((!user || userError) && isProtectedRoute) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/auth/login'
-      url.searchParams.set('callbackUrl', pathname)
+    // Redirect to login if unauthenticated and accessing protected routes.
+    // CRITICAL: If auth cookies are present, do NOT bounce to /login here or wipe cookies.
+    // Allow Server Components / DashboardSessionHydrator to hydrate safely.
+    if (!user && isProtectedRoute && !hasAuthCookies) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/auth/login';
+      url.searchParams.set('callbackUrl', pathname);
       const redirectRes = NextResponse.redirect(url);
-      clearAuthCookies(redirectRes, request);
+      supabaseResponse.cookies.getAll().forEach(cookie => {
+        redirectRes.cookies.set(cookie.name, cookie.value);
+      });
       return redirectRes;
     }
 
@@ -171,7 +218,11 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
       url.search = '';
-      return NextResponse.redirect(url);
+      const redirectRes = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach(cookie => {
+        redirectRes.cookies.set(cookie.name, cookie.value);
+      });
+      return redirectRes;
     }
 
     // Check if email is verified for protected routes (using custom isVerified field)
@@ -187,21 +238,25 @@ export async function updateSession(request: NextRequest) {
           .from('User')
           .select('isVerified')
           .eq('id', user.id)
-          .single()
+          .single();
 
         // Only redirect if user exists in DB AND isVerified is explicitly false
         if (dbUser && dbUser.isVerified === false) {
-          const url = request.nextUrl.clone()
-          url.pathname = '/auth/verify-email'
-          url.searchParams.set('email', user.email || '')
-          return NextResponse.redirect(url)
+          const url = request.nextUrl.clone();
+          url.pathname = '/auth/verify-email';
+          url.searchParams.set('email', user.email || '');
+          const redirectRes = NextResponse.redirect(url);
+          supabaseResponse.cookies.getAll().forEach(cookie => {
+            redirectRes.cookies.set(cookie.name, cookie.value);
+          });
+          return redirectRes;
         }
       } catch {
         // If query fails, let the user through to the page handlers
       }
     }
 
-    return supabaseResponse
+    return supabaseResponse;
   } catch (err) {
     console.error('Middleware updateSession error:', err);
     return supabaseResponse;

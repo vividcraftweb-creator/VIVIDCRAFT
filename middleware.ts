@@ -19,11 +19,21 @@ const PREMIUM_ROUTES = [
 ];
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Ensure /auth/callback and /api/auth/callback are completely bypassed by Middleware
+  if (pathname.startsWith('/auth/callback') || pathname.startsWith('/api/auth/callback')) {
+    return NextResponse.next();
+  }
+
   try {
     // First, update the session
     const response = await updateSession(request);
 
-    const { pathname } = request.nextUrl;
+    // If updateSession returned a redirect response, return it directly
+    if (response.status >= 300 && response.status < 400) {
+      return response;
+    }
 
     // Check if this is a premium route
     const premiumRoute = PREMIUM_ROUTES.find((route) => pathname.startsWith(route.path));
@@ -76,6 +86,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|auth/callback|api/auth/callback|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

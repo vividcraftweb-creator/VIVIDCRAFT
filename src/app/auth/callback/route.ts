@@ -10,19 +10,20 @@ function cleanEnv(val?: string): string {
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
+  const origin = requestUrl.origin;
   const code = requestUrl.searchParams.get('code');
   const tokenHash = requestUrl.searchParams.get('token_hash');
   const type = requestUrl.searchParams.get('type') as any;
-  const next = requestUrl.searchParams.get('next') ?? '/dashboard';
+  const next = requestUrl.searchParams.get('next');
   const queryRole = requestUrl.searchParams.get('role');
 
-  let destination = next;
-  if (!destination || destination.includes('verify-email') || destination.includes('auth-code-error')) {
-    destination = '/dashboard';
+  let destination = '/dashboard';
+  if (next && !next.includes('verify-email') && !next.includes('auth-code-error') && !next.includes('login')) {
+    destination = next.startsWith('/') ? next : `/${next}`;
   }
 
   // Pre-create the redirect response so all auth cookies are explicitly attached to the HTTP redirect response
-  const redirectResponse = NextResponse.redirect(new URL(destination, request.url));
+  const redirectResponse = NextResponse.redirect(new URL(destination, origin));
 
   try {
     let supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
@@ -44,14 +45,16 @@ export async function GET(request: Request) {
             });
           },
           setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              try {
                 cookieStore.set(name, value, options);
+              } catch {}
+              try {
                 redirectResponse.cookies.set(name, value, options);
-              });
-            } catch (err) {
-              console.warn('Cookie set error in route handler:', err);
-            }
+              } catch (err) {
+                console.warn('Cookie set error on redirectResponse:', err);
+              }
+            });
           },
         },
       }
