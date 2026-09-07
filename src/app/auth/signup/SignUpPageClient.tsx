@@ -288,6 +288,7 @@ export default function SignUpPage() {
         },
         body: JSON.stringify({
           ...formData,
+          role: formData.role === 'CLIENT' ? 'client' : 'artist',
           country: resolvedCountry,
           timezone: resolvedTimezone,
           industry: resolvedIndustry,

@@ -111,27 +111,31 @@ export default function SignUpContent() {
     setSuccessMessage(null);
 
     const userCountry = formData.location?.trim() || 'Sri Lanka';
-    const selectedRole = 'artist';
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
 
     try {
-      // STEP 1: Register with Supabase Auth — stamp role in user_metadata immediately
+      const origin = typeof window !== 'undefined'
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
+
+      // STEP 1: Register with Supabase Auth — explicitly pass role: 'artist' in options.data
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
+          emailRedirectTo: `${origin}/auth/callback?role=artist`,
           data: {
-            role: selectedRole,
+            role: 'artist',
             full_name: fullName,
             name: fullName,
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            user_type: selectedRole,
-            userRole: selectedRole,
-            role_name: selectedRole,
-            account_type: selectedRole,
+            user_type: 'artist',
+            userRole: 'artist',
+            role_name: 'artist',
+            account_type: 'artist',
             location: userCountry,
             country: userCountry,
           },
@@ -176,25 +180,32 @@ export default function SignUpContent() {
         console.warn('[signup] signInWithPassword warning:', signInError.message);
       }
 
-      // STEP 2.5: Directly update the profiles table using the live authenticated session.
-      // With the session established, auth.uid() === user.id satisfies PostgREST RLS.
-      const activeUser = signInData?.user || (await supabase.auth.getUser()).data.user;
-      if (activeUser?.id) {
+      // STEP 2.5: Directly update the profiles table setting role = 'artist'
+      let activeUserId = signInData?.user?.id || data?.user?.id;
+      if (!activeUserId) {
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          activeUserId = userData?.user?.id;
+        } catch {}
+      }
+
+      if (activeUserId) {
         const { error: profileUpdateErr } = await supabase
           .from('profiles')
           .update({
-            role: selectedRole,
+            role: 'artist',
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
+            address: userCountry,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', activeUser.id);
+          .eq('id', activeUserId);
 
         if (profileUpdateErr) {
           console.warn('[signup] Direct profile update notice, attempting upsert:', profileUpdateErr.message);
           await supabase.from('profiles').upsert({
-            id: activeUser.id,
-            role: selectedRole,
+            id: activeUserId,
+            role: 'artist',
             email: formData.email.trim(),
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
@@ -202,6 +213,27 @@ export default function SignUpContent() {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
         }
+
+        try {
+          const baseSlug = `${formData.firstName.trim()}-${formData.lastName.trim()}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
+          await supabase.from('Profile').upsert([
+            {
+              id: activeUserId,
+              userId: activeUserId,
+              slug: `${baseSlug || 'artist'}-${activeUserId.substring(0, 6)}`,
+              firstName: formData.firstName.trim(),
+              lastName: formData.lastName.trim(),
+              title: formData.title?.trim() || 'Artist',
+              bio: 'Welcome to Vivid Art!',
+              country: userCountry,
+              location: userCountry,
+              isPublished: true,
+              is_published: true,
+              verified: false,
+              updatedAt: new Date().toISOString(),
+            },
+          ]);
+        } catch {}
       }
 
       // STEP 3: Call /api/auth/provision-user to sync all DB tables and user_metadata
@@ -210,7 +242,7 @@ export default function SignUpContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            role: selectedRole,
+            role: 'artist',
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
             title: formData.title?.trim() || 'Artist',
