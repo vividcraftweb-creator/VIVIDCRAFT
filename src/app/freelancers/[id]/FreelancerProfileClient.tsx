@@ -588,26 +588,28 @@ Hi, I would like to connect with this artist for a commission/project.`;
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-end lg:w-auto">
-                <Button variant="outline" className="h-11 sm:h-10 gap-2 glass-button interactive-scale" onClick={handleShare}>
-                  <Share2 className="h-4 w-4" />
-                  {copied ? 'Link copied' : 'Share profile'}
-                </Button>
+              <div className="flex w-full flex-col gap-2.5 lg:w-auto">
+                <div className="flex w-full flex-col gap-2.5 sm:flex-row">
+                  <Button variant="outline" className="h-11 sm:h-10 gap-2 glass-button interactive-scale flex-1" onClick={handleShare}>
+                    <Share2 className="h-4 w-4" />
+                    {copied ? 'Link copied' : 'Share profile'}
+                  </Button>
+                  <Button
+                    className="h-11 sm:h-10 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 button-ripple interactive-scale flex-1"
+                    onClick={handleMessage}
+                    disabled={status === 'loading'}
+                  >
+                    <Mail className="h-4 w-4" />
+                    Message
+                  </Button>
+                </div>
                 <Button
-                  className="h-11 sm:h-10 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 button-ripple interactive-scale"
-                  onClick={handleMessage}
-                  disabled={status === 'loading'}
-                >
-                  <Mail className="h-4 w-4" />
-                  Message
-                </Button>
-                <Button
-                  className="h-11 sm:h-10 gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale"
+                  className="w-full h-auto py-2.5 sm:py-3 px-4 gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white font-medium text-sm shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale justify-center"
                   onClick={handleWhatsAppConnect}
                   disabled={status === 'loading'}
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
+                  <MessageCircle className="h-4 w-4 shrink-0" />
+                  <span>Inquire &amp; Ask Pricing via WhatsApp</span>
                 </Button>
               </div>
             </div>
@@ -908,12 +910,12 @@ Hi, I would like to connect with this artist for a commission/project.`;
                     Message {profile.first_name || profile.firstName || (displayName !== 'Artist' ? displayName.split(' ')[0] : 'Artist')}
                   </Button>
                   <Button
-                    className="gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale"
+                    className="w-full h-auto py-2.5 sm:py-3 px-4 gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white font-medium text-sm shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale justify-center"
                     onClick={handleWhatsAppConnect}
                     disabled={status === 'loading'}
                   >
-                    <MessageCircle className="h-4 w-4" />
-                    Connect via WhatsApp
+                    <MessageCircle className="h-4 w-4 shrink-0" />
+                    <span>Inquire &amp; Ask Pricing via WhatsApp</span>
                   </Button>
                 </div>
               </section>
