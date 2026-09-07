@@ -13,6 +13,7 @@ import { SubscriptionPlan } from '@/types/database.types';
 import type { Database } from '@/types/database.types';
 import { generateProfileSlug } from '@/server/utils/profileSlug';
 import type { Profile as ProfileRow } from '@/types/database.types';
+import { isArtistProfile } from '@/lib/artist-filter';
 import crypto from 'crypto';
 
 type PublicProfileSummary = Pick<
@@ -1202,12 +1203,25 @@ export const profilesRouter = router({
         }
       }
 
-      // 1. Fetch from `profiles` table
+      // 1. Fetch from `profiles` table strictly where role = 'artist' (case-insensitive)
       const profilesMap = new Map<string, any>();
       try {
-        const { data: pRows } = await (supabase as any).from('profiles').select('*');
+        let { data: pRows } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .ilike('role', 'artist');
+
+        if (!pRows || pRows.length === 0) {
+          const res = await (supabase as any)
+            .from('profiles')
+            .select('*')
+            .or('role.ilike.artist,role.eq.artist,role.eq.Artist');
+          if (res.data) pRows = res.data;
+        }
+
         if (pRows && Array.isArray(pRows)) {
-          pRows.forEach((p: any) => {
+          const artistRows = pRows.filter(isArtistProfile);
+          artistRows.forEach((p: any) => {
             const key = p.id || p.userId || p.user_id;
             if (key) {
               const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || '';
@@ -1291,10 +1305,9 @@ export const profilesRouter = router({
 
       const allProfiles = Array.from(profilesMap.values());
 
-      // Apply search and filter criteria (strictly excluding clients, buyers, admins)
+      // Apply search and filter criteria (strictly requiring role = 'artist' and excluding clients)
       const filteredProfiles = allProfiles.filter((p: any) => {
-        const role = String(p.role || p.user_type || p.account_type || p.userType || p.user_metadata?.role || '').toLowerCase().trim();
-        if (role === 'client' || role === 'buyer' || role === 'admin' || role === 'employer') return false;
+        if (!isArtistProfile(p)) return false;
 
         const fName = p.first_name || p.firstName || p.full_name?.split(' ')[0] || '';
         const lName = p.last_name || p.lastName || (p.full_name ? p.full_name.split(' ').slice(1).join(' ') : '') || '';
@@ -1427,6 +1440,104 @@ export const profilesRouter = router({
           hasMore: false,
           planContext: null,
         };
+      }
+    }),
+
+  // Fetch all registered artists strictly where role = 'artist' (case-insensitive)
+  getArtists: publicProcedure
+    .input(
+      z
+        .object({
+          search: z.string().optional().nullable(),
+          limit: z.number().optional().nullable(),
+        })
+        .optional()
+        .nullable()
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        const supabase = createAdminClient();
+        let { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('role', 'artist')
+          .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+          const res = await supabase
+            .from('profiles')
+            .select('*')
+            .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+            .order('created_at', { ascending: false });
+          if (!res.error && res.data) {
+            data = res.data;
+          }
+        }
+
+        let list = (data || []).filter(isArtistProfile);
+        if (input?.search) {
+          const s = input.search.toLowerCase().trim();
+          list = list.filter((p: any) => {
+            const name = `${p.first_name || ''} ${p.last_name || ''} ${p.full_name || ''} ${p.title || ''} ${p.bio || ''}`.toLowerCase();
+            return name.includes(s);
+          });
+        }
+        if (input?.limit && input.limit > 0) {
+          list = list.slice(0, input.limit);
+        }
+        return list;
+      } catch (err) {
+        console.warn('getArtists exception caught gracefully:', err);
+        return [];
+      }
+    }),
+
+  // Fetch public profiles strictly where role = 'artist' (case-insensitive)
+  getPublicProfiles: publicProcedure
+    .input(
+      z
+        .object({
+          search: z.string().optional().nullable(),
+          limit: z.number().optional().nullable(),
+        })
+        .optional()
+        .nullable()
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        const supabase = createAdminClient();
+        let { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('role', 'artist')
+          .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+          const res = await supabase
+            .from('profiles')
+            .select('*')
+            .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+            .order('created_at', { ascending: false });
+          if (!res.error && res.data) {
+            data = res.data;
+          }
+        }
+
+        let list = (data || []).filter(isArtistProfile);
+        if (input?.search) {
+          const s = input.search.toLowerCase().trim();
+          list = list.filter((p: any) => {
+            const name = `${p.first_name || ''} ${p.last_name || ''} ${p.full_name || ''} ${p.title || ''} ${p.bio || ''}`.toLowerCase();
+            return name.includes(s);
+          });
+        }
+        if (input?.limit && input.limit > 0) {
+          list = list.slice(0, input.limit);
+        }
+        return list;
+      } catch (err) {
+        console.warn('getPublicProfiles exception caught gracefully:', err);
+        return [];
       }
     }),
 

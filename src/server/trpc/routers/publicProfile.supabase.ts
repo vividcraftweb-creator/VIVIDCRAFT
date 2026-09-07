@@ -12,6 +12,7 @@ import { generateProfileSlug } from '@/server/utils/profileSlug';
 import { mkdir, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { isArtistProfile } from '@/lib/artist-filter';
 
 // Validation schemas
 const basicInfoSchema = z.object({
@@ -1499,4 +1500,102 @@ export const publicProfileRouter = router({
       };
     }
   }),
+
+  // Fetch all registered artists strictly where role = 'artist' (case-insensitive)
+  getArtists: publicProcedure
+    .input(
+      z
+        .object({
+          search: z.string().optional().nullable(),
+          limit: z.number().optional().nullable(),
+        })
+        .optional()
+        .nullable()
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        const supabase = createAdminClient();
+        let { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('role', 'artist')
+          .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+          const res = await supabase
+            .from('profiles')
+            .select('*')
+            .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+            .order('created_at', { ascending: false });
+          if (!res.error && res.data) {
+            data = res.data;
+          }
+        }
+
+        let list = (data || []).filter(isArtistProfile);
+        if (input?.search) {
+          const s = input.search.toLowerCase().trim();
+          list = list.filter((p: any) => {
+            const name = `${p.first_name || ''} ${p.last_name || ''} ${p.full_name || ''} ${p.title || ''} ${p.bio || ''}`.toLowerCase();
+            return name.includes(s);
+          });
+        }
+        if (input?.limit && input.limit > 0) {
+          list = list.slice(0, input.limit);
+        }
+        return list;
+      } catch (err) {
+        console.warn('publicProfile.getArtists exception caught gracefully:', err);
+        return [];
+      }
+    }),
+
+  // Fetch public profiles strictly where role = 'artist' (case-insensitive)
+  getPublicProfiles: publicProcedure
+    .input(
+      z
+        .object({
+          search: z.string().optional().nullable(),
+          limit: z.number().optional().nullable(),
+        })
+        .optional()
+        .nullable()
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        const supabase = createAdminClient();
+        let { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('role', 'artist')
+          .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+          const res = await supabase
+            .from('profiles')
+            .select('*')
+            .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+            .order('created_at', { ascending: false });
+          if (!res.error && res.data) {
+            data = res.data;
+          }
+        }
+
+        let list = (data || []).filter(isArtistProfile);
+        if (input?.search) {
+          const s = input.search.toLowerCase().trim();
+          list = list.filter((p: any) => {
+            const name = `${p.first_name || ''} ${p.last_name || ''} ${p.full_name || ''} ${p.title || ''} ${p.bio || ''}`.toLowerCase();
+            return name.includes(s);
+          });
+        }
+        if (input?.limit && input.limit > 0) {
+          list = list.slice(0, input.limit);
+        }
+        return list;
+      } catch (err) {
+        console.warn('publicProfile.getPublicProfiles exception caught gracefully:', err);
+        return [];
+      }
+    }),
 });

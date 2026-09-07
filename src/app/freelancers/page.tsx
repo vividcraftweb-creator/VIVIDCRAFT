@@ -17,9 +17,23 @@ export default async function FreelancersPage() {
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
-      .select('*');
+      .select('*')
+      .ilike('role', 'artist')
+      .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+      const res = await supabase
+        .from('profiles')
+        .select('*')
+        .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+        .order('created_at', { ascending: false });
+      if (!res.error && res.data) {
+        data = res.data;
+        error = null;
+      }
+    }
 
     if (!error && Array.isArray(data)) {
       profiles = data.filter(isArtistProfile);

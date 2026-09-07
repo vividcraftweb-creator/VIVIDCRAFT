@@ -25,7 +25,9 @@ export default function FreelancersPageClient({
 }) {
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [profiles, setProfiles] = useState<any[]>(initialProfiles);
+  const [profiles, setProfiles] = useState<any[]>(() => {
+    return Array.isArray(initialProfiles) ? initialProfiles.filter(isArtistProfile) : [];
+  });
   const [loading, setLoading] = useState(initialProfiles.length === 0);
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
@@ -42,12 +44,30 @@ export default function FreelancersPageClient({
       try {
         const profilesMap = new Map<string, any>();
 
-        // Fetch from 'profiles' table
+        // Fetch from 'profiles' table strictly where role = 'artist' (case-insensitive)
         try {
-          const { data: pRows, error: pErr } = await supabase.from('profiles').select('*');
+          let { data: pRows, error: pErr } = await supabase
+            .from('profiles')
+            .select('*')
+            .ilike('role', 'artist')
+            .order('created_at', { ascending: false });
+
+          if (pErr || !pRows || pRows.length === 0) {
+            const res = await supabase
+              .from('profiles')
+              .select('*')
+              .or('role.ilike.artist,role.eq.artist,role.eq.Artist')
+              .order('created_at', { ascending: false });
+            if (!res.error && res.data) {
+              pRows = res.data;
+              pErr = null;
+            }
+          }
+
           if (pErr) console.warn("profiles table query error:", pErr);
           if (pRows && Array.isArray(pRows)) {
-            for (const p of pRows) {
+            const artistRows = pRows.filter(isArtistProfile);
+            for (const p of artistRows) {
               const key = p.id || p.userId || p.user_id;
               if (key) {
                 let avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
