@@ -300,9 +300,9 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       if (!data) {
         try {
           const { data: d } = await (supabase as any)
-            .from('profiles')
+            .from('Profile')
             .select('*')
-            .eq('user_id', targetUserId)
+            .eq('userId', targetUserId)
             .maybeSingle();
           data = d;
         } catch {}
@@ -601,7 +601,8 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
     );
   }
 
-  const acceptedProposals = proposals?.filter((p) => p.status === 'ACCEPTED') || [];
+  const safeProposals = Array.isArray(proposals) ? proposals : [];
+  const acceptedProposals = safeProposals.filter((p) => p.status === 'ACCEPTED');
 
   const freelancerProfileLink =
     myProfile?.slug
@@ -610,13 +611,13 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       ? `/freelancers/${sessionUserId}`
       : '/freelancers';
 
-  const totalProposals = proposals?.length ?? 0;
+  const totalProposals = safeProposals.length;
   const proposalStatusMap =
-    proposals?.reduce<Record<string, number>>((acc, proposal) => {
+    safeProposals.reduce<Record<string, number>>((acc, proposal) => {
       const status = proposal.status ?? 'UNKNOWN';
       acc[status] = (acc[status] ?? 0) + 1;
       return acc;
-    }, {}) ?? {};
+    }, {});
 
   const proposalOverview = [
     { label: 'Accepted', count: proposalStatusMap.ACCEPTED ?? 0, color: 'bg-green-500' },
@@ -644,7 +645,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     <p className="text-yellow-200/80 mb-4">
                       {verificationStatus?.message || 'Upload a government-issued ID to fully activate your account and apply for jobs. This keeps our marketplace safe for everyone.'}
                     </p>
-                    {verificationStatus?.status === 'incomplete' && verificationStatus.missingDocs.length > 0 && (
+                    {verificationStatus?.status === 'incomplete' && Array.isArray(verificationStatus?.missingDocs) && verificationStatus.missingDocs.length > 0 && (
                       <div className="mb-3 text-sm text-yellow-200/90">
                         <p className="font-semibold mb-1">Missing documents:</p>
                         {verificationStatus.missingDocs.map((doc, idx) => (
@@ -699,7 +700,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     <p className="text-red-200/80 mb-4">
                       We couldn&apos;t approve the documents provided. Please review the guidelines and resubmit clear photos of your ID.
                     </p>
-                    {verificationStatus.rejectedDocs.length > 0 && (
+                    {Array.isArray(verificationStatus?.rejectedDocs) && verificationStatus.rejectedDocs.length > 0 && (
                       <div className="mb-3 text-sm text-red-200/90">
                         <p className="font-semibold mb-1">Rejected documents:</p>
                         {verificationStatus.rejectedDocs.map((doc, idx) => (
@@ -790,11 +791,11 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
               <div>
                 <p className="text-purple-300 text-sm font-medium">Success Rate</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
-                  {proposals && proposals.length > 0 ? Math.round((acceptedProposals.length / proposals.length) * 100) : 0}%
+                  {safeProposals.length > 0 ? Math.round((acceptedProposals.length / safeProposals.length) * 100) : 0}%
                 </p>
                 <p className="text-purple-400 text-sm mt-1 flex items-center">
                   <Target className="h-4 w-4 mr-1" />
-                  {acceptedProposals.length || 0} of {proposals?.length || 0} commissions
+                  {acceptedProposals.length || 0} of {safeProposals.length} commissions
                 </p>
               </div>
               <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
@@ -809,7 +810,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
               <div>
                 <p className="text-emerald-300 text-sm font-medium">Portfolio Artworks</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
-                  {myArtworks?.length ?? 0}
+                  {Array.isArray(myArtworks) ? myArtworks.length : 0}
                 </p>
                 <p className="text-emerald-400 text-sm mt-1 flex items-center">
                   <ImageIcon className="h-4 w-4 mr-1" />
@@ -835,7 +836,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
               </div>
 
               <div className="space-y-4">
-                {proposals?.slice(0, 5).map((proposal) => (
+                {safeProposals.slice(0, 5).map((proposal) => (
                   <div key={proposal.id} className="flex items-start sm:items-center flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
                     <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
                       <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
@@ -858,7 +859,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                   </div>
                 ))}
 
-                {(!proposals || proposals.length === 0) && (
+                {safeProposals.length === 0 && (
                   <div className="text-center py-8">
                     <FileText className="h-12 w-12 text-slate-500 mx-auto mb-4" />
                     <p className="text-slate-400">No commission inquiries yet</p>
@@ -1200,6 +1201,9 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       return contact.email || 'Unknown User';
     };
 
+    const safeContacts = Array.isArray(contacts) ? contacts : [];
+    const safeMessages = Array.isArray(messages) ? messages : [];
+
     return (
       <div className="space-y-6">
         <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
@@ -1210,7 +1214,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
             <div className={`w-full lg:w-1/3 lg:border-r border-white/10 lg:pr-6 overflow-y-auto ${selectedContact ? 'hidden lg:block' : 'block'}`}>
               <h3 className="text-lg font-semibold text-white mb-4">Contacts</h3>
               <div className="space-y-2">
-                {contacts?.map((contact) => (
+                {safeContacts.map((contact) => (
                   <button
                     key={contact.id}
                     onClick={() => setSelectedContact(contact)}
@@ -1243,7 +1247,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     </div>
                   </button>
                 ))}
-                {(!contacts || contacts.length === 0) && (
+                {safeContacts.length === 0 && (
                   <div className="text-center py-12">
                     <UserIcon className="h-12 w-12 text-slate-500 mx-auto mb-3" />
                     <p className="text-slate-400">No contacts yet</p>
@@ -1252,129 +1256,129 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
               </div>
             </div>
 
-          {/* Chat Area */}
-          <div className={`flex-1 flex flex-col ${selectedContact ? 'block' : 'hidden lg:flex'}`}>
-            {selectedContact ? (
-              <>
-                <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedContact(null)}
-                      className="lg:hidden text-white hover:bg-white/10"
-                    >
-                      ← Back
-                    </Button>
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/50">
-                      <AvatarImage
-                        src={getProfilePictureUrl(selectedContact.id, selectedContact.profile?.profilePicture) || undefined}
-                        alt={getContactName(selectedContact)}
-                      />
-                      <AvatarFallback className="bg-primary/30 text-white font-bold">
-                        {selectedContact.profile?.firstName?.charAt(0) || selectedContact.email?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="text-base sm:text-lg font-semibold text-white">
-                        {getContactName(selectedContact)}
-                      </h3>
-                      {selectedContact.profile?.companyName && (
-                        <p className="text-xs sm:text-sm text-slate-400">
-                          {selectedContact.profile.companyName}
-                        </p>
-                      )}
-                      {messages && messages.length > 0 && messages[0].job && (
-                        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                          From: {messages[0].job.title}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-white/10">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-slate-900 border-white/10">
-                      <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
-                        Delete conversation
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
-                        Block user
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-white/10" />
-                      <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
-                        Report user
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
-                  {messages?.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${
-                        msg.senderId === selectedContact.id ? 'justify-start' : 'justify-end'
-                      }`}
-                    >
-                      <div
-                        className={`max-w-[70%] p-4 rounded-2xl ${
-                          msg.senderId === selectedContact.id
-                            ? 'bg-white/10 text-white'
-                            : 'bg-primary text-white'
-                        }`}
+            {/* Chat Area */}
+            <div className={`flex-1 flex flex-col ${selectedContact ? 'block' : 'hidden lg:flex'}`}>
+              {selectedContact ? (
+                <>
+                  <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedContact(null)}
+                        className="lg:hidden text-white hover:bg-white/10"
                       >
-                        <p className="text-sm">{msg.content}</p>
-                        <p className="text-xs opacity-70 mt-2">
-                          {new Date(msg.createdAt).toLocaleTimeString()}
-                        </p>
+                        ← Back
+                      </Button>
+                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/50">
+                        <AvatarImage
+                          src={getProfilePictureUrl(selectedContact.id, selectedContact.profile?.profilePicture) || undefined}
+                          alt={getContactName(selectedContact)}
+                        />
+                        <AvatarFallback className="bg-primary/30 text-white font-bold">
+                          {selectedContact.profile?.firstName?.charAt(0) || selectedContact.email?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-semibold text-white">
+                          {getContactName(selectedContact)}
+                        </h3>
+                        {selectedContact.profile?.companyName && (
+                          <p className="text-xs sm:text-sm text-slate-400">
+                            {selectedContact.profile.companyName}
+                          </p>
+                        )}
+                        {safeMessages.length > 0 && safeMessages[0].job && (
+                          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                            From: {safeMessages[0].job.title}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  ))}
-                  {(!messages || messages.length === 0) && (
-                    <div className="text-center py-16">
-                      <MessageSquare className="h-16 w-16 text-slate-500 mx-auto mb-4" />
-                      <p className="text-slate-400 text-lg">No messages yet</p>
-                      <p className="text-slate-500 text-sm mt-2">Start the conversation!</p>
-                    </div>
-                  )}
-                </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-white/10">
+                          <MoreHorizontal className="h-5 w-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-slate-900 border-white/10">
+                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                          Delete conversation
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                          Block user
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
+                          Report user
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-                <form onSubmit={handleSendMessage} className="flex gap-2 sm:gap-3">
-                  <Input
-                    id="freelancer-message-input"
-                    name="freelancer-message-input"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-400 h-10 sm:h-12 text-sm"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={sendMessageMutation.isPending || !messageText.trim()}
-                    className="bg-primary hover:bg-primary/90 h-10 sm:h-12 px-4 sm:px-6"
-                  >
-                    <Send className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Send</span>
-                  </Button>
-                </form>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <MessageSquare className="h-20 w-20 text-slate-500 mx-auto mb-4" />
-                  <p className="text-slate-300 text-lg font-medium">Select a contact to start messaging</p>
-                  <p className="text-slate-500 text-sm mt-2">Choose from your contacts on the left</p>
+                  <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+                    {safeMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex ${
+                          msg.senderId === selectedContact.id ? 'justify-start' : 'justify-end'
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[70%] p-4 rounded-2xl ${
+                            msg.senderId === selectedContact.id
+                              ? 'bg-white/10 text-white'
+                              : 'bg-primary text-white'
+                          }`}
+                        >
+                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-xs opacity-70 mt-2">
+                            {new Date(msg.createdAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {safeMessages.length === 0 && (
+                      <div className="text-center py-16">
+                        <MessageSquare className="h-16 w-16 text-slate-500 mx-auto mb-4" />
+                        <p className="text-slate-400 text-lg">No messages yet</p>
+                        <p className="text-slate-500 text-sm mt-2">Start the conversation!</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSendMessage} className="flex gap-2 sm:gap-3">
+                    <Input
+                      id="freelancer-message-input"
+                      name="freelancer-message-input"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      placeholder="Type a message..."
+                      className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-400 h-10 sm:h-12 text-sm"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={sendMessageMutation.isPending || !messageText.trim()}
+                      className="bg-primary hover:bg-primary/90 h-10 sm:h-12 px-4 sm:px-6"
+                    >
+                      <Send className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Send</span>
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                  <MessageSquare className="h-16 w-16 text-slate-500 mb-4" />
+                  <h3 className="text-xl font-bold text-white mb-2">Select a Contact</h3>
+                  <p className="text-slate-400 text-sm max-w-sm">
+                    Choose a contact from the list on the left to view your message history and continue the conversation.
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     );
   };
 
@@ -1395,10 +1399,10 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                   <Skeleton className="h-12 w-full" />
                   <Skeleton className="h-12 w-full" />
                 </div>
-              ) : proposals && proposals.length > 0 ? (
+              ) : safeProposals.length > 0 ? (
                 <DataTable
                   columns={proposalColumns}
-                  data={proposals.map(p => ({
+                  data={safeProposals.map(p => ({
                     ...p,
                     createdAt: typeof p.createdAt === 'string' ? p.createdAt : p.createdAt.toISOString(),
                     updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : p.updatedAt.toISOString()

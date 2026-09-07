@@ -532,10 +532,10 @@ export const verificationsRouter = router({
     } catch {}
     if (!profileData) {
       try {
-        const { data } = await (adminSupabase as any)
-          .from('profiles')
-          .select('firstName, lastName, first_name, last_name')
-          .eq('user_id', userId)
+        const { data } = await adminSupabase
+          .from('Profile')
+          .select('firstName, lastName')
+          .eq('userId', userId)
           .maybeSingle();
         profileData = data;
       } catch {}
@@ -580,7 +580,6 @@ export const verificationsRouter = router({
           .from('profiles')
           .insert({
             id: userId,
-            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
 
@@ -606,10 +605,10 @@ export const verificationsRouter = router({
         } catch {}
         if (!freshProfileData) {
           try {
-            const { data } = await (adminSupabase as any)
-              .from('profiles')
-              .select('firstName, lastName, first_name, last_name')
-              .eq('user_id', userId)
+            const { data } = await adminSupabase
+              .from('Profile')
+              .select('firstName, lastName')
+              .eq('userId', userId)
               .maybeSingle();
             freshProfileData = data;
           } catch {}

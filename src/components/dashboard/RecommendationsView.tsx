@@ -35,7 +35,8 @@ export default function RecommendationsView() {
 
   // Filter only open jobs
   const openJobs = useMemo(() => {
-    return jobs?.filter((job) => job.status === 'OPEN') || [];
+    const safeJobs = Array.isArray(jobs) ? jobs : [];
+    return safeJobs.filter((job) => job.status === 'OPEN');
   }, [jobs]);
 
   // Auto-select first job if available
@@ -57,7 +58,9 @@ export default function RecommendationsView() {
     { enabled: !!activeJobId }
   );
 
-  const recommendations = recommendationsData?.recommendations || [];
+  const recommendations = Array.isArray(recommendationsData?.recommendations)
+    ? recommendationsData.recommendations
+    : [];
 
   // Check if user has access to this feature
   const hasAccess = planSummary?.permissions?.hasAdvancedClientAnalytics;

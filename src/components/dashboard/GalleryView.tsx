@@ -14,6 +14,7 @@ export default function GalleryView() {
   
   const utils = trpc.useUtils();
   const { data: artworks, isLoading } = trpc.artworks.getMyArtworks.useQuery();
+  const safeArtworks = Array.isArray(artworks) ? artworks : [];
 
   const createArtwork = trpc.artworks.createArtwork.useMutation({
     onSuccess: () => {
@@ -107,7 +108,7 @@ export default function GalleryView() {
             </p>
           </div>
           <div className="text-sm font-medium px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">
-            {artworks?.length || 0} {artworks?.length === 1 ? 'Artwork' : 'Artworks'} Total
+            {safeArtworks.length} {safeArtworks.length === 1 ? 'Artwork' : 'Artworks'} Total
           </div>
         </div>
 
@@ -157,9 +158,9 @@ export default function GalleryView() {
         </div>
 
         {/* Gallery Grid */}
-        {artworks && artworks.length > 0 ? (
+        {safeArtworks.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {artworks.map((artwork: any) => {
+            {safeArtworks.map((artwork: any) => {
               const imgUrl = artwork.image_url || artwork.imageUrl;
               return (
                 <div

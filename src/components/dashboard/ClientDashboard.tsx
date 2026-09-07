@@ -152,7 +152,7 @@ export default function ClientDashboard() {
   };
 
   const jobsWithMeta = useMemo(() => {
-    const jobList = jobs ?? [];
+    const jobList = Array.isArray(jobs) ? jobs : [];
 
     return jobList
       .slice()
@@ -162,7 +162,7 @@ export default function ClientDashboard() {
         return dateB - dateA;
       })
       .map((job) => {
-        const proposalsForJob = job.proposals || [];
+        const proposalsForJob = Array.isArray(job.proposals) ? job.proposals : [];
         const pendingForJob = proposalsForJob.filter((proposal: { status?: string }) => proposal.status === 'PENDING');
         const underReview = job.status === 'OPEN' && pendingForJob.length > 0;
 
@@ -202,10 +202,11 @@ export default function ClientDashboard() {
     () => (Array.isArray(conversations) ? (conversations.slice(0, 3) as ConversationPreview[]) : []),
     [conversations],
   );
-  const recentNotifications = useMemo(
-    () => (Array.isArray(notifications) ? notifications.slice(0, 3) : ((notifications as any)?.notifications?.slice(0, 3) || [])),
-    [notifications],
-  );
+  const recentNotifications = useMemo(() => {
+    if (Array.isArray(notifications)) return notifications.slice(0, 3);
+    if (Array.isArray((notifications as any)?.notifications)) return (notifications as any).notifications.slice(0, 3);
+    return [];
+  }, [notifications]);
 
   const renderDashboardContent = () => {
     const getConversationPartner = (conversation: ConversationPreview) => {

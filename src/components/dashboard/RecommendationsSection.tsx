@@ -23,10 +23,11 @@ export default function RecommendationsSection() {
 
   // Fetch open jobs
   const { data: jobs, isLoading: jobsLoading } = trpc.jobs.getJobsForClient.useQuery();
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
 
   // Get most recent open job
   const mostRecentOpenJob = useMemo(() => {
-    const openJobs = jobs?.filter((job) => job.status === 'OPEN') || [];
+    const openJobs = safeJobs.filter((job) => job.status === 'OPEN');
     if (openJobs.length === 0) return null;
     // Sort by createdAt descending
     return openJobs.sort((a, b) => {
@@ -34,7 +35,7 @@ export default function RecommendationsSection() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     })[0];
-  }, [jobs]);
+  }, [safeJobs]);
 
   // Fetch recommendations for most recent open job
   const {
@@ -45,7 +46,9 @@ export default function RecommendationsSection() {
     { enabled: !!mostRecentOpenJob?.id && hasAccess }
   );
 
-  const recommendations = recommendationsData?.recommendations || [];
+  const recommendations = Array.isArray(recommendationsData?.recommendations)
+    ? recommendationsData.recommendations
+    : [];
 
   // Don't show section if user doesn't have access
   if (!hasAccess) {
@@ -132,10 +135,10 @@ export default function RecommendationsSection() {
               />
             ))}
           </div>
-          {jobs && jobs.filter((j) => j.status === 'OPEN').length > 1 && (
+          {safeJobs.filter((j) => j.status === 'OPEN').length > 1 && (
             <div className="text-center">
               <p className="text-sm text-slate-400 mb-2">
-                You have {jobs.filter((j) => j.status === 'OPEN').length} open jobs.
+                You have {safeJobs.filter((j) => j.status === 'OPEN').length} open jobs.
                 View recommendations for all jobs in your job listings.
               </p>
             </div>

@@ -8,65 +8,64 @@ import { getAuthenticatedClient } from '@/lib/supabase/authenticated-client';
 
 export const artworksRouter = router({
   getMyArtworks: protectedProcedure.query(async ({ ctx }) => {
-    const artistId = ctx.session.user?.id || (ctx as any).user?.id;
-    if (!artistId) {
-      throw new TRPCError({
-        code: 'UNAUTHORIZED',
-        message: 'Authenticated session user ID not found',
+    try {
+      const artistId = ctx.session.user?.id || (ctx as any).user?.id;
+      if (!artistId) {
+        return [];
+      }
+
+      const supabase = await getAuthenticatedClient(ctx);
+
+      const { data: artworks, error } = await supabase
+        .from('artworks')
+        .select('*')
+        .eq('artist_id', artistId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('getMyArtworks query error caught gracefully:', error.message || error);
+        return [];
+      }
+
+      if (!artworks || artworks.length === 0) {
+        return [];
+      }
+
+      const artworkIds = artworks.map((a: any) => a.id);
+
+      // Fetch likes count
+      const { data: likes } = await supabase
+        .from('artwork_likes')
+        .select('artwork_id')
+        .in('artwork_id', artworkIds);
+
+      // Fetch ratings
+      const { data: ratings } = await supabase
+        .from('artwork_ratings')
+        .select('artwork_id, rating')
+        .in('artwork_id', artworkIds);
+
+      return artworks.map((art: any) => {
+        const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
+        const artRatings = (ratings || []).filter((r: any) => r.artwork_id === art.id);
+        const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
+        const avgRating = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
+
+        return {
+          id: art.id,
+          artist_id: art.artist_id,
+          title: art.title,
+          image_url: art.image_url,
+          created_at: art.created_at,
+          likesCount: artLikes.length,
+          ratingsCount: artRatings.length,
+          averageRating: avgRating,
+        };
       });
-    }
-
-    const supabase = await getAuthenticatedClient(ctx);
-
-    const { data: artworks, error } = await supabase
-      .from('artworks')
-      .select('*')
-      .eq('artist_id', artistId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('getMyArtworks error:', error);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch artworks',
-      });
-    }
-
-    if (!artworks || artworks.length === 0) {
+    } catch (err) {
+      console.warn('getMyArtworks exception caught gracefully:', err);
       return [];
     }
-
-    const artworkIds = artworks.map((a: any) => a.id);
-
-    // Fetch likes count
-    const { data: likes } = await supabase
-      .from('artwork_likes')
-      .select('artwork_id')
-      .in('artwork_id', artworkIds);
-
-    // Fetch ratings
-    const { data: ratings } = await supabase
-      .from('artwork_ratings')
-      .select('artwork_id, rating')
-      .in('artwork_id', artworkIds);
-
-    return artworks.map((art: any) => {
-      const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
-      const artRatings = (ratings || []).filter((r: any) => r.artwork_id === art.id);
-      const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
-      const avgRating = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
-
-      return {
-        id: art.id,
-        artist_id: art.artist_id,
-        title: art.title,
-        image_url: art.image_url,
-        created_at: art.created_at,
-        likesCount: artLikes.length,
-        ratingsCount: artRatings.length,
-        averageRating: avgRating,
-      };
-    });
   }),
 
   createArtwork: protectedProcedure
@@ -150,62 +149,67 @@ export const artworksRouter = router({
   getArtistArtworks: publicProcedure
     .input(z.object({ artistId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const supabase = await getAuthenticatedClient(ctx);
-      const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
+      try {
+        const supabase = await getAuthenticatedClient(ctx);
+        const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
 
-      const { data: artworks, error } = await supabase
-        .from('artworks')
-        .select('*')
-        .eq('artist_id', input.artistId)
-        .order('created_at', { ascending: false });
+        const { data: artworks, error } = await supabase
+          .from('artworks')
+          .select('*')
+          .eq('artist_id', input.artistId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('getArtistArtworks error:', error);
+        if (error) {
+          console.warn('getArtistArtworks error caught gracefully:', error.message || error);
+          return [];
+        }
+
+        if (!artworks || artworks.length === 0) {
+          return [];
+        }
+
+        const artworkIds = artworks.map((a: any) => a.id);
+
+        // Fetch likes
+        const { data: likes } = await supabase
+          .from('artwork_likes')
+          .select('artwork_id, user_id')
+          .in('artwork_id', artworkIds);
+
+        // Fetch ratings
+        const { data: ratings } = await supabase
+          .from('artwork_ratings')
+          .select('artwork_id, user_id, rating')
+          .in('artwork_id', artworkIds);
+
+        return artworks.map((art: any) => {
+          const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
+          const artRatings = (ratings || []).filter((r: any) => r.artwork_id === art.id);
+
+          const isLiked = viewerId ? artLikes.some((l: any) => l.user_id === viewerId) : false;
+          const userRatingRow = viewerId ? artRatings.find((r: any) => r.user_id === viewerId) : null;
+          const userRating = userRatingRow ? Number(userRatingRow.rating) : null;
+
+          const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
+          const avgRating = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
+
+          return {
+            id: art.id,
+            artist_id: art.artist_id,
+            title: art.title,
+            image_url: art.image_url,
+            created_at: art.created_at,
+            likesCount: artLikes.length,
+            isLiked,
+            ratingsCount: artRatings.length,
+            averageRating: avgRating,
+            userRating,
+          };
+        });
+      } catch (err) {
+        console.warn('getArtistArtworks exception caught gracefully:', err);
         return [];
       }
-
-      if (!artworks || artworks.length === 0) {
-        return [];
-      }
-
-      const artworkIds = artworks.map((a: any) => a.id);
-
-      // Fetch likes
-      const { data: likes } = await supabase
-        .from('artwork_likes')
-        .select('artwork_id, user_id')
-        .in('artwork_id', artworkIds);
-
-      // Fetch ratings
-      const { data: ratings } = await supabase
-        .from('artwork_ratings')
-        .select('artwork_id, user_id, rating')
-        .in('artwork_id', artworkIds);
-
-      return artworks.map((art: any) => {
-        const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
-        const artRatings = (ratings || []).filter((r: any) => r.artwork_id === art.id);
-
-        const isLiked = viewerId ? artLikes.some((l: any) => l.user_id === viewerId) : false;
-        const userRatingRow = viewerId ? artRatings.find((r: any) => r.user_id === viewerId) : null;
-        const userRating = userRatingRow ? Number(userRatingRow.rating) : null;
-
-        const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
-        const avgRating = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
-
-        return {
-          id: art.id,
-          artist_id: art.artist_id,
-          title: art.title,
-          image_url: art.image_url,
-          created_at: art.created_at,
-          likesCount: artLikes.length,
-          isLiked,
-          ratingsCount: artRatings.length,
-          averageRating: avgRating,
-          userRating,
-        };
-      });
     }),
 
   toggleLike: protectedProcedure

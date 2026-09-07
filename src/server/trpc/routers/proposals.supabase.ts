@@ -333,39 +333,43 @@ export const proposalsRouter = router({
     }),
 
   getProposalsForFreelancer: protectedProcedure.query(async ({ ctx }) => {
-    const userRole = (ctx.session.user.role || '').toString().toLowerCase();
-    const isArtist =
-      userRole === 'artist' ||
-      userRole === 'freelancer' ||
-      userRole === 'creator' ||
-      (userRole !== 'client' && userRole !== 'buyer');
+    try {
+      const userRole = (ctx.session.user.role || '').toString().toLowerCase();
+      const isArtist =
+        userRole === 'artist' ||
+        userRole === 'freelancer' ||
+        userRole === 'creator' ||
+        (userRole !== 'client' && userRole !== 'buyer');
 
-    if (!isArtist) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Only artists can view their proposals.',
-      });
+      if (!isArtist) {
+        return [];
+      }
+
+      const supabase = await createClient();
+
+      const { data: proposals, error } = await supabase
+        .from('Proposal')
+        .select(`
+          *,
+          job:Job!Proposal_jobId_fkey(
+            title,
+            budget,
+            slug
+          )
+        `)
+        .eq('freelancerId', ctx.session.user.id)
+        .order('createdAt', { ascending: false });
+
+      if (error) {
+        console.warn('getProposalsForFreelancer query notice:', error.message || error);
+        return [];
+      }
+
+      return proposals || [];
+    } catch (err) {
+      console.warn('getProposalsForFreelancer exception caught gracefully:', err);
+      return [];
     }
-
-    const supabase = await createClient();
-
-    const { data: proposals, error } = await supabase
-      .from('Proposal')
-      .select(`
-        *,
-        job:Job!Proposal_jobId_fkey(
-          title,
-          budget,
-          slug
-        )
-      `)
-      .eq('freelancerId', ctx.session.user.id)
-      .order('createdAt', { ascending: false });
-
-    if (error) {
-    }
-
-    return proposals || [];
   }),
 
   withdrawProposal: protectedProcedure

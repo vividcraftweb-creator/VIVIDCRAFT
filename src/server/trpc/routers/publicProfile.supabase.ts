@@ -141,25 +141,25 @@ async function getProfileFromProfilesTable(supabase: any, userIdOrId: string) {
     if (data) profileRecord = data;
   } catch {}
 
-  // 2. Try 'profiles' by user_id if not found
-  if (!profileRecord) {
+  // 2. Try 'profiles' by email if not found
+  if (!profileRecord && userIdOrId.includes('@')) {
     try {
       const { data } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', userIdOrId)
+        .eq('email', userIdOrId)
         .maybeSingle();
 
       if (data) profileRecord = data;
     } catch {}
   }
 
-  // 3. Try 'profiles' table to get full details (bio, title, skills, etc.)
+  // 3. Try 'profiles' table to get full details (bio, title, skills, etc.) by id
   try {
     const { data: legacyProfile } = await (supabase as any)
       .from('profiles')
       .select('*')
-      .or(`id.eq.${userIdOrId},user_id.eq.${userIdOrId}`)
+      .eq('id', userIdOrId)
       .maybeSingle();
 
     if (legacyProfile) {
@@ -580,7 +580,7 @@ export const publicProfileRouter = router({
             const { data: legacyProfile } = await (adminSupabase as any)
               .from('profiles')
               .select('*')
-              .or(`id.eq.${identifier},user_id.eq.${identifier},slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
+              .or(`id.eq.${identifier},slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
               .limit(1)
               .maybeSingle();
             if (legacyProfile) profile = legacyProfile;
@@ -1398,7 +1398,7 @@ export const publicProfileRouter = router({
         const { data: legacyRow } = await (admin as any)
           .from('profiles')
           .select('*')
-          .or(`id.eq.${userId},user_id.eq.${userId}`)
+          .eq('id', userId)
           .maybeSingle();
         if (legacyRow) {
           rawProfile = { ...legacyRow, ...rawProfile };

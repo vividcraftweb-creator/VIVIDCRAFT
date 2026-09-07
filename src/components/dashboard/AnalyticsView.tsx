@@ -337,7 +337,7 @@ export default function AnalyticsView() {
           </div>
 
           {/* Top Skills */}
-          {analytics.topSkills.length > 0 && (
+          {Array.isArray(analytics?.topSkills) && analytics.topSkills.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Zap className="h-5 w-5 text-indigo-400" />
@@ -353,7 +353,7 @@ export default function AnalyticsView() {
                           <span className="text-slate-400">{skill.count} jobs</span>
                         </div>
                         <Progress
-                          value={(skill.count / analytics.topSkills[0].count) * 100}
+                          value={analytics.topSkills[0]?.count ? (skill.count / analytics.topSkills[0].count) * 100 : 0}
                           className="h-2"
                         />
                       </div>

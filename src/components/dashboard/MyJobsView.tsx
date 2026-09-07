@@ -112,7 +112,7 @@ export default function MyJobsView() {
   const reopenJob = trpc.jobs.reopenJob.useMutation();
 
   const filteredJobs = useMemo(() => {
-    if (!jobs) return [];
+    if (!jobs || !Array.isArray(jobs)) return [];
 
     return jobs.map(job => {
       // Filter by job status
@@ -121,7 +121,7 @@ export default function MyJobsView() {
       }
 
       // Filter proposals by AI score
-      let filteredProposals = job.proposals || [];
+      let filteredProposals = Array.isArray(job.proposals) ? job.proposals : [];
 
       if (aiScoreFilter !== 'all') {
         filteredProposals = filteredProposals.filter((proposal: Proposal) => {
@@ -152,7 +152,7 @@ export default function MyJobsView() {
   // Auto-expand first job with proposals
   useEffect(() => {
     if (filteredJobs.length > 0 && !expandedJobId) {
-      const firstJobWithProposals = filteredJobs.find(job => job.proposals && job.proposals.length > 0);
+      const firstJobWithProposals = filteredJobs.find(job => Array.isArray(job.proposals) && job.proposals.length > 0);
       if (firstJobWithProposals) {
         setExpandedJobId(firstJobWithProposals.id);
       }
@@ -532,7 +532,7 @@ export default function MyJobsView() {
           </Card>
         ) : (
           filteredJobs.map((job) => {
-            const proposals = job.proposals || [];
+            const proposals = Array.isArray(job.proposals) ? job.proposals : [];
             const pendingProposals = proposals.filter((p: Proposal) => p.status === 'PENDING');
             const acceptedProposals = proposals.filter((p: Proposal) => p.status === 'ACCEPTED');
             const isExpanded = expandedJobId === job.id;

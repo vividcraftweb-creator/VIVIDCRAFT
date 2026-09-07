@@ -1052,23 +1052,38 @@ export const profilesRouter = router({
     .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx }) => {
     try {
-      const userId = ctx.session?.user?.id || (ctx as any)?.user?.id;
-      if (!userId) {
-        return null;
-      }
       const defaultTokens = 150;
       const RESET_DAY = 1; // Monday
+      const userId = ctx.session?.user?.id || (ctx as any)?.user?.id;
+      if (!userId) {
+        return { tokens: defaultTokens, tokenResetAt: new Date().toISOString() };
+      }
 
       const supabase = createAdminClient();
 
       try {
+        let userRecord: any = null;
+
         const { data: user, error } = await supabase
           .from('User')
           .select('tokens, tokenResetAt')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
-        if (error || !user) {
+        if (!error && user) {
+          userRecord = user;
+        } else {
+          const { data: lowerUser } = await (supabase as any)
+            .from('users')
+            .select('tokens, tokenResetAt')
+            .eq('id', userId)
+            .maybeSingle();
+          if (lowerUser) {
+            userRecord = lowerUser;
+          }
+        }
+
+        if (!userRecord) {
           return { tokens: defaultTokens, tokenResetAt: new Date().toISOString() };
         }
 
@@ -1079,24 +1094,28 @@ export const profilesRouter = router({
         lastResetDay.setDate(now.getDate() - daysSinceResetDay);
         lastResetDay.setHours(0, 0, 0, 0);
 
-        const needsReset = !user.tokenResetAt || new Date(user.tokenResetAt) < lastResetDay;
+        const needsReset = !userRecord.tokenResetAt || new Date(userRecord.tokenResetAt) < lastResetDay;
 
         if (needsReset) {
-          const { data: updated } = await supabase
-            .from('User')
-            .update({
-              tokens: defaultTokens,
-              tokenResetAt: now.toISOString(),
-              updatedAt: now.toISOString(),
-            })
-            .eq('id', userId)
-            .select('tokens, tokenResetAt')
-            .single();
+          try {
+            const { data: updated } = await supabase
+              .from('User')
+              .update({
+                tokens: defaultTokens,
+                tokenResetAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+              })
+              .eq('id', userId)
+              .select('tokens, tokenResetAt')
+              .maybeSingle();
 
-          return updated || user;
+            return updated || { ...userRecord, tokens: defaultTokens, tokenResetAt: now.toISOString() };
+          } catch {
+            return { ...userRecord, tokens: defaultTokens, tokenResetAt: now.toISOString() };
+          }
         }
 
-        return user;
+        return userRecord;
       } catch {
         return { tokens: defaultTokens, tokenResetAt: new Date().toISOString() };
       }

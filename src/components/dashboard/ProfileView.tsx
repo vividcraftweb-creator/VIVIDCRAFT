@@ -150,7 +150,11 @@ export default function ProfileView() {
 
   const experiences = parseExperience();
   const education = parseEducation();
-  const skills = profile?.skills ? profile.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+  const skills = Array.isArray(profile?.skills)
+    ? profile.skills
+    : typeof profile?.skills === 'string'
+    ? profile.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+    : [];
 
   // Format plan name for display
   const formatPlanName = (plan: string) => {
