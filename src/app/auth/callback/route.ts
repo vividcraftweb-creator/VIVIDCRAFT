@@ -38,23 +38,29 @@ export async function GET(request: Request) {
       supabaseUrl,
       supabaseAnonKey,
       {
+        cookieOptions: {
+          path: '/',
+          sameSite: 'lax',
+        },
         cookies: {
           getAll() {
-            return cookieStore.getAll().filter(c => {
-              return !c.value.includes('data%3Aimage') && !c.value.includes('data:image');
-            });
+            return cookieStore.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              try {
-                cookieStore.set(name, value, options);
-              } catch {}
-              try {
-                redirectResponse.cookies.set(name, value, options);
-              } catch (err) {
-                console.warn('Cookie set error on redirectResponse:', err);
-              }
-            });
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                try {
+                  cookieStore.set(name, value, options);
+                } catch {}
+                try {
+                  redirectResponse.cookies.set(name, value, options);
+                } catch (err) {
+                  console.warn('Cookie set error on redirectResponse:', err);
+                }
+              });
+            } catch (err) {
+              console.warn('Cookie set error in route handler:', err);
+            }
           },
         },
       }

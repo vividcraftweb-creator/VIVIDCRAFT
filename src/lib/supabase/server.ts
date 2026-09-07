@@ -21,6 +21,10 @@ export async function createClient() {
       supabaseUrl,
       supabaseAnonKey,
       {
+        cookieOptions: {
+          path: '/',
+          sameSite: 'lax',
+        },
         cookies: {
           getAll() {
             return cookieStore.getAll().filter(c => {

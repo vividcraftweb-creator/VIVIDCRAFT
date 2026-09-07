@@ -20,6 +20,11 @@ export function cleanBloatedAuthCookies() {
 
       // Only purge cookies that actually contain base64 image data or extreme chunk indices (> 8)
       // Standard Supabase session tokens are ~3180 bytes per chunk and must NOT be purged.
+      // NEVER purge PKCE code-verifier or session cookies
+      if (name.includes('code-verifier') || name.includes('verifier')) {
+        continue;
+      }
+
       const isBloated =
         value.includes('data%3Aimage') ||
         value.includes('data:image') ||
@@ -43,7 +48,13 @@ export function cleanBloatedAuthCookies() {
   }
 }
 
+let cachedBrowserClient: ReturnType<typeof createBrowserClient> | null = null;
+
 export function createClient() {
+  if (typeof window !== 'undefined' && cachedBrowserClient) {
+    return cachedBrowserClient;
+  }
+
   let supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || 'https://placeholder.supabase.co';
   if (supabaseUrl && !supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
     supabaseUrl = `https://${supabaseUrl}`;
@@ -59,10 +70,15 @@ export function createClient() {
     supabaseKey !== 'your-anon-key-placeholder' &&
     supabaseKey !== 'your-anon-key';
 
-  return createBrowserClient(
+  const client = createBrowserClient(
     supabaseUrl,
     supabaseKey,
     {
+      cookieOptions: {
+        path: '/',
+        sameSite: 'lax',
+        secure: typeof window !== 'undefined' && window.location.protocol === 'https:',
+      },
       auth: {
         flowType: 'pkce',
         detectSessionInUrl: true,
@@ -91,4 +107,10 @@ export function createClient() {
       },
     }
   );
+
+  if (typeof window !== 'undefined') {
+    cachedBrowserClient = client;
+  }
+
+  return client;
 }
