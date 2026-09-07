@@ -17,6 +17,7 @@ import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
+import { getPublicUrl } from '@/components/artists/ArtistCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -145,6 +146,18 @@ export default function PublicArtistProfileClient() {
 
         if (byNameOrEmail) {
           let avatar = byNameOrEmail.avatar_url || byNameOrEmail.avatar || byNameOrEmail.profile_picture || byNameOrEmail.image;
+          if (!avatar && byNameOrEmail.id) {
+            try {
+              const { data: storageFiles } = await supabase.storage.from('avatars').list(byNameOrEmail.id, {
+                limit: 1,
+                sortBy: { column: 'created_at', order: 'desc' },
+              });
+              if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
+                const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${byNameOrEmail.id}/${storageFiles[0].name}`);
+                if (pubData?.publicUrl) avatar = pubData.publicUrl;
+              }
+            } catch {}
+          }
           setDirectProfile({ ...byNameOrEmail, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
           return;
         }
@@ -311,15 +324,7 @@ export default function PublicArtistProfileClient() {
       (isOwner ? ((session?.session?.user?.user_metadata as any)?.avatar_url || (session?.session?.user as any)?.image) : null) ||
       null;
 
-    let resolvedAvatar: string | null = null;
-    if (rawPic) {
-      const trimmed = String(rawPic).trim();
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
-        resolvedAvatar = trimmed;
-      } else {
-        resolvedAvatar = getProfilePictureUrl(rawProfile?.id || id, trimmed) || trimmed;
-      }
-    }
+    const resolvedAvatar = getPublicUrl(rawPic, rawProfile?.id || id) || null;
 
     const rawSkills = rawProfile?.skills || '';
     const skillsList: string[] = Array.isArray(rawSkills)

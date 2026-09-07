@@ -37,6 +37,7 @@ import type {
   SubscriptionPlan,
 } from '@/types/database.types';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
+import { getPublicUrl } from '@/components/artists/ArtistCard';
 import { createClient } from '@/lib/supabase/client';
 
 type FreelancerProfile = ProfileRow & {
@@ -132,7 +133,19 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
           const bioVal = data.bio || data.description || '';
           const locVal = data.address || data.location || '';
           const rateVal = typeof data.rate === 'number' ? data.rate : (typeof data.hourly_rate === 'number' ? data.hourly_rate : null);
-          const avatarVal = data.avatar_url || data.profile_picture || data.profilePicture || null;
+          let avatarVal = data.avatar_url || data.profile_picture || data.profilePicture || null;
+          if (!avatarVal && data.id) {
+            try {
+              const { data: storageFiles } = await supabase.storage.from('avatars').list(data.id, {
+                limit: 1,
+                sortBy: { column: 'created_at', order: 'desc' },
+              });
+              if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
+                const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${data.id}/${storageFiles[0].name}`);
+                if (pubData?.publicUrl) avatarVal = pubData.publicUrl;
+              }
+            } catch {}
+          }
           const emailVal = data.email || data.businessEmail || data.business_email || null;
           const slugVal = data.slug || data.id;
 
@@ -231,7 +244,7 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
       (profile as any)?.avatar ||
       (profile as any)?.image;
     if (!rawPic) return undefined;
-    return getProfilePictureUrl(profile?.userId || profile?.id || resolvedParams.id, String(rawPic).trim());
+    return getPublicUrl(String(rawPic).trim(), profile?.userId || profile?.id || resolvedParams.id);
   }, [profile, resolvedParams.id]);
 
   const initials = useMemo(() => {

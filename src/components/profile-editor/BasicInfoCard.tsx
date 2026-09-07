@@ -102,6 +102,28 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
               dbProfile = data;
             } catch {}
           }
+
+          // If avatar_url is missing in dbProfile and metadata, auto-heal from avatars storage bucket
+          if (!dbProfile?.avatar_url && !metadata?.avatar_url && user.id) {
+            try {
+              const { data: storageFiles } = await supabase.storage.from('avatars').list(user.id, {
+                limit: 1,
+                sortBy: { column: 'created_at', order: 'desc' },
+              });
+              if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
+                const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${user.id}/${storageFiles[0].name}`);
+                if (pubData?.publicUrl) {
+                  const restoredUrl = pubData.publicUrl;
+                  await (supabase as any)
+                    .from('profiles')
+                    .update({ avatar_url: restoredUrl, updated_at: new Date().toISOString() })
+                    .eq('id', user.id);
+                  if (dbProfile) dbProfile.avatar_url = restoredUrl;
+                  else dbProfile = { avatar_url: restoredUrl };
+                }
+              }
+            } catch {}
+          }
         }
 
         const anyProfile = profile as any;
@@ -115,7 +137,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           bio: metadata.bio || dbProfile?.bio || anyProfile?.description || profile?.bio || '',
           address: dbProfile?.address || metadata.address || anyProfile?.address || profile?.location || '',
           skills: metadata.skills || dbProfile?.skills || profile?.skills || '',
-          avatar_url: metadata.avatar_url || dbProfile?.avatar_url || anyProfile?.avatarUrl || anyProfile?.profile_picture || profile?.profilePicture || '',
+          avatar_url: dbProfile?.avatar_url || metadata.avatar_url || anyProfile?.avatarUrl || anyProfile?.profile_picture || profile?.profilePicture || '',
         };
 
         if (source) {
@@ -231,21 +253,29 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         const fullUrl = getProfilePictureUrl(user.id, rawAvatar);
         if (fullUrl && fullUrl.startsWith('http')) {
           cleanAvatarUrl = fullUrl.split('?')[0]; // Store clean full Supabase URL without cache params
+        } else {
+          cleanAvatarUrl = rawAvatar;
         }
+      } else if (!cleanAvatarUrl && profileData?.avatar_url) {
+        cleanAvatarUrl = profileData.avatar_url;
+      }
+
+      const metaPayload: Record<string, any> = {
+        first_name: formData.firstName || null,
+        last_name: formData.lastName || null,
+        name: `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
+        title: formData.title || null,
+        bio: formData.bio ? (formData.bio.length > 500 ? formData.bio.slice(0, 500) : formData.bio) : null,
+        address: formData.location || null,
+        skills: skillsString ? (skillsString.length > 300 ? skillsString.slice(0, 300) : skillsString) : null,
+      };
+      if (cleanAvatarUrl) {
+        metaPayload.avatar_url = cleanAvatarUrl;
       }
 
       try {
         await supabase.auth.updateUser({
-          data: {
-            first_name: formData.firstName || null,
-            last_name: formData.lastName || null,
-            name: `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
-            title: formData.title || null,
-            bio: formData.bio ? (formData.bio.length > 500 ? formData.bio.slice(0, 500) : formData.bio) : null,
-            address: formData.location || null,
-            skills: skillsString ? (skillsString.length > 300 ? skillsString.slice(0, 300) : skillsString) : null,
-            avatar_url: cleanAvatarUrl,
-          },
+          data: metaPayload,
         });
       } catch (authMetaErr) {
         console.warn('Auth user metadata update notice:', authMetaErr);
@@ -258,9 +288,11 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         first_name: formData.firstName || null,
         last_name: formData.lastName || null,
         address: formData.location || null,
-        avatar_url: cleanAvatarUrl,
         updated_at: new Date().toISOString(),
       };
+      if (cleanAvatarUrl) {
+        profilesPayload.avatar_url = cleanAvatarUrl;
+      }
 
       try {
         const { error: upsertErr } = await (supabase as any)
@@ -453,6 +485,16 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         } catch (authMetaErr) {
           console.warn('Auth user metadata avatar update notice:', authMetaErr);
         }
+      }
+
+      // 5. Synchronize server tRPC cache
+      try {
+        await updateMutation.mutateAsync({
+          avatar_url: fullPublicAvatarUrl,
+          profilePicture: fullPublicAvatarUrl,
+        });
+      } catch (trpcErr) {
+        console.warn('tRPC avatar sync notice:', trpcErr);
       }
 
       toast.success('Profile picture updated successfully!');

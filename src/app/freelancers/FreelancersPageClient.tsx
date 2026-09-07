@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
 import { isArtistProfile } from '@/lib/artist-filter';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
+import ArtistCard, { getPublicUrl } from '@/components/artists/ArtistCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,10 +47,19 @@ export default function FreelancersPageClient({
           const { data: pRows, error: pErr } = await supabase.from('profiles').select('*');
           if (pErr) console.warn("profiles table query error:", pErr);
           if (pRows && Array.isArray(pRows)) {
-            pRows.forEach((p: any) => {
+            for (const p of pRows) {
               const key = p.id || p.userId || p.user_id;
               if (key) {
-                const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
+                let avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
+                if (!avatar) {
+                  try {
+                    const { data: storageFiles } = await supabase.storage.from('avatars').list(key, { limit: 1, sortBy: { column: 'created_at', order: 'desc' } });
+                    if (storageFiles && storageFiles.length > 0 && storageFiles[0]?.name) {
+                      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(`${key}/${storageFiles[0].name}`);
+                      if (pubData?.publicUrl) avatar = pubData.publicUrl;
+                    }
+                  } catch {}
+                }
                 profilesMap.set(key, {
                   ...p,
                   id: key,
@@ -58,7 +68,7 @@ export default function FreelancersPageClient({
                   profile_picture: avatar,
                 });
               }
-            });
+            }
           }
         } catch (e) {
           console.warn("Direct profiles fetch exception:", e);
@@ -205,131 +215,12 @@ export default function FreelancersPageClient({
             ))}
 
           {Array.isArray(displayedArtists) && displayedArtists.length > 0 &&
-            displayedArtists.map((artist: any) => {
-              const firstName = artist.first_name || artist.firstName || '';
-              const lastName = artist.last_name || artist.lastName || '';
-              const email = artist.email || artist.businessEmail || artist.business_email || '';
-
-              let displayName = [firstName, lastName].filter(Boolean).join(' ').trim();
-              if (
-                firstName.includes('studio1') ||
-                email.includes('studio1.foreignbusiness') ||
-                (firstName.toLowerCase().startsWith('studio') && !lastName)
-              ) {
-                displayName = 'studio One';
-              } else if (!displayName) {
-                displayName = artist.full_name || artist.name || artist.username || 'Artist';
-              }
-
-              const professionalTitle = artist.title || artist.professional_title || '';
-              const bio = artist.bio || artist.description || '';
-
-              const rawSkills = artist.skills;
-              const skills: string[] = Array.isArray(rawSkills)
-                ? rawSkills
-                : typeof rawSkills === 'string' && rawSkills.trim()
-                ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
-                : [];
-
-              const rawAvatar =
-                artist.avatar_url ||
-                artist.profile_picture ||
-                artist.profilePicture ||
-                artist.avatar ||
-                artist.image;
-
-              const avatarUrl = getAvatarUrl(artist.id || artist.userId, rawAvatar);
-              const initialLetter = (firstName || displayName || 'A').charAt(0).toUpperCase();
-              const locationVal = artist.location || artist.address || '';
-              const isVerified = Boolean(artist.is_verified || artist.isVerified);
-              const artistKey = artist.id || artist.userId || '';
-
-              return (
-                <Link
-                  key={artistKey || Math.random().toString()}
-                  href={`/freelancers/${artistKey}`}
-                  className="block"
-                >
-                  <article className="group flex h-full flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-br from-background/70 via-background/60 to-background/30 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.35)] transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:cursor-pointer">
-                    <div className="flex flex-col gap-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                          {/* Avatar */}
-                          <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-primary/20 ring-4 ring-primary/10 shadow-lg shadow-primary/25 transition-transform group-hover:scale-105">
-                            {avatarUrl && !imgErrors[artistKey] ? (
-                              <img
-                                src={avatarUrl}
-                                alt={`${displayName} profile picture`}
-                                className="h-full w-full object-cover"
-                                onError={() => setImgErrors((prev) => ({ ...prev, [artistKey]: true }))}
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/80 to-chart-1/70 text-lg font-bold text-white">
-                                {initialLetter}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Name & Title */}
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-foreground line-clamp-2 break-words text-base leading-snug transition-colors group-hover:text-primary">
-                              {displayName}
-                            </h3>
-                            {professionalTitle && (
-                              <p className="text-sm text-muted-foreground truncate">{professionalTitle}</p>
-                            )}
-                            {isVerified && (
-                              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] font-semibold text-emerald-400">
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                Verified Artist
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {bio && (
-                        <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{bio}</p>
-                      )}
-
-                      {skills.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {skills.slice(0, 8).map((skill) => (
-                            <span
-                              key={skill}
-                              className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <footer className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-                      <div className="space-y-1">
-                        {locationVal ? (
-                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <MapPin className="h-3.5 w-3.5 text-primary" />
-                            {locationVal}
-                          </p>
-                        ) : (
-                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5 text-yellow-400" />
-                            Available for commissions
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <span className="inline-flex items-center gap-1 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                          View Artist
-                        </span>
-                      </div>
-                    </footer>
-                  </article>
-                </Link>
-              );
-            })}
+            displayedArtists.map((artist: any) => (
+              <ArtistCard
+                key={artist.id || artist.userId || Math.random().toString()}
+                artist={artist}
+              />
+            ))}
         </div>
 
         {!loading && displayedArtists.length === 0 && (

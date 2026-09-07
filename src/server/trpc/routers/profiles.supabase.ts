@@ -207,13 +207,20 @@ function extractProfileDetails(profile: any, fallbackName = 'studio One') {
     (email ? email.split('@')[0] : '') ||
     fullName.toLowerCase().replace(/\s+/g, '');
 
-  const avatarUrl =
+  let avatarUrl =
     profile?.avatar_url ||
     profile?.avatar ||
     profile?.image ||
     profile?.profile_picture ||
     profile?.profilePicture ||
     '';
+
+  if (avatarUrl && typeof avatarUrl === 'string' && !avatarUrl.startsWith('http://') && !avatarUrl.startsWith('https://') && !avatarUrl.startsWith('data:')) {
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+    const cleanPath = avatarUrl.replace(/^\/?(avatars\/)?/, '');
+    const pathWithUser = cleanPath.includes('/') ? cleanPath : (profile?.id ? `${profile.id}/${cleanPath}` : cleanPath);
+    avatarUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${pathWithUser}`;
+  }
 
   return {
     first_name: fName,

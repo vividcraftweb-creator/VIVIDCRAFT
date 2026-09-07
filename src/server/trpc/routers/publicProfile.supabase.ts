@@ -211,7 +211,13 @@ function formatProfileData(profile: any) {
   const titleVal = profile.title || profile.professional_title || profile.professionalTitle || 'Verified Artist & Creator';
   const bioVal = profile.bio || profile.description || 'Professional artist and digital creator on Vivid Art.';
   const locVal = profile.address || profile.location || '';
-  const picVal = profile.avatar_url || profile.avatar || profile.image || profile.profile_picture || profile.profilePicture || '';
+  let picVal = profile.avatar_url || profile.avatar || profile.image || profile.profile_picture || profile.profilePicture || '';
+  if (picVal && typeof picVal === 'string' && !picVal.startsWith('http://') && !picVal.startsWith('https://') && !picVal.startsWith('data:') && !picVal.startsWith('blob:')) {
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+    const cleanPath = picVal.replace(/^\/?(avatars\/)?/, '');
+    const pathWithUser = cleanPath.includes('/') ? cleanPath : (profile.id ? `${profile.id}/${cleanPath}` : cleanPath);
+    picVal = `${supabaseUrl}/storage/v1/object/public/avatars/${pathWithUser}`;
+  }
   const usernameVal = profile.username || (emailVal ? emailVal.split('@')[0] : '') || fullName.toLowerCase().replace(/\s+/g, '');
 
   return {
