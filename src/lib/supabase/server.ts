@@ -82,3 +82,8 @@ export function createAdminClient() {
     });
   }
 }
+
+// Next.js Route Handler client helper (compatible with Next.js 15 async cookies)
+export async function createRouteHandlerClient(_context?: { cookies?: any }) {
+  return createClient();
+}

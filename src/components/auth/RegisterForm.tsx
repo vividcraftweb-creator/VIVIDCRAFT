@@ -54,8 +54,14 @@ export default function RegisterForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
-          queryParams: { role: selectedRole.toLowerCase() },
+          redirectTo: typeof window !== 'undefined'
+            ? `${window.location.origin}/auth/callback`
+            : `${process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app'}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+            role: selectedRole.toLowerCase(),
+          },
         },
       });
 
