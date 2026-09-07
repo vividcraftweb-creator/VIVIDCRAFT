@@ -528,36 +528,47 @@ export const artworksRouter = router({
 
         const supabase = await getAuthenticatedClient(ctx);
 
+        // 1. Fetch from 'reviews' table matching artist_id
+        let reviewsData: any[] = [];
         const { data: reviews, error } = await supabase
-          .from('artist_reviews')
+          .from('reviews')
           .select('*')
           .eq('artist_id', artistId)
           .order('created_at', { ascending: false });
 
-        if (error) {
-          console.warn('getArtistReviews error caught gracefully:', error.message || error);
-          return [];
+        if (!error && Array.isArray(reviews) && reviews.length > 0) {
+          reviewsData = reviews;
+        } else {
+          // Fallback check on artist_reviews if reviews was empty
+          const { data: fallbackReviews } = await supabase
+            .from('artist_reviews')
+            .select('*')
+            .eq('artist_id', artistId)
+            .order('created_at', { ascending: false });
+          if (Array.isArray(fallbackReviews)) {
+            reviewsData = fallbackReviews;
+          }
         }
 
-        if (!reviews || reviews.length === 0) {
+        if (reviewsData.length === 0) {
           return [];
         }
 
         // Fetch client profile info
-        const clientIds = Array.from(new Set(reviews.map((r: any) => r.client_id).filter(Boolean)));
+        const clientIds = Array.from(new Set(reviewsData.map((r: any) => r.client_id).filter(Boolean)));
         const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
 
         if (clientIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, avatar_url')
+            .select('id, first_name, last_name, full_name, avatar_url')
             .in('id', clientIds);
 
           if (profiles) {
             profiles.forEach((p: any) => {
               const fName = p.first_name || '';
               const lName = p.last_name || '';
-              const name = `${fName} ${lName}`.trim() || 'Verified Client';
+              const name = p.full_name || `${fName} ${lName}`.trim() || 'Verified Client';
               profilesMap[p.id] = {
                 name,
                 avatarUrl: p.avatar_url || null,
@@ -566,16 +577,20 @@ export const artworksRouter = router({
           }
         }
 
-        return reviews.map((r: any) => ({
-          id: r.id,
-          artistId: r.artist_id,
-          clientId: r.client_id,
-          rating: Number(r.rating) || 5,
-          reviewText: r.review_text || '',
-          createdAt: r.created_at,
-          clientName: profilesMap[r.client_id]?.name || 'Verified Client',
-          clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
-        }));
+        return reviewsData.map((r: any) => {
+          const text = r.comment || r.review_text || '';
+          return {
+            id: r.id,
+            artistId: r.artist_id,
+            clientId: r.client_id,
+            rating: Number(r.rating) || 5,
+            comment: text,
+            reviewText: text,
+            createdAt: r.created_at,
+            clientName: profilesMap[r.client_id]?.name || 'Verified Client',
+            clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
+          };
+        });
       } catch (err) {
         console.warn('getArtistReviews exception caught gracefully:', err);
         return [];
@@ -587,7 +602,8 @@ export const artworksRouter = router({
       z.object({
         artistId: z.string(),
         rating: z.number().int().min(1, 'Rating must be at least 1 star').max(5, 'Rating cannot exceed 5 stars'),
-        reviewText: z.string().trim().min(1, 'Review text is required').max(2000, 'Review text is too long'),
+        comment: z.string().trim().min(1, 'Comment is required').max(2000, 'Comment is too long').optional(),
+        reviewText: z.string().trim().min(1, 'Review text is required').max(2000, 'Review text is too long').optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -606,29 +622,55 @@ export const artworksRouter = router({
         });
       }
 
+      const commentContent = (input.comment || input.reviewText || '').trim();
+      if (!commentContent) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Review comment is required',
+        });
+      }
+
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
       const createdAt = new Date().toISOString();
 
+      // Insert { artist_id, client_id: user.id, rating, comment } into reviews table
       const { data, error } = await supabase
-        .from('artist_reviews')
+        .from('reviews')
         .insert({
           id,
           artist_id: input.artistId,
           client_id: clientId,
           rating: input.rating,
-          review_text: input.reviewText,
+          comment: commentContent,
           created_at: createdAt,
         })
         .select()
         .single();
 
       if (error) {
-        console.error('addArtistReview error:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: error.message || 'Failed to submit review',
-        });
+        console.warn('reviews insert error, attempting artist_reviews fallback:', error);
+        // Fallback to artist_reviews table if needed
+        const { data: fbData, error: fbError } = await supabase
+          .from('artist_reviews')
+          .insert({
+            id,
+            artist_id: input.artistId,
+            client_id: clientId,
+            rating: input.rating,
+            review_text: commentContent,
+            created_at: createdAt,
+          })
+          .select()
+          .single();
+
+        if (fbError) {
+          console.error('addArtistReview fallback error:', fbError);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: error.message || fbError.message || 'Failed to submit review',
+          });
+        }
       }
 
       // Fetch client profile info
@@ -637,26 +679,27 @@ export const artworksRouter = router({
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('first_name, last_name, avatar_url')
+          .select('first_name, last_name, full_name, avatar_url')
           .eq('id', clientId)
           .maybeSingle();
 
         if (profile) {
           const fName = profile.first_name || '';
           const lName = profile.last_name || '';
-          const name = `${fName} ${lName}`.trim();
+          const name = profile.full_name || `${fName} ${lName}`.trim();
           if (name) clientName = name;
           clientAvatar = profile.avatar_url || null;
         }
       } catch {}
 
       return {
-        id: data.id,
-        artistId: data.artist_id,
-        clientId: data.client_id,
-        rating: Number(data.rating) || input.rating,
-        reviewText: data.review_text,
-        createdAt: data.created_at,
+        id: data?.id || id,
+        artistId: input.artistId,
+        clientId,
+        rating: input.rating,
+        comment: commentContent,
+        reviewText: commentContent,
+        createdAt: data?.created_at || createdAt,
         clientName,
         clientAvatar,
       };

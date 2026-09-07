@@ -174,7 +174,7 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
         supabase.from('Certification').select('*').eq('profileId', pId).order('order', { ascending: true }),
         supabase.from('User').select('subscriptionPlan, email').eq('id', pId).maybeSingle(),
         supabase.from('artworks').select('*').eq('artist_id', pId).order('created_at', { ascending: false }),
-        supabase.from('artist_reviews').select('*').eq('artist_id', pId).order('created_at', { ascending: false }),
+        supabase.from('reviews').select('*').eq('artist_id', pId).order('created_at', { ascending: false }),
       ]);
       ed = results[0]?.data || [];
       ex = results[1]?.data || [];
@@ -182,7 +182,19 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
       ce = results[3]?.data || [];
       u = results[4]?.data || null;
       const rawArtworks = results[5]?.data || [];
-      const rawReviews = results[6]?.data || [];
+      let rawReviews = results[6]?.data || [];
+
+      // Fallback if reviews table had 0 rows but artist_reviews has rows
+      if (rawReviews.length === 0) {
+        const { data: fbReviews } = await supabase
+          .from('artist_reviews')
+          .select('*')
+          .eq('artist_id', pId)
+          .order('created_at', { ascending: false });
+        if (fbReviews && fbReviews.length > 0) {
+          rawReviews = fbReviews;
+        }
+      }
 
       if (rawReviews.length > 0) {
         const clientIds = Array.from(new Set(rawReviews.map((r: any) => r.client_id).filter(Boolean)));
@@ -190,25 +202,29 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
         if (clientIds.length > 0) {
           const { data: clientProfiles } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, avatar_url')
+            .select('id, first_name, last_name, full_name, avatar_url')
             .in('id', clientIds);
           if (clientProfiles) {
             clientProfiles.forEach((p: any) => {
-              const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Verified Client';
+              const name = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Verified Client';
               profilesMap[p.id] = { name, avatarUrl: p.avatar_url || null };
             });
           }
         }
-        initialReviews = rawReviews.map((r: any) => ({
-          id: r.id,
-          artistId: r.artist_id,
-          clientId: r.client_id,
-          rating: Number(r.rating) || 5,
-          reviewText: r.review_text || '',
-          createdAt: r.created_at,
-          clientName: profilesMap[r.client_id]?.name || 'Verified Client',
-          clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
-        }));
+        initialReviews = rawReviews.map((r: any) => {
+          const text = r.comment || r.review_text || '';
+          return {
+            id: r.id,
+            artistId: r.artist_id,
+            clientId: r.client_id,
+            rating: Number(r.rating) || 5,
+            comment: text,
+            reviewText: text,
+            createdAt: r.created_at,
+            clientName: profilesMap[r.client_id]?.name || 'Verified Client',
+            clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
+          };
+        });
       }
 
       if (rawArtworks.length > 0) {

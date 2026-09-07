@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Star,
@@ -13,17 +13,20 @@ import {
   X,
   MessageSquareHeart,
   LogIn,
+  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { isValidImageUrl } from '@/lib/image-placeholders';
+import { createClient } from '@/lib/supabase/client';
 
 export interface ArtistReviewItem {
   id: string;
   artistId: string;
   clientId: string;
   rating: number;
+  comment: string;
   reviewText: string;
   createdAt: string;
   clientName: string;
@@ -45,20 +48,29 @@ export function ArtistReviewsSection({
   const { data: session, status } = useAuth();
   const isAuthenticated = status === 'authenticated' && !!session?.session?.user;
   const currentUserId = session?.session?.user?.id;
-  const isOwnProfile = currentUserId === artistId;
+  const isOwnProfile = Boolean(currentUserId && currentUserId === artistId);
+  // Review form is visible ONLY to logged-in Clients (where user.id !== artist.id)
+  const isClient = Boolean(isAuthenticated && currentUserId && currentUserId !== artistId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [reviewText, setReviewText] = useState('');
   const [isHovered, setIsHovered] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Direct state for reviews fetched from 'reviews' table
+  const [tableReviews, setTableReviews] = useState<ArtistReviewItem[]>(() => {
+    return Array.isArray(initialReviews) ? initialReviews : [];
+  });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
   const isArtistIdValid = typeof artistId === 'string' && artistId.trim().length > 0;
 
-  const { data: rawReviews, isLoading } =
+  // 1. Query existing reviews matching artist_id via tRPC
+  const { data: rawReviews, isLoading, refetch: refetchTrpc } =
     trpc.artworks.getArtistReviews.useQuery(
       { artistId: isArtistIdValid ? artistId : '' },
       {
@@ -69,20 +81,81 @@ export function ArtistReviewsSection({
       }
     );
 
-  const reviews: ArtistReviewItem[] = Array.isArray(rawReviews)
-    ? rawReviews
-    : (Array.isArray(initialReviews) ? initialReviews : []);
+  // 2. Direct fetch from 'reviews' table matching artist_id
+  const fetchReviewsFromTable = useCallback(async () => {
+    if (!isArtistIdValid) return;
+    try {
+      const supabase = createClient();
+      const { data: dbReviews, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('artist_id', artistId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Direct reviews table query notice:', error.message);
+        return;
+      }
+
+      if (dbReviews && dbReviews.length > 0) {
+        const clientIds = Array.from(new Set(dbReviews.map((r: any) => r.client_id).filter(Boolean)));
+        const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
+        if (clientIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, full_name, avatar_url')
+            .in('id', clientIds);
+          if (profiles) {
+            profiles.forEach((p: any) => {
+              const fName = p.first_name || '';
+              const lName = p.last_name || '';
+              const name = p.full_name || `${fName} ${lName}`.trim() || 'Verified Client';
+              profilesMap[p.id] = { name, avatarUrl: p.avatar_url || null };
+            });
+          }
+        }
+        const mapped = dbReviews.map((r: any) => {
+          const text = r.comment || r.review_text || '';
+          return {
+            id: r.id,
+            artistId: r.artist_id,
+            clientId: r.client_id,
+            rating: Number(r.rating) || 5,
+            comment: text,
+            reviewText: text,
+            createdAt: r.created_at,
+            clientName: profilesMap[r.client_id]?.name || 'Verified Client',
+            clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
+          };
+        });
+        setTableReviews(mapped);
+      }
+    } catch (err) {
+      console.warn('fetchReviewsFromTable exception:', err);
+    }
+  }, [artistId, isArtistIdValid]);
+
+  useEffect(() => {
+    fetchReviewsFromTable();
+  }, [fetchReviewsFromTable]);
+
+  useEffect(() => {
+    if (Array.isArray(rawReviews) && rawReviews.length > 0) {
+      setTableReviews(rawReviews);
+    }
+  }, [rawReviews]);
+
+  // Combined reviews list
+  const reviews: ArtistReviewItem[] =
+    tableReviews.length > 0
+      ? tableReviews
+      : (Array.isArray(rawReviews) && rawReviews.length > 0
+        ? rawReviews
+        : (Array.isArray(initialReviews) ? initialReviews : []));
 
   const addReviewMutation = trpc.artworks.addArtistReview.useMutation({
     onSuccess: () => {
-      toast.success('Thank you! Your review has been submitted.');
-      setIsModalOpen(false);
-      setReviewText('');
-      setRating(5);
       utils.artworks.getArtistReviews.invalidate({ artistId });
-    },
-    onError: (err) => {
-      toast.error(`Failed to submit review: ${err.message}`);
     },
   });
 
@@ -111,10 +184,12 @@ export function ArtistReviewsSection({
     setIsModalOpen(true);
   };
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  // Submit handler: inserts { artist_id, client_id: user.id, rating, comment } into reviews table
+  // and refetches reviews immediately to show the new comment
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !currentUserId) {
       toast.error('Please sign in to write a review');
       return;
     }
@@ -130,11 +205,50 @@ export function ArtistReviewsSection({
       return;
     }
 
-    addReviewMutation.mutate({
-      artistId,
-      rating,
-      reviewText: trimmed,
-    });
+    setIsSubmitting(true);
+
+    try {
+      const supabase = createClient();
+      const insertPayload = {
+        artist_id: artistId,
+        client_id: currentUserId,
+        rating,
+        comment: trimmed,
+      };
+
+      // Direct insert into reviews table
+      const { data: inserted, error: insertError } = await supabase
+        .from('reviews')
+        .insert(insertPayload)
+        .select('*')
+        .maybeSingle();
+
+      if (insertError) {
+        console.warn('Direct reviews table insert notice, trying mutation fallback:', insertError.message);
+        await addReviewMutation.mutateAsync({
+          artistId,
+          rating,
+          comment: trimmed,
+        });
+      }
+
+      toast.success('Thank you! Your review has been submitted.');
+      setReviewText('');
+      setRating(5);
+      setIsModalOpen(false);
+
+      // Refetch reviews immediately to show the new comment
+      await Promise.all([
+        fetchReviewsFromTable(),
+        refetchTrpc(),
+        utils.artworks.getArtistReviews.invalidate({ artistId }),
+      ]);
+    } catch (err: any) {
+      console.error('Failed to submit review:', err);
+      toast.error(err?.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const scroll = (direction: 'left' | 'right') => {
@@ -248,6 +362,114 @@ export function ArtistReviewsSection({
         </div>
       </div>
 
+      {/* Review Form - Visible ONLY to logged-in Clients (where user.id !== artist.id) */}
+      {isClient ? (
+        <form
+          onSubmit={handleSubmitReview}
+          className="rounded-2xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 p-5 sm:p-6 space-y-4 shadow-xl"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+            <div>
+              <h3 className="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                <span>Rate &amp; Review {artistName}</span>
+              </h3>
+              <p className="text-xs text-white/50 mt-0.5">
+                Share your feedback from your commission or project experience
+              </p>
+            </div>
+
+            {/* Star Rating Selector */}
+            <div className="flex items-center gap-2 self-start sm:self-auto bg-black/40 px-3 py-1.5 rounded-xl border border-white/10">
+              <span className="text-xs font-semibold text-amber-300 mr-1">
+                {rating} Star{rating > 1 ? 's' : ''}
+              </span>
+              <div className="flex items-center">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const activeStar = hoverRating !== null ? hoverRating : rating;
+                  const isFilled = star <= activeStar;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(null)}
+                      title={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                      aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                      className="p-1 text-white/30 hover:scale-125 transition-transform focus:outline-none"
+                    >
+                      <Star
+                        className={`h-5 w-5 transition-colors ${
+                          isFilled ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]' : 'text-white/20'
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Comment Text Area */}
+          <div>
+            <textarea
+              rows={3}
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              placeholder={`Write your honest review and testimonial for ${artistName}...`}
+              maxLength={2000}
+              required
+              className="w-full bg-black/50 border border-white/15 rounded-xl p-4 text-xs sm:text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-purple-500/60 focus:ring-1 focus:ring-purple-500/60 resize-none transition-all"
+            />
+            <div className="flex justify-between items-center text-[10px] text-white/40 mt-1.5 px-1">
+              <span>Your feedback will be published on this artist&apos;s public profile.</span>
+              <span>{reviewText.length}/2000</span>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex items-center justify-end gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={isSubmitting || !reviewText.trim()}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-lg shadow-purple-600/25 transition-all active:scale-95"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Posting Review...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  <span>Submit Review</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      ) : !isAuthenticated ? (
+        <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-white/5 text-white/70">
+              <LogIn className="h-4 w-4 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-white/90">Worked with {artistName}?</p>
+              <p className="text-[11px] text-white/50">Log in as a client to leave a star rating and review.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push(`/auth/signin?callbackUrl=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`)}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium border border-white/10 transition-colors"
+          >
+            Sign In to Review
+          </button>
+        </div>
+      ) : null}
+
       {/* Reviews Content */}
       {isLoading && reviews.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-white/50">
@@ -294,7 +516,7 @@ export function ArtistReviewsSection({
 
                     {/* Review text */}
                     <p className="text-xs sm:text-sm text-white/85 leading-relaxed line-clamp-4 italic">
-                      &ldquo;{rev.reviewText}&rdquo;
+                      &ldquo;{rev.comment || rev.reviewText}&rdquo;
                     </p>
                   </div>
 
