@@ -60,7 +60,8 @@ export default function ProfileView() {
     ? `${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase()
     : sessionInitials;
 
-  const avatarSrc = getProfilePictureUrl(profile?.userId, profile?.profilePicture)
+  const rawAvatar = profile?.profilePicture || (profile as any)?.avatar_url || (profile as any)?.profile_picture || sessionUser?.image;
+  const avatarSrc = getProfilePictureUrl(profile?.userId || sessionUser?.id, rawAvatar)
     || sessionUser?.image
     || undefined;
 

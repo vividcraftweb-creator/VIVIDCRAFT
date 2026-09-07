@@ -231,12 +231,8 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
       (profile as any)?.avatar ||
       (profile as any)?.image;
     if (!rawPic) return undefined;
-    const trimmed = String(rawPic).trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
-      return trimmed;
-    }
-    return getProfilePictureUrl(profile?.userId || profile?.id, trimmed) || trimmed;
-  }, [profile]);
+    return getProfilePictureUrl(profile?.userId || profile?.id || resolvedParams.id, String(rawPic).trim());
+  }, [profile, resolvedParams.id]);
 
   const initials = useMemo(() => {
     if (displayName && displayName.toLowerCase().includes('studio')) {
@@ -463,10 +459,10 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
 
               <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:items-center">
                 <div className="relative mx-auto h-24 w-24 sm:h-28 sm:w-28 md:h-30 md:w-30 lg:mx-0 lg:h-32 lg:w-32 transition-transform hover:scale-105 rounded-[28px] border-2 border-primary/20 ring-4 ring-primary/10 shadow-2xl shadow-primary/25 overflow-hidden bg-primary">
-                  {(data?.avatar_url || (data as any)?.image || avatarUrl) ? (
+                  {avatarUrl ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
-                      src={data?.avatar_url || (data as any)?.image || avatarUrl}
+                      src={avatarUrl}
                       alt={`${displayName} avatar`}
                       className="object-cover h-full w-full rounded-[28px]"
                       onError={(e) => {
@@ -480,7 +476,7 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
                   ) : null}
                   <div
                     className="avatar-fallback flex h-full w-full items-center justify-center bg-primary text-3xl font-semibold uppercase tracking-widest text-white rounded-none"
-                    style={{ display: (data?.avatar_url || (data as any)?.image || avatarUrl) ? 'none' : 'flex' }}
+                    style={{ display: avatarUrl ? 'none' : 'flex' }}
                   >
                     {initials}
                   </div>

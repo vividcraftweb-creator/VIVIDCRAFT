@@ -786,6 +786,13 @@ export const publicProfileRouter = router({
         }
       }
 
+      let resolvedProfilePic = input.profilePicture;
+      if (resolvedProfilePic && !resolvedProfilePic.startsWith('http') && !resolvedProfilePic.startsWith('data:')) {
+        const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+        const cleanPath = resolvedProfilePic.replace(/^\/?(avatars\/)?/, '');
+        resolvedProfilePic = `${supabaseBaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
+      }
+
       // Build complete payload for profiles table
       const fullProfilesPayload: Record<string, any> = {
         id: userId,
@@ -795,8 +802,8 @@ export const publicProfileRouter = router({
         bio: input.bio !== undefined ? input.bio : (existingProfile?.bio ?? null),
         address: input.location !== undefined ? input.location : (existingProfile?.address ?? existingProfile?.location ?? null),
         skills: input.skills !== undefined ? input.skills : (existingProfile?.skills ?? null),
-        profile_picture: input.profilePicture !== undefined ? input.profilePicture : (existingProfile?.profile_picture ?? existingProfile?.profilePicture ?? null),
-        avatar_url: input.profilePicture !== undefined ? input.profilePicture : (existingProfile?.avatar_url ?? existingProfile?.profile_picture ?? null),
+        profile_picture: resolvedProfilePic !== undefined ? resolvedProfilePic : (existingProfile?.profile_picture ?? existingProfile?.profilePicture ?? null),
+        avatar_url: resolvedProfilePic !== undefined ? resolvedProfilePic : (existingProfile?.avatar_url ?? existingProfile?.profile_picture ?? null),
         slug: slugToPersist,
         updated_at: timestamp,
       };
@@ -865,8 +872,8 @@ export const publicProfileRouter = router({
             location: input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location || null),
             address: input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location || null),
             skills: input.skills !== undefined ? input.skills : (existingProfile?.skills || null),
-            avatar_url: input.profilePicture || resultRecord.avatar_url || resultRecord.profile_picture || null,
-            profile_picture: input.profilePicture || resultRecord.avatar_url || resultRecord.profile_picture || null,
+            avatar_url: resolvedProfilePic || resultRecord.avatar_url || resultRecord.profile_picture || null,
+            profile_picture: resolvedProfilePic || resultRecord.avatar_url || resultRecord.profile_picture || null,
             slug: slugToPersist,
             updated_at: timestamp,
           })

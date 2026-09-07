@@ -143,12 +143,13 @@ const Header = () => {
       ? `${profile.firstName} ${profile.lastName}`
       : user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
 
-    const avatarUrl = (!isProfileLoading)
-      ? getProfilePictureUrl(profile?.userId, profile?.profilePicture) || user?.user_metadata?.avatar_url || undefined
+    const rawPic = profile?.profilePicture || (profile as any)?.avatar_url || (profile as any)?.profile_picture;
+    const avatarUrl = (!isProfileLoading && rawPic)
+      ? getProfilePictureUrl(profile?.userId || user?.id, rawPic) || user?.user_metadata?.avatar_url || undefined
       : user?.user_metadata?.avatar_url || undefined;
 
     return { userFullName: fullName, avatarSrc: avatarUrl };
-  }, [isProfileLoading, profile?.firstName, profile?.lastName, profile?.profilePicture, profile?.userId, user?.user_metadata?.name, user?.user_metadata?.avatar_url, user?.email, userRole]);
+  }, [isProfileLoading, profile?.firstName, profile?.lastName, profile?.profilePicture, (profile as any)?.avatar_url, (profile as any)?.profile_picture, profile?.userId, user?.user_metadata?.name, user?.user_metadata?.avatar_url, user?.email, userRole]);
 
   const isActive = (href: string) => pathname === href;
 

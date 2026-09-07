@@ -117,7 +117,8 @@ export default function Dashboard({ session }: { session: AppSession }) {
 
   const userFirstName = profile?.firstName || (session.user?.name ? session.user.name.split(' ')[0] : 'User') || 'User';
 
-  const avatarSrc = getProfilePictureUrl(profile?.userId, profile?.profilePicture)
+  const rawAvatarPic = profile?.profilePicture || (profile as any)?.avatar_url || (profile as any)?.profile_picture;
+  const avatarSrc = getProfilePictureUrl(profile?.userId || session.user?.id, rawAvatarPic)
     || session.user?.image
     || undefined;
 

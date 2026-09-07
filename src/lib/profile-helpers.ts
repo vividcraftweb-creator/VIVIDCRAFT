@@ -26,8 +26,11 @@ export function getProfilePictureUrl(
     return undefined;
   }
 
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+
   let baseUrl = trimmed;
-  // If it's already a full URL or data URI, use it directly
+
+  // 1. If it's already a full absolute URL or data/blob URI, use it directly
   if (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
@@ -35,19 +38,33 @@ export function getProfilePictureUrl(
     trimmed.startsWith('blob:')
   ) {
     baseUrl = trimmed;
-  } else if (trimmed.startsWith('/')) {
+  }
+  // 2. If it contains the storage public path (e.g., /storage/v1/object/public/avatars/...)
+  else if (trimmed.includes('storage/v1/object/public/avatars/')) {
+    const after = trimmed.substring(trimmed.indexOf('storage/v1/object/public/avatars/') + 'storage/v1/object/public/avatars/'.length);
+    const cleanPath = after.replace(/^\/+/, '');
+    baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
+  }
+  // 3. If it starts with /avatars/ or avatars/
+  else if (trimmed.startsWith('/avatars/') || trimmed.startsWith('avatars/')) {
+    const cleanPath = trimmed.replace(/^\/?avatars\//, '');
+    baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
+  }
+  // 4. If it's an existing legacy /uploads/ path
+  else if (trimmed.startsWith('/uploads/')) {
     baseUrl = trimmed;
-  } else {
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
-    if (supabaseUrl && (trimmed.startsWith('avatars/') || trimmed.includes('/'))) {
-      const cleanPath = trimmed.startsWith('avatars/') ? trimmed.replace(/^avatars\//, '') : trimmed;
-      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
-    } else if (supabaseUrl && trimmed.match(/\.(png|jpe?g|webp|gif|svg)$/i)) {
-      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${userId ? `${userId}/` : ''}${trimmed}`;
-    } else if (!userId) {
-      return undefined;
+  }
+  // 5. If it's any other relative path or filename
+  else {
+    const clean = trimmed.replace(/^\/+/, '');
+    if (clean.includes('/')) {
+      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${clean}`;
+    } else if (clean.match(/\.(png|jpe?g|webp|gif|svg)$/i)) {
+      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${userId ? `${userId}/` : ''}${clean}`;
+    } else if (userId) {
+      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${userId}/${clean}`;
     } else {
-      baseUrl = `/uploads/documents/${userId}/${trimmed}`;
+      baseUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${clean}`;
     }
   }
 
@@ -88,16 +105,11 @@ export function getProfilePictureUrlWithTimestamp(
     return undefined;
   }
 
-  let baseUrl = filename;
-  if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:') || filename.startsWith('blob:')) {
-    baseUrl = filename;
-  } else if (filename.startsWith('/')) {
-    baseUrl = filename;
-  } else {
-    if (!userId) return undefined;
-    baseUrl = `/uploads/documents/${userId}/${filename}`;
+  const url = getProfilePictureUrl(userId, filename);
+  if (!url) {
+    return undefined;
   }
 
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  return `${baseUrl}${separator}t=${timestamp}`;
+  const [base] = url.split('?');
+  return `${base}?t=${timestamp}`;
 }

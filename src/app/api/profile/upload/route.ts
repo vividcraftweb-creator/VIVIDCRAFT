@@ -142,22 +142,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+    let fullPublicUrl = publicUrl;
+    if (fullPublicUrl && !fullPublicUrl.startsWith('http')) {
+      const cleanPath = fullPublicUrl.replace(/^\/?(avatars\/)?/, '');
+      fullPublicUrl = `${supabaseBaseUrl}/storage/v1/object/public/${storageBucket}/${cleanPath}`;
+    }
+
     const timestamp = new Date().toISOString();
 
-    // 6. Update database profiles table
+    // 6. Update database profiles table with full public URL
     try {
-      await (adminClient as any)
+      const { error: updateErr } = await (adminClient as any)
         .from('profiles')
         .update({
-          avatar_url: publicUrl,
-          profile_picture: publicUrl,
+          avatar_url: fullPublicUrl,
+          profile_picture: fullPublicUrl,
           updated_at: timestamp,
         })
         .eq('id', user.id);
+
+      if (updateErr) {
+        await (adminClient as any)
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            avatar_url: fullPublicUrl,
+            profile_picture: fullPublicUrl,
+            updated_at: timestamp,
+          }, { onConflict: 'id' });
+      }
     } catch (dbErr) {
       console.warn('Profile table avatar_url update notice:', dbErr);
     }
-
 
     // 7. Clean Supabase Auth user metadata so it only has the clean public URL (never base64 bloat)
     try {
@@ -166,8 +183,8 @@ export async function POST(request: NextRequest) {
       await adminClient.auth.admin.updateUserById(user.id, {
         user_metadata: {
           ...existingMeta,
-          avatar_url: publicUrl,
-          picture: publicUrl,
+          avatar_url: fullPublicUrl,
+          picture: fullPublicUrl,
         },
       });
     } catch (metaErr) {
@@ -177,8 +194,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        url: publicUrl,
-        avatar_url: publicUrl,
+        url: fullPublicUrl,
+        avatar_url: fullPublicUrl,
         filePath,
         fileName,
       },

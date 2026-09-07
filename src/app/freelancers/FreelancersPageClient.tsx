@@ -14,18 +14,7 @@ function getAvatarUrl(userId?: string, raw?: string | null): string | undefined 
   if (!raw || typeof raw !== 'string') return undefined;
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
-  const helperUrl = getProfilePictureUrl(userId, trimmed);
-  if (helperUrl) return helperUrl;
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:') ||
-    trimmed.startsWith('blob:') ||
-    trimmed.startsWith('/')
-  ) {
-    return trimmed;
-  }
-  return undefined;
+  return getProfilePictureUrl(userId, trimmed);
 }
 
 export default function FreelancersPageClient({

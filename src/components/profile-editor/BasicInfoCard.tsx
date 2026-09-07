@@ -225,10 +225,14 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         return;
       }
 
-      const rawAvatar = avatarUrl || formData.profilePicture || '';
-      const cleanAvatarUrl = (rawAvatar && rawAvatar.startsWith('http') && rawAvatar.length < 500)
-        ? rawAvatar
-        : null;
+      const rawAvatar = avatarUrl || formData.profilePicture || profileData.avatar_url || '';
+      let cleanAvatarUrl: string | null = null;
+      if (rawAvatar && !rawAvatar.startsWith('data:')) {
+        const fullUrl = getProfilePictureUrl(user.id, rawAvatar);
+        if (fullUrl && fullUrl.startsWith('http')) {
+          cleanAvatarUrl = fullUrl.split('?')[0]; // Store clean full Supabase URL without cache params
+        }
+      }
 
       try {
         await supabase.auth.updateUser({
@@ -256,6 +260,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         bio: formData.bio || null,
         skills: skillsString || null,
         avatar_url: cleanAvatarUrl,
+        profile_picture: cleanAvatarUrl,
         updated_at: new Date().toISOString(),
       };
 
@@ -397,41 +402,57 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         throw new Error('Failed to retrieve valid public URL for profile picture');
       }
 
-      const now = Date.now();
-      const cacheBustedUrl = publicAvatarUrl.startsWith('http')
-        ? `${publicAvatarUrl}?t=${now}`
+      // Ensure publicAvatarUrl is full public Supabase URL
+      const fullPublicAvatarUrl = (!publicAvatarUrl.startsWith('http'))
+        ? (getProfilePictureUrl(userId, publicAvatarUrl) || publicAvatarUrl)
         : publicAvatarUrl;
+
+      const now = Date.now();
+      const cacheBustedUrl = fullPublicAvatarUrl.startsWith('http')
+        ? `${fullPublicAvatarUrl}?t=${now}`
+        : fullPublicAvatarUrl;
 
       setAvatarUrl(cacheBustedUrl);
       setLastUploadTimestamp(now);
       setProfileData(prev => ({
         ...prev,
-        avatar_url: publicAvatarUrl,
+        avatar_url: fullPublicAvatarUrl,
       }));
       setFormData(prev => ({
         ...prev,
-        profilePicture: publicAvatarUrl,
+        profilePicture: fullPublicAvatarUrl,
       }));
 
-      // 3. Persist to profiles database table
+      // 3. Persist full public Supabase URL to profiles database table
       try {
-        await (supabase as any)
+        const { error: updateErr } = await (supabase as any)
           .from('profiles')
           .update({
-            avatar_url: publicAvatarUrl,
-            profile_picture: publicAvatarUrl,
+            avatar_url: fullPublicAvatarUrl,
+            profile_picture: fullPublicAvatarUrl,
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId);
+
+        if (updateErr) {
+          await (supabase as any)
+            .from('profiles')
+            .upsert({
+              id: userId,
+              avatar_url: fullPublicAvatarUrl,
+              profile_picture: fullPublicAvatarUrl,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id' });
+        }
       } catch (dbErr) {
         console.warn('Profiles table update notice:', dbErr);
       }
 
       // 4. Persist clean public URL to Supabase Auth metadata (NEVER base64 payload)
-      if (publicAvatarUrl.startsWith('http') && publicAvatarUrl.length < 500) {
+      if (fullPublicAvatarUrl.startsWith('http') && fullPublicAvatarUrl.length < 500) {
         try {
           await supabase.auth.updateUser({
-            data: { avatar_url: publicAvatarUrl },
+            data: { avatar_url: fullPublicAvatarUrl },
           });
         } catch (authMetaErr) {
           console.warn('Auth user metadata avatar update notice:', authMetaErr);

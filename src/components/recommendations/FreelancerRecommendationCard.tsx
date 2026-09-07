@@ -19,6 +19,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
 interface FreelancerRecommendationCardProps {
   recommendation: FreelancerScore;
@@ -64,10 +65,8 @@ export default function FreelancerRecommendationCard({
 
   const freelancerSlug = profile?.slug;
   const freelancerName = freelancer.name || 'Freelancer';
-  const avatarSrc =
-    profile?.avatar && freelancer.id
-      ? `/uploads/documents/${freelancer.id}/${profile.avatar}`
-      : undefined;
+  const rawAvatar = profile?.avatar || (profile as any)?.avatar_url || (profile as any)?.profilePicture || (freelancer as any)?.image;
+  const avatarSrc = getProfilePictureUrl(freelancer.id, rawAvatar);
 
   return (
     <Card className="bg-white/5 border-white/10 hover:border-blue-500/30 transition-all">
