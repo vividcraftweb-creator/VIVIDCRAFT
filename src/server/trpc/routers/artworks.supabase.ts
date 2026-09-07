@@ -1,25 +1,72 @@
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import { z } from 'zod';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import { TRPCError } from '@trpc/server';
 
-function getDbClient() {
-  try {
-    const admin = createAdminClient();
-    if (admin) return admin;
-  } catch {}
-  return null;
+/**
+ * Creates an authenticated Supabase client that carries the active user's
+ * session JWT token in the Authorization header so PostgREST enforces RLS
+ * policies (e.g. auth.uid() = artist_id) properly.
+ */
+async function getAuthenticatedClient(ctx: any) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_o2t69o3py5_mC2rQh7PX5w_WaqJNuNA';
+
+  // 1. Try Authorization header from incoming tRPC request
+  let token = ctx.req?.headers?.get?.('authorization')?.replace(/^Bearer\s+/i, '');
+
+  // 2. Try accessToken from session context
+  if (!token && ctx.session?.accessToken && ctx.session.accessToken !== 'mock-admin-dev-token') {
+    token = ctx.session.accessToken;
+  }
+
+  // 3. Try reading session from server cookie store
+  const serverClient = await createClient();
+  if (!token) {
+    try {
+      const { data: { session } } = await serverClient.auth.getSession();
+      if (session?.access_token) {
+        token = session.access_token;
+      }
+    } catch {}
+  }
+
+  // If a JWT token was retrieved, build client with explicit Authorization header
+  if (token) {
+    return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+  }
+
+  // Fallback to cookie-based server client
+  return serverClient;
 }
 
 export const artworksRouter = router({
   getMyArtworks: protectedProcedure.query(async ({ ctx }) => {
-    const admin = getDbClient();
-    const supabase = admin || (await createClient());
+    const artistId = ctx.session.user?.id || (ctx as any).user?.id;
+    if (!artistId) {
+      throw new TRPCError({
+        code: 'UNAUTHORIZED',
+        message: 'Authenticated session user ID not found',
+      });
+    }
+
+    const supabase = await getAuthenticatedClient(ctx);
 
     const { data: artworks, error } = await supabase
       .from('artworks')
       .select('*')
-      .eq('artist_id', ctx.session.user.id)
+      .eq('artist_id', artistId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -75,15 +122,24 @@ export const artworksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const admin = getDbClient();
-      const supabase = admin || (await createClient());
+      // 1. Ensure artist_id uses the authenticated session user's ID
+      const artistId = ctx.session.user?.id || (ctx as any).user?.id;
+      if (!artistId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authenticated session user ID not found',
+        });
+      }
+
+      // 2. Get Supabase client configured with the authenticated user context
+      const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
       const { data, error } = await supabase
         .from('artworks')
         .insert({
           id,
-          artist_id: ctx.session.user.id,
+          artist_id: artistId,
           title: input.title.trim(),
           image_url: input.imageUrl,
           created_at: new Date().toISOString(),
@@ -105,8 +161,15 @@ export const artworksRouter = router({
   deleteArtwork: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const admin = getDbClient();
-      const supabase = admin || (await createClient());
+      const artistId = ctx.session.user?.id || (ctx as any).user?.id;
+      if (!artistId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authenticated session user ID not found',
+        });
+      }
+
+      const supabase = await getAuthenticatedClient(ctx);
 
       // Delete child likes and ratings first
       await supabase.from('artwork_likes').delete().eq('artwork_id', input.id);
@@ -116,7 +179,7 @@ export const artworksRouter = router({
         .from('artworks')
         .delete()
         .eq('id', input.id)
-        .eq('artist_id', ctx.session.user.id);
+        .eq('artist_id', artistId);
 
       if (error) {
         console.error('deleteArtwork error:', error);
@@ -132,9 +195,8 @@ export const artworksRouter = router({
   getArtistArtworks: publicProcedure
     .input(z.object({ artistId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const admin = getDbClient();
-      const supabase = admin || (await createClient());
-      const viewerId = ctx.session?.user?.id || null;
+      const supabase = await getAuthenticatedClient(ctx);
+      const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
 
       const { data: artworks, error } = await supabase
         .from('artworks')
@@ -194,9 +256,15 @@ export const artworksRouter = router({
   toggleLike: protectedProcedure
     .input(z.object({ artworkId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const admin = getDbClient();
-      const supabase = admin || (await createClient());
-      const userId = ctx.session.user.id;
+      const userId = ctx.session.user?.id || (ctx as any).user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authenticated session user ID not found',
+        });
+      }
+
+      const supabase = await getAuthenticatedClient(ctx);
 
       // Check existing like
       const { data: existingLike } = await supabase
@@ -231,7 +299,7 @@ export const artworksRouter = router({
           console.error('toggleLike insert error:', insErr);
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: 'Failed to like artwork',
+            message: insErr.message || 'Failed to like artwork',
           });
         }
         liked = true;
@@ -257,9 +325,15 @@ export const artworksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const admin = getDbClient();
-      const supabase = admin || (await createClient());
-      const userId = ctx.session.user.id;
+      const userId = ctx.session.user?.id || (ctx as any).user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authenticated session user ID not found',
+        });
+      }
+
+      const supabase = await getAuthenticatedClient(ctx);
 
       // Check existing rating
       const { data: existingRating } = await supabase
@@ -282,7 +356,7 @@ export const artworksRouter = router({
           console.error('rateArtwork update error:', updateErr);
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: 'Failed to update rating',
+            message: updateErr.message || 'Failed to update rating',
           });
         }
       } else {
@@ -302,7 +376,7 @@ export const artworksRouter = router({
           console.error('rateArtwork insert error:', insErr);
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: 'Failed to submit rating',
+            message: insErr.message || 'Failed to submit rating',
           });
         }
       }

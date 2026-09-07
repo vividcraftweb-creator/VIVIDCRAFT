@@ -6,6 +6,8 @@ import React, { useState } from 'react';
 import { trpc } from '@/utils/trpc';
 import superjson from 'superjson';
 
+import { createClient } from '@/lib/supabase/client';
+
 export default function Provider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const [trpcClient] = useState(() =>
@@ -14,6 +16,22 @@ export default function Provider({ children }: { children: React.ReactNode }) {
         httpBatchLink({
           url: '/api/trpc',
           transformer: superjson,
+          headers: async () => {
+            try {
+              if (typeof window !== 'undefined') {
+                const supabase = createClient();
+                const { data } = await supabase.auth.getSession();
+                if (data?.session?.access_token) {
+                  return {
+                    authorization: `Bearer ${data.session.access_token}`,
+                  };
+                }
+              }
+            } catch (err) {
+              console.warn('[tRPC headers] Failed to get session token:', err);
+            }
+            return {};
+          },
           async fetch(url, options) {
             try {
               const res = await fetch(url, {
