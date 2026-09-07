@@ -164,6 +164,7 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
     let ce: any[] = [];
     let u: any = null;
     let initialArtworks: any[] = [];
+    let initialReviews: any[] = [];
 
     try {
       const results = await Promise.all([
@@ -173,6 +174,7 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
         supabase.from('Certification').select('*').eq('profileId', pId).order('order', { ascending: true }),
         supabase.from('User').select('subscriptionPlan, email').eq('id', pId).maybeSingle(),
         supabase.from('artworks').select('*').eq('artist_id', pId).order('created_at', { ascending: false }),
+        supabase.from('artist_reviews').select('*').eq('artist_id', pId).order('created_at', { ascending: false }),
       ]);
       ed = results[0]?.data || [];
       ex = results[1]?.data || [];
@@ -180,6 +182,34 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
       ce = results[3]?.data || [];
       u = results[4]?.data || null;
       const rawArtworks = results[5]?.data || [];
+      const rawReviews = results[6]?.data || [];
+
+      if (rawReviews.length > 0) {
+        const clientIds = Array.from(new Set(rawReviews.map((r: any) => r.client_id).filter(Boolean)));
+        const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
+        if (clientIds.length > 0) {
+          const { data: clientProfiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, avatar_url')
+            .in('id', clientIds);
+          if (clientProfiles) {
+            clientProfiles.forEach((p: any) => {
+              const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Verified Client';
+              profilesMap[p.id] = { name, avatarUrl: p.avatar_url || null };
+            });
+          }
+        }
+        initialReviews = rawReviews.map((r: any) => ({
+          id: r.id,
+          artistId: r.artist_id,
+          clientId: r.client_id,
+          rating: Number(r.rating) || 5,
+          reviewText: r.review_text || '',
+          createdAt: r.created_at,
+          clientName: profilesMap[r.client_id]?.name || 'Verified Client',
+          clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
+        }));
+      }
 
       if (rawArtworks.length > 0) {
         const artIds = rawArtworks.map((a: any) => a.id);
@@ -266,8 +296,8 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
       subscriptionPlan: u?.subscriptionPlan ?? profile.subscription_plan ?? profile.subscriptionPlan ?? 'FREELANCER_PRO',
     };
 
-    return <FreelancerProfileClient params={params} initialProfile={initialProfile} initialArtworks={initialArtworks} />;
+    return <FreelancerProfileClient params={params} initialProfile={initialProfile} initialArtworks={initialArtworks} initialReviews={initialReviews} />;
   }
 
-  return <FreelancerProfileClient params={params} initialProfile={null} initialArtworks={[]} />;
+  return <FreelancerProfileClient params={params} initialProfile={null} initialArtworks={[]} initialReviews={[]} />;
 }

@@ -41,6 +41,7 @@ import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import { getPublicUrl } from '@/components/artists/ArtistCard';
 import { createClient } from '@/lib/supabase/client';
 import { ArtworkCard, type ArtworkItem } from '@/components/gallery/ArtworkCard';
+import { ArtistReviewsSection, type ArtistReviewItem } from '@/components/reviews/ArtistReviewsSection';
 
 type FreelancerProfile = ProfileRow & {
   firstName?: string | null;
@@ -69,6 +70,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
   initialProfile?: FreelancerProfile | null;
   initialArtworks?: ArtworkItem[] | null;
+  initialReviews?: ArtistReviewItem[] | null;
 }
 
 const PLAN_BADGE_IMAGES: Partial<Record<SubscriptionPlan, { src: string; alt: string }>> = {
@@ -76,7 +78,7 @@ const PLAN_BADGE_IMAGES: Partial<Record<SubscriptionPlan, { src: string; alt: st
   FREELANCER_ELITE: { src: '/elite-plan-user.png', alt: 'Elite plan badge' },
 };
 
-export default function FreelancerProfileClient({ params, initialProfile, initialArtworks }: PageProps) {
+export default function FreelancerProfileClient({ params, initialProfile, initialArtworks, initialReviews }: PageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -694,6 +696,13 @@ Hi, I would like to connect with this artist for a commission/project.`;
                   </div>
                 )}
               </section>
+
+              {/* CLIENT REVIEWS & TESTIMONIALS */}
+              <ArtistReviewsSection
+                artistId={profile.id}
+                artistName={displayName}
+                initialReviews={initialReviews ?? []}
+              />
 
               {profile.experienceItems?.length > 0 && (
                 <section className="glass-card glass-card-shine p-6 rounded-2xl hover-lift">

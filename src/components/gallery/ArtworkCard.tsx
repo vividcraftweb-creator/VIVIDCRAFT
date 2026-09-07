@@ -7,6 +7,7 @@ import { Heart, Star, ZoomIn, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
+import { ArtworkModal } from './ArtworkModal';
 
 export interface ArtworkItem {
   id: string;
@@ -254,80 +255,20 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
         </div>
       </div>
 
-      {/* Lightbox / Expanded Artwork Modal */}
-      {isZoomOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setIsZoomOpen(false)}
-        >
-          <div
-            className="relative max-w-4xl w-full max-h-[90vh] flex flex-col rounded-3xl overflow-hidden glass-card border border-white/20 bg-gray-950 p-2 sm:p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              type="button"
-              onClick={() => setIsZoomOpen(false)}
-              className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-black/90 border border-white/10 transition-colors"
-              aria-label="Close artwork preview"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            {/* Large Image */}
-            <div className="relative w-full h-[60vh] sm:h-[70vh] rounded-2xl overflow-hidden bg-black/60">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={artwork.image_url}
-                alt={artwork.title}
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            {/* Modal Info Bar */}
-            <div className="p-4 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">
-                  {artwork.title}
-                </h2>
-                {artistName && (
-                  <p className="text-sm text-slate-300">Artist: {artistName}</p>
-                )}
-              </div>
-
-              {/* Action items in modal */}
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={handleLikeClick}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isLiked
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                      : 'bg-white/10 text-white/80 border border-white/10 hover:bg-rose-500/10 hover:text-rose-300'
-                  }`}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${
-                      isLiked ? 'fill-rose-500 text-rose-500' : ''
-                    }`}
-                  />
-                  <span>{likesCount} Likes</span>
-                </button>
-
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                  <span className="font-semibold text-white">
-                    {averageRating > 0 ? averageRating.toFixed(1) : 'Unrated'}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    ({ratingsCount} {ratingsCount === 1 ? 'rating' : 'ratings'})
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Lightbox / Expanded Artwork Modal with Comments */}
+      <ArtworkModal
+        isOpen={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        artwork={artwork}
+        artistName={artistName}
+        likesCount={likesCount}
+        isLiked={isLiked}
+        onToggleLike={handleLikeClick}
+        averageRating={averageRating}
+        ratingsCount={ratingsCount}
+        userRating={userRating}
+        onRate={handleRateClick}
+      />
     </>
   );
 }

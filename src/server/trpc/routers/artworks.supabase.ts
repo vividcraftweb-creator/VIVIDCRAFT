@@ -397,4 +397,263 @@ export const artworksRouter = router({
         ratingsCount: ratingsList.length,
       };
     }),
+
+  getArtworkComments: publicProcedure
+    .input(z.object({ artworkId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const supabase = await getAuthenticatedClient(ctx);
+
+      const { data: comments, error } = await supabase
+        .from('artwork_comments')
+        .select('*')
+        .eq('artwork_id', input.artworkId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('getArtworkComments error:', error);
+        return [];
+      }
+
+      if (!comments || comments.length === 0) {
+        return [];
+      }
+
+      // Fetch user profile info for comments
+      const userIds = Array.from(new Set(comments.map((c: any) => c.user_id).filter(Boolean)));
+      const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, avatar_url')
+          .in('id', userIds);
+
+        if (profiles) {
+          profiles.forEach((p: any) => {
+            const fName = p.first_name || '';
+            const lName = p.last_name || '';
+            const name = `${fName} ${lName}`.trim() || 'Art Enthusiast';
+            profilesMap[p.id] = {
+              name,
+              avatarUrl: p.avatar_url || null,
+            };
+          });
+        }
+      }
+
+      return comments.map((c: any) => ({
+        id: c.id,
+        artworkId: c.artwork_id,
+        userId: c.user_id,
+        comment: c.comment,
+        createdAt: c.created_at,
+        userName: profilesMap[c.user_id]?.name || 'Art Enthusiast',
+        userAvatar: profilesMap[c.user_id]?.avatarUrl || null,
+      }));
+    }),
+
+  addArtworkComment: protectedProcedure
+    .input(
+      z.object({
+        artworkId: z.string(),
+        comment: z.string().trim().min(1, 'Comment cannot be empty').max(1000, 'Comment too long'),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user?.id || (ctx as any).user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authenticated session user ID not found',
+        });
+      }
+
+      const supabase = await getAuthenticatedClient(ctx);
+      const id = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from('artwork_comments')
+        .insert({
+          id,
+          artwork_id: input.artworkId,
+          user_id: userId,
+          comment: input.comment,
+          created_at: createdAt,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('addArtworkComment error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Failed to post comment',
+        });
+      }
+
+      // Fetch user profile info
+      let userName = ctx.session.user?.name || 'Art Enthusiast';
+      let userAvatar: string | null = null;
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, avatar_url')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (profile) {
+          const fName = profile.first_name || '';
+          const lName = profile.last_name || '';
+          const name = `${fName} ${lName}`.trim();
+          if (name) userName = name;
+          userAvatar = profile.avatar_url || null;
+        }
+      } catch {}
+
+      return {
+        id: data.id,
+        artworkId: data.artwork_id,
+        userId: data.user_id,
+        comment: data.comment,
+        createdAt: data.created_at,
+        userName,
+        userAvatar,
+      };
+    }),
+
+  getArtistReviews: publicProcedure
+    .input(z.object({ artistId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const supabase = await getAuthenticatedClient(ctx);
+
+      const { data: reviews, error } = await supabase
+        .from('artist_reviews')
+        .select('*')
+        .eq('artist_id', input.artistId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('getArtistReviews error:', error);
+        return [];
+      }
+
+      if (!reviews || reviews.length === 0) {
+        return [];
+      }
+
+      // Fetch client profile info
+      const clientIds = Array.from(new Set(reviews.map((r: any) => r.client_id).filter(Boolean)));
+      const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
+
+      if (clientIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, avatar_url')
+          .in('id', clientIds);
+
+        if (profiles) {
+          profiles.forEach((p: any) => {
+            const fName = p.first_name || '';
+            const lName = p.last_name || '';
+            const name = `${fName} ${lName}`.trim() || 'Verified Client';
+            profilesMap[p.id] = {
+              name,
+              avatarUrl: p.avatar_url || null,
+            };
+          });
+        }
+      }
+
+      return reviews.map((r: any) => ({
+        id: r.id,
+        artistId: r.artist_id,
+        clientId: r.client_id,
+        rating: Number(r.rating) || 5,
+        reviewText: r.review_text || '',
+        createdAt: r.created_at,
+        clientName: profilesMap[r.client_id]?.name || 'Verified Client',
+        clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
+      }));
+    }),
+
+  addArtistReview: protectedProcedure
+    .input(
+      z.object({
+        artistId: z.string(),
+        rating: z.number().int().min(1, 'Rating must be at least 1 star').max(5, 'Rating cannot exceed 5 stars'),
+        reviewText: z.string().trim().min(1, 'Review text is required').max(2000, 'Review text is too long'),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const clientId = ctx.session.user?.id || (ctx as any).user?.id;
+      if (!clientId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authenticated session user ID not found',
+        });
+      }
+
+      if (clientId === input.artistId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Artists cannot submit reviews on their own profile.',
+        });
+      }
+
+      const supabase = await getAuthenticatedClient(ctx);
+      const id = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from('artist_reviews')
+        .insert({
+          id,
+          artist_id: input.artistId,
+          client_id: clientId,
+          rating: input.rating,
+          review_text: input.reviewText,
+          created_at: createdAt,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('addArtistReview error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Failed to submit review',
+        });
+      }
+
+      // Fetch client profile info
+      let clientName = ctx.session.user?.name || 'Verified Client';
+      let clientAvatar: string | null = null;
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, avatar_url')
+          .eq('id', clientId)
+          .maybeSingle();
+
+        if (profile) {
+          const fName = profile.first_name || '';
+          const lName = profile.last_name || '';
+          const name = `${fName} ${lName}`.trim();
+          if (name) clientName = name;
+          clientAvatar = profile.avatar_url || null;
+        }
+      } catch {}
+
+      return {
+        id: data.id,
+        artistId: data.artist_id,
+        clientId: data.client_id,
+        rating: Number(data.rating) || input.rating,
+        reviewText: data.review_text,
+        createdAt: data.created_at,
+        clientName,
+        clientAvatar,
+      };
+    }),
 });
