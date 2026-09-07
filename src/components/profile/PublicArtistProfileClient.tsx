@@ -12,6 +12,7 @@ import {
   MapPin,
   Share2,
   Sparkles,
+  Star,
 } from 'lucide-react';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArtistReviewsSection, type ArtistReviewItem } from '@/components/reviews/ArtistReviewsSection';
 import { toast } from 'sonner';
 
 export default function PublicArtistProfileClient() {
@@ -256,6 +258,28 @@ export default function PublicArtistProfileClient() {
 
   const rawProfile = profileQuery.data || directProfile;
   const artistData = rawProfile;
+
+  const targetArtistId = rawProfile?.id || rawProfile?.userId || id;
+
+  const reviewsQuery = trpc.artworks.getArtistReviews.useQuery(
+    { artistId: targetArtistId },
+    {
+      enabled: !!targetArtistId,
+      staleTime: 60000,
+    }
+  );
+
+  const reviewsList: ArtistReviewItem[] = Array.isArray(reviewsQuery.data)
+    ? (reviewsQuery.data as ArtistReviewItem[])
+    : [];
+
+  const totalReviewsCount = reviewsList.length;
+  const artistAverageRating =
+    totalReviewsCount > 0
+      ? Math.round(
+          (reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / totalReviewsCount) * 10
+        ) / 10
+      : 0;
 
   // 3. Dynamic Name Construction & Field Mapping
   const {
@@ -513,6 +537,20 @@ export default function PublicArtistProfileClient() {
                 )}
 
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-muted-foreground">
+                  {/* Aggregated Artist Star Rating */}
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-medium text-amber-300">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    {totalReviewsCount > 0 ? (
+                      <>
+                        <span className="font-semibold text-foreground">{artistAverageRating.toFixed(1)}</span>
+                        <span className="text-muted-foreground">
+                          ({totalReviewsCount} {totalReviewsCount === 1 ? 'review' : 'reviews'})
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">No reviews yet</span>
+                    )}
+                  </span>
                   {location && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
                       <MapPin className="h-3.5 w-3.5 text-primary" />
@@ -606,6 +644,13 @@ export default function PublicArtistProfileClient() {
             </Card>
           </div>
         </div>
+
+        {/* Client Reviews & Testimonials */}
+        <ArtistReviewsSection
+          artistId={targetArtistId}
+          artistName={fullName}
+          initialReviews={reviewsList}
+        />
       </div>
     </div>
   );

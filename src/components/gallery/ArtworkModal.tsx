@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Heart, Star, Send, Loader2, MessageSquare, LogIn } from 'lucide-react';
+import { X, Heart, Send, Loader2, MessageSquare, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,10 +17,10 @@ interface ArtworkModalProps {
   likesCount: number;
   isLiked: boolean;
   onToggleLike: (e: React.MouseEvent) => void;
-  averageRating: number;
-  ratingsCount: number;
-  userRating: number | null;
-  onRate: (star: number, e: React.MouseEvent) => void;
+  averageRating?: number;
+  ratingsCount?: number;
+  userRating?: number | null;
+  onRate?: (star: number, e: React.MouseEvent) => void;
 }
 
 export function ArtworkModal({
@@ -31,10 +31,6 @@ export function ArtworkModal({
   likesCount,
   isLiked,
   onToggleLike,
-  averageRating,
-  ratingsCount,
-  userRating,
-  onRate,
 }: ArtworkModalProps) {
   const router = useRouter();
   const { data: session, status } = useAuth();
@@ -42,7 +38,6 @@ export function ArtworkModal({
   const currentUserId = session?.session?.user?.id;
 
   const [commentText, setCommentText] = useState('');
-  const [hoverRating, setHoverRating] = useState<number | null>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
@@ -212,39 +207,6 @@ export function ArtworkModal({
                 />
                 <span>{likesCount} Likes</span>
               </button>
-
-              {/* Star Rating Display & Interactive Stars */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center">
-                  {[1, 2, 3, 4, 5].map((star) => {
-                    const activeStar = hoverRating !== null ? hoverRating : (userRating || Math.round(averageRating));
-                    const isFilled = star <= activeStar;
-                    return (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={(e) => onRate(star, e)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(null)}
-                        title={`Rate ${star} star${star > 1 ? 's' : ''}`}
-                        className="p-0.5 text-white/30 hover:scale-125 transition-transform"
-                      >
-                        <Star
-                          className={`h-4 w-4 ${
-                            isFilled ? 'fill-amber-400 text-amber-400' : 'text-white/20'
-                          }`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-                <span className="text-xs font-semibold text-amber-300">
-                  {averageRating > 0 ? averageRating.toFixed(1) : '0.0'}
-                </span>
-                <span className="text-[11px] text-white/40">
-                  ({ratingsCount})
-                </span>
-              </div>
             </div>
           </div>
 

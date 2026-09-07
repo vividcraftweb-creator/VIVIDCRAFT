@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Heart, Star, ZoomIn, X, Loader2 } from 'lucide-react';
+import { Heart, ZoomIn, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,11 +36,6 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
   // Local optimistic state for instant feedback
   const [likesCount, setLikesCount] = useState<number>(artwork.likesCount);
   const [isLiked, setIsLiked] = useState<boolean>(artwork.isLiked);
-  const [ratingsCount, setRatingsCount] = useState<number>(artwork.ratingsCount);
-  const [averageRating, setAverageRating] = useState<number>(artwork.averageRating);
-  const [userRating, setUserRating] = useState<number | null>(artwork.userRating);
-
-  const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
 
   const utils = trpc.useUtils();
@@ -56,22 +51,6 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
       setIsLiked((prev) => !prev);
       setLikesCount((prev) => (isLiked ? prev + 1 : Math.max(0, prev - 1)));
       toast.error(err.message || 'Failed to update like');
-    },
-  });
-
-  const rateArtworkMutation = trpc.artworks.rateArtwork.useMutation({
-    onSuccess: (data) => {
-      setUserRating(data.userRating);
-      setAverageRating(data.averageRating);
-      setRatingsCount(data.ratingsCount);
-      toast.success(`Rated ${data.userRating} out of 5 stars!`);
-      utils.artworks.getArtistArtworks.invalidate({ artistId: artwork.artist_id });
-    },
-    onError: (err) => {
-      setUserRating(artwork.userRating);
-      setAverageRating(artwork.averageRating);
-      setRatingsCount(artwork.ratingsCount);
-      toast.error(err.message || 'Failed to submit rating');
     },
   });
 
@@ -100,45 +79,6 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
     setLikesCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
 
     toggleLikeMutation.mutate({ artworkId: artwork.id });
-  };
-
-  const handleRateClick = (starValue: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-
-    if (!isAuthenticated) {
-      toast.error('Please sign in to rate this artwork', {
-        action: {
-          label: 'Sign In',
-          onClick: () => {
-            router.push(
-              `/auth/signin?callbackUrl=${encodeURIComponent(
-                typeof window !== 'undefined' ? window.location.href : ''
-              )}`
-            );
-          },
-        },
-      });
-      return;
-    }
-
-    // Optimistic rating
-    const prevUserRating = userRating;
-    const isNewRating = prevUserRating === null;
-    const newRatingsCount = isNewRating ? ratingsCount + 1 : ratingsCount;
-    const currentSum = averageRating * ratingsCount;
-    const newSum = isNewRating
-      ? currentSum + starValue
-      : currentSum - (prevUserRating || 0) + starValue;
-    const newAvg = Math.round((newSum / Math.max(1, newRatingsCount)) * 10) / 10;
-
-    setUserRating(starValue);
-    setAverageRating(newAvg);
-    setRatingsCount(newRatingsCount);
-
-    rateArtworkMutation.mutate({
-      artworkId: artwork.id,
-      rating: starValue,
-    });
   };
 
   return (
@@ -205,55 +145,16 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             <span className="sr-only">likes</span>
           </button>
 
-          {/* Star Rating Section */}
-          <div className="flex flex-col items-end">
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => {
-                const activeStar = hoverRating !== null ? hoverRating : (userRating || Math.round(averageRating));
-                const isStarFilled = star <= activeStar;
-
-                return (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={(e) => handleRateClick(star, e)}
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(null)}
-                    aria-label={`Rate ${star} stars`}
-                    className="p-0.5 text-white/30 hover:scale-125 transition-transform duration-150 focus:outline-none"
-                  >
-                    <Star
-                      className={`h-4 w-4 transition-colors duration-150 ${
-                        isStarFilled
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'text-white/20'
-                      }`}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Rating Average & User Feedback */}
-            <div className="flex items-center gap-1.5 text-[11px] text-white/50 mt-1">
-              {averageRating > 0 ? (
-                <>
-                  <span className="font-semibold text-amber-300">
-                    {averageRating.toFixed(1)}★
-                  </span>
-                  <span>({ratingsCount})</span>
-                </>
-              ) : (
-                <span>No ratings yet</span>
-              )}
-
-              {userRating && (
-                <span className="text-purple-300 border-l border-white/10 pl-1.5">
-                  You: {userRating}★
-                </span>
-              )}
-            </div>
-          </div>
+          {/* Expand / Comments CTA */}
+          <button
+            type="button"
+            onClick={() => setIsZoomOpen(true)}
+            aria-label="View artwork details and comments"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all duration-200"
+          >
+            <ZoomIn className="h-3.5 w-3.5 text-purple-400" />
+            <span>Feedback</span>
+          </button>
         </div>
       </div>
 
@@ -266,10 +167,6 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
         likesCount={likesCount}
         isLiked={isLiked}
         onToggleLike={handleLikeClick}
-        averageRating={averageRating}
-        ratingsCount={ratingsCount}
-        userRating={userRating}
-        onRate={handleRateClick}
       />
     </>
   );

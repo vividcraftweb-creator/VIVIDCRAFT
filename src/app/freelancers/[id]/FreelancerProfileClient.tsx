@@ -21,6 +21,7 @@ import {
   MapPin,
   MessageCircle,
   Share2,
+  Star,
   User,
 } from 'lucide-react';
 import { trpc } from '@/utils/trpc';
@@ -237,6 +238,27 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     ? (artworksQuery.data as ArtworkItem[])
     : (Array.isArray(initialArtworks) ? initialArtworks : []);
 
+  const reviewsQuery = trpc.artworks.getArtistReviews.useQuery(
+    { artistId },
+    {
+      enabled: !!artistId,
+      initialData: initialReviews && initialReviews.length > 0 ? initialReviews : undefined,
+      staleTime: 60000,
+    }
+  );
+
+  const reviewsList: ArtistReviewItem[] = Array.isArray(reviewsQuery.data)
+    ? (reviewsQuery.data as ArtistReviewItem[])
+    : (Array.isArray(initialReviews) ? initialReviews : []);
+
+  const totalReviewsCount = reviewsList.length;
+  const artistAverageRating =
+    totalReviewsCount > 0
+      ? Math.round(
+          (reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / totalReviewsCount) * 10
+        ) / 10
+      : 0;
+
   const displayName = useMemo(() => {
     if (!profile) return 'studio One';
     const fName = profile.first_name || profile.firstName || '';
@@ -353,6 +375,10 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
   const highlightStats = useMemo(
     () => [
       {
+        label: 'Client Rating',
+        value: totalReviewsCount > 0 ? `${artistAverageRating.toFixed(1)} ★ (${totalReviewsCount})` : 'New Artist',
+      },
+      {
         label: 'Featured Artworks',
         value: artworks.length > 0 ? artworks.length : (profile?.portfolioItems?.length ?? 0),
       },
@@ -365,7 +391,7 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
         value: profile?.certifications?.length ?? 0,
       },
     ],
-    [profile, artworks.length]
+    [profile, artworks.length, totalReviewsCount, artistAverageRating]
   );
 
   const handleShare = async () => {
@@ -593,7 +619,21 @@ Hi, I would like to connect with this artist for a commission/project.`;
                   {(profile.bio || (profile as any).description) && (
                     <p className="text-sm text-white/60 line-clamp-2 max-w-2xl">{profile.bio || (profile as any).description}</p>
                   )}
-                  <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-white/60 sm:text-sm lg:justify-start">
+                  <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-white/60 sm:text-sm lg:justify-start">
+                    {/* Aggregated Artist Star Rating */}
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-medium text-amber-300">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                      {totalReviewsCount > 0 ? (
+                        <>
+                          <span className="font-semibold text-white">{artistAverageRating.toFixed(1)}</span>
+                          <span className="text-white/60">
+                            ({totalReviewsCount} {totalReviewsCount === 1 ? 'review' : 'reviews'})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-white/60">No reviews yet</span>
+                      )}
+                    </span>
                     {(profile.location || (profile as any).address) && (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
                         <MapPin className="h-4 w-4 text-primary/80" />
@@ -667,7 +707,7 @@ Hi, I would like to connect with this artist for a commission/project.`;
                         Artist Portfolio &amp; Gallery
                       </h2>
                       <p className="text-xs text-white/60 mt-0.5">
-                        Original artworks created by {displayName}. Click to zoom, like, or rate.
+                        Original artworks created by {displayName}. Click to view, zoom, and feedback.
                       </p>
                     </div>
                   </div>
