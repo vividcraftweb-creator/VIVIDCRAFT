@@ -69,19 +69,6 @@ export const adminUsersRouter = router({
           }
         } catch (pErr) {}
 
-        try {
-          const { data: profileTableRows } = await supabase.from('Profile').select('*');
-          if (profileTableRows) {
-            profileTableRows.forEach((p: any) => {
-              const key = p.userId || p.id;
-              if (key) {
-                const existing = profilesMap.get(key) || {};
-                profilesMap.set(key, { ...existing, ...p });
-              }
-            });
-          }
-        } catch (pErr) {}
-
         // 3. Fetch from users or User table if exists
         const userTableMap = new Map<string, any>();
         try {
@@ -315,8 +302,7 @@ export const adminUsersRouter = router({
         let profileData: any = null;
         try {
           const { data: p1 } = await (supabase as any).from('profiles').select('*').eq('id', input.userId).maybeSingle();
-          const { data: p2 } = await supabase.from('Profile').select('*').eq('userId', input.userId).maybeSingle();
-          profileData = { ...(p1 || {}), ...(p2 || {}) };
+          profileData = p1 || null;
         } catch (e) {}
 
         if (!dbUser && !authUser && !profileData) {
@@ -571,13 +557,13 @@ export const adminUsersRouter = router({
         });
       }
 
-      // Also update profile if it exists
-      const { error: profileError } = await supabase
-        .from('Profile')
-        .update({ verified: true, updatedAt: new Date().toISOString() })
-        .eq('userId', input.userId);
-
-      if (profileError) {
+      // Also update profiles table if it exists
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({ is_verified: true, updated_at: new Date().toISOString() })
+          .eq('id', input.userId);
+      } catch (profileError) {
         // Profile update is optional, ignore the error
       }
 

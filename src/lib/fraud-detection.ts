@@ -140,21 +140,21 @@ async function checkDuplicatePortfolio(userId: string, profileId: string): Promi
   try {
     const supabase = createAdminClient();
 
-    const { data: currentProfile, error: profileError } = await supabase
-      .from('Profile')
+    const { data: currentProfile, error: profileError } = await (supabase as any)
+      .from('profiles')
       .select('*, portfolioItems:PortfolioItem(*)')
       .eq('id', profileId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !currentProfile || !currentProfile.portfolioItems?.length) {
       return { isDuplicate: false, similarProfiles: [] };
     }
 
     // Get other profiles with portfolios
-    const { data: otherProfiles, error: otherError } = await supabase
-      .from('Profile')
+    const { data: otherProfiles, error: otherError } = await (supabase as any)
+      .from('profiles')
       .select('*, portfolioItems:PortfolioItem(*)')
-      .neq('userId', userId)
+      .neq('id', userId)
       .not('portfolioItems', 'is', null)
       .limit(100);
 

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { type ArtworkItem } from './ArtworkCard';
+import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER, isValidImageUrl } from '@/lib/image-placeholders';
 
 interface ArtworkModalProps {
   isOpen: boolean;
@@ -148,7 +149,7 @@ export function ArtworkModal({
           <div
             className="absolute inset-0 opacity-20 blur-3xl scale-125 pointer-events-none"
             style={{
-              backgroundImage: `url(${artwork.image_url})`,
+              backgroundImage: `url(${getSafeArtworkUrl(artwork.image_url)})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
@@ -156,9 +157,14 @@ export function ArtworkModal({
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={artwork.image_url}
-            alt={artwork.title}
+            src={getSafeArtworkUrl(artwork.image_url)}
+            alt={artwork.title || 'Artwork'}
             className="relative max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-300"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+            }}
           />
 
           {/* Artwork Watermark / Info Badge */}
@@ -266,18 +272,29 @@ export function ArtworkModal({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          {c.userAvatar ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={c.userAvatar}
-                              alt={c.userName}
-                              className="h-6 w-6 rounded-full object-cover border border-white/10"
-                            />
-                          ) : (
-                            <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white uppercase">
+                          <div className="relative h-6 w-6 rounded-full overflow-hidden flex-shrink-0">
+                            {c.userAvatar && isValidImageUrl(c.userAvatar) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={c.userAvatar}
+                                alt={c.userName}
+                                className="h-full w-full rounded-full object-cover border border-white/10"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.onerror = null;
+                                  target.style.display = 'none';
+                                  const fallback = target.nextElementSibling as HTMLElement | null;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="h-full w-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white uppercase"
+                              style={{ display: (c.userAvatar && isValidImageUrl(c.userAvatar)) ? 'none' : 'flex' }}
+                            >
                               {initial}
                             </div>
-                          )}
+                          </div>
                           <span className="text-xs font-semibold text-white">
                             {c.userName}
                             {isCurrentUser && (

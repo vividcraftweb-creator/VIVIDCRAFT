@@ -163,7 +163,10 @@ export default function RegisterForm() {
               role: 'artist',
               first_name: formData.firstName.trim(),
               last_name: formData.lastName.trim(),
+              title: 'Artist',
+              bio: 'Welcome to Vivid Art!',
               address: userCountry,
+              is_published: true,
               updated_at: new Date().toISOString(),
             })
             .eq('id', activeUserId);
@@ -177,31 +180,14 @@ export default function RegisterForm() {
                 last_name: formData.lastName.trim(),
                 role: 'artist',
                 email: formData.email.trim(),
+                title: 'Artist',
+                bio: 'Welcome to Vivid Art!',
                 address: userCountry,
+                is_published: true,
                 updated_at: new Date().toISOString(),
               },
             ], { onConflict: 'id' });
           }
-
-          const baseSlug = `${formData.firstName.trim()}-${formData.lastName.trim()}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
-          await supabase.from('Profile').upsert([
-            {
-              id: activeUserId,
-              userId: activeUserId,
-              slug: `${baseSlug || 'artist'}-${activeUserId.substring(0, 6)}`,
-              firstName: formData.firstName.trim(),
-              lastName: formData.lastName.trim(),
-              title: 'Artist',
-              bio: 'Welcome to Vivid Art!',
-              companyName: formData.company?.trim() || null,
-              country: userCountry,
-              location: userCountry,
-              isPublished: true,
-              is_published: true,
-              verified: false,
-              updatedAt: new Date().toISOString(),
-            },
-          ]);
 
           // Call provision-user endpoint to sync all tables and auth metadata
           await fetch('/api/auth/provision-user', {

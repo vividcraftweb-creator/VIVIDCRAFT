@@ -134,22 +134,50 @@ const Header = () => {
   const isAdmin = hasUser && effectiveRole === 'ADMIN';
   const isBuyerOrClient = hasUser && !isArtistOrCreator && !isAdmin;
 
-  // Calculate avatar - memoized to prevent flashing
-  const { userFullName, avatarSrc } = useMemo(() => {
+  // Calculate avatar & initials - memoized to prevent flashing
+  const { userFullName, userInitials, avatarSrc } = useMemo(() => {
     if (userRole === 'ADMIN') {
-      return { userFullName: 'Admin', avatarSrc: undefined };
+      return { userFullName: 'Admin', userInitials: 'AD', avatarSrc: undefined };
     }
-    const fullName = (!isProfileLoading && profile?.firstName && profile?.lastName)
-      ? `${profile.firstName} ${profile.lastName}`
-      : user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+    const fName = profile?.firstName || (profile as any)?.first_name || '';
+    const lName = profile?.lastName || (profile as any)?.last_name || '';
+    const fullName = (!isProfileLoading && (fName || lName))
+      ? `${fName} ${lName}`.trim()
+      : (profile as any)?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
 
-    const rawPic = profile?.profilePicture || (profile as any)?.avatar_url || (profile as any)?.profile_picture;
-    const avatarUrl = (!isProfileLoading && rawPic)
-      ? getProfilePictureUrl(profile?.userId || user?.id, rawPic) || user?.user_metadata?.avatar_url || undefined
-      : user?.user_metadata?.avatar_url || undefined;
+    const rawPic =
+      profile?.profilePicture ||
+      (profile as any)?.avatar_url ||
+      (profile as any)?.profile_picture ||
+      (profile as any)?.avatar ||
+      (profile as any)?.image;
 
-    return { userFullName: fullName, avatarSrc: avatarUrl };
-  }, [isProfileLoading, profile?.firstName, profile?.lastName, profile?.profilePicture, (profile as any)?.avatar_url, (profile as any)?.profile_picture, profile?.userId, user?.user_metadata?.name, user?.user_metadata?.avatar_url, user?.email, userRole]);
+    const userMetaPic =
+      user?.user_metadata?.avatar_url ||
+      user?.user_metadata?.picture ||
+      (user as any)?.image ||
+      undefined;
+
+    let avatarUrl: string | undefined = undefined;
+    if (rawPic) {
+      avatarUrl = getProfilePictureUrl(profile?.userId || (profile as any)?.id || user?.id, rawPic);
+    }
+    if (!avatarUrl && userMetaPic) {
+      avatarUrl = userMetaPic;
+    }
+
+    let initials = 'U';
+    if (fullName && fullName !== 'User') {
+      const parts = fullName.trim().split(/\s+/);
+      if (parts.length >= 2 && parts[0][0] && parts[1][0]) {
+        initials = `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      } else if (parts[0]) {
+        initials = parts[0].slice(0, 2).toUpperCase();
+      }
+    }
+
+    return { userFullName: fullName, userInitials: initials, avatarSrc: avatarUrl };
+  }, [isProfileLoading, profile, user, userRole]);
 
   const isActive = (href: string) => pathname === href;
 
@@ -285,8 +313,8 @@ const Header = () => {
                         >
                           <Avatar className="h-8 w-8 border border-slate-200 dark:border-white/20">
                             <AvatarImage src={avatarSrc} alt={userFullName} />
-                            <AvatarFallback className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200">
-                              <UserIcon className="h-4 w-4 text-slate-700 dark:text-slate-200" />
+                            <AvatarFallback className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                              {userInitials || <UserIcon className="h-4 w-4 text-slate-700 dark:text-slate-200" />}
                             </AvatarFallback>
                           </Avatar>
                         </Button>

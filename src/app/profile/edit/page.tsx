@@ -53,21 +53,14 @@ export default function EditProfilePage() {
         const role = (user.user_metadata?.role || 'CLIENT').toUpperCase();
         setUserRole(role);
 
-        // Fetch from 'profiles' table first
+        // Fetch from 'profiles' table strictly by id
         const { data: profilesData } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .maybeSingle();
 
-        // Also fetch from 'Profile' table if needed
-        const { data: profileTableData } = await supabase
-          .from('Profile')
-          .select('*')
-          .eq('userId', user.id)
-          .maybeSingle();
-
-        const p = profilesData || profileTableData || {};
+        const p = profilesData || {};
 
         setFormData({
           firstName: p.first_name || p.firstName || user.user_metadata?.name?.split(' ')[0] || user.user_metadata?.firstName || '',
@@ -116,22 +109,8 @@ export default function EditProfilePage() {
           updated_at: new Date().toISOString(),
         });
 
-      // Synchronize with Profile table if exists
-      const { error: profileError } = await supabase
-        .from('Profile')
-        .upsert({
-          id: user.id,
-          userId: user.id,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          location: formData.address,
-          phone: formData.whatsappNumber,
-          businessEmail: formData.email,
-          updatedAt: new Date().toISOString(),
-        } as any);
-
-      if (error && profileError) {
-        throw error || profileError;
+      if (error) {
+        throw error;
       }
 
       toast.success("Profile updated successfully!");

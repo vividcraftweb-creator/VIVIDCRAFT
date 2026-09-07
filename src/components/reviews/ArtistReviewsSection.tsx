@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
+import { isValidImageUrl } from '@/lib/image-placeholders';
 
 export interface ArtistReviewItem {
   id: string;
@@ -289,18 +290,29 @@ export function ArtistReviewsSection({
                   {/* Card Bottom: Client Info */}
                   <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-white/5">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      {rev.clientAvatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={rev.clientAvatar}
-                          alt={rev.clientName}
-                          className="h-8 w-8 rounded-full object-cover border border-white/15 flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-600 to-amber-600 flex items-center justify-center text-xs font-bold text-white uppercase flex-shrink-0">
+                      <div className="relative h-8 w-8 rounded-full overflow-hidden flex-shrink-0">
+                        {rev.clientAvatar && isValidImageUrl(rev.clientAvatar) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={rev.clientAvatar}
+                            alt={rev.clientName}
+                            className="h-full w-full rounded-full object-cover border border-white/15"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.onerror = null;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement | null;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="h-full w-full rounded-full bg-gradient-to-tr from-purple-600 to-amber-600 flex items-center justify-center text-xs font-bold text-white uppercase border border-white/15"
+                          style={{ display: (rev.clientAvatar && isValidImageUrl(rev.clientAvatar)) ? 'none' : 'flex' }}
+                        >
                           {initial}
                         </div>
-                      )}
+                      </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1">
                           <h3 className="text-xs font-semibold text-white truncate">

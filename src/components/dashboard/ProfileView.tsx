@@ -48,7 +48,10 @@ export default function ProfileView() {
     retry: false,
   });
 
-  const sessionUser = session?.session?.user;
+  const sessionUser = session?.session?.user as any;
+
+  const fName = profile?.firstName || (profile as any)?.first_name || sessionUser?.user_metadata?.firstName || sessionUser?.user_metadata?.first_name || '';
+  const lName = profile?.lastName || (profile as any)?.last_name || sessionUser?.user_metadata?.lastName || sessionUser?.user_metadata?.last_name || '';
 
   const sessionInitials = sessionUser?.user_metadata?.firstName && sessionUser?.user_metadata?.lastName
     ? `${sessionUser.user_metadata.firstName[0]}${sessionUser.user_metadata.lastName[0]}`.toUpperCase()
@@ -56,12 +59,23 @@ export default function ProfileView() {
     ? sessionUser.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
     : sessionUser?.email?.[0]?.toUpperCase() || 'U';
 
-  const profileInitials = (profile?.firstName || profile?.lastName)
-    ? `${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase()
+  const profileInitials = (fName || lName)
+    ? `${fName?.[0] ?? ''}${lName?.[0] ?? ''}`.toUpperCase()
     : sessionInitials;
 
-  const rawAvatar = profile?.profilePicture || (profile as any)?.avatar_url || (profile as any)?.profile_picture || sessionUser?.image;
-  const avatarSrc = getProfilePictureUrl(profile?.userId || sessionUser?.id, rawAvatar)
+  const rawAvatar =
+    profile?.profilePicture ||
+    (profile as any)?.avatar_url ||
+    (profile as any)?.profile_picture ||
+    (profile as any)?.avatar ||
+    (profile as any)?.image ||
+    (sessionUser as any)?.user_metadata?.avatar_url ||
+    (sessionUser as any)?.user_metadata?.picture ||
+    sessionUser?.image;
+
+  const avatarSrc = (rawAvatar ? getProfilePictureUrl(profile?.userId || (profile as any)?.id || sessionUser?.id, rawAvatar) : undefined)
+    || (sessionUser as any)?.user_metadata?.avatar_url
+    || (sessionUser as any)?.user_metadata?.picture
     || sessionUser?.image
     || undefined;
 
@@ -228,11 +242,11 @@ export default function ProfileView() {
             {/* Name and Title */}
             <div className="flex-1 min-w-0">
               <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2 tracking-tight">
-                {profile?.firstName && profile?.lastName
-                  ? `${profile.firstName} ${profile.lastName}`
+                {(fName || lName)
+                  ? `${fName} ${lName}`.trim()
                   : sessionUser?.user_metadata?.firstName && sessionUser?.user_metadata?.lastName
                   ? `${sessionUser.user_metadata.firstName} ${sessionUser.user_metadata.lastName}`
-                  : sessionUser?.name || 'Complete Your Profile'}
+                  : (profile as any)?.full_name || sessionUser?.name || 'Complete Your Profile'}
               </h1>
 
               {profile?.title && (

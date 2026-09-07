@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { ArtworkModal } from './ArtworkModal';
+import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 
 export interface ArtworkItem {
   id: string;
@@ -150,12 +151,13 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={artwork.image_url}
-            alt={artwork.title}
+            src={getSafeArtworkUrl(artwork.image_url)}
+            alt={artwork.title || 'Artwork'}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = 'https://via.placeholder.com/600x450?text=Artwork+Image';
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = DEFAULT_ARTWORK_PLACEHOLDER;
             }}
           />
 

@@ -91,92 +91,44 @@ export async function POST(req: Request) {
       await adminClient.from('User').upsert(userPayload, { onConflict: 'id' });
     } catch (e) {}
 
-    // 5. Upsert profiles table (snake_case) - use authenticated supabase client so RLS allows it
+    const avatarUrl = String(body.avatarUrl || body.avatar_url || authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '').trim() || null;
+
+    // 5. Upsert profiles table strictly by id
+    const profilePayload = {
+      id: userId,
+      email,
+      role: metadataRole,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      title: title || (metadataRole === 'artist' ? 'Artist' : 'Buyer'),
+      bio: metadataRole === 'artist' ? 'Welcome to Vivid Art!' : '',
+      address: location,
+      location: location,
+      avatar_url: avatarUrl,
+      is_published: true,
+      updated_at: new Date().toISOString(),
+    };
+
     try {
       const { error: profileUpdateErr } = await supabase
         .from('profiles')
-        .update({
-          role: metadataRole,
-          first_name: firstName || null,
-          last_name: lastName || null,
-          address: location,
-          updated_at: new Date().toISOString(),
-        })
+        .update(profilePayload)
         .eq('id', userId);
 
       if (profileUpdateErr) {
         console.warn('[provision-user] authenticated update notice, attempting upsert:', profileUpdateErr.message);
-        await supabase.from('profiles').upsert(
-          {
-            id: userId,
-            email,
-            role: metadataRole,
-            first_name: firstName || null,
-            last_name: lastName || null,
-            address: location,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' }
-        );
+        await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
       }
     } catch (profileErr) {
       console.warn('[provision-user] profiles upsert warning:', profileErr);
     }
 
-    // 6. Upsert Profile table (PascalCase)
     try {
-      const baseSlug = slugFromName(firstName, lastName);
-      const slugToUse =
-        baseSlug && baseSlug.length >= 2
-          ? baseSlug
-          : `user-${userId.substring(0, 8)}`;
-
-      const { data: existingSlugs } = await adminClient
-        .from('Profile')
-        .select('slug')
-        .like('slug', `${slugToUse}%`);
-
-      const existingSlugList = existingSlugs?.map((s: any) => s.slug) || [];
-      const profileSlug = ensureUniqueSlug(slugToUse, existingSlugList);
-
-      const { data: existingProfile } = await adminClient
-        .from('Profile')
-        .select('id')
-        .eq('userId', userId)
-        .maybeSingle();
-
-      if (!existingProfile) {
-        await adminClient.from('Profile').upsert(
-          {
-            id: crypto.randomUUID(),
-            userId,
-            slug: profileSlug,
-            firstName: firstName || null,
-            lastName: lastName || null,
-            title,
-            bio: metadataRole === 'artist' ? 'Welcome to Vivid Art!' : '',
-            location,
-            country: location,
-            isPublished: true,
-            is_published: true,
-            verified: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          { onConflict: 'userId' }
-        );
-      } else {
-        await adminClient
-          .from('Profile')
-          .update({
-            firstName: firstName || null,
-            lastName: lastName || null,
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('userId', userId);
-      }
-    } catch (pErr) {
-      console.warn('[provision-user] Profile upsert warning:', pErr);
+      await (adminClient as any)
+        .from('profiles')
+        .upsert(profilePayload, { onConflict: 'id' });
+    } catch (adminProfileErr) {
+      console.warn('[provision-user] adminClient profiles upsert warning:', adminProfileErr);
     }
 
     return NextResponse.json({ success: true, role: dbRole, metadataRole });

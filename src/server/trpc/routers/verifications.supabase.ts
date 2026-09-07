@@ -530,16 +530,6 @@ export const verificationsRouter = router({
         .maybeSingle();
       profileData = data;
     } catch {}
-    if (!profileData) {
-      try {
-        const { data } = await adminSupabase
-          .from('Profile')
-          .select('firstName, lastName')
-          .eq('userId', userId)
-          .maybeSingle();
-        profileData = data;
-      } catch {}
-    }
 
     // Combine the results
     let resolvedUser: { id: string; clientType: string | null; email: string; role: string | null; Profile: Array<{ firstName: string | null; lastName: string | null }> } | null = userData ? {
@@ -603,16 +593,6 @@ export const verificationsRouter = router({
             .maybeSingle();
           freshProfileData = data;
         } catch {}
-        if (!freshProfileData) {
-          try {
-            const { data } = await adminSupabase
-              .from('Profile')
-              .select('firstName, lastName')
-              .eq('userId', userId)
-              .maybeSingle();
-            freshProfileData = data;
-          } catch {}
-        }
 
         if (!freshUserData) {
           throw new TRPCError({

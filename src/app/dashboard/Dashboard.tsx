@@ -111,16 +111,39 @@ export default function Dashboard({ session }: { session: AppSession }) {
     retry: false,
   });
 
-  const userFullName = profile?.firstName && profile?.lastName
-    ? `${profile.firstName} ${profile.lastName}`
-    : session.user?.name || 'User';
+  const fName = profile?.firstName || (profile as any)?.first_name || '';
+  const lName = profile?.lastName || (profile as any)?.last_name || '';
+  const userFullName = (fName || lName)
+    ? `${fName} ${lName}`.trim()
+    : (profile as any)?.full_name || session.user?.name || 'User';
 
-  const userFirstName = profile?.firstName || (session.user?.name ? session.user.name.split(' ')[0] : 'User') || 'User';
+  const userFirstName = fName || (session.user?.name ? session.user.name.split(' ')[0] : 'User') || 'User';
 
-  const rawAvatarPic = profile?.profilePicture || (profile as any)?.avatar_url || (profile as any)?.profile_picture;
-  const avatarSrc = getProfilePictureUrl(profile?.userId || session.user?.id, rawAvatarPic)
-    || session.user?.image
+  const rawAvatarPic =
+    profile?.profilePicture ||
+    (profile as any)?.avatar_url ||
+    (profile as any)?.profile_picture ||
+    (profile as any)?.avatar ||
+    (profile as any)?.image;
+
+  const userMetaPic =
+    (session.user as any)?.user_metadata?.avatar_url ||
+    (session.user as any)?.user_metadata?.picture ||
+    session.user?.image ||
+    undefined;
+
+  const avatarSrc = (rawAvatarPic ? getProfilePictureUrl(profile?.userId || (profile as any)?.id || session.user?.id, rawAvatarPic) : undefined)
+    || userMetaPic
     || undefined;
+
+  const userInitials = (() => {
+    if (!userFullName || userFullName === 'User') return 'U';
+    const parts = userFullName.trim().split(/\s+/);
+    if (parts.length >= 2 && parts[0][0] && parts[1][0]) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return userFullName.slice(0, 2).toUpperCase();
+  })();
 
   // Fetch user plan permissions
   const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
@@ -295,8 +318,8 @@ export default function Dashboard({ session }: { session: AppSession }) {
             <div className="flex items-center space-x-3">
               <Avatar className="h-10 w-10 border border-white/20">
                 <AvatarImage src={avatarSrc} />
-                <AvatarFallback className="bg-white/10 text-white">
-                  <User className="h-5 w-5" />
+                <AvatarFallback className="bg-purple-600/30 text-white font-bold text-xs">
+                  {userInitials || <User className="h-5 w-5" />}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">

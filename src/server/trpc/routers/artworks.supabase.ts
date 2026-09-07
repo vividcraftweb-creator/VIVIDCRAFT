@@ -360,55 +360,60 @@ export const artworksRouter = router({
   getArtworkComments: publicProcedure
     .input(z.object({ artworkId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const supabase = await getAuthenticatedClient(ctx);
+      try {
+        const supabase = await getAuthenticatedClient(ctx);
 
-      const { data: comments, error } = await supabase
-        .from('artwork_comments')
-        .select('*')
-        .eq('artwork_id', input.artworkId)
-        .order('created_at', { ascending: true });
+        const { data: comments, error } = await supabase
+          .from('artwork_comments')
+          .select('*')
+          .eq('artwork_id', input.artworkId)
+          .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('getArtworkComments error:', error);
-        return [];
-      }
-
-      if (!comments || comments.length === 0) {
-        return [];
-      }
-
-      // Fetch user profile info for comments
-      const userIds = Array.from(new Set(comments.map((c: any) => c.user_id).filter(Boolean)));
-      const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
-
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, avatar_url')
-          .in('id', userIds);
-
-        if (profiles) {
-          profiles.forEach((p: any) => {
-            const fName = p.first_name || '';
-            const lName = p.last_name || '';
-            const name = `${fName} ${lName}`.trim() || 'Art Enthusiast';
-            profilesMap[p.id] = {
-              name,
-              avatarUrl: p.avatar_url || null,
-            };
-          });
+        if (error) {
+          console.warn('getArtworkComments error caught gracefully:', error.message || error);
+          return [];
         }
-      }
 
-      return comments.map((c: any) => ({
-        id: c.id,
-        artworkId: c.artwork_id,
-        userId: c.user_id,
-        comment: c.comment,
-        createdAt: c.created_at,
-        userName: profilesMap[c.user_id]?.name || 'Art Enthusiast',
-        userAvatar: profilesMap[c.user_id]?.avatarUrl || null,
-      }));
+        if (!comments || comments.length === 0) {
+          return [];
+        }
+
+        // Fetch user profile info for comments
+        const userIds = Array.from(new Set(comments.map((c: any) => c.user_id).filter(Boolean)));
+        const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
+
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, avatar_url')
+            .in('id', userIds);
+
+          if (profiles) {
+            profiles.forEach((p: any) => {
+              const fName = p.first_name || '';
+              const lName = p.last_name || '';
+              const name = `${fName} ${lName}`.trim() || 'Art Enthusiast';
+              profilesMap[p.id] = {
+                name,
+                avatarUrl: p.avatar_url || null,
+              };
+            });
+          }
+        }
+
+        return comments.map((c: any) => ({
+          id: c.id,
+          artworkId: c.artwork_id,
+          userId: c.user_id,
+          comment: c.comment,
+          createdAt: c.created_at,
+          userName: profilesMap[c.user_id]?.name || 'Art Enthusiast',
+          userAvatar: profilesMap[c.user_id]?.avatarUrl || null,
+        }));
+      } catch (err) {
+        console.warn('getArtworkComments exception caught gracefully:', err);
+        return [];
+      }
     }),
 
   addArtworkComment: protectedProcedure
@@ -484,56 +489,61 @@ export const artworksRouter = router({
   getArtistReviews: publicProcedure
     .input(z.object({ artistId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const supabase = await getAuthenticatedClient(ctx);
+      try {
+        const supabase = await getAuthenticatedClient(ctx);
 
-      const { data: reviews, error } = await supabase
-        .from('artist_reviews')
-        .select('*')
-        .eq('artist_id', input.artistId)
-        .order('created_at', { ascending: false });
+        const { data: reviews, error } = await supabase
+          .from('artist_reviews')
+          .select('*')
+          .eq('artist_id', input.artistId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('getArtistReviews error:', error);
-        return [];
-      }
-
-      if (!reviews || reviews.length === 0) {
-        return [];
-      }
-
-      // Fetch client profile info
-      const clientIds = Array.from(new Set(reviews.map((r: any) => r.client_id).filter(Boolean)));
-      const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
-
-      if (clientIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, avatar_url')
-          .in('id', clientIds);
-
-        if (profiles) {
-          profiles.forEach((p: any) => {
-            const fName = p.first_name || '';
-            const lName = p.last_name || '';
-            const name = `${fName} ${lName}`.trim() || 'Verified Client';
-            profilesMap[p.id] = {
-              name,
-              avatarUrl: p.avatar_url || null,
-            };
-          });
+        if (error) {
+          console.warn('getArtistReviews error caught gracefully:', error.message || error);
+          return [];
         }
-      }
 
-      return reviews.map((r: any) => ({
-        id: r.id,
-        artistId: r.artist_id,
-        clientId: r.client_id,
-        rating: Number(r.rating) || 5,
-        reviewText: r.review_text || '',
-        createdAt: r.created_at,
-        clientName: profilesMap[r.client_id]?.name || 'Verified Client',
-        clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
-      }));
+        if (!reviews || reviews.length === 0) {
+          return [];
+        }
+
+        // Fetch client profile info
+        const clientIds = Array.from(new Set(reviews.map((r: any) => r.client_id).filter(Boolean)));
+        const profilesMap: Record<string, { name: string; avatarUrl: string | null }> = {};
+
+        if (clientIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, avatar_url')
+            .in('id', clientIds);
+
+          if (profiles) {
+            profiles.forEach((p: any) => {
+              const fName = p.first_name || '';
+              const lName = p.last_name || '';
+              const name = `${fName} ${lName}`.trim() || 'Verified Client';
+              profilesMap[p.id] = {
+                name,
+                avatarUrl: p.avatar_url || null,
+              };
+            });
+          }
+        }
+
+        return reviews.map((r: any) => ({
+          id: r.id,
+          artistId: r.artist_id,
+          clientId: r.client_id,
+          rating: Number(r.rating) || 5,
+          reviewText: r.review_text || '',
+          createdAt: r.created_at,
+          clientName: profilesMap[r.client_id]?.name || 'Verified Client',
+          clientAvatar: profilesMap[r.client_id]?.avatarUrl || null,
+        }));
+      } catch (err) {
+        console.warn('getArtistReviews exception caught gracefully:', err);
+        return [];
+      }
     }),
 
   addArtistReview: protectedProcedure

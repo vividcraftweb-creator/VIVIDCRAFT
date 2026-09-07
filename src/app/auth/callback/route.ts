@@ -106,79 +106,34 @@ export async function GET(request: NextRequest) {
 
         // 3. Ensure profiles table record exists using authenticated client (satisfies RLS auth.uid() = id)
         try {
+          const profilePayload = {
+            id: user.id,
+            first_name: firstName || null,
+            last_name: lastName || null,
+            role: metadataRole,
+            email: user.email || null,
+            address: userCountry,
+            location: userCountry,
+            avatar_url: avatarUrl || null,
+            is_published: true,
+            updated_at: new Date().toISOString(),
+          };
+
           const { error: profileUpdateErr } = await supabase
             .from('profiles')
-            .update({
-              role: metadataRole,
-              first_name: firstName || null,
-              last_name: lastName || null,
-              updated_at: new Date().toISOString(),
-            })
+            .update(profilePayload)
             .eq('id', user.id);
 
           if (profileUpdateErr) {
             console.warn('Callback profiles update notice, attempting upsert:', profileUpdateErr.message);
-            await supabase.from('profiles').upsert({
-              id: user.id,
-              first_name: firstName || null,
-              last_name: lastName || null,
-              role: metadataRole,
-              email: user.email || null,
-              address: userCountry,
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'id' });
+            await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
           }
+
+          await (adminClient as any)
+            .from('profiles')
+            .upsert(profilePayload, { onConflict: 'id' });
         } catch (pErr) {
           console.warn('Callback profiles upsert warning:', pErr);
-        }
-
-        // 4. Ensure Profile record exists in DB
-        const { data: existingProfile } = await adminClient
-          .from('Profile')
-          .select('id, slug, firstName, lastName')
-          .eq('userId', user.id)
-          .maybeSingle();
-
-        if (!existingProfile) {
-          const baseSlug = slugFromName(firstName, lastName);
-          const slugToUse = (baseSlug && baseSlug.length >= 2) ? baseSlug : `user-${user.id.substring(0, 8)}`;
-
-          let profileSlug = slugToUse;
-          try {
-            const { data: existingSlugs } = await adminClient
-              .from('Profile')
-              .select('slug')
-              .like('slug', `${slugToUse}%`);
-
-            const existingSlugList = existingSlugs?.map(s => s.slug) || [];
-            profileSlug = ensureUniqueSlug(slugToUse, existingSlugList);
-          } catch {
-            profileSlug = `user-${user.id.substring(0, 8)}`;
-          }
-
-          await adminClient.from('Profile').upsert({
-            id: crypto.randomUUID(),
-            userId: user.id,
-            slug: profileSlug,
-            firstName: firstName || null,
-            lastName: lastName || null,
-            profilePicture: avatarUrl,
-            companyName: company,
-            country: userCountry,
-            location: userCountry,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }, { onConflict: 'userId' });
-        } else {
-          await adminClient
-            .from('Profile')
-            .update({
-              firstName: existingProfile.firstName || firstName || null,
-              lastName: existingProfile.lastName || lastName || null,
-              profilePicture: avatarUrl || undefined,
-              updatedAt: new Date().toISOString(),
-            })
-            .eq('userId', user.id);
         }
       } catch (profileSyncError) {
         console.warn('Callback profile sync warning:', profileSyncError);

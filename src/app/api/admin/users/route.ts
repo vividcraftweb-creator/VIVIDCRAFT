@@ -43,21 +43,6 @@ export async function GET() {
       console.warn('Could not fetch from profiles table:', e);
     }
 
-    try {
-      const { data: profileTableRows } = await supabaseAdmin.from('Profile').select('*');
-      if (profileTableRows) {
-        profileTableRows.forEach((p: any) => {
-          const key = p.userId || p.id;
-          if (key) {
-            const existing = profilesMap.get(key) || {};
-            profilesMap.set(key, { ...existing, ...p });
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('Could not fetch from Profile table:', e);
-    }
-
     // 3. Combine both arrays so every user in auth.users appears
     const combinedUsers: any[] = authUsers.map((user) => {
       const profile = profilesMap.get(user.id) || {};

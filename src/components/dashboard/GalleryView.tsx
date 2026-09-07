@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Image as ImageIcon, Trash2, Loader2, UploadCloud, Heart, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 
 export default function GalleryView() {
   const [isUploading, setIsUploading] = useState(false);
@@ -170,12 +171,13 @@ export default function GalleryView() {
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={imgUrl}
-                      alt={artwork.title}
+                      src={getSafeArtworkUrl(imgUrl)}
+                      alt={artwork.title || 'Artwork'}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://via.placeholder.com/400?text=Invalid+Image';
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.src = DEFAULT_ARTWORK_PLACEHOLDER;
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">

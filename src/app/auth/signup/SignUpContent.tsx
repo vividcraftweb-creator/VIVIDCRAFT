@@ -213,27 +213,6 @@ export default function SignUpContent() {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
         }
-
-        try {
-          const baseSlug = `${formData.firstName.trim()}-${formData.lastName.trim()}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
-          await supabase.from('Profile').upsert([
-            {
-              id: activeUserId,
-              userId: activeUserId,
-              slug: `${baseSlug || 'artist'}-${activeUserId.substring(0, 6)}`,
-              firstName: formData.firstName.trim(),
-              lastName: formData.lastName.trim(),
-              title: formData.title?.trim() || 'Artist',
-              bio: 'Welcome to Vivid Art!',
-              country: userCountry,
-              location: userCountry,
-              isPublished: true,
-              is_published: true,
-              verified: false,
-              updatedAt: new Date().toISOString(),
-            },
-          ]);
-        } catch {}
       }
 
       // STEP 3: Call /api/auth/provision-user to sync all DB tables and user_metadata

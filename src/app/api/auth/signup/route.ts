@@ -251,7 +251,11 @@ export async function POST(req: Request) {
       } catch (e) {}
     }
 
-    // 3. Upsert into `profiles` table
+    // Generate unique slug for profile
+    const baseSlug = slugFromName(sanitizedFirstName, sanitizedLastName);
+    const profileSlug = (baseSlug && baseSlug.length >= 2) ? baseSlug : `user-${authData.user.id.substring(0, 8)}`;
+
+    // 3. Upsert into `profiles` table strictly by id
     const profilePayload = {
       id: authData.user.id,
       first_name: sanitizedFirstName,
@@ -262,6 +266,9 @@ export async function POST(req: Request) {
       email: email,
       address: sanitizedLocation,
       location: sanitizedLocation,
+      skills: sanitizedSkills || '',
+      whatsapp_number: sanitizedPhone || '',
+      slug: profileSlug,
       is_published: true,
       updated_at: new Date().toISOString(),
     };
@@ -280,76 +287,6 @@ export async function POST(req: Request) {
         .upsert(profilePayload, { onConflict: 'id' });
     } catch (pErr2) {
       console.warn('profiles table supabase client upsert note:', pErr2);
-    }
-
-    // Generate unique slug for profile
-    let profileSlug: string;
-    try {
-      const baseSlug = slugFromName(sanitizedFirstName, sanitizedLastName);
-      const slugToUse = (baseSlug && baseSlug.length >= 2) ? baseSlug : `user-${authData.user.id.substring(0, 8)}`;
-
-      const { data: existingSlugs, error: slugCheckError } = await adminClient
-        .from('Profile')
-        .select('slug')
-        .eq('slug', slugToUse)
-        .maybeSingle();
-
-      if (slugCheckError && slugCheckError.code !== 'PGRST116') {
-        loggers.auth.error({ error: slugCheckError, userId: authData.user.id }, 'Failed to check slug uniqueness');
-        throw new Error('Failed to generate profile slug');
-      }
-
-      if (existingSlugs) {
-        const { data: similarSlugs } = await adminClient
-          .from('Profile')
-          .select('slug')
-          .like('slug', `${slugToUse}%`);
-
-        const existingSlugList = similarSlugs?.map(s => s.slug) || [];
-        profileSlug = ensureUniqueSlug(slugToUse, existingSlugList);
-      } else {
-        profileSlug = slugToUse;
-      }
-
-      loggers.auth.debug({ userId: authData.user.id, slug: profileSlug }, 'Generated profile slug');
-    } catch (slugError) {
-      profileSlug = `user-${authData.user.id.substring(0, 8)}`;
-    }
-
-    // Create/update profile record in Supabase database using admin client
-    const { error: profileError } = await adminClient
-      .from('Profile')
-      .upsert({
-        id: crypto.randomUUID(),
-        userId: authData.user.id,
-        slug: profileSlug,
-        firstName: sanitizedFirstName || null,
-        lastName: sanitizedLastName || null,
-        title: sanitizedTitle || null,
-        bio: sanitizedBio || null,
-        skills: sanitizedSkills || null,
-        phone: sanitizedPhone || null,
-        location: sanitizedLocation || null,
-        experience: sanitizedExperience || null,
-        companyName: sanitizedCompanyName || null,
-        companyInfo: sanitizedCompanyInfo || null,
-        industry: sanitizedIndustry || null,
-        country: sanitizedCountry || null,
-        timezone: sanitizedTimezone || null,
-        website: sanitizedWebsite || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }, { onConflict: 'userId' })
-      .select()
-      .maybeSingle();
-
-    if (profileError) {
-      loggers.auth.error({
-        error: profileError,
-        userId: authData.user.id,
-        email: email,
-        role: dbRole,
-      }, 'Profile table upsert error during signup (non-fatal)');
     }
 
     // Log successful profile creation

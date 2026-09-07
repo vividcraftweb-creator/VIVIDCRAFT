@@ -37,26 +37,6 @@ export async function GET() {
     } catch (e) {}
 
     try {
-      const { data: pTableData } = await supabaseAdmin.from('Profile').select('*');
-      if (pTableData && Array.isArray(pTableData)) {
-        pTableData.forEach((p: any) => {
-          const key = p.userId || p.id;
-          if (!profiles.some((item) => item.id === key)) {
-            profiles.push({
-              id: key,
-              first_name: p.first_name || p.firstName,
-              last_name: p.last_name || p.lastName,
-              address: p.address || p.location || p.businessAddressLine1,
-              whatsapp_number: p.whatsapp_number || p.phone || p.businessPhone,
-              email: p.email || p.businessEmail,
-              role: p.role,
-            });
-          }
-        });
-      }
-    } catch (e) {}
-
-    try {
       const { data: userTableData } = await supabaseAdmin.from('User').select('*');
       if (userTableData && Array.isArray(userTableData)) {
         userTableData.forEach((u: any) => {

@@ -11,10 +11,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from('Profile')
-    .select('firstName, lastName, title, bio, skills')
-    .eq('slug', id)
+  const { data: profile } = await (supabase as any)
+    .from('profiles')
+    .select('first_name, last_name, title, bio, skills')
+    .eq('id', id)
     .maybeSingle();
 
   if (!profile) {
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Freelancer';
+  const fullName = `${profile.first_name || profile.firstName || ''} ${profile.last_name || profile.lastName || ''}`.trim() || 'Freelancer';
   const title = profile.title || 'Professional';
   const description = profile.bio
     ? profile.bio.slice(0, 160)

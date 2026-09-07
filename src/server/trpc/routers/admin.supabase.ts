@@ -472,12 +472,12 @@ export const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       const supabase = requireAdminSupabase(ctx);
 
-      const { data, error } = await supabase
-        .from('Profile')
-        .update({ verified: true, updatedAt: new Date().toISOString() })
-        .eq('userId', input.userId)
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .update({ is_verified: true, updated_at: new Date().toISOString() })
+        .eq('id', input.userId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         throw new TRPCError({

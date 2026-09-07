@@ -297,17 +297,6 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
         data = d;
       } catch {}
 
-      if (!data) {
-        try {
-          const { data: d } = await (supabase as any)
-            .from('Profile')
-            .select('*')
-            .eq('userId', targetUserId)
-            .maybeSingle();
-          data = d;
-        } catch {}
-      }
-
       const isPub = (data?.is_published ?? metadata.is_published) ?? (data?.status === 'published');
 
       const merged = {

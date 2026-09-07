@@ -72,11 +72,11 @@ export async function POST(req: Request) {
     }
 
     // Get user's first name for personalized email
-    const { data: profile } = await adminClient
-      .from('Profile')
-      .select('firstName')
-      .eq('userId', user.id)
-      .single();
+    const { data: profile } = await (adminClient as any)
+      .from('profiles')
+      .select('first_name')
+      .eq('id', user.id)
+      .maybeSingle();
 
     // Generate secure reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
             to: email,
             template: 'passwordReset',
             templateData: {
-              firstName: profile?.firstName,
+              firstName: profile?.first_name || 'User',
               resetLink,
             },
           }),

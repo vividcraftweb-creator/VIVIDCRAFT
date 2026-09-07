@@ -106,48 +106,22 @@ async function performAdminSeed() {
     }
   }
 
-  // 3. Ensure Profile record in database
-  const { data: existingProfile } = await supabase
-    .from('Profile')
-    .select('*')
-    .eq('userId', authUser.id)
-    .maybeSingle();
+  // 3. Ensure profiles record in database
+  const { error: profileUpsertError } = await (supabase as any)
+    .from('profiles')
+    .upsert({
+      id: authUser.id,
+      role: 'admin',
+      first_name: ADMIN_FIRST_NAME,
+      last_name: ADMIN_LAST_NAME,
+      title: 'System Administrator',
+      bio: 'Vivid Craft Super Admin',
+      is_verified: true,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
 
-  if (existingProfile) {
-    const { error: profileUpdateError } = await supabase
-      .from('Profile')
-      .update({
-        firstName: ADMIN_FIRST_NAME,
-        lastName: ADMIN_LAST_NAME,
-        title: 'System Administrator',
-        bio: 'Vivid Craft Super Admin',
-        verified: true,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq('id', existingProfile.id);
-
-    if (profileUpdateError) {
-      throw new Error(`Failed to update Profile table: ${profileUpdateError.message}`);
-    }
-  } else {
-    const { error: profileInsertError } = await supabase
-      .from('Profile')
-      .insert({
-        id: crypto.randomUUID(),
-        userId: authUser.id,
-        slug: ADMIN_SLUG,
-        firstName: ADMIN_FIRST_NAME,
-        lastName: ADMIN_LAST_NAME,
-        title: 'System Administrator',
-        bio: 'Vivid Craft Super Admin',
-        verified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-    if (profileInsertError) {
-      throw new Error(`Failed to insert Profile table: ${profileInsertError.message}`);
-    }
+  if (profileUpsertError) {
+    throw new Error(`Failed to upsert profiles table: ${profileUpsertError.message}`);
   }
 
   return {

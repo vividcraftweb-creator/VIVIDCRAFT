@@ -145,17 +145,17 @@ export const teamRouter = router({
       // Send invitation email
       try {
         // Get inviter's profile information
-        const { data: inviterProfile } = await supabase
-          .from('Profile')
-          .select('firstName, lastName, companyName')
-          .eq('userId', ctx.session.user.id)
-          .single();
+        const { data: inviterProfile } = await (supabase as any)
+          .from('profiles')
+          .select('first_name, last_name, company_name')
+          .eq('id', ctx.session.user.id)
+          .maybeSingle();
 
-        const inviterName = inviterProfile?.firstName && inviterProfile?.lastName
-          ? `${inviterProfile.firstName} ${inviterProfile.lastName}`
-          : ctx.session.user.email || 'A team member';
+        const inviterName = inviterProfile?.first_name && inviterProfile?.last_name
+          ? `${inviterProfile.first_name} ${inviterProfile.last_name}`
+          : ctx.session.user.name || ctx.session.user.email || 'A team member';
 
-        const organizationName = inviterProfile?.companyName;
+        const organizationName = inviterProfile?.company_name;
 
         const invitationLink = `${process.env.NEXT_PUBLIC_APP_URL}/team/join/${invitationToken}`;
 
