@@ -19,6 +19,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  MessageCircle,
   Share2,
   User,
 } from 'lucide-react';
@@ -415,6 +416,64 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
     }
   };
 
+  const handleWhatsAppConnect = async () => {
+    if (!profile) return;
+
+    // Wait for auth status to be determined
+    if (status === 'loading') return;
+
+    // Gate: require authentication
+    if (status !== 'authenticated' || !session?.session?.user) {
+      toast.error('Please sign in to connect with artists via WhatsApp');
+      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`);
+      return;
+    }
+
+    // Fetch the logged-in client's profile details
+    const supabase = createClient();
+    let clientName = session.session.user.name || '';
+    let clientEmail = session.session.user.email || '';
+
+    try {
+      const { data: clientProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, full_name')
+        .eq('id', session.session.user.id)
+        .maybeSingle();
+
+      if (clientProfile) {
+        const fName = (clientProfile as any).first_name || '';
+        const lName = (clientProfile as any).last_name || '';
+        const fullName = (clientProfile as any).full_name || `${fName} ${lName}`.trim();
+        if (fullName) clientName = fullName;
+      }
+    } catch {
+      // Use session data as fallback
+    }
+
+    // Build artist details
+    const artistName = displayName || 'Artist';
+    const profileUrl = typeof window !== 'undefined' ? window.location.href : shareUrl;
+
+    // Construct dynamic message
+    const message = `New Artist Inquiry via Vivid Art
+
+Client Details:
+- Name: ${clientName}
+- Email: ${clientEmail}
+
+Artist Connection Request:
+- Artist Name: ${artistName}
+- Profile Link: ${profileUrl}
+
+Hi, I would like to connect with this artist for a commission/project.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/94783813833?text=${encodedMessage}`;
+
+    window.open(whatsappUrl, '_blank');
+  };
+
   if (profileQuery.isLoading && !profile) {
     return (
       <div className="relative flex min-h-screen items-center justify-center bg-background text-white">
@@ -541,6 +600,14 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
                 >
                   <Mail className="h-4 w-4" />
                   Message
+                </Button>
+                <Button
+                  className="h-11 sm:h-10 gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale"
+                  onClick={handleWhatsAppConnect}
+                  disabled={status === 'loading'}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
                 </Button>
               </div>
             </div>
@@ -839,6 +906,14 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
                   >
                     <Mail className="h-4 w-4" />
                     Message {profile.first_name || profile.firstName || (displayName !== 'Artist' ? displayName.split(' ')[0] : 'Artist')}
+                  </Button>
+                  <Button
+                    className="gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale"
+                    onClick={handleWhatsAppConnect}
+                    disabled={status === 'loading'}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Connect via WhatsApp
                   </Button>
                 </div>
               </section>
