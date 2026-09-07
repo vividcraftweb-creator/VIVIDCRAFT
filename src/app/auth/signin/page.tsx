@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, Sparkles, AlertCircle, ShoppingBag, Palette } from 'lucide-react';
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (!error) return fallback;
@@ -26,7 +26,11 @@ function SignInContent() {
   const emailParam = searchParams?.get('email') || '';
   const errorParam = searchParams?.get('error') || '';
   const redirectTo = searchParams?.get('redirect') || searchParams?.get('next') || '';
+  const initialRoleParam = searchParams?.get('role')?.toLowerCase();
 
+  const [selectedRole, setSelectedRole] = useState<'artist' | 'client'>(
+    initialRoleParam === 'client' ? 'client' : 'artist'
+  );
   const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -122,13 +126,15 @@ function SignInContent() {
           .eq('id', data.user.id)
           .maybeSingle();
 
-        let roleToUse: 'artist' | 'client' = 'artist';
+        let roleToUse: 'artist' | 'client' = selectedRole === 'client' ? 'client' : 'artist';
         if (existingProfile?.role === 'artist') {
           roleToUse = 'artist';
         } else if (existingProfile?.role === 'client') {
           roleToUse = 'client';
-        } else {
-          roleToUse = isClient ? 'client' : 'artist';
+        } else if (cleanRole === 'artist') {
+          roleToUse = 'artist';
+        } else if (isClient) {
+          roleToUse = 'client';
         }
 
         const fullName = metadata.full_name || metadata.name || '';
@@ -152,13 +158,13 @@ function SignInContent() {
         }
 
         const isArtist = roleToUse === 'artist';
-        const dest = redirectTo || (isArtist ? '/dashboard' : '/');
+        const dest = redirectTo || (isArtist ? '/dashboard' : '/freelancers');
 
         toast.success('Signed in successfully', {
-          description: isArtist ? 'Redirecting to dashboard...' : 'Redirecting to home page...',
+          description: isArtist ? 'Redirecting to artist dashboard...' : 'Redirecting to explore artists...',
         });
 
-        // Direct redirection to dashboard for artists or home page for clients
+        // Direct redirection to dashboard for artists or explore for clients
         router.push(dest);
         router.refresh();
       }
@@ -203,8 +209,12 @@ function SignInContent() {
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',
+            role: 'client',
           },
-        },
+          data: {
+            role: 'client',
+          },
+        } as any,
       });
 
       if (error) {
@@ -239,8 +249,51 @@ function SignInContent() {
             Welcome back
           </h1>
           <p className="text-sm text-slate-400">
-            Sign in to access your Vivid Art account
+            {selectedRole === 'artist'
+              ? 'Sign in to your Artist Dashboard with email'
+              : 'Sign in as a Client with Google or email'}
           </p>
+        </div>
+
+        {/* Dynamic Role Tabs */}
+        <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('artist');
+              setOauthError('');
+            }}
+            className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+              selectedRole === 'artist'
+                ? 'bg-purple-600/20 border-purple-500 text-white ring-1 ring-purple-500/40 shadow-lg shadow-purple-500/15'
+                : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+            }`}
+          >
+            <Palette className={`h-5 w-5 ${selectedRole === 'artist' ? 'text-purple-400' : 'text-slate-400'}`} />
+            <div className="text-center">
+              <div className="font-semibold text-sm">Artist / Creator</div>
+              <div className="text-xs text-slate-400">Email & Password only</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('client');
+              setOauthError('');
+            }}
+            className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+              selectedRole === 'client'
+                ? 'bg-blue-600/20 border-blue-500 text-white ring-1 ring-blue-500/40 shadow-lg shadow-blue-500/15'
+                : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+            }`}
+          >
+            <ShoppingBag className={`h-5 w-5 ${selectedRole === 'client' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <div className="text-center">
+              <div className="font-semibold text-sm">Buyer / Client</div>
+              <div className="text-xs text-slate-400">Google or Email</div>
+            </div>
+          </button>
         </div>
 
         {/* OAuth Error Alert */}
@@ -281,7 +334,7 @@ function SignInContent() {
                 Reset Password
               </button>
               <Link
-                href={`/auth/signup?email=${encodeURIComponent(email.trim())}`}
+                href={`/auth/signup?email=${encodeURIComponent(email.trim())}&role=${selectedRole}`}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
               >
                 Sign Up with Updated Details
@@ -344,7 +397,11 @@ function SignInContent() {
           <button
             type="submit"
             disabled={isLoading || isGoogleLoading}
-            className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+            className={`w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer ${
+              selectedRole === 'artist'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-600/25'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-indigo-600/25'
+            }`}
           >
             {isLoading ? (
               <>
@@ -352,59 +409,62 @@ function SignInContent() {
                 <span>Signing in...</span>
               </>
             ) : (
-              'Sign in with Email'
+              selectedRole === 'artist' ? 'Log in as Artist' : 'Sign in with Email'
             )}
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-800" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-900 px-3 text-slate-500 font-medium">
-              Or continue with
-            </span>
-          </div>
-        </div>
+        {/* Google OAuth Button & Divider - ONLY for Client */}
+        {selectedRole === 'client' && (
+          <>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-slate-900 px-3 text-slate-500 font-medium">
+                  Or continue with
+                </span>
+              </div>
+            </div>
 
-        {/* Google OAuth Button */}
-        <button
-          type="button"
-          onClick={(e) => handleGoogleSignIn(e)}
-          disabled={isLoading || isGoogleLoading}
-          className="w-full h-11 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-all flex items-center justify-center gap-3 rounded-xl text-sm font-medium shadow-sm hover:border-slate-600 cursor-pointer"
-        >
-          {isGoogleLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-white" />
-          ) : (
-            <svg viewBox="0 0 24 24" width="18" height="18" className="w-4 h-4 flex-shrink-0" aria-hidden="true">
-              <path
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                fill="#4285F4"
-              />
-              <path
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                fill="#34A853"
-              />
-              <path
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                fill="#EA4335"
-              />
-            </svg>
-          )}
-          <span>Continue with Google</span>
-        </button>
+            <button
+              type="button"
+              onClick={(e) => handleGoogleSignIn(e)}
+              disabled={isLoading || isGoogleLoading}
+              className="w-full h-11 bg-white hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-xl shadow-lg shadow-white/10 transition-all flex items-center justify-center gap-3 text-sm cursor-pointer"
+            >
+              {isGoogleLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-slate-900" />
+              ) : (
+                <svg viewBox="0 0 24 24" width="18" height="18" className="w-4 h-4 flex-shrink-0" aria-hidden="true">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
+              )}
+              <span>Continue with Google</span>
+            </button>
+          </>
+        )}
 
         <div className="flex flex-col space-y-4 pt-2 border-t border-slate-800">
           <p className="text-center text-sm text-slate-400">
             Don&apos;t have an account?{' '}
-            <Link href="/auth/signup" className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
+            <Link href={`/auth/signup?role=${selectedRole}`} className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
               Sign up
             </Link>
           </p>

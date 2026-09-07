@@ -97,10 +97,28 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
+      const isGoogle = user.app_metadata?.provider === 'google' ||
+        user.app_metadata?.providers?.includes('google');
+
       const metadata = user.user_metadata || {};
       const cleanRole = (queryRole || metadata.role || '').toString().trim().toLowerCase();
-      const metadataRole = (cleanRole === 'client' || cleanRole === 'buyer') ? 'client' : 'artist';
+      
+      // Google OAuth users are strictly assigned 'client' role as per custom auth rules
+      let metadataRole: 'artist' | 'client' = 'artist';
+      if (isGoogle || cleanRole === 'client' || cleanRole === 'buyer') {
+        metadataRole = 'client';
+      } else if (cleanRole === 'artist' || cleanRole === 'freelancer') {
+        metadataRole = 'artist';
+      } else {
+        metadataRole = isGoogle ? 'client' : 'artist';
+      }
       const userRole = metadataRole === 'artist' ? 'FREELANCER' : 'CLIENT';
+
+      // Update redirect destination if standard default was used
+      if (!next || next === '/dashboard') {
+        destination = metadataRole === 'artist' ? '/dashboard' : '/freelancers';
+        redirectResponse.headers.set('Location', new URL(destination, origin).toString());
+      }
 
       try {
         const adminClient = createAdminClient();

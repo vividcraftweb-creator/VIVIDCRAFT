@@ -58,9 +58,12 @@ export default function RegisterForm() {
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',
-            role: selectedRole.toLowerCase(),
+            role: 'client',
           },
-        },
+          data: {
+            role: 'client',
+          },
+        } as any,
       });
 
       if (error) {
@@ -88,19 +91,17 @@ export default function RegisterForm() {
       ? window.location.origin
       : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
 
-    // Ensure selectedRole strictly defaults to 'client' if not explicitly chosen as 'artist'
-    const roleNormalized = (selectedRole === 'FREELANCER' || (selectedRole as string).toLowerCase() === 'artist')
-      ? 'artist'
-      : 'client';
+    // Artist Sign-Up strictly uses 'artist' role
+    const roleNormalized = 'artist';
 
     try {
-      // 1. Register with Supabase Auth (strictly passing selectedRole in options.data)
+      // 1. Register with Supabase Auth (strictly passing 'artist' in options.data)
       const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
-          emailRedirectTo: `${origin}/auth/callback?role=${roleNormalized}`,
+          emailRedirectTo: `${origin}/auth/callback?role=artist`,
           data: {
             full_name: fullName,
             name: fullName,
@@ -484,7 +485,7 @@ export default function RegisterForm() {
 
           <div className="text-center pt-4 border-t border-slate-800 text-sm text-slate-400">
             Already have an account?{' '}
-            <Link href="/auth/signin" className="text-indigo-400 hover:text-indigo-300 underline font-medium">
+            <Link href="/auth/signin?role=artist" className="text-indigo-400 hover:text-indigo-300 underline font-medium">
               Sign in
             </Link>
           </div>
