@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 
 const SignUpContent = dynamic(() => import('./SignUpContent'), {
@@ -8,5 +9,9 @@ const SignUpContent = dynamic(() => import('./SignUpContent'), {
 });
 
 export default function SignUpPage() {
-  return <SignUpContent />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+      <SignUpContent />
+    </Suspense>
+  );
 }

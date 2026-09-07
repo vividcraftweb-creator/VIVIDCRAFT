@@ -15,15 +15,36 @@ export default function AuthCodeErrorPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Check if we have auth tokens in the URL hash
+        const supabase = createClient();
+
+        // 1. Check if user already has an active session
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          setStatus('success');
+          setMessage('Account authenticated successfully! Redirecting...');
+          router.replace('/dashboard');
+          return;
+        }
+
+        // 2. Check if we have code in URL search params
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error && data?.session) {
+            setStatus('success');
+            setMessage('Signed in successfully! Redirecting...');
+            router.replace('/dashboard');
+            return;
+          }
+        }
+
+        // 3. Check if we have auth tokens in the URL hash
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
 
         if (accessToken && refreshToken) {
-          const supabase = createClient();
-
           // Set the session with the tokens from URL
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -39,17 +60,17 @@ export default function AuthCodeErrorPage() {
             setStatus('success');
             setMessage('Email verified successfully!');
 
-            // Redirect to dashboard after 2 seconds
+            // Redirect to dashboard after 1 second
             setTimeout(() => {
               router.push('/dashboard');
-            }, 2000);
+            }, 1000);
             return;
           }
         }
 
-        // No tokens found, show error
+        // No valid tokens or session found, show error
         setStatus('error');
-        setMessage('Invalid verification link. Please request a new verification email.');
+        setMessage('Invalid verification link or session expired. Please request a new verification email or sign in again.');
       } catch (error) {
         setMessage('Something went wrong. Please try again.');
       }

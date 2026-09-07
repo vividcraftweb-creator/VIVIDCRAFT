@@ -59,8 +59,16 @@ export default async function DashboardPage({
         // User/users tables are only read for isVerified and email — NOT for role.
         // This prevents a stale CLIENT in users/User from ever overriding artist signup.
 
-        // Fetch isVerified and email from User table only
-        if (!isVerified || !userEmail) {
+        // Fetch isVerified and email from User table only (Google / confirmed users bypass)
+        const isGoogleOrConfirmed =
+          authUser.app_metadata?.provider === 'google' ||
+          authUser.app_metadata?.providers?.includes('google') ||
+          Boolean(authUser.email_confirmed_at) ||
+          authUser.user_metadata?.isVerified === true;
+
+        if (isGoogleOrConfirmed) {
+          isVerified = true;
+        } else if (!isVerified || !userEmail) {
           try {
             const { data: userData } = await supabase
               .from('User')
