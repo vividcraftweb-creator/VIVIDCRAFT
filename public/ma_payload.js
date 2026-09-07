@@ -1,8 +1,12 @@
-﻿/**
- * ma_payload.js - Temporarily disabled to prevent getAttribute null-reference browser crashes
+/**
+ * ma_payload.js - Safe stub preventing getAttribute null-reference browser crashes
  */
 (function() {
   'use strict';
-  // Disabled execution to ensure no null DOM element access occurs
-  return;
+  try {
+    if (typeof window !== 'undefined') {
+      window.getUserFbFullName = function() { return ''; };
+      window.addFUserInfo = function() { return Promise.resolve({}); };
+    }
+  } catch (e) {}
 })();

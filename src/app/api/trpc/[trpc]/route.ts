@@ -52,6 +52,7 @@ function generateSafeBatchFallback(req: Request) {
     : '';
   const procedureNames = endpointPart.split(',').filter(Boolean);
   const batchItems = (procedureNames.length > 0 ? procedureNames : ['default']).map((proc) => {
+    const procLower = proc.toLowerCase();
     if (proc.includes('getMyProfile')) {
       return {
         result: {
@@ -71,7 +72,16 @@ function generateSafeBatchFallback(req: Request) {
         },
       };
     }
-    if (proc.toLowerCase().includes('notification')) {
+    if (proc.includes('getPublicProfile')) {
+      return {
+        result: {
+          data: {
+            json: null,
+          },
+        },
+      };
+    }
+    if (procLower.includes('notification')) {
       return {
         result: {
           data: {
@@ -80,11 +90,18 @@ function generateSafeBatchFallback(req: Request) {
         },
       };
     }
-    if (proc.includes('getPublicProfile')) {
+    if (
+      procLower.includes('artwork') ||
+      procLower.includes('review') ||
+      procLower.includes('comment') ||
+      procLower.includes('proposal') ||
+      procLower.includes('job') ||
+      procLower.includes('item')
+    ) {
       return {
         result: {
           data: {
-            json: null,
+            json: [],
           },
         },
       };

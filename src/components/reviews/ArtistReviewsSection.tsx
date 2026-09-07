@@ -56,11 +56,22 @@ export function ArtistReviewsSection({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
-  const { data: reviews = initialReviews, isLoading } =
+  const isArtistIdValid = typeof artistId === 'string' && artistId.trim().length > 0;
+
+  const { data: rawReviews, isLoading } =
     trpc.artworks.getArtistReviews.useQuery(
-      { artistId },
-      { initialData: initialReviews.length > 0 ? initialReviews : undefined }
+      { artistId: isArtistIdValid ? artistId : '' },
+      {
+        enabled: isArtistIdValid,
+        initialData: initialReviews.length > 0 ? initialReviews : undefined,
+        staleTime: 60000,
+        retry: false,
+      }
     );
+
+  const reviews: ArtistReviewItem[] = Array.isArray(rawReviews)
+    ? rawReviews
+    : (Array.isArray(initialReviews) ? initialReviews : []);
 
   const addReviewMutation = trpc.artworks.addArtistReview.useMutation({
     onSuccess: () => {
@@ -163,7 +174,7 @@ export function ArtistReviewsSection({
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString(undefined, {
+      return new Date(dateStr).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -324,7 +335,7 @@ export function ArtistReviewsSection({
                       </div>
                     </div>
 
-                    <time className="text-[10px] text-white/40 flex-shrink-0">
+                    <time className="text-[10px] text-white/40 flex-shrink-0" suppressHydrationWarning>
                       {formatDate(rev.createdAt)}
                     </time>
                   </div>

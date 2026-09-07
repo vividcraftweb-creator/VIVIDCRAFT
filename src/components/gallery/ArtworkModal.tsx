@@ -48,11 +48,14 @@ export function ArtworkModal({
   const utils = trpc.useUtils();
 
   // Fetch comments for this artwork
-  const { data: comments, isLoading: isLoadingComments } =
+  const isArtworkIdValid = typeof artwork?.id === 'string' && artwork.id.trim().length > 0;
+  const { data: rawComments, isLoading: isLoadingComments } =
     trpc.artworks.getArtworkComments.useQuery(
-      { artworkId: artwork.id },
-      { enabled: isOpen }
+      { artworkId: isArtworkIdValid ? artwork.id : '' },
+      { enabled: isOpen && isArtworkIdValid, retry: false }
     );
+
+  const comments = Array.isArray(rawComments) ? rawComments : [];
 
   // Add comment mutation
   const addCommentMutation = trpc.artworks.addArtworkComment.useMutation({
@@ -118,7 +121,7 @@ export function ArtworkModal({
       if (diffMins < 60) return `${diffMins}m ago`;
       if (diffHours < 24) return `${diffHours}h ago`;
       if (diffDays < 7) return `${diffDays}d ago`;
-      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
       return '';
     }
@@ -304,7 +307,7 @@ export function ArtworkModal({
                             )}
                           </span>
                         </div>
-                        <span className="text-[10px] text-white/40">
+                        <span className="text-[10px] text-white/40" suppressHydrationWarning>
                           {formatCommentDate(c.createdAt)}
                         </span>
                       </div>

@@ -147,16 +147,28 @@ export const artworksRouter = router({
     }),
 
   getArtistArtworks: publicProcedure
-    .input(z.object({ artistId: z.string() }))
+    .input(
+      z
+        .object({
+          artistId: z.string().optional().nullable(),
+        })
+        .optional()
+        .nullable()
+    )
     .query(async ({ ctx, input }) => {
       try {
+        const artistId = input?.artistId;
+        if (!artistId) {
+          return [];
+        }
+
         const supabase = await getAuthenticatedClient(ctx);
         const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
 
         const { data: artworks, error } = await supabase
           .from('artworks')
           .select('*')
-          .eq('artist_id', input.artistId)
+          .eq('artist_id', artistId)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -358,15 +370,27 @@ export const artworksRouter = router({
     }),
 
   getArtworkComments: publicProcedure
-    .input(z.object({ artworkId: z.string() }))
+    .input(
+      z
+        .object({
+          artworkId: z.string().optional().nullable(),
+        })
+        .optional()
+        .nullable()
+    )
     .query(async ({ ctx, input }) => {
       try {
+        const artworkId = input?.artworkId;
+        if (!artworkId) {
+          return [];
+        }
+
         const supabase = await getAuthenticatedClient(ctx);
 
         const { data: comments, error } = await supabase
           .from('artwork_comments')
           .select('*')
-          .eq('artwork_id', input.artworkId)
+          .eq('artwork_id', artworkId)
           .order('created_at', { ascending: true });
 
         if (error) {
@@ -487,15 +511,27 @@ export const artworksRouter = router({
     }),
 
   getArtistReviews: publicProcedure
-    .input(z.object({ artistId: z.string() }))
+    .input(
+      z
+        .object({
+          artistId: z.string().optional().nullable(),
+        })
+        .optional()
+        .nullable()
+    )
     .query(async ({ ctx, input }) => {
       try {
+        const artistId = input?.artistId;
+        if (!artistId) {
+          return [];
+        }
+
         const supabase = await getAuthenticatedClient(ctx);
 
         const { data: reviews, error } = await supabase
           .from('artist_reviews')
           .select('*')
-          .eq('artist_id', input.artistId)
+          .eq('artist_id', artistId)
           .order('created_at', { ascending: false });
 
         if (error) {

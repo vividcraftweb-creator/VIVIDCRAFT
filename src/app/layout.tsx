@@ -227,17 +227,24 @@ export default async function RootLayout({
 
                 // 1. Safe proxy for DOM elements queried before mounting/hydration
                 var safeDummyElement = {
-                  getAttribute: function(name) { return null; },
+                  getAttribute: function(name) { return ''; },
                   setAttribute: function() {},
                   hasAttribute: function() { return false; },
                   removeAttribute: function() {},
                   getAttributeNames: function() { return []; },
+                  querySelector: function() { return null; },
+                  querySelectorAll: function() { return []; },
+                  getElementsByTagName: function() { return []; },
+                  getElementsByClassName: function() { return []; },
                   classList: {
                     add: function() {},
                     remove: function() {},
                     contains: function() { return false; },
                     toggle: function() { return false; }
                   },
+                  value: '',
+                  textContent: '',
+                  innerText: '',
                   style: {},
                   dataset: {},
                   tagName: 'DIV',
@@ -249,19 +256,46 @@ export default async function RootLayout({
                   removeEventListener: function() {},
                 };
 
+                // Expose safe global fallbacks for third-party scripts/extensions
                 try {
-                  var origQuery = Document.prototype.querySelector;
+                  window.getUserFbFullName = window.getUserFbFullName || function() { return ''; };
+                  window.addFUserInfo = window.addFUserInfo || function() { return Promise.resolve({}); };
+                } catch (e) {}
+
+                function isTrackingStack(stack) {
+                  return (
+                    stack.indexOf('ma_payload') !== -1 ||
+                    stack.indexOf('getAttribute') !== -1 ||
+                    stack.indexOf('getUserFbFullName') !== -1 ||
+                    stack.indexOf('addFUserInfo') !== -1 ||
+                    stack.indexOf('Fb') !== -1
+                  );
+                }
+
+                try {
+                  var origDocQuery = Document.prototype.querySelector;
                   Document.prototype.querySelector = function(sel) {
-                    var res = origQuery.call(this, sel);
+                    var res = origDocQuery.call(this, sel);
                     if (res) return res;
                     try {
                       var stack = (new Error()).stack || '';
-                      if (stack.indexOf('ma_payload') !== -1 || stack.indexOf('getAttribute') !== -1) {
-                        return safeDummyElement;
-                      }
+                      if (isTrackingStack(stack)) return safeDummyElement;
                     } catch (e) {}
                     return null;
                   };
+
+                  if (typeof Element !== 'undefined' && Element.prototype) {
+                    var origElQuery = Element.prototype.querySelector;
+                    Element.prototype.querySelector = function(sel) {
+                      var res = origElQuery.call(this, sel);
+                      if (res) return res;
+                      try {
+                        var stack = (new Error()).stack || '';
+                        if (isTrackingStack(stack)) return safeDummyElement;
+                      } catch (e) {}
+                      return null;
+                    };
+                  }
 
                   var origGetId = Document.prototype.getElementById;
                   Document.prototype.getElementById = function(id) {
@@ -269,9 +303,7 @@ export default async function RootLayout({
                     if (res) return res;
                     try {
                       var stack = (new Error()).stack || '';
-                      if (stack.indexOf('ma_payload') !== -1 || stack.indexOf('getAttribute') !== -1) {
-                        return safeDummyElement;
-                      }
+                      if (isTrackingStack(stack)) return safeDummyElement;
                     } catch (e) {}
                     return null;
                   };
@@ -286,15 +318,18 @@ export default async function RootLayout({
                     if (
                       msg.indexOf('getAttribute') !== -1 ||
                       msg.indexOf('ma_payload') !== -1 ||
+                      msg.indexOf('getUserFbFullName') !== -1 ||
+                      msg.indexOf('addFUserInfo') !== -1 ||
                       stack.indexOf('getAttribute') !== -1 ||
-                      stack.indexOf('ma_payload') !== -1
+                      stack.indexOf('ma_payload') !== -1 ||
+                      stack.indexOf('getUserFbFullName') !== -1 ||
+                      stack.indexOf('addFUserInfo') !== -1
                     ) {
                       if (event.preventDefault) event.preventDefault();
                       if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-                      console.warn('[SafetyShield] Intercepted unhandled rejection from getAttribute / ma_payload:', msg);
                     }
                   } catch (e) {}
-                });
+                }, true);
 
                 // 3. Intercept global DOM errors before elements mount
                 window.addEventListener('error', function(event) {
@@ -304,11 +339,12 @@ export default async function RootLayout({
                     if (
                       msg.indexOf('getAttribute') !== -1 ||
                       msg.indexOf('ma_payload') !== -1 ||
+                      msg.indexOf('getUserFbFullName') !== -1 ||
+                      msg.indexOf('addFUserInfo') !== -1 ||
                       filename.indexOf('ma_payload') !== -1
                     ) {
                       if (event.preventDefault) event.preventDefault();
                       if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-                      console.warn('[SafetyShield] Intercepted DOM error:', msg);
                     }
                   } catch (e) {}
                 }, true);

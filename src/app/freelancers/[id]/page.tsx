@@ -137,7 +137,7 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
       const { data: fallbackProfile } = await (supabase as any)
         .from('profiles')
         .select('*')
-        .or(`id.eq.${profileId},user_id.eq.${profileId},slug.eq.${profileId}`)
+        .or(`id.eq.${profileId},slug.eq.${profileId}`)
         .maybeSingle();
 
       if (fallbackProfile) {

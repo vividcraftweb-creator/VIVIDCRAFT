@@ -51,6 +51,7 @@ export default function Provider({ children }: { children: React.ReactNode }) {
                     : '';
                   const procedureNames = endpointPart.split(',').filter(Boolean);
                   const batchItems = (procedureNames.length > 0 ? procedureNames : ['default']).map((proc) => {
+                    const procLower = proc.toLowerCase();
                     if (proc.includes('getMyProfile')) {
                       return {
                         result: {
@@ -75,6 +76,15 @@ export default function Provider({ children }: { children: React.ReactNode }) {
                         },
                       };
                     }
+                    if (proc.includes('getPublicProfile')) {
+                      return {
+                        result: {
+                          data: {
+                            json: null,
+                          },
+                        },
+                      };
+                    }
                     if (proc.includes('getNotifications')) {
                       return {
                         result: {
@@ -94,6 +104,22 @@ export default function Provider({ children }: { children: React.ReactNode }) {
                         result: {
                           data: {
                             json: { unreadCount: 0, count: 0 },
+                          },
+                        },
+                      };
+                    }
+                    if (
+                      procLower.includes('artwork') ||
+                      procLower.includes('review') ||
+                      procLower.includes('comment') ||
+                      procLower.includes('proposal') ||
+                      procLower.includes('job') ||
+                      procLower.includes('item')
+                    ) {
+                      return {
+                        result: {
+                          data: {
+                            json: [],
                           },
                         },
                       };

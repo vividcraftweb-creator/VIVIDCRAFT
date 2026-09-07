@@ -233,7 +233,9 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     }
   );
 
-  const artworks: ArtworkItem[] = (artworksQuery.data as ArtworkItem[]) || initialArtworks || [];
+  const artworks: ArtworkItem[] = Array.isArray(artworksQuery.data)
+    ? (artworksQuery.data as ArtworkItem[])
+    : (Array.isArray(initialArtworks) ? initialArtworks : []);
 
   const displayName = useMemo(() => {
     if (!profile) return 'studio One';
@@ -700,7 +702,7 @@ Hi, I would like to connect with this artist for a commission/project.`;
 
               {/* CLIENT REVIEWS & TESTIMONIALS */}
               <ArtistReviewsSection
-                artistId={profile.id}
+                artistId={artistId}
                 artistName={displayName}
                 initialReviews={initialReviews ?? []}
               />
