@@ -135,45 +135,17 @@ export default function PublicArtistProfileClient() {
           return;
         }
 
-        // Try by slug
-        const { data: bySlug } = await (supabase as any)
+        // Try by email or first_name / last_name
+        const { data: byNameOrEmail } = await (supabase as any)
           .from('profiles')
           .select('*')
-          .or(`slug.eq.${profileId},slug.eq.${profileId.toLowerCase()}`)
+          .or(`email.eq.${profileId},first_name.ilike.%${profileId}%,last_name.ilike.%${profileId}%`)
           .limit(1)
           .maybeSingle();
 
-        if (bySlug) {
-          let avatar = bySlug.avatar_url || bySlug.avatar || bySlug.profile_picture || bySlug.image;
-          setDirectProfile({ ...bySlug, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
-          return;
-        }
-
-        // Try by username
-        const { data: byUsername } = await (supabase as any)
-          .from('profiles')
-          .select('*')
-          .eq('username', profileId)
-          .limit(1)
-          .maybeSingle();
-
-        if (byUsername) {
-          let avatar = byUsername.avatar_url || byUsername.avatar || byUsername.profile_picture || byUsername.image;
-          setDirectProfile({ ...byUsername, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
-          return;
-        }
-
-        // Try by email or first_name
-        const { data: byFallback } = await (supabase as any)
-          .from('profiles')
-          .select('*')
-          .or(`email.eq.${profileId},first_name.ilike.%${profileId}%,full_name.ilike.%${profileId}%`)
-          .limit(1)
-          .maybeSingle();
-
-        if (byFallback) {
-          let avatar = byFallback.avatar_url || byFallback.avatar || byFallback.profile_picture || byFallback.image;
-          setDirectProfile({ ...byFallback, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
+        if (byNameOrEmail) {
+          let avatar = byNameOrEmail.avatar_url || byNameOrEmail.avatar || byNameOrEmail.profile_picture || byNameOrEmail.image;
+          setDirectProfile({ ...byNameOrEmail, avatar_url: avatar, avatar: avatar, profile_picture: avatar });
           return;
         }
 
@@ -182,7 +154,7 @@ export default function PublicArtistProfileClient() {
           const { data: byStudioWithAvatar } = await (supabase as any)
             .from('profiles')
             .select('*')
-            .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
+            .or('first_name.ilike.%studio%,last_name.ilike.%studio%,email.ilike.%studio%')
             .not('avatar_url', 'is', null)
             .neq('avatar_url', '')
             .limit(1)
@@ -196,7 +168,7 @@ export default function PublicArtistProfileClient() {
           const { data: byStudio } = await (supabase as any)
             .from('profiles')
             .select('*')
-            .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
+            .or('first_name.ilike.%studio%,last_name.ilike.%studio%,email.ilike.%studio%')
             .limit(1)
             .maybeSingle();
 

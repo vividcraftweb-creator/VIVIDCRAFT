@@ -23,6 +23,7 @@ const basicInfoSchema = z.object({
   skills: z.string().optional(),
   rate: z.number().positive().optional(),
   profilePicture: z.string().optional(),
+  avatar_url: z.string().optional(),
 });
 
 const educationSchema = z.object({
@@ -786,55 +787,56 @@ export const publicProfileRouter = router({
         }
       }
 
-      let resolvedProfilePic = input.profilePicture;
-      if (resolvedProfilePic && !resolvedProfilePic.startsWith('http') && !resolvedProfilePic.startsWith('data:')) {
-        const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
-        const cleanPath = resolvedProfilePic.replace(/^\/?(avatars\/)?/, '');
-        resolvedProfilePic = `${supabaseBaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
+      // Map avatar_url directly as a text string (the public Supabase bucket URL)
+      const rawPic = input.avatar_url || input.profilePicture || existingProfile?.avatar_url || existingProfile?.profile_picture || null;
+      let avatarUrlString: string | null = null;
+      if (rawPic && typeof rawPic === 'string' && rawPic.trim()) {
+        const trimmed = rawPic.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          avatarUrlString = trimmed.split('?')[0];
+        } else {
+          const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+          const cleanPath = trimmed.replace(/^\/?(avatars\/)?/, '');
+          avatarUrlString = `${supabaseBaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
+        }
       }
 
-      // Build complete payload for profiles table
-      const fullProfilesPayload: Record<string, any> = {
+      const addressVal = (input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location)) || null;
+
+      // Build payload matching lowercase profiles table schema PERFECTLY:
+      // (id, first_name, last_name, email, role, address, avatar_url, updated_at)
+      const profilesPayload: Record<string, any> = {
         id: userId,
         first_name: firstName || null,
         last_name: lastName || null,
-        title: input.title !== undefined ? input.title : (existingProfile?.title ?? null),
-        bio: input.bio !== undefined ? input.bio : (existingProfile?.bio ?? null),
-        address: input.location !== undefined ? input.location : (existingProfile?.address ?? existingProfile?.location ?? null),
-        skills: input.skills !== undefined ? input.skills : (existingProfile?.skills ?? null),
-        profile_picture: resolvedProfilePic !== undefined ? resolvedProfilePic : (existingProfile?.profile_picture ?? existingProfile?.profilePicture ?? null),
-        avatar_url: resolvedProfilePic !== undefined ? resolvedProfilePic : (existingProfile?.avatar_url ?? existingProfile?.profile_picture ?? null),
-        slug: slugToPersist,
+        email: ctx.session.user.email || existingProfile?.email || null,
+        role: existingProfile?.role || 'artist',
+        address: addressVal,
+        avatar_url: avatarUrlString,
         updated_at: timestamp,
       };
 
       let resultRecord: any = {
         ...existingProfile,
-        ...fullProfilesPayload,
+        ...profilesPayload,
       };
 
       // 1. Primary write using admin client (bypasses RLS)
       try {
         const { data: adminUpsertData, error: adminErr } = await (admin as any)
           .from('profiles')
-          .upsert(fullProfilesPayload, { onConflict: 'id' })
+          .upsert(profilesPayload, { onConflict: 'id' })
           .select()
           .maybeSingle();
 
         if (adminUpsertData) {
           resultRecord = { ...resultRecord, ...adminUpsertData };
         } else if (adminErr) {
-          console.warn('Admin profiles full upsert notice, trying base columns:', adminErr.message);
-          const basePayload = {
-            id: userId,
-            first_name: firstName || null,
-            last_name: lastName || null,
-            address: input.location || null,
-            updated_at: timestamp,
-          };
-          const { data: baseData } = await (admin as any)
+          console.warn('Admin profiles upsert notice:', adminErr.message);
+          // Fallback retry using user client
+          const { data: baseData } = await (supabase as any)
             .from('profiles')
-            .upsert(basePayload, { onConflict: 'id' })
+            .upsert(profilesPayload, { onConflict: 'id' })
             .select()
             .maybeSingle();
           if (baseData) {
@@ -845,48 +847,43 @@ export const publicProfileRouter = router({
         console.warn('Admin profiles upsert error:', e);
       }
 
-      // 2. Also write using user supabase client
-      try {
-        const { data: userUpsertData } = await (supabase as any)
-          .from('profiles')
-          .upsert(fullProfilesPayload, { onConflict: 'id' })
-          .select()
-          .maybeSingle();
+      // 2. Persist extended profile fields (title, bio, skills) and public avatar_url to Auth user_metadata
+      const titleString = input.title !== undefined ? input.title : (existingProfile?.title || null);
+      const bioString = input.bio !== undefined ? input.bio : (existingProfile?.bio || null);
+      const skillsString = input.skills !== undefined ? input.skills : (existingProfile?.skills || null);
 
-        if (userUpsertData) {
-          resultRecord = { ...resultRecord, ...userUpsertData };
-        }
-      } catch (e) {
-        console.warn('User client profiles upsert notice:', e);
+      try {
+        const { data: userData } = await admin.auth.admin.getUserById(userId);
+        const existingMeta = userData?.user?.user_metadata || {};
+        await admin.auth.admin.updateUserById(userId, {
+          user_metadata: {
+            ...existingMeta,
+            first_name: firstName || null,
+            last_name: lastName || null,
+            name: `${firstName || ''} ${lastName || ''}`.trim() || existingMeta.name,
+            title: titleString,
+            bio: bioString,
+            skills: skillsString,
+            address: addressVal,
+            avatar_url: avatarUrlString,
+          },
+        });
+      } catch (metaErr) {
+        console.warn('Auth user_metadata update notice in updateBasicInfo:', metaErr);
       }
 
-      // 3. Also sync all fields to 'profiles' table
-      try {
-        const { data: pData } = await (admin as any)
-          .from('profiles')
-          .update({
-            first_name: firstName,
-            last_name: lastName,
-            title: input.title !== undefined ? input.title : (existingProfile?.title || null),
-            bio: input.bio !== undefined ? input.bio : (existingProfile?.bio || null),
-            location: input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location || null),
-            address: input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location || null),
-            skills: input.skills !== undefined ? input.skills : (existingProfile?.skills || null),
-            avatar_url: resolvedProfilePic || resultRecord.avatar_url || resultRecord.profile_picture || null,
-            profile_picture: resolvedProfilePic || resultRecord.avatar_url || resultRecord.profile_picture || null,
-            slug: slugToPersist,
-            updated_at: timestamp,
-          })
-          .eq('id', userId)
-          .select()
-          .maybeSingle();
-
-        if (pData) {
-          resultRecord = { ...resultRecord, ...pData };
-        }
-      } catch (e) {
-        console.warn('profiles table sync notice:', e);
-      }
+      resultRecord = {
+        ...resultRecord,
+        title: titleString,
+        bio: bioString,
+        skills: skillsString,
+        location: addressVal,
+        address: addressVal,
+        avatar_url: avatarUrlString,
+        profile_picture: avatarUrlString,
+        profilePicture: avatarUrlString,
+        slug: slugToPersist,
+      };
 
       return formatProfileData(resultRecord);
     }),
@@ -905,11 +902,14 @@ export const publicProfileRouter = router({
 
         if (userId) {
           try {
+            const { data: userData } = await admin.auth.admin.getUserById(userId);
+            const existingMeta = userData?.user?.user_metadata || {};
+            await admin.auth.admin.updateUserById(userId, {
+              user_metadata: { ...existingMeta, is_published: isPublished, status: isPublished ? 'published' : 'draft' },
+            });
             const { data: updatedData } = await (admin as any)
               .from('profiles')
               .update({
-                is_published: isPublished,
-                status: isPublished ? 'published' : 'draft',
                 updated_at: timestamp,
               })
               .eq('id', userId)
@@ -918,25 +918,8 @@ export const publicProfileRouter = router({
 
             data = updatedData;
           } catch (e) {
-            console.warn('profiles is_published update warning:', e);
+            console.warn('profiles publish update warning:', e);
           }
-
-          if (!data) {
-            try {
-              const { data: fallback } = await (admin as any)
-                .from('profiles')
-                .update({
-                  isPublished: isPublished,
-                  updatedAt: timestamp,
-                })
-                .eq('id', userId)
-                .select()
-                .maybeSingle();
-
-              if (fallback) data = fallback;
-            } catch {}
-          }
-
         }
 
         const formatted = formatProfileData(data || { is_published: isPublished, isPublished: isPublished }) || {};
@@ -968,17 +951,18 @@ export const publicProfileRouter = router({
 
         if (userId) {
           try {
+            const { data: userData } = await admin.auth.admin.getUserById(userId);
+            const existingMeta = userData?.user?.user_metadata || {};
+            await admin.auth.admin.updateUserById(userId, {
+              user_metadata: { ...existingMeta, is_published: isPublished, status: isPublished ? 'published' : 'draft' },
+            });
             await (admin as any)
               .from('profiles')
               .update({
-                is_published: isPublished,
-                status: isPublished ? 'published' : 'draft',
                 updated_at: timestamp,
               })
               .eq('id', userId);
           } catch {}
-
-
         }
 
         return {

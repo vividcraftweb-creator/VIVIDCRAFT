@@ -113,10 +113,6 @@ export async function GET(request: NextRequest) {
             role: metadataRole,
             email: user.email || null,
             address: userCountry,
-            location: userCountry,
-            is_published: true,
-            title: metadataRole === 'artist' ? 'Artist' : 'Buyer',
-            bio: metadataRole === 'artist' ? 'Welcome to Vivid Art!' : '',
             updated_at: new Date().toISOString(),
           }, { onConflict: 'id' });
         } catch (pErr) {

@@ -150,10 +150,6 @@ export default function RegisterForm() {
               role: 'artist',
               email: formData.email.trim(),
               address: userCountry,
-              location: userCountry,
-              title: 'Artist',
-              bio: 'Welcome to Vivid Art!',
-              is_published: true,
               updated_at: new Date().toISOString(),
             },
           ]);

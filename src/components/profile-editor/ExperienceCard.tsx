@@ -88,7 +88,7 @@ export default function ExperienceCard({ items, onUpdate }: ExperienceCardProps)
     e.preventDefault();
     const trimmed = description.trim();
 
-    // 1. Save text directly to Supabase Auth metadata and profiles
+    // 1. Save text directly to Supabase Auth metadata and profiles updated_at
     try {
       const supabase = createClient();
       await supabase.auth.updateUser({
@@ -98,7 +98,7 @@ export default function ExperienceCard({ items, onUpdate }: ExperienceCardProps)
       if (user) {
         await (supabase as any)
           .from('profiles')
-          .update({ experience: trimmed || null, updated_at: new Date().toISOString() })
+          .update({ updated_at: new Date().toISOString() })
           .eq('id', user.id);
       }
     } catch (err) {

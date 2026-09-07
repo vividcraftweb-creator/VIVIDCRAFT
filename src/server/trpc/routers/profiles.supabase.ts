@@ -105,29 +105,7 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
     if (!error && data) return data;
   } catch {}
 
-  // 2. Match by slug in profiles
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(select)
-      .or(`slug.eq.${userIdOrId},slug.eq.${userIdOrId.toLowerCase()}`)
-      .limit(1)
-      .maybeSingle();
-    if (!error && data) return data;
-  } catch {}
-
-  // 3. Match by username in profiles
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(select)
-      .eq('username', userIdOrId)
-      .limit(1)
-      .maybeSingle();
-    if (!error && data) return data;
-  } catch {}
-
-  // 4. Match by email in profiles
+  // 2. Match by email in profiles
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -138,46 +116,24 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
     if (!error && data) return data;
   } catch {}
 
-  // 5. Match by user_id if column exists
+  // 3. Match by first_name or last_name (exact or ilike)
   try {
     const { data, error } = await supabase
       .from('profiles')
       .select(select)
-      .eq('user_id', userIdOrId)
+      .or(`first_name.ilike.%${userIdOrId}%,last_name.ilike.%${userIdOrId}%`)
       .limit(1)
       .maybeSingle();
     if (!error && data) return data;
   } catch {}
 
-  // 6. Match by first_name (exact or ilike)
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(select)
-      .ilike('first_name', `%${userIdOrId}%`)
-      .limit(1)
-      .maybeSingle();
-    if (!error && data) return data;
-  } catch {}
-
-  // 7. Check profiles table if present
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(select)
-      .or(`id.eq.${userIdOrId},user_id.eq.${userIdOrId},slug.eq.${userIdOrId}`)
-      .limit(1)
-      .maybeSingle();
-    if (!error && data) return data;
-  } catch {}
-
-  // 8. Special match for studio artist if identifier mentions studio or is a fallback
+  // 4. Special match for studio artist if identifier mentions studio or is a fallback
   if (['default', 'mock-admin-id', 'artist-id', 'studio', 'studio1', 'studio-one'].includes(userIdOrId.toLowerCase()) || userIdOrId.toLowerCase().includes('studio')) {
     try {
       const { data } = await supabase
         .from('profiles')
         .select(select)
-        .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
+        .or('first_name.ilike.%studio%,last_name.ilike.%studio%,email.ilike.%studio%')
         .not('avatar_url', 'is', null)
         .neq('avatar_url', '')
         .limit(1)
@@ -189,7 +145,7 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
       const { data } = await supabase
         .from('profiles')
         .select(select)
-        .or('first_name.ilike.%studio%,full_name.ilike.%studio%,email.ilike.%studio%,username.ilike.%studio%')
+        .or('first_name.ilike.%studio%,last_name.ilike.%studio%,email.ilike.%studio%')
         .limit(1)
         .maybeSingle();
       if (data) return data;
@@ -524,11 +480,14 @@ export const profilesRouter = router({
 
         if (userId) {
           try {
+            const { data: userData } = await admin.auth.admin.getUserById(userId);
+            const existingMeta = userData?.user?.user_metadata || {};
+            await admin.auth.admin.updateUserById(userId, {
+              user_metadata: { ...existingMeta, is_published: isPublished, status: isPublished ? 'published' : 'draft' },
+            });
             await (admin as any)
               .from('profiles')
               .update({
-                is_published: isPublished,
-                status: isPublished ? 'published' : 'draft',
                 updated_at: timestamp,
               })
               .eq('id', userId);
@@ -571,11 +530,14 @@ export const profilesRouter = router({
 
         if (userId) {
           try {
+            const { data: userData } = await admin.auth.admin.getUserById(userId);
+            const existingMeta = userData?.user?.user_metadata || {};
+            await admin.auth.admin.updateUserById(userId, {
+              user_metadata: { ...existingMeta, is_published: isPublished, status: isPublished ? 'published' : 'draft' },
+            });
             await (admin as any)
               .from('profiles')
               .update({
-                is_published: isPublished,
-                status: isPublished ? 'published' : 'draft',
                 updated_at: timestamp,
               })
               .eq('id', userId);
@@ -678,10 +640,6 @@ export const profilesRouter = router({
                 last_name: defaultLastName,
                 role: fallbackRole,
                 email: userEmail,
-                title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
-                bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
-                is_published: true,
-                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               };
 
@@ -713,7 +671,7 @@ export const profilesRouter = router({
               console.warn('Auto-creating profiles record notice:', autoCreateErr);
             }
 
-            // 2. Also ensure `Profile` (PascalCase) record exists
+            // 2. Persist profile details to user metadata
             try {
               const cleanSlug = `${defaultFirstName}-${defaultLastName}`
                 .toLowerCase()
@@ -723,27 +681,19 @@ export const profilesRouter = router({
                 .slice(0, 30);
               const slugToUse = `${cleanSlug || (fallbackRole === 'artist' ? 'artist' : 'client')}-${userId.substring(0, 6)}`;
 
-              const { data: pInserted } = await (supabase as any)
-                .from('profiles')
-                .upsert({
-                  id: userId,
-                  slug: slugToUse,
-                  first_name: defaultFirstName,
-                  last_name: defaultLastName,
-                  title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
-                  bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
-                  is_published: true,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                }, { onConflict: 'id' })
-                .select()
-                .maybeSingle();
-
-              if (!data && pInserted) {
-                data = pInserted;
-              }
+              const { data: userData } = await supabase.auth.admin.getUserById(userId);
+              const existingMeta = userData?.user?.user_metadata || {};
+              await supabase.auth.admin.updateUserById(userId, {
+                user_metadata: {
+                  ...existingMeta,
+                  slug: existingMeta.slug || slugToUse,
+                  title: existingMeta.title || (fallbackRole === 'artist' ? 'Artist' : 'Buyer'),
+                  bio: existingMeta.bio || (fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : ''),
+                  is_published: existingMeta.is_published !== undefined ? existingMeta.is_published : true,
+                },
+              });
             } catch (pErr) {
-              console.warn('Auto-creating Profile record notice:', pErr);
+              console.warn('Auto-creating user metadata notice:', pErr);
             }
 
             // 3. Ensure User / users table record exists with role FREELANCER or CLIENT
@@ -882,6 +832,8 @@ export const profilesRouter = router({
         timezone: z.string().optional().nullable(),
         website: z.string().optional().nullable(),
         gallery_images: z.array(z.string()).optional().nullable(),
+        avatar_url: z.string().optional().nullable(),
+        profilePicture: z.string().optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -889,14 +841,6 @@ export const profilesRouter = router({
         const userId = ctx.session?.user?.id || (ctx as any)?.user?.id || '';
         if (!userId) {
           return { success: false, message: 'User not authenticated', ...input };
-        }
-
-        // Validate environment variables
-        const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-        const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
-
-        if (!supabaseUrl || !supabaseKey) {
-          console.error('PROFILE UPDATE ERROR: Supabase environment variables are missing or undefined');
         }
 
         // Use authenticated Supabase client from context or admin client
@@ -924,46 +868,97 @@ export const profilesRouter = router({
           slugToPersist = existingProfile?.slug || `user-${userId.slice(0, 8)}`;
         }
 
-        const upsertPayload: Record<string, any> = {
+        // Map avatar_url directly as a text string (the public Supabase bucket URL)
+        const rawPic = input.avatar_url || input.profilePicture || (existingProfile as any)?.avatar_url || (existingProfile as any)?.profile_picture || null;
+        let avatarUrlString: string | null = null;
+        if (rawPic && typeof rawPic === 'string' && rawPic.trim()) {
+          const trimmed = rawPic.trim();
+          if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+            avatarUrlString = trimmed.split('?')[0];
+          } else {
+            const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+            const cleanPath = trimmed.replace(/^\/?(avatars\/)?/, '');
+            avatarUrlString = `${supabaseBaseUrl}/storage/v1/object/public/avatars/${cleanPath}`;
+          }
+        }
+
+        const addressVal = (input.address || input.location) !== undefined
+          ? (input.address || input.location)
+          : (existingProfile?.address || existingProfile?.location || null);
+
+        const whatsappVal = (input.whatsappNumber || input.phone) !== undefined
+          ? (input.whatsappNumber || input.phone)
+          : (existingProfile?.whatsapp_number || existingProfile?.phone || null);
+
+        const emailVal = (input.email || input.businessEmail) !== undefined
+          ? (input.email || input.businessEmail)
+          : (existingProfile?.email || existingProfile?.businessEmail || ctx.session?.user?.email || null);
+
+        // Build payload matching lowercase profiles table schema PERFECTLY:
+        // (id, first_name, last_name, email, role, address, whatsapp_number, avatar_url, updated_at)
+        const cleanProfilesPayload: Record<string, any> = {
           id: userId,
-          first_name: firstName || undefined,
-          last_name: lastName || undefined,
-          title: input.title !== undefined ? input.title : existingProfile?.title,
-          bio: input.bio !== undefined ? input.bio : existingProfile?.bio,
-          address: (input.address || input.location) !== undefined ? (input.address || input.location) : (existingProfile?.address || existingProfile?.location),
-          whatsapp_number: (input.whatsappNumber || input.phone) !== undefined ? (input.whatsappNumber || input.phone) : (existingProfile?.whatsapp_number || existingProfile?.phone),
-          email: (input.email || input.businessEmail) !== undefined ? (input.email || input.businessEmail) : (existingProfile?.email || existingProfile?.businessEmail),
-          skills: input.skills !== undefined ? input.skills : existingProfile?.skills,
-          slug: slugToPersist,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          email: emailVal,
+          role: existingProfile?.role || 'artist',
+          address: addressVal,
+          whatsapp_number: whatsappVal,
+          avatar_url: avatarUrlString || existingProfile?.avatar_url || null,
           updated_at: timestamp,
         };
 
-        // Remove undefined keys
-        Object.keys(upsertPayload).forEach((key) => upsertPayload[key] === undefined && delete upsertPayload[key]);
-
+        let dbResult: any = null;
         try {
           const { data, error } = await (supabase as any)
             .from('profiles')
-            .upsert(upsertPayload)
+            .upsert(cleanProfilesPayload, { onConflict: 'id' })
             .select()
             .maybeSingle();
 
           if (error) {
-            console.warn('PROFILE UPDATE WARNING (handled gracefully):', error);
-            return {
-              ...existingProfile,
-              ...upsertPayload,
-            };
+            console.warn('PROFILE UPDATE WARNING:', error);
+          } else {
+            dbResult = data;
           }
-
-          return data || { ...existingProfile, ...upsertPayload };
         } catch (err) {
-          console.warn('PROFILE UPDATE EXCEPTION (handled gracefully):', err);
-          return {
-            ...existingProfile,
-            ...upsertPayload,
-          };
+          console.warn('PROFILE UPDATE EXCEPTION:', err);
         }
+
+        // Persist extended profile fields (title, bio, skills) and public avatar_url to Auth user_metadata
+        try {
+          const admin = createAdminClient();
+          const { data: userData } = await admin.auth.admin.getUserById(userId);
+          const existingMeta = userData?.user?.user_metadata || {};
+          await admin.auth.admin.updateUserById(userId, {
+            user_metadata: {
+              ...existingMeta,
+              first_name: firstName || existingMeta.first_name || null,
+              last_name: lastName || existingMeta.last_name || null,
+              name: `${firstName || ''} ${lastName || ''}`.trim() || existingMeta.name,
+              title: input.title !== undefined ? input.title : (existingMeta.title || null),
+              bio: input.bio !== undefined ? input.bio : (existingMeta.bio || null),
+              skills: input.skills !== undefined ? input.skills : (existingMeta.skills || null),
+              address: addressVal,
+              avatar_url: cleanProfilesPayload.avatar_url,
+            },
+          });
+        } catch (metaErr) {
+          console.warn('Auth user_metadata update notice in updateProfile:', metaErr);
+        }
+
+        return {
+          ...existingProfile,
+          ...(dbResult || {}),
+          ...cleanProfilesPayload,
+          title: input.title !== undefined ? input.title : existingProfile?.title,
+          bio: input.bio !== undefined ? input.bio : existingProfile?.bio,
+          skills: input.skills !== undefined ? input.skills : existingProfile?.skills,
+          location: addressVal,
+          profilePicture: cleanProfilesPayload.avatar_url,
+          profile_picture: cleanProfilesPayload.avatar_url,
+          slug: slugToPersist,
+        };
       } catch (outerErr) {
         console.warn('updateProfile outer exception (handled):', outerErr);
         return { success: true, id: ctx.session?.user?.id };
@@ -1452,44 +1447,35 @@ export const profilesRouter = router({
             .eq('id', userId);
         } catch {}
 
+        // Persist client info to user_metadata
         try {
-          if (existingProfile) {
-            const { data, error } = await (supabase as any)
-              .from('profiles')
-              .update(profileData)
-              .eq('id', existingProfile.id)
-              .select()
-              .maybeSingle();
-
-            if (error) {
-              console.warn('updateClientProfile warning (handled):', error);
-              return { id: userId, ...profileData };
-            }
-
-            return data || { id: userId, ...profileData };
-          }
-
-          // Create new profile
-          const { data, error } = await (supabase as any)
-            .from('profiles')
-            .insert({
-              id: userId,
-              ...profileData,
-              created_at: timestamp,
-            })
-            .select()
-            .maybeSingle();
-
-          if (error) {
-            console.warn('create client profile warning (handled):', error);
-            return { id: userId, ...profileData };
-          }
-
-          return data || { id: userId, ...profileData };
-        } catch (err) {
-          console.warn('updateClientProfile exception (handled):', err);
-          return { id: userId, ...profileData };
+          const { data: userData } = await adminSupabase.auth.admin.getUserById(userId);
+          const existingMeta = userData?.user?.user_metadata || {};
+          await adminSupabase.auth.admin.updateUserById(userId, {
+            user_metadata: {
+              ...existingMeta,
+              companyName: input.companyName,
+              industry: input.industry,
+              country: input.country,
+              timezone: input.timezone,
+              website: input.website || null,
+            },
+          });
+        } catch (mErr) {
+          console.warn('updateClientProfile metadata notice:', mErr);
         }
+
+        // Update profiles updated_at
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({ updated_at: timestamp })
+            .eq('id', userId);
+        } catch (dbErr) {
+          console.warn('updateClientProfile profiles notice:', dbErr);
+        }
+
+        return { id: userId, ...profileData };
       } catch (outerErr) {
         console.warn('updateClientProfile outer exception (handled):', outerErr);
         return { id: ctx.session?.user?.id || '', ...input };
@@ -1523,9 +1509,6 @@ export const profilesRouter = router({
         const supabase = await createClient();
         const timestamp = new Date().toISOString();
 
-        // Check if profile exists
-        const existingProfile = await findProfileSafely(supabase, userId, 'id');
-
         const businessPayload = {
           companyName: input.businessName,
           businessRegistrationNumber: input.businessRegistrationNumber,
@@ -1541,43 +1524,31 @@ export const profilesRouter = router({
           updated_at: timestamp,
         };
 
+        // Persist business details in user_metadata
         try {
-          if (existingProfile) {
-            const { data, error } = await (supabase as any)
-              .from('profiles')
-              .update(businessPayload)
-              .eq('id', existingProfile.id)
-              .select()
-              .maybeSingle();
-
-            if (error) {
-              console.warn('updateBusinessProfile warning (handled):', error);
-              return { id: userId, ...businessPayload };
-            }
-
-            return data || { id: userId, ...businessPayload };
-          }
-
-          const { data, error } = await (supabase as any)
-            .from('profiles')
-            .insert({
-              id: userId,
-              ...businessPayload,
-              created_at: timestamp,
-            })
-            .select()
-            .maybeSingle();
-
-          if (error) {
-            console.warn('create business profile warning (handled):', error);
-            return { id: userId, ...businessPayload };
-          }
-
-          return data || { id: userId, ...businessPayload };
-        } catch (err) {
-          console.warn('updateBusinessProfile exception (handled):', err);
-          return { id: userId, ...businessPayload };
+          const { data: userData } = await adminSupabase.auth.admin.getUserById(userId);
+          const existingMeta = userData?.user?.user_metadata || {};
+          await adminSupabase.auth.admin.updateUserById(userId, {
+            user_metadata: {
+              ...existingMeta,
+              business: businessPayload,
+            },
+          });
+        } catch (bErr) {
+          console.warn('updateBusinessProfile metadata notice:', bErr);
         }
+
+        // Update profiles updated_at
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({ updated_at: timestamp })
+            .eq('id', userId);
+        } catch (dbErr) {
+          console.warn('updateBusinessProfile profiles notice:', dbErr);
+        }
+
+        return { id: userId, ...businessPayload };
       } catch (outerErr) {
         console.warn('updateBusinessProfile outer exception (handled):', outerErr);
         return { id: ctx.session?.user?.id || '', ...input };

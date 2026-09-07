@@ -100,12 +100,7 @@ export async function POST(req: Request) {
           role: metadataRole,
           first_name: firstName || null,
           last_name: lastName || null,
-          title,
-          bio: metadataRole === 'artist' ? 'Welcome to Vivid Art!' : '',
           address: location,
-          location,
-          is_published: true,
-          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'id' }

@@ -100,10 +100,7 @@ export async function POST(req: Request) {
           last_name: lastName,
           role: roleToUse,
           email: data.user.email || null,
-          location: userLocation,
           address: userLocation,
-          title: roleToUse === 'artist' ? 'Artist' : 'Buyer',
-          is_published: true,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
       } catch (syncErr) {

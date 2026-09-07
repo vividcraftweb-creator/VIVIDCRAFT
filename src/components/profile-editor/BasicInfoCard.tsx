@@ -251,45 +251,43 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         console.warn('Auth user metadata update notice:', authMetaErr);
       }
 
-      let currentPayload: Record<string, any> = {
+      // Build payload matching lowercase profiles table schema PERFECTLY:
+      // (id, first_name, last_name, address, avatar_url, updated_at)
+      const profilesPayload: Record<string, any> = {
         id: user.id,
         first_name: formData.firstName || null,
         last_name: formData.lastName || null,
         address: formData.location || null,
-        title: formData.title || null,
-        bio: formData.bio || null,
-        skills: skillsString || null,
         avatar_url: cleanAvatarUrl,
-        profile_picture: cleanAvatarUrl,
         updated_at: new Date().toISOString(),
       };
 
-      for (let attempt = 0; attempt < 6; attempt++) {
-        const { error } = await (supabase as any)
+      try {
+        const { error: upsertErr } = await (supabase as any)
           .from('profiles')
-          .upsert(currentPayload, { onConflict: 'id' });
+          .upsert(profilesPayload, { onConflict: 'id' });
 
-        if (!error) break;
-
-        const msg = error.message || '';
-        const match = msg.match(/Could not find the '([^']+)' column/i);
-        if (match && match[1]) {
-          delete currentPayload[match[1]];
-          continue;
+        if (upsertErr) {
+          console.warn('Profiles upsert warning:', upsertErr.message || upsertErr);
         }
+      } catch (upsertEx) {
+        console.warn('Profiles upsert exception:', upsertEx);
+      }
 
-        if (msg.includes('schema cache')) {
-          currentPayload = {
-            id: user.id,
-            first_name: formData.firstName || null,
-            last_name: formData.lastName || null,
-            address: formData.location || null,
-            updated_at: new Date().toISOString(),
-          };
-          continue;
-        }
-
-        break;
+      // Sync extended artist metadata (title, bio, skills) via tRPC mutation
+      try {
+        await updateMutation.mutateAsync({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          title: formData.title,
+          bio: formData.bio,
+          location: formData.location,
+          skills: skillsString,
+          profilePicture: cleanAvatarUrl || undefined,
+          avatar_url: cleanAvatarUrl || undefined,
+        });
+      } catch (mutationErr) {
+        console.warn('tRPC updateMutation sync notice:', mutationErr);
       }
 
       setProfileData({
@@ -429,7 +427,6 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           .from('profiles')
           .update({
             avatar_url: fullPublicAvatarUrl,
-            profile_picture: fullPublicAvatarUrl,
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId);
@@ -440,7 +437,6 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             .upsert({
               id: userId,
               avatar_url: fullPublicAvatarUrl,
-              profile_picture: fullPublicAvatarUrl,
               updated_at: new Date().toISOString(),
             }, { onConflict: 'id' });
         }

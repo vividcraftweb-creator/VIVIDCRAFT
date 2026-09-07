@@ -157,7 +157,6 @@ export async function POST(request: NextRequest) {
         .from('profiles')
         .update({
           avatar_url: fullPublicUrl,
-          profile_picture: fullPublicUrl,
           updated_at: timestamp,
         })
         .eq('id', user.id);
@@ -168,7 +167,6 @@ export async function POST(request: NextRequest) {
           .upsert({
             id: user.id,
             avatar_url: fullPublicUrl,
-            profile_picture: fullPublicUrl,
             updated_at: timestamp,
           }, { onConflict: 'id' });
       }
