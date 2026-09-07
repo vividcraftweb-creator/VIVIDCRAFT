@@ -163,6 +163,7 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
     let po: any[] = [];
     let ce: any[] = [];
     let u: any = null;
+    let initialArtworks: any[] = [];
 
     try {
       const results = await Promise.all([
@@ -171,12 +172,43 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
         supabase.from('PortfolioItem').select('*').eq('profileId', pId).order('order', { ascending: true }),
         supabase.from('Certification').select('*').eq('profileId', pId).order('order', { ascending: true }),
         supabase.from('User').select('subscriptionPlan, email').eq('id', pId).maybeSingle(),
+        supabase.from('artworks').select('*').eq('artist_id', pId).order('created_at', { ascending: false }),
       ]);
       ed = results[0]?.data || [];
       ex = results[1]?.data || [];
       po = results[2]?.data || [];
       ce = results[3]?.data || [];
       u = results[4]?.data || null;
+      const rawArtworks = results[5]?.data || [];
+
+      if (rawArtworks.length > 0) {
+        const artIds = rawArtworks.map((a: any) => a.id);
+        const [likesRes, ratingsRes] = await Promise.all([
+          supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artIds),
+          supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artIds),
+        ]);
+        const likes = likesRes?.data || [];
+        const ratings = ratingsRes?.data || [];
+
+        initialArtworks = rawArtworks.map((art: any) => {
+          const artLikes = likes.filter((l: any) => l.artwork_id === art.id);
+          const artRatings = ratings.filter((r: any) => r.artwork_id === art.id);
+          const sum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
+          const avg = artRatings.length > 0 ? Math.round((sum / artRatings.length) * 10) / 10 : 0;
+          return {
+            id: art.id,
+            artist_id: art.artist_id,
+            title: art.title,
+            image_url: art.image_url,
+            created_at: art.created_at,
+            likesCount: artLikes.length,
+            isLiked: false,
+            ratingsCount: artRatings.length,
+            averageRating: avg,
+            userRating: null,
+          };
+        });
+      }
     } catch {}
 
     const initialProfile: any = {
@@ -234,8 +266,8 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
       subscriptionPlan: u?.subscriptionPlan ?? profile.subscription_plan ?? profile.subscriptionPlan ?? 'FREELANCER_PRO',
     };
 
-    return <FreelancerProfileClient params={params} initialProfile={initialProfile} />;
+    return <FreelancerProfileClient params={params} initialProfile={initialProfile} initialArtworks={initialArtworks} />;
   }
 
-  return <FreelancerProfileClient params={params} initialProfile={null} />;
+  return <FreelancerProfileClient params={params} initialProfile={null} initialArtworks={[]} />;
 }

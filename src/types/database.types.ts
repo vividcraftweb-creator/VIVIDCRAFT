@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      artworks: {
+        Row: {
+          id: string
+          artist_id: string
+          title: string
+          image_url: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          artist_id: string
+          title: string
+          image_url: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          artist_id?: string
+          title?: string
+          image_url?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      artwork_likes: {
+        Row: {
+          id: string
+          artwork_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          artwork_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          artwork_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      artwork_ratings: {
+        Row: {
+          id: string
+          artwork_id: string
+          user_id: string
+          rating: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          artwork_id: string
+          user_id: string
+          rating: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          artwork_id?: string
+          user_id?: string
+          rating?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       Artwork: {
         Row: {
           id: string

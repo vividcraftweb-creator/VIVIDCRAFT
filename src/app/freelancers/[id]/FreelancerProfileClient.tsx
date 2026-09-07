@@ -40,6 +40,7 @@ import type {
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import { getPublicUrl } from '@/components/artists/ArtistCard';
 import { createClient } from '@/lib/supabase/client';
+import { ArtworkCard, type ArtworkItem } from '@/components/gallery/ArtworkCard';
 
 type FreelancerProfile = ProfileRow & {
   firstName?: string | null;
@@ -67,6 +68,7 @@ type FreelancerProfile = ProfileRow & {
 interface PageProps {
   params: Promise<{ id: string }>;
   initialProfile?: FreelancerProfile | null;
+  initialArtworks?: ArtworkItem[] | null;
 }
 
 const PLAN_BADGE_IMAGES: Partial<Record<SubscriptionPlan, { src: string; alt: string }>> = {
@@ -74,7 +76,7 @@ const PLAN_BADGE_IMAGES: Partial<Record<SubscriptionPlan, { src: string; alt: st
   FREELANCER_ELITE: { src: '/elite-plan-user.png', alt: 'Elite plan badge' },
 };
 
-export default function FreelancerProfileClient({ params, initialProfile }: PageProps) {
+export default function FreelancerProfileClient({ params, initialProfile, initialArtworks }: PageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -217,6 +219,19 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
   const data = profile;
   const artistData = profile;
 
+  const artistId = profile?.userId || profile?.id || resolvedParams.id;
+
+  const artworksQuery = trpc.artworks.getArtistArtworks.useQuery(
+    { artistId },
+    {
+      enabled: !!artistId,
+      initialData: initialArtworks ?? undefined,
+      staleTime: 30000,
+    }
+  );
+
+  const artworks: ArtworkItem[] = (artworksQuery.data as ArtworkItem[]) || initialArtworks || [];
+
   const displayName = useMemo(() => {
     if (!profile) return 'studio One';
     const fName = profile.first_name || profile.firstName || '';
@@ -334,7 +349,7 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
     () => [
       {
         label: 'Featured Artworks',
-        value: profile?.portfolioItems?.length ?? 0,
+        value: artworks.length > 0 ? artworks.length : (profile?.portfolioItems?.length ?? 0),
       },
       {
         label: 'Exhibitions & Showcases',
@@ -345,7 +360,7 @@ export default function FreelancerProfileClient({ params, initialProfile }: Page
         value: profile?.certifications?.length ?? 0,
       },
     ],
-    [profile]
+    [profile, artworks.length]
   );
 
   const handleShare = async () => {
@@ -634,6 +649,51 @@ Hi, I would like to connect with this artist for a commission/project.`;
                   </p>
                 </section>
               )}
+
+              {/* ARTIST PORTFOLIO / GALLERY */}
+              <section className="glass-card glass-card-shine p-6 sm:p-8 rounded-2xl sm:rounded-3xl hover-lift space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 icon-glow transition-all duration-300">
+                      <FolderOpen className="h-4 w-4 text-purple-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm sm:text-base font-bold tracking-wider uppercase text-white flex items-center gap-2">
+                        Artist Portfolio &amp; Gallery
+                      </h2>
+                      <p className="text-xs text-white/60 mt-0.5">
+                        Original artworks created by {displayName}. Click to zoom, like, or rate.
+                      </p>
+                    </div>
+                  </div>
+                  {artworks.length > 0 && (
+                    <Badge className="bg-purple-500/20 text-purple-200 border-purple-500/30 px-3 py-1 self-start sm:self-auto text-xs">
+                      {artworks.length} {artworks.length === 1 ? 'Artwork' : 'Artworks'}
+                    </Badge>
+                  )}
+                </div>
+
+                {artworksQuery.isLoading && artworks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-white/60">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                    <p className="text-sm">Loading gallery artworks...</p>
+                  </div>
+                ) : artworks.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {artworks.map((art) => (
+                      <ArtworkCard key={art.id} artwork={art} artistName={displayName} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 px-4 rounded-2xl bg-white/[0.02] border border-white/5 border-dashed">
+                    <FolderOpen className="h-10 w-10 text-white/20 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-white/70">No gallery artworks uploaded yet</p>
+                    <p className="text-xs text-white/40 mt-1 max-w-sm mx-auto">
+                      This artist has not added pieces to their gallery showcase yet.
+                    </p>
+                  </div>
+                )}
+              </section>
 
               {profile.experienceItems?.length > 0 && (
                 <section className="glass-card glass-card-shine p-6 rounded-2xl hover-lift">

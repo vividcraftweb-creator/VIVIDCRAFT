@@ -38,13 +38,17 @@ export const adminArtworksRouter = router({
           .range(input.offset, input.offset + input.limit - 1);
 
         if (error) {
-          console.error('getArtworks error, trying plain select:', error);
-          const fallbackRes = await supabase
-            .from('Artwork')
+          console.error('getArtworks error, trying artworks table select:', error);
+          const fallbackRes = await (supabase as any)
+            .from('artworks')
             .select('*', { count: 'exact' })
-            .order('createdAt', { ascending: false })
+            .order('created_at', { ascending: false })
             .range(input.offset, input.offset + input.limit - 1);
-          data = fallbackRes.data as any;
+          data = (fallbackRes.data || []).map((a: any) => ({
+            ...a,
+            imageUrl: a.image_url || a.imageUrl,
+            createdAt: a.created_at || a.createdAt,
+          }));
           count = fallbackRes.count;
         }
 
@@ -65,8 +69,10 @@ export const adminArtworksRouter = router({
       const supabase = ctx.adminSupabase;
       if (!supabase) throw new Error('Supabase admin client not found');
 
-      const { error } = await supabase.from('Artwork').delete().eq('id', input.id);
-      if (error) throw new Error(error.message);
+      const { error } = await (supabase as any).from('artworks').delete().eq('id', input.id);
+      if (error) {
+        await supabase.from('Artwork').delete().eq('id', input.id);
+      }
       
       return { success: true };
     }),

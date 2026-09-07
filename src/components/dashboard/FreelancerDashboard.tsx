@@ -21,6 +21,7 @@ import {
   BarChart3,
   User as UserIcon,
   Send,
+  Image as ImageIcon,
   Eye,
   EyeOff,
   Globe,
@@ -132,6 +133,11 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
   });
 
   const sessionUserId = session?.session?.user?.id;
+
+  const { data: myArtworks } = trpc.artworks.getMyArtworks.useQuery(undefined, {
+    enabled: isAuthenticated,
+    retry: false,
+  });
 
   // Verification banner dismissal state
   const BANNER_DISMISS_KEY = `verification_banner_dismissed_${sessionUserId}`;
@@ -797,6 +803,24 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
             </div>
           </div>
 
+          {/* Portfolio Artworks */}
+          <Link href="/dashboard?tab=gallery" className="glass-card p-4 sm:p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-400/30 transition-all duration-300 group block">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-emerald-300 text-sm font-medium">Portfolio Artworks</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
+                  {myArtworks?.length ?? 0}
+                </p>
+                <p className="text-emerald-400 text-sm mt-1 flex items-center">
+                  <ImageIcon className="h-4 w-4 mr-1" />
+                  Manage gallery &rarr;
+                </p>
+              </div>
+              <div className="p-2 sm:p-3 bg-emerald-500/20 rounded-xl group-hover:bg-emerald-500/30 transition-colors">
+                <ImageIcon className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400" />
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Main Content Grid */}
