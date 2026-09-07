@@ -153,12 +153,12 @@ async function getProfileFromProfilesTable(supabase: any, userIdOrId: string) {
     } catch {}
   }
 
-  // 3. Try 'Profile' table to get full details (bio, title, skills, etc.)
+  // 3. Try 'profiles' table to get full details (bio, title, skills, etc.)
   try {
-    const { data: legacyProfile } = await supabase
-      .from('Profile')
+    const { data: legacyProfile } = await (supabase as any)
+      .from('profiles')
       .select('*')
-      .eq('userId', userIdOrId)
+      .or(`id.eq.${userIdOrId},user_id.eq.${userIdOrId}`)
       .maybeSingle();
 
     if (legacyProfile) {
@@ -169,7 +169,8 @@ async function getProfileFromProfilesTable(supabase: any, userIdOrId: string) {
         title: profileRecord?.title || legacyProfile.title || '',
         skills: profileRecord?.skills || legacyProfile.skills || '',
         location: profileRecord?.address || profileRecord?.location || legacyProfile.location || '',
-        profilePicture: profileRecord?.profile_picture || profileRecord?.profilePicture || legacyProfile.profilePicture || '',
+        profilePicture: profileRecord?.profile_picture || profileRecord?.profilePicture || legacyProfile.profilePicture || legacyProfile.avatar_url || '',
+        avatar_url: profileRecord?.avatar_url || legacyProfile.avatar_url || legacyProfile.profile_picture || '',
       };
     }
   } catch {}
@@ -566,13 +567,13 @@ export const publicProfileRouter = router({
           }
         }
 
-        // 7. Try finding in legacy `Profile` table
+        // 7. Try finding in `profiles` table
         if (!profile) {
           try {
             const { data: legacyProfile } = await (adminSupabase as any)
-              .from('Profile')
+              .from('profiles')
               .select('*')
-              .or(`id.eq.${identifier},userId.eq.${identifier},slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
+              .or(`id.eq.${identifier},user_id.eq.${identifier},slug.eq.${identifier},slug.eq.${identifier.toLowerCase()}`)
               .limit(1)
               .maybeSingle();
             if (legacyProfile) profile = legacyProfile;
@@ -852,42 +853,32 @@ export const publicProfileRouter = router({
         console.warn('User client profiles upsert notice:', e);
       }
 
-      // 3. Also sync all fields to 'Profile' table
+      // 3. Also sync all fields to 'profiles' table
       try {
-        const profileTablePayload = {
-          userId: userId,
-          firstName: firstName,
-          lastName: lastName,
-          title: input.title !== undefined ? input.title : (existingProfile?.title || null),
-          bio: input.bio !== undefined ? input.bio : (existingProfile?.bio || null),
-          location: input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location || null),
-          skills: input.skills !== undefined ? input.skills : (existingProfile?.skills || null),
-          profilePicture: input.profilePicture || resultRecord.avatar_url || resultRecord.profile_picture || null,
-          slug: slugToPersist,
-          updatedAt: timestamp,
-        };
-
         const { data: pData } = await (admin as any)
-          .from('Profile')
-          .update(profileTablePayload)
-          .eq('userId', userId)
+          .from('profiles')
+          .update({
+            first_name: firstName,
+            last_name: lastName,
+            title: input.title !== undefined ? input.title : (existingProfile?.title || null),
+            bio: input.bio !== undefined ? input.bio : (existingProfile?.bio || null),
+            location: input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location || null),
+            address: input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location || null),
+            skills: input.skills !== undefined ? input.skills : (existingProfile?.skills || null),
+            avatar_url: input.profilePicture || resultRecord.avatar_url || resultRecord.profile_picture || null,
+            profile_picture: input.profilePicture || resultRecord.avatar_url || resultRecord.profile_picture || null,
+            slug: slugToPersist,
+            updated_at: timestamp,
+          })
+          .eq('id', userId)
           .select()
           .maybeSingle();
 
         if (pData) {
           resultRecord = { ...resultRecord, ...pData };
-        } else {
-          const { data: newP } = await (admin as any)
-            .from('Profile')
-            .upsert({ id: crypto.randomUUID(), ...profileTablePayload, createdAt: timestamp }, { onConflict: 'userId' })
-            .select()
-            .maybeSingle();
-          if (newP) {
-            resultRecord = { ...resultRecord, ...newP };
-          }
         }
       } catch (e) {
-        console.warn('Profile table sync notice:', e);
+        console.warn('profiles table sync notice:', e);
       }
 
       return formatProfileData(resultRecord);
@@ -939,16 +930,6 @@ export const publicProfileRouter = router({
             } catch {}
           }
 
-          // Also sync to Profile table
-          try {
-            await (admin as any)
-              .from('Profile')
-              .update({
-                isPublished: isPublished,
-                updatedAt: timestamp,
-              })
-              .eq('userId', userId);
-          } catch {}
         }
 
         const formatted = formatProfileData(data || { is_published: isPublished, isPublished: isPublished }) || {};
@@ -990,15 +971,7 @@ export const publicProfileRouter = router({
               .eq('id', userId);
           } catch {}
 
-          try {
-            await (admin as any)
-              .from('Profile')
-              .update({
-                isPublished: isPublished,
-                updatedAt: timestamp,
-              })
-              .eq('userId', userId);
-          } catch {}
+
         }
 
         return {
@@ -1422,13 +1395,13 @@ export const publicProfileRouter = router({
         } catch {}
       }
 
-      // Also merge with legacy Profile table if present
+      // Also merge with profiles table if present
       try {
         const admin = createAdminClient();
-        const { data: legacyRow } = await admin
-          .from('Profile')
+        const { data: legacyRow } = await (admin as any)
+          .from('profiles')
           .select('*')
-          .eq('userId', userId)
+          .or(`id.eq.${userId},user_id.eq.${userId}`)
           .maybeSingle();
         if (legacyRow) {
           rawProfile = { ...legacyRow, ...rawProfile };

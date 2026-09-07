@@ -6,22 +6,26 @@ import { Search, MapPin, CheckCircle, Clock, Shield } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
 import { isArtistProfile } from '@/lib/artist-filter';
+import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
 export const dynamic = 'force-dynamic';
 
 function getAvatarUrl(userId?: string, raw?: string | null): string | undefined {
-  if (!raw) return undefined;
+  if (!raw || typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const helperUrl = getProfilePictureUrl(userId, trimmed);
+  if (helperUrl) return helperUrl;
   if (
-    raw.startsWith('http://') ||
-    raw.startsWith('https://') ||
-    raw.startsWith('data:') ||
-    raw.startsWith('blob:') ||
-    raw.startsWith('/')
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('/')
   ) {
-    return raw;
+    return trimmed;
   }
-  if (!userId) return undefined;
-  return `/uploads/documents/${userId}/${raw}`;
+  return undefined;
 }
 
 export default function FreelancersPageClient({
@@ -33,12 +37,13 @@ export default function FreelancersPageClient({
   const [searchQuery, setSearchQuery] = useState('');
   const [profiles, setProfiles] = useState<any[]>(initialProfiles);
   const [loading, setLoading] = useState(initialProfiles.length === 0);
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 1. Direct Supabase Query: Fetch all rows directly without ANY .eq() or role filters
+  // 1. Direct Supabase Query: Fetch all rows directly from lowercase 'profiles' table
   useEffect(() => {
     const supabase = createClient();
 
@@ -53,28 +58,21 @@ export default function FreelancersPageClient({
           if (pErr) console.warn("profiles table query error:", pErr);
           if (pRows && Array.isArray(pRows)) {
             pRows.forEach((p: any) => {
-              if (p.id) profilesMap.set(p.id, p);
-            });
-          }
-        } catch (e) {
-          console.warn("Direct profiles fetch exception:", e);
-        }
-
-        // Fetch from 'Profile' table
-        try {
-          const { data: pTableRows, error: ptErr } = await supabase.from('Profile').select('*');
-          if (ptErr) console.warn("Profile table query error:", ptErr);
-          if (pTableRows && Array.isArray(pTableRows)) {
-            pTableRows.forEach((p: any) => {
-              const key = p.userId || p.id;
+              const key = p.id || p.userId || p.user_id;
               if (key) {
-                const existing = profilesMap.get(key) || {};
-                profilesMap.set(key, { ...existing, ...p, id: key });
+                const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
+                profilesMap.set(key, {
+                  ...p,
+                  id: key,
+                  userId: p.user_id || p.userId || key,
+                  avatar_url: avatar,
+                  profile_picture: avatar,
+                });
               }
             });
           }
         } catch (e) {
-          console.warn("Direct Profile fetch exception:", e);
+          console.warn("Direct profiles fetch exception:", e);
         }
 
         const all = Array.from(profilesMap.values());
@@ -248,17 +246,19 @@ export default function FreelancersPageClient({
                 artist.avatar_url ||
                 artist.profile_picture ||
                 artist.profilePicture ||
-                artist.avatar;
+                artist.avatar ||
+                artist.image;
 
-              const avatarUrl = getAvatarUrl(artist.id, rawAvatar);
+              const avatarUrl = getAvatarUrl(artist.id || artist.userId, rawAvatar);
               const initialLetter = (firstName || displayName || 'A').charAt(0).toUpperCase();
               const locationVal = artist.location || artist.address || '';
               const isVerified = Boolean(artist.is_verified || artist.isVerified);
+              const artistKey = artist.id || artist.userId || '';
 
               return (
                 <Link
-                  key={artist.id || artist.userId || Math.random().toString()}
-                  href={`/freelancers/${artist.id || artist.userId}`}
+                  key={artistKey || Math.random().toString()}
+                  href={`/freelancers/${artistKey}`}
                   className="block"
                 >
                   <article className="group flex h-full flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-br from-background/70 via-background/60 to-background/30 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.35)] transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:cursor-pointer">
@@ -267,11 +267,12 @@ export default function FreelancersPageClient({
                         <div className="flex items-center gap-4 min-w-0 flex-1">
                           {/* Avatar */}
                           <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-primary/20 ring-4 ring-primary/10 shadow-lg shadow-primary/25 transition-transform group-hover:scale-105">
-                            {avatarUrl ? (
+                            {avatarUrl && !imgErrors[artistKey] ? (
                               <img
                                 src={avatarUrl}
                                 alt={`${displayName} profile picture`}
                                 className="h-full w-full object-cover"
+                                onError={() => setImgErrors((prev) => ({ ...prev, [artistKey]: true }))}
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/80 to-chart-1/70 text-lg font-bold text-white">

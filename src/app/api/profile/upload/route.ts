@@ -158,16 +158,6 @@ export async function POST(request: NextRequest) {
       console.warn('Profile table avatar_url update notice:', dbErr);
     }
 
-    // Also update legacy Profile table if it exists
-    try {
-      await adminClient
-        .from('Profile')
-        .update({
-          profilePicture: publicUrl,
-          updatedAt: timestamp,
-        })
-        .eq('userId', user.id);
-    } catch {}
 
     // 7. Clean Supabase Auth user metadata so it only has the clean public URL (never base64 bloat)
     try {

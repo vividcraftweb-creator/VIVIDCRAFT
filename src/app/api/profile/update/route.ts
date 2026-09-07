@@ -99,10 +99,10 @@ export async function POST(request: NextRequest) {
     const email = body.email ?? body.businessEmail ?? null;
 
     // 4. Check for existing profile
-    const { data: existingProfile, error: fetchError } = await adminClient
-      .from('Profile')
-      .select('id, firstName, lastName, slug')
-      .eq('userId', user.id)
+    const { data: existingProfile, error: fetchError } = await (adminClient as any)
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
       .maybeSingle();
 
     if (fetchError) {
@@ -177,10 +177,10 @@ export async function POST(request: NextRequest) {
 
       updatePayload.slug = slug;
 
-      const { data, error } = await adminClient
-        .from('Profile')
+      const { data, error } = await (adminClient as any)
+        .from('profiles')
         .update(updatePayload)
-        .eq('userId', user.id)
+        .eq('id', user.id)
         .select()
         .single();
 
@@ -205,10 +205,10 @@ export async function POST(request: NextRequest) {
         };
         Object.keys(standardPayload).forEach((key) => standardPayload[key] === undefined && delete standardPayload[key]);
 
-        const { data: retryData, error: retryError } = await adminClient
-          .from('Profile')
+        const { data: retryData, error: retryError } = await (adminClient as any)
+          .from('profiles')
           .update(standardPayload)
-          .eq('userId', user.id)
+          .eq('id', user.id)
           .select()
           .single();
 
@@ -244,8 +244,8 @@ export async function POST(request: NextRequest) {
         createdAt: timestamp,
       };
 
-      const { data, error } = await adminClient
-        .from('Profile')
+      const { data, error } = await (adminClient as any)
+        .from('profiles')
         .insert(insertPayload)
         .select()
         .single();
@@ -254,28 +254,27 @@ export async function POST(request: NextRequest) {
         // Fallback retry with standard columns
         console.warn('First profile insert attempt failed, retrying with standard columns...', error.message);
         const standardInsertPayload: Record<string, any> = {
-          id: crypto.randomUUID(),
-          userId: user.id,
-          firstName,
-          lastName,
+          id: user.id,
+          first_name: firstName,
+          last_name: lastName,
           location: address,
+          address: address,
           phone: whatsappNumber,
-          businessEmail: email,
-          businessPhone: whatsappNumber,
-          businessAddressLine1: address,
+          whatsapp_number: whatsappNumber,
+          email,
+          business_email: email,
           title: body.title,
           bio: body.bio,
           skills: body.skills,
           rate: body.rate ? Number(body.rate) : undefined,
-          portfolio: body.portfolio,
           slug,
-          createdAt: timestamp,
-          updatedAt: timestamp,
+          created_at: timestamp,
+          updated_at: timestamp,
         };
         Object.keys(standardInsertPayload).forEach((key) => standardInsertPayload[key] === undefined && delete standardInsertPayload[key]);
 
-        const { data: retryData, error: retryError } = await adminClient
-          .from('Profile')
+        const { data: retryData, error: retryError } = await (adminClient as any)
+          .from('profiles')
           .insert(standardInsertPayload)
           .select()
           .single();

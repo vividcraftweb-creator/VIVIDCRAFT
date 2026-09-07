@@ -131,17 +131,17 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
     console.warn("Exception fetching profile:", err);
   }
 
-  // Fallback: Check legacy Profile table if needed
+  // Fallback: Check profiles table if needed
   if (!profile) {
     try {
-      const { data: legacyProfile } = await (supabase as any)
-        .from('Profile')
+      const { data: fallbackProfile } = await (supabase as any)
+        .from('profiles')
         .select('*')
-        .or(`id.eq.${profileId},userId.eq.${profileId},slug.eq.${profileId}`)
+        .or(`id.eq.${profileId},user_id.eq.${profileId},slug.eq.${profileId}`)
         .maybeSingle();
 
-      if (legacyProfile) {
-        profile = legacyProfile;
+      if (fallbackProfile) {
+        profile = fallbackProfile;
       }
     } catch {}
   }

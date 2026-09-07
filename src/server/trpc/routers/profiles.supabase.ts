@@ -160,12 +160,12 @@ async function findProfileSafely(supabase: any, userIdOrId: string, select = '*'
     if (!error && data) return data;
   } catch {}
 
-  // 7. Check legacy Profile table if present
+  // 7. Check profiles table if present
   try {
     const { data, error } = await supabase
-      .from('Profile')
+      .from('profiles')
       .select(select)
-      .or(`id.eq.${userIdOrId},userId.eq.${userIdOrId},slug.eq.${userIdOrId}`)
+      .or(`id.eq.${userIdOrId},user_id.eq.${userIdOrId},slug.eq.${userIdOrId}`)
       .limit(1)
       .maybeSingle();
     if (!error && data) return data;
@@ -533,16 +533,6 @@ export const profilesRouter = router({
               })
               .eq('id', userId);
           } catch {}
-
-          try {
-            await (admin as any)
-              .from('Profile')
-              .update({
-                isPublished: isPublished,
-                updatedAt: timestamp,
-              })
-              .eq('userId', userId);
-          } catch {}
         }
 
         return {
@@ -589,16 +579,6 @@ export const profilesRouter = router({
                 updated_at: timestamp,
               })
               .eq('id', userId);
-          } catch {}
-
-          try {
-            await (admin as any)
-              .from('Profile')
-              .update({
-                isPublished: isPublished,
-                updatedAt: timestamp,
-              })
-              .eq('userId', userId);
           } catch {}
         }
 
@@ -744,21 +724,18 @@ export const profilesRouter = router({
               const slugToUse = `${cleanSlug || (fallbackRole === 'artist' ? 'artist' : 'client')}-${userId.substring(0, 6)}`;
 
               const { data: pInserted } = await (supabase as any)
-                .from('Profile')
+                .from('profiles')
                 .upsert({
                   id: userId,
-                  userId: userId,
                   slug: slugToUse,
-                  firstName: defaultFirstName,
-                  lastName: defaultLastName,
+                  first_name: defaultFirstName,
+                  last_name: defaultLastName,
                   title: fallbackRole === 'artist' ? 'Artist' : 'Buyer',
                   bio: fallbackRole === 'artist' ? 'Welcome to Vivid Art!' : '',
-                  isPublished: true,
                   is_published: true,
-                  verified: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                }, { onConflict: 'userId' })
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'id' })
                 .select()
                 .maybeSingle();
 
@@ -1210,34 +1187,16 @@ export const profilesRouter = router({
         const { data: pRows } = await (supabase as any).from('profiles').select('*');
         if (pRows && Array.isArray(pRows)) {
           pRows.forEach((p: any) => {
-            if (p.id) profilesMap.set(p.id, p);
-          });
-        }
-      } catch (err) {}
-
-      // 2. Fetch from legacy `Profile` table
-      try {
-        const { data: legacyProfiles } = await supabase.from('Profile').select('*');
-        if (legacyProfiles && Array.isArray(legacyProfiles)) {
-          legacyProfiles.forEach((lp: any) => {
-            const key = lp.userId || lp.id;
+            const key = p.id || p.userId || p.user_id;
             if (key) {
-              const existing = profilesMap.get(key) || {};
+              const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || '';
               profilesMap.set(key, {
+                ...p,
                 id: key,
-                ...existing,
-                ...lp,
-                first_name: existing.first_name || lp.firstName || '',
-                last_name: existing.last_name || lp.lastName || '',
-                title: existing.title || lp.title || '',
-                bio: existing.bio || lp.bio || '',
-                location: existing.location || existing.address || lp.location || '',
-                address: existing.address || existing.location || lp.location || '',
-                skills: existing.skills || lp.skills || '',
-                rate: typeof existing.rate === 'number' ? existing.rate : lp.rate,
-                avatar_url: existing.avatar_url || lp.profilePicture || '',
-                profilePicture: existing.avatar_url || lp.profilePicture || '',
-                slug: existing.slug || lp.slug || key,
+                userId: p.user_id || p.userId || key,
+                avatar_url: avatar,
+                profilePicture: avatar,
+                profile_picture: avatar,
               });
             }
           });

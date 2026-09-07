@@ -50,16 +50,7 @@ export async function POST(req: NextRequest) {
         console.warn('[api/profile/publish] profiles update notice:', err);
       }
 
-      // 3. Update legacy Profile table
-      try {
-        await (admin as any)
-          .from('Profile')
-          .update({
-            isPublished: isPublished,
-            updatedAt: timestamp,
-          })
-          .eq('userId', userId);
-      } catch {}
+
     }
 
     return NextResponse.json(
