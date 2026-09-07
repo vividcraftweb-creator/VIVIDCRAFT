@@ -252,25 +252,34 @@ export async function POST(req: Request) {
     }
 
     // 3. Upsert into `profiles` table
+    const profilePayload = {
+      id: authData.user.id,
+      first_name: sanitizedFirstName,
+      last_name: sanitizedLastName,
+      role: metadataRole,
+      title: sanitizedTitle || (metadataRole === 'artist' ? 'Artist' : 'Buyer'),
+      bio: sanitizedBio || (metadataRole === 'artist' ? 'Welcome to Vivid Art!' : ''),
+      email: email,
+      address: sanitizedLocation,
+      location: sanitizedLocation,
+      is_published: true,
+      updated_at: new Date().toISOString(),
+    };
+
     try {
       await (adminClient as any)
         .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          first_name: sanitizedFirstName,
-          last_name: sanitizedLastName,
-          role: metadataRole,
-          title: sanitizedTitle || (metadataRole === 'artist' ? 'Artist' : 'Buyer'),
-          bio: sanitizedBio || (metadataRole === 'artist' ? 'Welcome to Vivid Art!' : ''),
-          email: email,
-          address: sanitizedLocation,
-          location: sanitizedLocation,
-          is_published: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+        .upsert(profilePayload, { onConflict: 'id' });
     } catch (pErr) {
-      console.warn('profiles table upsert note:', pErr);
+      console.warn('profiles table adminClient upsert note:', pErr);
+    }
+
+    try {
+      await supabase
+        .from('profiles')
+        .upsert(profilePayload, { onConflict: 'id' });
+    } catch (pErr2) {
+      console.warn('profiles table supabase client upsert note:', pErr2);
     }
 
     // Generate unique slug for profile

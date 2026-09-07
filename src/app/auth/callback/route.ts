@@ -104,17 +104,30 @@ export async function GET(request: NextRequest) {
           await adminClient.from('User').upsert(userDbPayload, { onConflict: 'id' });
         } catch (e) {}
 
-        // 3. Ensure profiles table record exists
+        // 3. Ensure profiles table record exists using authenticated client (satisfies RLS auth.uid() = id)
         try {
-          await (adminClient as any).from('profiles').upsert({
-            id: user.id,
-            first_name: firstName || null,
-            last_name: lastName || null,
-            role: metadataRole,
-            email: user.email || null,
-            address: userCountry,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'id' });
+          const { error: profileUpdateErr } = await supabase
+            .from('profiles')
+            .update({
+              role: metadataRole,
+              first_name: firstName || null,
+              last_name: lastName || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+
+          if (profileUpdateErr) {
+            console.warn('Callback profiles update notice, attempting upsert:', profileUpdateErr.message);
+            await supabase.from('profiles').upsert({
+              id: user.id,
+              first_name: firstName || null,
+              last_name: lastName || null,
+              role: metadataRole,
+              email: user.email || null,
+              address: userCountry,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id' });
+          }
         } catch (pErr) {
           console.warn('Callback profiles upsert warning:', pErr);
         }

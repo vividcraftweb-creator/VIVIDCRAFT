@@ -5,7 +5,7 @@ import { messagesRouter } from './routers/messages.supabase';
 import { profilesRouter } from './routers/profiles.supabase';
 import { publicProfileRouter } from './routers/publicProfile.supabase';
 import { adminRouter } from './routers/admin.supabase';
-// import { braintreeRouter } from './routers/braintree.supabase'; // Disabled for now
+import { braintreeRouter } from './routers/braintree.supabase';
 import { documentsRouter } from './routers/documents.supabase';
 import { notificationsRouter } from './routers/notifications.supabase';
 import { verificationsRouter } from './routers/verifications.supabase';
@@ -45,7 +45,7 @@ export const appRouter = router({
   profiles: profilesRouter,
   publicProfile: publicProfileRouter,
   admin: adminRouter,
-  // braintree: braintreeRouter, // Temporarily disabled to prevent server crash
+  braintree: braintreeRouter,
   documents: documentsRouter,
   notifications: notificationsRouter,
   verifications: verificationsRouter,

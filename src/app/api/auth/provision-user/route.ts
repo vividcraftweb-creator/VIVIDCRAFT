@@ -91,20 +91,34 @@ export async function POST(req: Request) {
       await adminClient.from('User').upsert(userPayload, { onConflict: 'id' });
     } catch (e) {}
 
-    // 5. Upsert profiles table (snake_case)
+    // 5. Upsert profiles table (snake_case) - use authenticated supabase client so RLS allows it
     try {
-      await (adminClient as any).from('profiles').upsert(
-        {
-          id: userId,
-          email,
+      const { error: profileUpdateErr } = await supabase
+        .from('profiles')
+        .update({
           role: metadataRole,
           first_name: firstName || null,
           last_name: lastName || null,
           address: location,
           updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      );
+        })
+        .eq('id', userId);
+
+      if (profileUpdateErr) {
+        console.warn('[provision-user] authenticated update notice, attempting upsert:', profileUpdateErr.message);
+        await supabase.from('profiles').upsert(
+          {
+            id: userId,
+            email,
+            role: metadataRole,
+            first_name: firstName || null,
+            last_name: lastName || null,
+            address: location,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+      }
     } catch (profileErr) {
       console.warn('[provision-user] profiles upsert warning:', profileErr);
     }

@@ -10,6 +10,7 @@ import { checkTokenReset, resetUserTokensIndividual, deductTokens, getUserTokenH
 import { getPlanFeatureSummary } from '@/lib/feature-enforcement';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { createNotification } from '@/lib/notifications/create-notification';
+import { getAuthenticatedClient } from '@/lib/supabase/authenticated-client';
 
 export const userRouter = router({
   getCurrentUser: publicProcedure.query(async ({ ctx }) => {
@@ -468,5 +469,76 @@ export const userRouter = router({
       }
 
       return data;
+    }),
+
+  setRole: protectedProcedure
+    .input(
+      z.object({
+        role: z.enum(['artist', 'client', 'ADMIN', 'FREELANCER', 'CLIENT']),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const rawRole = input.role.toLowerCase();
+      const isClient = rawRole === 'client' || rawRole === 'buyer';
+      const normalizedProfileRole = isClient ? 'client' : (rawRole === 'admin' ? 'admin' : 'artist');
+      const dbRole: 'FREELANCER' | 'CLIENT' | 'ADMIN' = isClient ? 'CLIENT' : (rawRole === 'admin' ? 'ADMIN' : 'FREELANCER');
+
+      // 1. Get authenticated Supabase client with user's JWT to update profiles
+      const supabase = await getAuthenticatedClient(ctx);
+      const timestamp = new Date().toISOString();
+
+      // Explicitly update profiles table
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          role: normalizedProfileRole,
+          updated_at: timestamp,
+        })
+        .eq('id', userId)
+        .select()
+        .maybeSingle();
+
+      if (updateError) {
+        console.warn('[setRole] profiles update notice:', updateError);
+        // Fallback upsert
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: userId,
+            role: normalizedProfileRole,
+            email: ctx.session.user.email || null,
+            updated_at: timestamp,
+          }, { onConflict: 'id' });
+      }
+
+      // 2. Sync secondary tables and auth metadata
+      const adminClient = createAdminClient();
+      try {
+        await (adminClient as any).from('users').update({ role: dbRole, updatedAt: timestamp }).eq('id', userId);
+      } catch {}
+
+      try {
+        await adminClient.from('User').update({ role: dbRole, updatedAt: timestamp }).eq('id', userId);
+      } catch {}
+
+      try {
+        await adminClient.auth.admin.updateUserById(userId, {
+          user_metadata: {
+            role: normalizedProfileRole,
+            user_type: normalizedProfileRole,
+            userRole: normalizedProfileRole,
+            role_name: normalizedProfileRole,
+            account_type: normalizedProfileRole,
+          },
+        });
+      } catch {}
+
+      return {
+        success: true,
+        role: normalizedProfileRole,
+        dbRole,
+        profile: updatedProfile,
+      };
     }),
 });

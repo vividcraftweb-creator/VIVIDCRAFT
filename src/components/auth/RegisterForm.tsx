@@ -139,27 +139,56 @@ export default function RegisterForm() {
         return;
       }
 
-      // Immediately execute explicit Database insert/upsert into public.profiles
-      if (data?.user) {
+      // 2. Establish live session immediately to satisfy RLS on profiles table
+      let activeUserId = data?.user?.id;
+      if (!data?.session) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+        if (signInData?.user) {
+          activeUserId = signInData.user.id;
+        }
+        if (signInError) {
+          console.warn('[RegisterForm] signInWithPassword notice:', signInError.message);
+        }
+      }
+
+      // 3. Directly update profiles table with authenticated session
+      if (activeUserId) {
         try {
-          await supabase.from('profiles').upsert([
-            {
-              id: data.user.id,
+          const { error: profileUpdateErr } = await supabase
+            .from('profiles')
+            .update({
+              role: 'artist',
               first_name: formData.firstName.trim(),
               last_name: formData.lastName.trim(),
-              role: 'artist',
-              email: formData.email.trim(),
               address: userCountry,
               updated_at: new Date().toISOString(),
-            },
-          ]);
+            })
+            .eq('id', activeUserId);
+
+          if (profileUpdateErr) {
+            console.warn('[RegisterForm] profile update error, trying upsert:', profileUpdateErr.message);
+            await supabase.from('profiles').upsert([
+              {
+                id: activeUserId,
+                first_name: formData.firstName.trim(),
+                last_name: formData.lastName.trim(),
+                role: 'artist',
+                email: formData.email.trim(),
+                address: userCountry,
+                updated_at: new Date().toISOString(),
+              },
+            ], { onConflict: 'id' });
+          }
 
           const baseSlug = `${formData.firstName.trim()}-${formData.lastName.trim()}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
           await supabase.from('Profile').upsert([
             {
-              id: data.user.id,
-              userId: data.user.id,
-              slug: `${baseSlug || 'artist'}-${data.user.id.substring(0, 6)}`,
+              id: activeUserId,
+              userId: activeUserId,
+              slug: `${baseSlug || 'artist'}-${activeUserId.substring(0, 6)}`,
               firstName: formData.firstName.trim(),
               lastName: formData.lastName.trim(),
               title: 'Artist',
@@ -173,23 +202,29 @@ export default function RegisterForm() {
               updatedAt: new Date().toISOString(),
             },
           ]);
+
+          // Call provision-user endpoint to sync all tables and auth metadata
+          await fetch('/api/auth/provision-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              role: 'artist',
+              firstName: formData.firstName.trim(),
+              lastName: formData.lastName.trim(),
+              title: 'Artist',
+              location: userCountry,
+              country: userCountry,
+            }),
+          });
         } catch (profileCatchError: any) {
           console.warn('Profile upsert exception:', profileCatchError?.message || profileCatchError);
         }
       }
 
-      // Handle active session and redirect immediately since verification is disabled
-      if (!data.session) {
-        await supabase.auth.signInWithPassword({
-          email: formData.email.trim(),
-          password: formData.password,
-        });
-      }
-
       toast.success('Account created successfully!', {
         description: 'Welcome to Vivid Craft! Redirecting...',
       });
-      router.push('/dashboard');
+      window.location.replace('/dashboard');
     } catch (err: any) {
       console.error("SUPABASE SIGNUP ERROR:", err?.message, err);
       const msg = err?.message || 'An unexpected registration error occurred.';

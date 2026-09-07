@@ -103,7 +103,22 @@ function LoginContent() {
         const rawRole = metadata.role || metadata.userRole || '';
         const cleanRole = String(rawRole).trim().toLowerCase();
         const isClient = cleanRole === 'client' || cleanRole === 'buyer' || cleanRole === 'customer';
-        const roleToUse = isClient ? 'client' : 'artist';
+
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        let roleToUse: 'artist' | 'client' = 'artist';
+        if (existingProfile?.role === 'artist') {
+          roleToUse = 'artist';
+        } else if (existingProfile?.role === 'client') {
+          roleToUse = 'client';
+        } else {
+          roleToUse = isClient ? 'client' : 'artist';
+        }
+
         const fullName = metadata.full_name || metadata.name || '';
         const nameParts = fullName.trim().split(/\s+/);
         const firstName = metadata.first_name || metadata.firstName || nameParts[0] || (roleToUse === 'artist' ? 'New' : 'Client');

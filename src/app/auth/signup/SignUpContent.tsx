@@ -167,7 +167,7 @@ export default function SignUpContent() {
       // STEP 2: Sign in immediately to establish a live session.
       // This is critical — the session is required for RLS on profiles,
       // and for /api/auth/provision-user to verify the caller's identity.
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email.trim(),
         password: formData.password,
       });
@@ -176,9 +176,35 @@ export default function SignUpContent() {
         console.warn('[signup] signInWithPassword warning:', signInError.message);
       }
 
-      // STEP 3: Call /api/auth/provision-user to write the artist role to ALL DB tables
-      // using adminClient (bypasses RLS). The endpoint reads userId from the live session.
-      // This also permanently stamps user_metadata.role = 'artist'.
+      // STEP 2.5: Directly update the profiles table using the live authenticated session.
+      // With the session established, auth.uid() === user.id satisfies PostgREST RLS.
+      const activeUser = signInData?.user || (await supabase.auth.getUser()).data.user;
+      if (activeUser?.id) {
+        const { error: profileUpdateErr } = await supabase
+          .from('profiles')
+          .update({
+            role: selectedRole,
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', activeUser.id);
+
+        if (profileUpdateErr) {
+          console.warn('[signup] Direct profile update notice, attempting upsert:', profileUpdateErr.message);
+          await supabase.from('profiles').upsert({
+            id: activeUser.id,
+            role: selectedRole,
+            email: formData.email.trim(),
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
+            address: userCountry,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+        }
+      }
+
+      // STEP 3: Call /api/auth/provision-user to sync all DB tables and user_metadata
       try {
         await fetch('/api/auth/provision-user', {
           method: 'POST',

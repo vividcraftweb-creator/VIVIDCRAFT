@@ -136,12 +136,20 @@ export async function auth() {
     // Try to read authoritative role — profiles table is the single source of truth for role
     let dbRole: string | null = null;
     try {
-      const adminSupabase = createAdminClient();
+      const userSupabase = await createClient();
 
-      // 1. profiles table is the PRIMARY source of truth for role (set during signup by provision-user)
-      const profilesRow = (await (adminSupabase as any).from('profiles').select('role').eq('id', user.id).maybeSingle())?.data;
+      // 1. profiles table is the PRIMARY source of truth for role (queried with user's session)
+      const profilesRow = (await userSupabase.from('profiles').select('role').eq('id', user.id).maybeSingle())?.data;
       if (profilesRow?.role) {
         dbRole = profilesRow.role;
+      }
+
+      const adminSupabase = createAdminClient();
+      if (!dbRole) {
+        const adminProfilesRow = (await (adminSupabase as any).from('profiles').select('role').eq('id', user.id).maybeSingle())?.data;
+        if (adminProfilesRow?.role) {
+          dbRole = adminProfilesRow.role;
+        }
       }
 
       // 2. user_metadata is stamped by provision-user — check before hitting users/User tables
