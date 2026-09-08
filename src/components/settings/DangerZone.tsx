@@ -66,7 +66,7 @@ export function DangerZone() {
       });
 
       // Hard redirect to clear all in-memory React state and cached cookies
-      window.location.href = '/login?message=account_deleted';
+      window.location.href = '/login?deleted=true';
     } catch (error: any) {
       console.error('Failed to delete account:', error);
       toast.error('Account Deletion Failed', {
@@ -119,11 +119,11 @@ export function DangerZone() {
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <AlertDialogTitle className="text-lg font-bold text-white">
-                Delete Account
+                Delete Account Permanently?
               </AlertDialogTitle>
             </div>
             <AlertDialogDescription className="text-sm text-slate-300 leading-relaxed pt-1">
-              Are you sure you want to delete your account? This action is permanent and cannot be undone.
+              Are you sure you want to delete your account? All your profile data, portfolio, and reviews will be deleted permanently. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row justify-end gap-3 pt-4">
@@ -140,15 +140,15 @@ export function DangerZone() {
                 handleDeleteAccount();
               }}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white border-0 font-medium cursor-pointer flex items-center gap-2"
+              className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border-0 font-medium cursor-pointer flex items-center gap-2"
             >
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Deleting...</span>
+                  <span>Deleting Account...</span>
                 </>
               ) : (
-                <span>Confirm Delete</span>
+                <span>Yes, Delete My Account</span>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

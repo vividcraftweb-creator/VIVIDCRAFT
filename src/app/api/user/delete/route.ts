@@ -58,7 +58,7 @@ async function handleDelete(request: NextRequest) {
       const res = NextResponse.json({
         success: true,
         message: 'Mock admin session deleted',
-        redirectUrl: '/login?message=account_deleted',
+        redirectUrl: '/login?deleted=true',
       });
       res.cookies.set('is_admin', '', { path: '/', maxAge: 0, expires: new Date(0) });
       res.cookies.set('mock_admin_session', '', { path: '/', maxAge: 0, expires: new Date(0) });
@@ -142,7 +142,7 @@ async function handleDelete(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       message: 'Account deleted successfully.',
-      redirectUrl: '/login?message=account_deleted',
+      redirectUrl: '/login?deleted=true',
     });
 
     // Explicitly set deletion on response cookies

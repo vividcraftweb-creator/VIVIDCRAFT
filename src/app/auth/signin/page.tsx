@@ -26,6 +26,8 @@ function SignInContent() {
   const emailParam = searchParams?.get('email') || '';
   const errorParam = searchParams?.get('error') || '';
   const messageParam = searchParams?.get('message') || '';
+  const deletedParam = searchParams?.get('deleted') === 'true';
+  const isAccountDeleted = deletedParam || messageParam === 'account_deleted';
   const redirectTo = searchParams?.get('redirect') || searchParams?.get('next') || '';
   const initialRoleParam = searchParams?.get('role')?.toLowerCase();
 
@@ -52,13 +54,13 @@ function SignInContent() {
   }, [errorParam]);
 
   React.useEffect(() => {
-    if (messageParam === 'account_deleted') {
+    if (isAccountDeleted) {
       toast.success('Account Deleted', {
         description: 'Your account has been permanently deleted.',
         duration: 6000,
       });
     }
-  }, [messageParam]);
+  }, [isAccountDeleted]);
 
   const supabase = createClient();
 
@@ -307,7 +309,7 @@ function SignInContent() {
         </div>
 
         {/* Account Deleted Success Banner */}
-        {messageParam === 'account_deleted' && (
+        {isAccountDeleted && (
           <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 space-y-1 animate-in fade-in">
             <div className="flex items-start gap-2.5">
               <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
