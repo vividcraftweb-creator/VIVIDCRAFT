@@ -49,6 +49,7 @@ export const appRouter = router({
   documents: documentsRouter,
   notifications: notificationsRouter,
   verifications: verificationsRouter,
+  verification: verificationsRouter,
   milestones: milestonesRouter,
   contracts: contractsRouter,
   invoices: invoicesRouter,

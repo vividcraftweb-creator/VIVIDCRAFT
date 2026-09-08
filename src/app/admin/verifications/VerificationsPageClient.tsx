@@ -60,7 +60,14 @@ type UserWithVerifications = {
 };
 
 export default function AdminVerificationsPage() {
-  const { data: users, isLoading, refetch } = trpc.admin.getUsersWithVerifications.useQuery();
+  const utils = trpc.useUtils();
+
+  // Auto-Fetch / Poll Fallback: periodic refetch every 5s & window focus refetch
+  const { data: users, isLoading, refetch } = trpc.admin.getUsersWithVerifications.useQuery(undefined, {
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
+  });
+
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [rejectingDoc, setRejectingDoc] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -69,6 +76,10 @@ export default function AdminVerificationsPage() {
     type: string;
     userName: string;
   } | null>(null);
+
+  // Optimistic UI state overrides: respond instantly without waiting for server roundtrip
+  const [optimisticDocStatus, setOptimisticDocStatus] = useState<Record<string, { status: string; rejectionReason?: string }>>({});
+  const [optimisticUserVerified, setOptimisticUserVerified] = useState<Record<string, boolean>>({});
 
   // Helper function to convert relative paths to full Supabase storage URLs
   const getFullDocumentUrl = (url: string | null | undefined): string | null => {
@@ -105,51 +116,174 @@ export default function AdminVerificationsPage() {
   const [userTypeFilter, setUserTypeFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const rawUsersData: UserWithVerifications[] = Array.isArray(users)
+    ? (users as any as UserWithVerifications[])
+    : [];
+
   const approveMutation = trpc.verifications.approveVerification.useMutation({
-    onSuccess: () => {
+    onMutate: async ({ verificationId }) => {
+      // Optimistic UI: immediately mark document as APPROVED
+      setOptimisticDocStatus((prev) => ({
+        ...prev,
+        [verificationId]: { status: 'APPROVED' },
+      }));
+      const targetUser = rawUsersData.find((u) =>
+        u.Verification?.some((d) => d.id === verificationId)
+      );
+      if (targetUser) {
+        setOptimisticUserVerified((prev) => ({
+          ...prev,
+          [targetUser.id]: true,
+        }));
+      }
+    },
+    onSuccess: async () => {
       toast.success('Document approved');
+      // Cache Invalidation on Action
+      try {
+        await Promise.all([
+          utils.verification.getAllPending.invalidate(),
+          utils.verifications.getAllPending.invalidate(),
+          utils.admin.getUsers.invalidate(),
+          utils.admin.getUsersWithVerifications.invalidate(),
+          utils.admin.users.getUsers.invalidate(),
+          utils.admin.users.getOverview.invalidate(),
+          utils.verifications.getUserDocuments.invalidate(),
+        ]);
+      } catch (err) {
+        console.warn('Cache invalidation notice:', err);
+      }
       refetch();
     },
-    onError: (error) => {
+    onError: (error, { verificationId }) => {
+      setOptimisticDocStatus((prev) => {
+        const copy = { ...prev };
+        delete copy[verificationId];
+        return copy;
+      });
       toast.error(error.message || 'Failed to approve document');
     },
   });
 
   const rejectMutation = trpc.verifications.rejectVerification.useMutation({
-    onSuccess: () => {
-      toast.success('Document rejected');
+    onMutate: async ({ verificationId, reason }) => {
+      // Optimistic UI: immediately mark document as REJECTED with reason
+      setOptimisticDocStatus((prev) => ({
+        ...prev,
+        [verificationId]: { status: 'REJECTED', rejectionReason: reason },
+      }));
       setRejectingDoc(null);
       setRejectionReason('');
+    },
+    onSuccess: async () => {
+      toast.success('Document rejected');
+      // Cache Invalidation on Action
+      try {
+        await Promise.all([
+          utils.verification.getAllPending.invalidate(),
+          utils.verifications.getAllPending.invalidate(),
+          utils.admin.getUsers.invalidate(),
+          utils.admin.getUsersWithVerifications.invalidate(),
+          utils.admin.users.getUsers.invalidate(),
+          utils.admin.users.getOverview.invalidate(),
+          utils.verifications.getUserDocuments.invalidate(),
+        ]);
+      } catch (err) {
+        console.warn('Cache invalidation notice:', err);
+      }
       refetch();
     },
-    onError: (error) => {
+    onError: (error, { verificationId }) => {
+      setOptimisticDocStatus((prev) => {
+        const copy = { ...prev };
+        delete copy[verificationId];
+        return copy;
+      });
       toast.error(error.message || 'Failed to reject document');
     },
   });
 
   const userVerifyMutation = trpc.admin.users.verifyUser.useMutation({
-    onSuccess: (data) => {
+    onMutate: async ({ userId }) => {
+      setOptimisticUserVerified((prev) => ({ ...prev, [userId]: true }));
+    },
+    onSuccess: async (data) => {
       toast.success(data?.message || 'User verified successfully');
+      try {
+        await Promise.all([
+          utils.admin.getUsers.invalidate(),
+          utils.admin.getUsersWithVerifications.invalidate(),
+          utils.admin.users.getUsers.invalidate(),
+          utils.verification.getAllPending.invalidate(),
+          utils.verifications.getAllPending.invalidate(),
+        ]);
+      } catch (err) {}
       refetch();
     },
-    onError: (error) => {
+    onError: (error, { userId }) => {
+      setOptimisticUserVerified((prev) => {
+        const copy = { ...prev };
+        delete copy[userId];
+        return copy;
+      });
       toast.error(error.message || 'Failed to verify user');
     },
   });
 
   const userUnverifyMutation = trpc.admin.users.unverifyUser.useMutation({
-    onSuccess: (data) => {
+    onMutate: async ({ userId }) => {
+      setOptimisticUserVerified((prev) => ({ ...prev, [userId]: false }));
+    },
+    onSuccess: async (data) => {
       toast.success(data?.message || 'User unverified successfully');
+      try {
+        await Promise.all([
+          utils.admin.getUsers.invalidate(),
+          utils.admin.getUsersWithVerifications.invalidate(),
+          utils.admin.users.getUsers.invalidate(),
+          utils.verification.getAllPending.invalidate(),
+          utils.verifications.getAllPending.invalidate(),
+        ]);
+      } catch (err) {}
       refetch();
     },
-    onError: (error) => {
+    onError: (error, { userId }) => {
+      setOptimisticUserVerified((prev) => {
+        const copy = { ...prev };
+        delete copy[userId];
+        return copy;
+      });
       toast.error(error.message || 'Failed to unverify user');
     },
   });
 
-  const usersData: UserWithVerifications[] = Array.isArray(users)
-    ? (users as any as UserWithVerifications[])
-    : [];
+  // Apply optimistic status updates immediately across all users and documents
+  const usersData: UserWithVerifications[] = useMemo(() => {
+    return rawUsersData.map((user) => {
+      const userOptimistic = optimisticUserVerified[user.id];
+      const updatedUser = {
+        ...user,
+        isVerified: userOptimistic !== undefined ? userOptimistic : Boolean((user as any).isVerified || (user as any).is_verified),
+        is_verified: userOptimistic !== undefined ? userOptimistic : Boolean((user as any).isVerified || (user as any).is_verified),
+      };
+
+      if (user.Verification && Array.isArray(user.Verification)) {
+        updatedUser.Verification = user.Verification.map((doc) => {
+          const override = optimisticDocStatus[doc.id];
+          if (override) {
+            return {
+              ...doc,
+              status: override.status,
+              rejectionReason: override.rejectionReason !== undefined ? override.rejectionReason : doc.rejectionReason,
+            };
+          }
+          return doc;
+        });
+      }
+
+      return updatedUser;
+    });
+  }, [rawUsersData, optimisticDocStatus, optimisticUserVerified]);
 
   // Calculate stats
   const allDocs = usersData.flatMap((user) => user.Verification || []);

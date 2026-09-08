@@ -402,6 +402,33 @@ export const verificationsRouter = router({
     }
   }),
 
+  getAllPending: adminProcedure.query(async ({ ctx }) => {
+    try {
+      const supabase = ctx.adminSupabase;
+      if (!supabase) return [];
+
+      let { data: verifications, error } = await supabase
+        .from('Verification')
+        .select(`
+          *,
+          user:User!Verification_userId_fkey(*)
+        `)
+        .eq('status', 'PENDING');
+
+      if (error) {
+        const fallbackRes = await supabase
+          .from('Verification')
+          .select('*')
+          .eq('status', 'PENDING');
+        verifications = fallbackRes.data as any;
+      }
+
+      return verifications || [];
+    } catch (err) {
+      return [];
+    }
+  }),
+
   updateVerificationStatus: adminProcedure
     .input(
       z.object({

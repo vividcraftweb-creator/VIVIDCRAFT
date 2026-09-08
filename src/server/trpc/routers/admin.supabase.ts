@@ -32,6 +32,7 @@ const requireAdminSupabase = (ctx: Context) => {
 
 export const adminRouter = router({
   users: adminUsersRouter,
+  getUsers: adminUsersRouter.getUsers,
   jobs: adminJobsRouter,
   auditLogs: adminAuditLogsRouter,
   proposals: adminProposalsRouter,

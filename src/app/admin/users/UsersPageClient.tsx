@@ -162,6 +162,9 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
     loadAllUsers();
   }, []);
 
+  const utils = trpc.useUtils();
+
+  // Auto-Fetch / Poll Fallback: periodic refetch every 5s & window focus refetch
   const { data, isLoading, refetch } = trpc.admin.users.getUsers.useQuery({
     search: debouncedSearch || undefined,
     role: role,
@@ -172,31 +175,75 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
     offset: page * pageSize,
     sortBy,
     sortOrder,
+  }, {
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
   });
 
-  const { data: overview } = trpc.admin.users.getOverview.useQuery();
+  const { data: overview } = trpc.admin.users.getOverview.useQuery(undefined, {
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
+  });
 
   useEffect(() => {
     setPage(0);
   }, [debouncedSearch, role, verificationStatus, planFilter, emailStatus, sortBy, sortOrder, pageSize]);
 
   const verifyMutation = trpc.admin.users.verifyUser.useMutation({
-    onSuccess: (data) => {
+    onMutate: async ({ userId }) => {
+      // Optimistic UI update: instantly mark user as verified in local state
+      setDirectUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u))
+      );
+    },
+    onSuccess: async (data) => {
       toast.success(data?.message || 'User verified successfully');
+      try {
+        await Promise.all([
+          utils.admin.users.getUsers.invalidate(),
+          utils.admin.getUsers.invalidate(),
+          utils.admin.getUsersWithVerifications.invalidate(),
+          utils.admin.users.getOverview.invalidate(),
+          utils.verification.getAllPending.invalidate(),
+          utils.verifications.getAllPending.invalidate(),
+        ]);
+      } catch (e) {}
       refetch();
       setVerifyTarget(null);
     },
-    onError: (error) => {
+    onError: (error, { userId }) => {
+      setDirectUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isVerified: false } : u))
+      );
       toast.error(error.message || 'Failed to verify user');
     },
   });
 
   const unverifyMutation = trpc.admin.users.unverifyUser.useMutation({
-    onSuccess: (data) => {
+    onMutate: async ({ userId }) => {
+      // Optimistic UI update: instantly mark user as unverified in local state
+      setDirectUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isVerified: false } : u))
+      );
+    },
+    onSuccess: async (data) => {
       toast.success(data?.message || 'User unverified successfully');
+      try {
+        await Promise.all([
+          utils.admin.users.getUsers.invalidate(),
+          utils.admin.getUsers.invalidate(),
+          utils.admin.getUsersWithVerifications.invalidate(),
+          utils.admin.users.getOverview.invalidate(),
+          utils.verification.getAllPending.invalidate(),
+          utils.verifications.getAllPending.invalidate(),
+        ]);
+      } catch (e) {}
       refetch();
     },
-    onError: (error) => {
+    onError: (error, { userId }) => {
+      setDirectUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u))
+      );
       toast.error(error.message || 'Failed to unverify user');
     },
   });
