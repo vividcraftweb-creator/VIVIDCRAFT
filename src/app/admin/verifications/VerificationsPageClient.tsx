@@ -67,7 +67,7 @@ export default function AdminVerificationsPage() {
 
   // Auto-Fetch / Poll Fallback: periodic refetch every 5s & window focus refetch
   // Disable Caching on Admin Query: cacheTime: 0, staleTime: 0, refetchOnMount: 'always'
-  const { data: users, isLoading, refetch } = trpc.admin.getUsersWithVerifications.useQuery(undefined, {
+  const { data: users, isLoading, refetch } = trpc.admin.getVerifications.useQuery(undefined, {
     cacheTime: 0,
     gcTime: 0,
     staleTime: 0,
@@ -124,9 +124,120 @@ export default function AdminVerificationsPage() {
   const [userTypeFilter, setUserTypeFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const rawUsersData: UserWithVerifications[] = Array.isArray(users)
-    ? (users as any as UserWithVerifications[])
-    : [];
+  // Dynamically normalize either flat verifications records or grouped user records
+  const rawUsersData: UserWithVerifications[] = useMemo(() => {
+    if (!Array.isArray(users)) return [];
+
+    if (users.length > 0 && Array.isArray((users[0] as any).Verification)) {
+      return users as UserWithVerifications[];
+    }
+
+    const userMap = new Map<string, UserWithVerifications>();
+
+    for (const v of users as any[]) {
+      const uid = v.user_id || v.userId || v.id;
+      if (!uid) continue;
+
+      const prof = v.profiles || v.user?.Profile?.[0] || v.Profile?.[0] || v.user || {};
+      const fullName = prof.full_name || v.user?.full_name || `${prof.first_name || ''} ${prof.last_name || ''}`.trim() || 'Artist';
+      const email = prof.email || v.user?.email || v.email || 'User';
+      const rawRole = (prof.role || v.user?.role || v.role || 'ARTIST').toUpperCase();
+      const role = rawRole === 'FREELANCER' || rawRole === 'ARTIST' ? 'ARTIST' : rawRole;
+      const clientType = prof.client_type || v.clientType || null;
+      const isVerified = Boolean(prof.is_verified ?? v.isVerified ?? false);
+
+      const status = (v.status || 'pending').toUpperCase();
+      const docType = v.document_type || v.documentType || 'ID Document';
+      const createdAt = v.created_at || v.createdAt || new Date().toISOString();
+      const rejectionReason = v.rejection_reason || v.rejectionReason || null;
+
+      const frontUrl = v.id_front_url || v.front_url || v.document_url || v.documentUrl || v.files || null;
+      const backUrl = v.id_back_url || v.back_url || null;
+      const selfieUrl = v.selfie_url || null;
+
+      const docs: Document[] = [];
+      if (frontUrl) {
+        docs.push({
+          id: `${v.id}-front`,
+          verificationType: 'ID_FRONT',
+          documentType: `${docType} (Front)`,
+          documentUrl: frontUrl,
+          files: frontUrl,
+          fileName: `${docType} - Front`,
+          status,
+          createdAt,
+          rejectionReason,
+        });
+      }
+      if (backUrl) {
+        docs.push({
+          id: `${v.id}-back`,
+          verificationType: 'ID_BACK',
+          documentType: `${docType} (Back)`,
+          documentUrl: backUrl,
+          files: backUrl,
+          fileName: `${docType} - Back`,
+          status,
+          createdAt,
+          rejectionReason,
+        });
+      }
+      if (selfieUrl) {
+        docs.push({
+          id: `${v.id}-selfie`,
+          verificationType: 'SELFIE',
+          documentType: `Selfie with ${docType}`,
+          documentUrl: selfieUrl,
+          files: selfieUrl,
+          fileName: `Selfie with ${docType}`,
+          status,
+          createdAt,
+          rejectionReason,
+        });
+      }
+      if (docs.length === 0) {
+        docs.push({
+          id: v.id,
+          verificationType: 'ID_FRONT',
+          documentType: docType,
+          documentUrl: frontUrl || backUrl || selfieUrl || null,
+          files: frontUrl || backUrl || selfieUrl || null,
+          fileName: docType,
+          status,
+          createdAt,
+          rejectionReason,
+        });
+      }
+
+      const existing = userMap.get(uid);
+      if (existing) {
+        existing.Verification = [...(existing.Verification || []), ...docs];
+      } else {
+        userMap.set(uid, {
+          id: uid,
+          email,
+          role,
+          clientType,
+          createdAt,
+          isVerified,
+          is_verified: isVerified,
+          Profile: [
+            {
+              firstName: prof.first_name || fullName.split(' ')[0] || '',
+              lastName: prof.last_name || fullName.split(' ').slice(1).join(' ') || '',
+              companyName: prof.company_name || null,
+              full_name: fullName,
+              first_name: prof.first_name || '',
+              last_name: prof.last_name || '',
+            },
+          ],
+          Verification: docs,
+        });
+      }
+    }
+
+    return Array.from(userMap.values());
+  }, [users]);
 
   const approveMutation = trpc.verifications.approveVerification.useMutation({
     onMutate: async ({ verificationId }) => {
@@ -466,7 +577,7 @@ export default function AdminVerificationsPage() {
                 <div className="text-xs text-yellow-400 font-medium">Pending Review</div>
                 <div className="text-2xl font-bold text-white mt-1">{pendingDocs.length}</div>
                 <div className="text-xs text-slate-400 mt-1">
-                  {usersData.filter((u) => u.Verification?.some((d) => d.status === 'PENDING')).length} users
+                  {usersData.filter((u) => u.Verification?.some((d) => (d.status || '').toUpperCase() === 'PENDING')).length} users
                 </div>
               </div>
               <Clock className="h-6 w-6 text-yellow-400" />

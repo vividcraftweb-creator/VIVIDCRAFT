@@ -629,18 +629,26 @@ export default function ArtistVerificationView() {
       };
 
       try {
-        const { error: vUpsertErr } = await (supabase as any)
+        const { data: existingV } = await (supabase as any)
           .from('verifications')
-          .upsert(verificationsPayload, { onConflict: 'user_id' });
+          .select('id')
+          .eq('user_id', targetUserId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        if (vUpsertErr) {
-          console.warn('Direct upsert on verifications failed, trying insert:', vUpsertErr);
-          const { error: vInsertErr } = await (supabase as any)
+        if (existingV?.id) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              ...verificationsPayload,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingV.id);
+        } else {
+          await (supabase as any)
             .from('verifications')
             .insert(verificationsPayload);
-          if (vInsertErr) {
-            console.warn('Direct client insert notice (will be safely written by server mutation):', vInsertErr);
-          }
         }
       } catch (clientWriteErr) {
         console.warn('Direct client write notice, proceeding to server mutation:', clientWriteErr);
@@ -718,6 +726,10 @@ export default function ArtistVerificationView() {
           utils.admin.getUsersWithVerifications.invalidate(),
           utils.admin.getUsers.invalidate(),
           utils.admin.users.getUsers.invalidate(),
+          (utils.admin as any).getVerifications?.invalidate?.(),
+          (utils.admin as any).getQueue?.invalidate?.(),
+          (utils.verifications as any).getVerifications?.invalidate?.(),
+          (utils.verifications as any).getQueue?.invalidate?.(),
         ]);
       } catch {}
     } catch (err: any) {
