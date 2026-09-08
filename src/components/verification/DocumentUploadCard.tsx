@@ -198,20 +198,37 @@ export default function DocumentUploadCard({
 
       setUploadProgress(30);
 
+      console.log("Uploading to bucket 'verifications'...", fileToUpload);
+
+      let bucketName = 'verifications';
       const { error: uploadError } = await supabase.storage
-        .from('public-uploads')
+        .from('verifications')
         .upload(filePath, fileToUpload, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: true,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Storage upload error for bucket 'verifications':", uploadError);
+        console.warn("Verifications bucket upload failed, attempting fallback to 'public-uploads':", uploadError.message);
+        bucketName = 'public-uploads';
+        const fallbackRes = await supabase.storage
+          .from('public-uploads')
+          .upload(filePath, fileToUpload, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+        if (fallbackRes.error) {
+          console.error("Storage upload error for fallback bucket 'public-uploads':", fallbackRes.error);
+          throw uploadError;
+        }
+      }
 
       setUploadProgress(60);
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from('public-uploads').getPublicUrl(filePath);
+      } = supabase.storage.from(bucketName).getPublicUrl(filePath);
 
       setUploadProgress(80);
 
@@ -224,7 +241,9 @@ export default function DocumentUploadCard({
       });
 
       setUploadProgress(100);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Exact storage error response in DocumentUploadCard:", error);
+      toast.error(error?.message || 'Failed to upload document');
       setUploading(false);
       setUploadProgress(0);
     }

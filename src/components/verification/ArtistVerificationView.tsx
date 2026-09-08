@@ -350,6 +350,8 @@ export default function ArtistVerificationView() {
       setUploadProgress((prev) => ({ ...prev, [slot]: 40 }));
 
       // 1. Upload to verifications bucket (with fallback to public-uploads)
+      console.log("Uploading to bucket 'verifications'...", file);
+
       let bucketName = 'verifications';
       let uploadRes = await supabase.storage
         .from('verifications')
@@ -359,6 +361,7 @@ export default function ArtistVerificationView() {
         });
 
       if (uploadRes.error) {
+        console.error("Storage upload error for bucket 'verifications':", uploadRes.error);
         console.warn('Verifications bucket upload failed, using public-uploads fallback:', uploadRes.error.message);
         bucketName = 'public-uploads';
         uploadRes = await supabase.storage
@@ -369,6 +372,7 @@ export default function ArtistVerificationView() {
           });
 
         if (uploadRes.error) {
+          console.error("Storage upload error for fallback bucket 'public-uploads':", uploadRes.error);
           throw new Error(uploadRes.error.message || 'File upload to storage failed');
         }
       }
@@ -416,7 +420,7 @@ export default function ArtistVerificationView() {
       setUploadProgress((prev) => ({ ...prev, [slot]: 100 }));
       toast.success(`${slotLabel} uploaded successfully!`);
     } catch (err: any) {
-      console.error('File upload error:', err);
+      console.error("Exact storage error response in handleFileUpload:", err);
       toast.error(err.message || 'Failed to upload document');
     } finally {
       setUploadingSlot(null);
