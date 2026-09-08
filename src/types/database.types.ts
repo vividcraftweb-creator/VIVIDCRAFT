@@ -2813,6 +2813,42 @@ export type Database = {
           },
         ]
       }
+      verifications: {
+        Row: {
+          created_at: string
+          document_type: string
+          id: string
+          id_back_url: string | null
+          id_front_url: string
+          selfie_url: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          id?: string
+          id_back_url?: string | null
+          id_front_url: string
+          selfie_url: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          id?: string
+          id_back_url?: string | null
+          id_front_url?: string
+          selfie_url?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       VideoInterview: {
         Row: {
           clientId: string

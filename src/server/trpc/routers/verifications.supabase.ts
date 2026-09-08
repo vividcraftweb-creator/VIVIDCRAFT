@@ -495,7 +495,9 @@ export const verificationsRouter = router({
   /**
    * Submit all documents for review
    */
-  submitForReview: protectedProcedure.mutation(async ({ ctx }) => {
+  submitForReview: protectedProcedure
+    .input(z.object({ documentType: z.string().optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
     const supabase = await createClient();
     // Use admin client for User table queries
     const adminSupabase = createAdminClient();
@@ -649,14 +651,19 @@ export const verificationsRouter = router({
     // Get all user documents
     const { data: documents } = await supabase
       .from('Verification')
-      .select('verificationType')
+      .select('verificationType, documentType')
       .eq('userId', userId);
 
     const docTypes = new Set(documents?.map(d => d.verificationType) || []);
 
-    // Validate required documents based on client type
-    // ID front, back, and selfie are always required (prevents fraud)
-    const requiredDocs = ['ID_FRONT', 'ID_BACK', 'SELFIE'];
+    const isPassport =
+      input?.documentType?.toLowerCase()?.includes('passport') ||
+      documents?.some(d => d.documentType?.toLowerCase()?.includes('passport'));
+
+    // Validate required documents based on client type & document type
+    // If Passport: Front and Selfie are required. Back is not required.
+    // If National ID or Driving License: Front, Back, and Selfie are required.
+    const requiredDocs = isPassport ? ['ID_FRONT', 'SELFIE'] : ['ID_FRONT', 'ID_BACK', 'SELFIE'];
     if (user.clientType === 'BUSINESS') {
       requiredDocs.push('BUSINESS_REGISTRATION', 'PROOF_OF_ADDRESS');
     }
@@ -686,6 +693,7 @@ export const verificationsRouter = router({
       .insert({
         id: crypto.randomUUID(),
         userId,
+        documentType: input?.documentType || (isPassport ? 'Passport' : 'Government ID'),
         status: 'PENDING',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

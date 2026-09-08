@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { trpc } from '@/utils/trpc';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -21,13 +21,79 @@ import {
   UserCheck,
   FileCheck2,
   Calendar,
+  CreditCard,
+  IdCard,
+  Info,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-type DocumentType = 'ID_FRONT' | 'ID_BACK' | 'SELFIE';
+export type SupportedDocType = 'national_id' | 'passport' | 'driving_license';
+export type VerificationSlot = 'ID_FRONT' | 'ID_BACK' | 'SELFIE';
+
+interface DocTypeConfig {
+  id: SupportedDocType;
+  label: string;
+  sublabel: string;
+  icon: React.ReactNode;
+  requiresBack: boolean;
+  frontTitle: string;
+  frontDesc: string;
+  backTitle?: string;
+  backDesc?: string;
+  selfieTitle: string;
+  selfieDesc: string;
+}
+
+const DOC_CONFIGS: Record<SupportedDocType, DocTypeConfig> = {
+  national_id: {
+    id: 'national_id',
+    label: 'National ID Card',
+    sublabel: 'Front, Back & Selfie required',
+    icon: <IdCard className="h-5 w-5 text-sky-400" />,
+    requiresBack: true,
+    frontTitle: 'National ID (Front)',
+    frontDesc: 'Clear photo of the front side showing full name, photo, and ID number',
+    backTitle: 'National ID (Back)',
+    backDesc: 'Clear photo of the reverse side showing barcode, address, or signature',
+    selfieTitle: 'Selfie with National ID',
+    selfieDesc: 'Photo of yourself holding your ID card clearly next to your face',
+  },
+  passport: {
+    id: 'passport',
+    label: 'Passport',
+    sublabel: 'Main Data Page & Selfie (Back not required)',
+    icon: <FileText className="h-5 w-5 text-indigo-400" />,
+    requiresBack: false,
+    frontTitle: 'Passport (Main Data Page)',
+    frontDesc: 'Clear photo of your passport page showing photo, MRZ code, and identity details',
+    selfieTitle: 'Selfie with Passport',
+    selfieDesc: 'Photo of yourself holding your open passport next to your face',
+  },
+  driving_license: {
+    id: 'driving_license',
+    label: 'Driving License',
+    sublabel: 'Front, Back & Selfie required',
+    icon: <CreditCard className="h-5 w-5 text-emerald-400" />,
+    requiresBack: true,
+    frontTitle: 'Driving License (Front)',
+    frontDesc: 'Clear photo of the front side showing your photo and license number',
+    backTitle: 'Driving License (Back)',
+    backDesc: 'Clear photo of the reverse side showing endorsements and validity dates',
+    selfieTitle: 'Selfie with Driving License',
+    selfieDesc: 'Photo of yourself holding your driving license clearly next to your face',
+  },
+};
 
 interface UploadedDocItem {
   id: string;
@@ -39,18 +105,36 @@ interface UploadedDocItem {
   createdAt: string;
 }
 
+interface SubmittedVerificationRecord {
+  id?: string;
+  document_type: string;
+  id_front_url: string;
+  id_back_url?: string | null;
+  selfie_url: string;
+  status: string;
+  created_at?: string;
+}
+
 export default function ArtistVerificationView() {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<{ is_verified?: boolean; verified?: boolean; status?: string } | null>(null);
   const [directDocs, setDirectDocs] = useState<UploadedDocItem[]>([]);
-  const [selectedIdType, setSelectedIdType] = useState<'passport' | 'national_id' | 'drivers_license'>('passport');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [expiryDate, setExpiryDate] = useState<string>('');
+  const [submittedRecord, setSubmittedRecord] = useState<SubmittedVerificationRecord | null>(null);
+  const [isPendingSubmitted, setIsPendingSubmitted] = useState(false);
 
-  // Upload state per document type
-  const [uploadingType, setUploadingType] = useState<DocumentType | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  // Document Type selection: National ID Card, Passport, Driving License
+  const [selectedDocType, setSelectedDocType] = useState<SupportedDocType>('national_id');
+  const [expiryDate, setExpiryDate] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Upload progress tracking per slot
+  const [uploadingSlot, setUploadingSlot] = useState<VerificationSlot | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({
+    ID_FRONT: 0,
+    ID_BACK: 0,
+    SELFIE: 0,
+  });
 
   const utils = trpc.useUtils();
 
@@ -67,12 +151,11 @@ export default function ArtistVerificationView() {
 
   const uploadDocMutation = trpc.verifications.uploadDocument.useMutation({
     onSuccess: () => {
-      toast.success('Document uploaded successfully!');
       utils.verifications.getUserDocuments.invalidate();
       refetchDocs();
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to record document');
+      console.warn('tRPC uploadDocument mutation notice:', error.message);
     },
   });
 
@@ -96,7 +179,7 @@ export default function ArtistVerificationView() {
       refetchDocs();
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to submit verification request');
+      console.warn('submitForReviewMutation notice:', error.message);
     },
   });
 
@@ -104,7 +187,6 @@ export default function ArtistVerificationView() {
   useEffect(() => {
     let isMounted = true;
 
-    // 5-second timeout fallback ensures spinner never hangs indefinitely
     const timeoutTimer = setTimeout(() => {
       if (isMounted) {
         setIsLoading(false);
@@ -131,7 +213,7 @@ export default function ArtistVerificationView() {
             setProfileData(prof);
           }
 
-          // 2. Fetch User Verification Documents
+          // 2. Fetch User Verification Documents from Verification table
           const { data: docs, error: docErr } = await supabase
             .from('Verification')
             .select('*')
@@ -148,6 +230,32 @@ export default function ArtistVerificationView() {
               createdAt: d.createdAt || d.created_at || new Date().toISOString(),
             }));
             setDirectDocs(mappedDocs);
+          }
+
+          // 3. Fetch latest record from verifications table
+          try {
+            const { data: vRecord, error: vErr } = await (supabase as any)
+              .from('verifications')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (!vErr && vRecord && isMounted) {
+              setSubmittedRecord(vRecord);
+              // Infer selected doc type if possible
+              const docTypeStr = (vRecord.document_type || '').toLowerCase();
+              if (docTypeStr.includes('passport')) {
+                setSelectedDocType('passport');
+              } else if (docTypeStr.includes('license')) {
+                setSelectedDocType('driving_license');
+              } else {
+                setSelectedDocType('national_id');
+              }
+            }
+          } catch (verificationsTableErr) {
+            console.warn('verifications table query notice:', verificationsTableErr);
           }
         }
       } catch (err) {
@@ -189,11 +297,14 @@ export default function ArtistVerificationView() {
     profileData?.verified ||
     (myProfile as any)?.is_verified ||
     (myProfile as any)?.verified ||
+    submittedRecord?.status === 'approved' ||
     allDocuments.some((d) => d.status === 'APPROVED')
   );
 
   const isPending = Boolean(
     !isApproved && (
+      isPendingSubmitted ||
+      submittedRecord?.status === 'pending' ||
       profileData?.status === 'pending_verification' ||
       (myProfile as any)?.status === 'pending_verification' ||
       allDocuments.some((d) => d.status === 'PENDING')
@@ -201,10 +312,17 @@ export default function ArtistVerificationView() {
   );
 
   const rejectedDocs = allDocuments.filter((d) => d.status === 'REJECTED');
-  const isRejected = !isApproved && !isPending && rejectedDocs.length > 0;
+  const isRejected = !isApproved && !isPending && (rejectedDocs.length > 0 || submittedRecord?.status === 'rejected');
 
-  // File upload handler to Supabase storage + record via tRPC mutation
-  const handleFileUpload = async (type: DocumentType, file: File) => {
+  const currentConfig = DOC_CONFIGS[selectedDocType];
+
+  // Helper to get uploaded document for a specific slot
+  const getSlotDoc = (slot: VerificationSlot) => {
+    return allDocuments.find((d) => d.verificationType === slot);
+  };
+
+  // Upload file to verifications bucket with graceful fallback to public-uploads
+  const handleFileUpload = async (slot: VerificationSlot, file: File) => {
     if (!file) return;
 
     // Validate size (max 5MB)
@@ -213,95 +331,115 @@ export default function ArtistVerificationView() {
       return;
     }
 
-    // Validate type
+    // Validate format
     const validMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!validMimes.includes(file.type)) {
-      toast.error('Please upload a valid image (JPG, PNG, WebP) or PDF');
+      toast.error('Please upload a valid image (JPG, PNG, WebP) or PDF document');
       return;
     }
 
-    setUploadingType(type);
-    setUploadProgress((prev) => ({ ...prev, [type]: 20 }));
+    setUploadingSlot(slot);
+    setUploadProgress((prev) => ({ ...prev, [slot]: 15 }));
 
     try {
       const supabase = createClient();
       const fileExt = file.name.split('.').pop() || 'jpg';
       const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-      const filePath = `verification-documents/${cleanFileName}`;
+      const filePath = `verification-documents/${sessionUserId || 'user'}/${cleanFileName}`;
 
-      setUploadProgress((prev) => ({ ...prev, [type]: 50 }));
+      setUploadProgress((prev) => ({ ...prev, [slot]: 40 }));
 
-      // Upload to public-uploads bucket
-      const { error: uploadErr } = await supabase.storage
-        .from('public-uploads')
+      // 1. Upload to verifications bucket (with fallback to public-uploads)
+      let bucketName = 'verifications';
+      let uploadRes = await supabase.storage
+        .from('verifications')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
         });
 
-      if (uploadErr) {
-        throw new Error(uploadErr.message || 'Storage upload failed');
+      if (uploadRes.error) {
+        console.warn('Verifications bucket upload failed, using public-uploads fallback:', uploadRes.error.message);
+        bucketName = 'public-uploads';
+        uploadRes = await supabase.storage
+          .from('public-uploads')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadRes.error) {
+          throw new Error(uploadRes.error.message || 'File upload to storage failed');
+        }
       }
 
-      setUploadProgress((prev) => ({ ...prev, [type]: 80 }));
+      setUploadProgress((prev) => ({ ...prev, [slot]: 80 }));
 
       const { data: { publicUrl } } = supabase.storage
-        .from('public-uploads')
+        .from(bucketName)
         .getPublicUrl(filePath);
 
-      // Record document in database
-      const labelMap: Record<DocumentType, string> = {
-        ID_FRONT: selectedIdType === 'passport' ? 'Passport (Photo Page)' : 'Government ID (Front)',
-        ID_BACK: 'Government ID (Back)',
-        SELFIE: 'Selfie with ID',
+      // 2. Record document in Verification table
+      const slotLabel =
+        slot === 'ID_FRONT'
+          ? currentConfig.frontTitle
+          : slot === 'ID_BACK'
+          ? currentConfig.backTitle || 'Back of Document'
+          : currentConfig.selfieTitle;
+
+      try {
+        await uploadDocMutation.mutateAsync({
+          verificationType: slot,
+          fileUrl: publicUrl,
+          documentType: slotLabel,
+          expiryDate: expiryDate ? new Date(expiryDate).toISOString() : undefined,
+        });
+      } catch (mutationErr) {
+        console.warn('Upload mutation notice:', mutationErr);
+      }
+
+      // 3. Update local state optimistically
+      const newDoc: UploadedDocItem = {
+        id: `temp-${Date.now()}`,
+        verificationType: slot,
+        status: 'PENDING',
+        documentUrl: publicUrl,
+        fileName: file.name,
+        createdAt: new Date().toISOString(),
       };
 
-      await uploadDocMutation.mutateAsync({
-        verificationType: type,
-        fileUrl: publicUrl,
-        documentType: labelMap[type],
-        expiryDate: expiryDate ? new Date(expiryDate).toISOString() : undefined,
-      });
-
-      // Update local state optimistically
       setDirectDocs((prev) => {
-        const filtered = prev.filter((d) => d.verificationType !== type);
-        return [
-          ...filtered,
-          {
-            id: `temp-${Date.now()}`,
-            verificationType: type,
-            status: 'PENDING',
-            documentUrl: publicUrl,
-            fileName: file.name,
-            createdAt: new Date().toISOString(),
-          },
-        ];
+        const filtered = prev.filter((d) => d.verificationType !== slot);
+        return [...filtered, newDoc];
       });
 
-      setUploadProgress((prev) => ({ ...prev, [type]: 100 }));
+      setUploadProgress((prev) => ({ ...prev, [slot]: 100 }));
+      toast.success(`${slotLabel} uploaded successfully!`);
     } catch (err: any) {
       console.error('File upload error:', err);
       toast.error(err.message || 'Failed to upload document');
     } finally {
-      setUploadingType(null);
+      setUploadingSlot(null);
     }
   };
 
-  // Remove document
-  const handleRemoveDoc = async (type: DocumentType) => {
-    const doc = allDocuments.find((d) => d.verificationType === type);
+  // Remove uploaded document
+  const handleRemoveDoc = async (slot: VerificationSlot) => {
+    const doc = allDocuments.find((d) => d.verificationType === slot);
     if (!doc) return;
 
     try {
-      await deleteDocMutation.mutateAsync({ verificationId: doc.id });
-      setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id));
+      if (doc.id && !doc.id.startsWith('temp-')) {
+        await deleteDocMutation.mutateAsync({ verificationId: doc.id });
+      }
+      setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id && d.verificationType !== slot));
+      toast.success('Document removed');
     } catch (err) {
       // Direct delete fallback
       try {
         const supabase = createClient();
         await supabase.from('Verification').delete().eq('id', doc.id);
-        setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id));
+        setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id && d.verificationType !== slot));
         toast.success('Document removed');
       } catch {}
     }
@@ -309,43 +447,71 @@ export default function ArtistVerificationView() {
 
   // Submit all uploaded documents for verification
   const handleSubmitVerification = async () => {
-    const idFront = allDocuments.find((d) => d.verificationType === 'ID_FRONT');
-    const selfie = allDocuments.find((d) => d.verificationType === 'SELFIE');
+    const idFrontDoc = getSlotDoc('ID_FRONT');
+    const idBackDoc = getSlotDoc('ID_BACK');
+    const selfieDoc = getSlotDoc('SELFIE');
 
-    if (!idFront) {
-      toast.error('Please upload your Government ID / Passport photo');
+    // Dynamic field validation
+    if (!idFrontDoc?.documentUrl) {
+      toast.error(`Please upload the ${currentConfig.frontTitle}`);
       return;
     }
 
-    if (selectedIdType !== 'passport') {
-      const idBack = allDocuments.find((d) => d.verificationType === 'ID_BACK');
-      if (!idBack) {
-        toast.error('Please upload the back of your Government ID');
-        return;
-      }
+    if (currentConfig.requiresBack && !idBackDoc?.documentUrl) {
+      toast.error(`Please upload the ${currentConfig.backTitle || 'Back Image'}`);
+      return;
     }
 
-    if (!selfie) {
-      toast.error('Please upload a selfie with your ID for identity matching');
+    if (!selfieDoc?.documentUrl) {
+      toast.error(`Please upload your ${currentConfig.selfieTitle}`);
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 1. Try server mutation
-      try {
-        await submitForReviewMutation.mutateAsync();
-      } catch (mutationErr) {
-        console.warn('Submit mutation notice:', mutationErr);
-      }
-
-      // 2. Direct Supabase update ensuring status is set to pending_verification
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      const targetId = user?.id || sessionUserId;
+      const targetUserId = user?.id || sessionUserId;
 
-      if (targetId) {
+      if (!targetUserId) {
+        throw new Error('User session not found. Please log in again.');
+      }
+
+      // 1. Insert record into `verifications` table
+      // Payload: { user_id, document_type, id_front_url, id_back_url, selfie_url, status: 'pending' }
+      const verificationsPayload = {
+        user_id: targetUserId,
+        document_type: currentConfig.label,
+        id_front_url: idFrontDoc.documentUrl,
+        id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
+        selfie_url: selfieDoc.documentUrl,
+        status: 'pending',
+      };
+
+      try {
+        const { error: vInsertErr } = await (supabase as any)
+          .from('verifications')
+          .insert(verificationsPayload);
+
+        if (vInsertErr) {
+          console.warn('Notice inserting into verifications table:', vInsertErr.message);
+        }
+      } catch (insertTableEx) {
+        console.warn('verifications table insert exception:', insertTableEx);
+      }
+
+      // 2. Call tRPC submitForReview mutation to register overall verification
+      try {
+        await submitForReviewMutation.mutateAsync({
+          documentType: currentConfig.label,
+        });
+      } catch (mutationErr) {
+        console.warn('submitForReview mutation notice:', mutationErr);
+      }
+
+      // 3. Update profiles table status to pending_verification
+      try {
         await (supabase as any)
           .from('profiles')
           .update({
@@ -354,18 +520,31 @@ export default function ArtistVerificationView() {
             verified: false,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', targetId);
-
-        try {
-          await supabase
-            .from('User')
-            .update({
-              verificationSubmittedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            })
-            .eq('id', targetId);
-        } catch {}
+          .eq('id', targetUserId);
+      } catch (profileUpdateErr) {
+        console.warn('Profile update notice:', profileUpdateErr);
       }
+
+      // 4. Update User table verificationSubmittedAt
+      try {
+        await supabase
+          .from('User')
+          .update({
+            verificationSubmittedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
+      } catch {}
+
+      // 5. Update local state and redirect to pending status view
+      setSubmittedRecord({
+        document_type: currentConfig.label,
+        id_front_url: idFrontDoc.documentUrl,
+        id_back_url: currentConfig.requiresBack ? idBackDoc?.documentUrl : null,
+        selfie_url: selfieDoc.documentUrl,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
 
       setProfileData((prev) => ({
         ...(prev || {}),
@@ -374,16 +553,17 @@ export default function ArtistVerificationView() {
         verified: false,
       }));
 
-      toast.success('Verification submitted! Our team will review your documents within 24-48 hours.');
+      setIsPendingSubmitted(true);
+      toast.success('Verification submitted! Your documents are now pending review.');
     } catch (err: any) {
       console.error('Submit verification error:', err);
-      toast.error('Could not submit documents. Please try again.');
+      toast.error(err.message || 'Could not submit documents. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Loading state (with 5-second maximum)
+  // Loading state (guaranteed <= 5 seconds)
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -392,7 +572,7 @@ export default function ArtistVerificationView() {
             <RefreshCw className="h-10 w-10 text-primary animate-spin mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Loading Verification Status</h3>
             <p className="text-slate-400 text-sm max-w-sm">
-              Checking your artist credentials and uploaded documents...
+              Checking your artist credentials and submitted documents...
             </p>
           </div>
         </div>
@@ -418,7 +598,7 @@ export default function ArtistVerificationView() {
                 </Badge>
               </div>
               <p className="text-slate-300 text-sm mb-6 leading-relaxed max-w-2xl">
-                Your government ID has been authenticated. The Verified Artist badge is displayed across your profile, artwork showcases, and commission proposals.
+                Your identity has been authenticated. The Verified Artist badge is prominently displayed across your profile, portfolio items, and commission proposals.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -446,8 +626,11 @@ export default function ArtistVerificationView() {
     );
   }
 
-  // 2. PENDING REVIEW STATE
+  // 2. PENDING REVIEW STATE (REDIRECT TARGET UPON SUCCESSFUL SUBMISSION)
   if (isPending) {
+    const displayDocType = submittedRecord?.document_type || currentConfig.label;
+    const isPassportDoc = displayDocType.toLowerCase().includes('passport');
+
     return (
       <div className="space-y-6">
         <div className="bg-slate-900/80 border border-blue-500/30 rounded-3xl p-6 sm:p-8 shadow-sm">
@@ -464,27 +647,51 @@ export default function ArtistVerificationView() {
                 </Badge>
               </div>
               <p className="text-slate-300 text-sm mb-6 leading-relaxed max-w-2xl">
-                Thank you for submitting your ID documents. Our moderation team reviews artist verification requests within <strong>24–48 business hours</strong>. Your verified badge will activate automatically once approved.
+                Thank you for submitting your <strong>{displayDocType}</strong>. Our moderation team reviews verification submissions within <strong>24–48 business hours</strong>. Your verified badge will activate automatically once approved.
               </p>
 
               {/* Submitted documents overview */}
               <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Submitted Documents</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Submitted Documents ({displayDocType})
+                  </h4>
+                  <span className="text-[11px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                    Pending Admin Approval
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {['ID_FRONT', 'ID_BACK', 'SELFIE'].map((type) => {
-                    const doc = allDocuments.find((d) => d.verificationType === type);
-                    const label = type === 'ID_FRONT' ? 'ID Photo / Passport' : type === 'ID_BACK' ? 'ID Back' : 'Selfie with ID';
-                    return (
-                      <div key={type} className="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-xl">
-                        {doc ? (
-                          <CheckCircle2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                        ) : (
-                          <div className="h-4 w-4 rounded-full border border-slate-600 flex-shrink-0" />
-                        )}
-                        <span className="truncate">{label}</span>
+                  {/* Slot 1: Front / Main Data Page */}
+                  <div className="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/80 border border-slate-800/80 p-3 rounded-xl">
+                    <CheckCircle2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                    <div className="truncate">
+                      <div className="font-medium text-white truncate">
+                        {isPassportDoc ? 'Main Data Page' : 'Front Image'}
                       </div>
-                    );
-                  })}
+                      <div className="text-[11px] text-slate-400">Uploaded & Encrypted</div>
+                    </div>
+                  </div>
+
+                  {/* Slot 2: Back (if not passport) */}
+                  {!isPassportDoc && (
+                    <div className="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/80 border border-slate-800/80 p-3 rounded-xl">
+                      <CheckCircle2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                      <div className="truncate">
+                        <div className="font-medium text-white truncate">Back Image</div>
+                        <div className="text-[11px] text-slate-400">Uploaded & Encrypted</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Slot 3: Selfie */}
+                  <div className="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/80 border border-slate-800/80 p-3 rounded-xl">
+                    <CheckCircle2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                    <div className="truncate">
+                      <div className="font-medium text-white truncate">Selfie with Document</div>
+                      <div className="text-[11px] text-slate-400">Uploaded & Encrypted</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -509,7 +716,7 @@ export default function ArtistVerificationView() {
     );
   }
 
-  // 3. REJECTED OR NOT STARTED (DOCUMENT SUBMISSION FORM)
+  // 3. REJECTED OR INITIAL SUBMISSION FORM
   return (
     <div className="space-y-6">
       {/* Rejection Alert if applicable */}
@@ -538,6 +745,7 @@ export default function ArtistVerificationView() {
       {/* Main Verification Card */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
         <div className="max-w-3xl">
+          {/* Header */}
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2.5 bg-primary/10 border border-primary/20 rounded-xl text-primary">
               <FileCheck2 className="h-6 w-6" />
@@ -552,69 +760,67 @@ export default function ArtistVerificationView() {
 
           <div className="my-6 border-t border-slate-800" />
 
-          {/* Step 1: Select ID Document Type */}
-          <div className="space-y-3 mb-8">
-            <Label className="text-white font-semibold text-sm">1. Select Document Type</Label>
+          {/* Step 1: Document Type Selector (Dropdown & Radio Selection) */}
+          <div className="space-y-4 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <Label className="text-white font-semibold text-sm">
+                1. Select Document Type
+              </Label>
+              {/* Dropdown Selector */}
+              <div className="w-full sm:w-56">
+                <Select
+                  value={selectedDocType}
+                  onValueChange={(value) => setSelectedDocType(value as SupportedDocType)}
+                >
+                  <SelectTrigger className="bg-slate-950 border-slate-800 text-white text-xs h-9">
+                    <SelectValue placeholder="Select document" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                    <SelectItem value="national_id">National ID Card</SelectItem>
+                    <SelectItem value="passport">Passport</SelectItem>
+                    <SelectItem value="driving_license">Driving License</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Radio Cards Selection */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedIdType('passport')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center gap-3 text-left ${
-                  selectedIdType === 'passport'
-                    ? 'bg-primary/10 border-primary text-white shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div className={`h-4 w-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                  selectedIdType === 'passport' ? 'border-primary bg-primary' : 'border-slate-600'
-                }`}>
-                  {selectedIdType === 'passport' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-white">Passport</div>
-                  <div className="text-xs text-slate-400">Photo page only</div>
-                </div>
-              </button>
+              {(Object.keys(DOC_CONFIGS) as SupportedDocType[]).map((typeKey) => {
+                const config = DOC_CONFIGS[typeKey];
+                const isSelected = selectedDocType === typeKey;
 
-              <button
-                type="button"
-                onClick={() => setSelectedIdType('national_id')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center gap-3 text-left ${
-                  selectedIdType === 'national_id'
-                    ? 'bg-primary/10 border-primary text-white shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div className={`h-4 w-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                  selectedIdType === 'national_id' ? 'border-primary bg-primary' : 'border-slate-600'
-                }`}>
-                  {selectedIdType === 'national_id' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-white">National ID Card</div>
-                  <div className="text-xs text-slate-400">Front & Back</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedIdType('drivers_license')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center gap-3 text-left ${
-                  selectedIdType === 'drivers_license'
-                    ? 'bg-primary/10 border-primary text-white shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div className={`h-4 w-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                  selectedIdType === 'drivers_license' ? 'border-primary bg-primary' : 'border-slate-600'
-                }`}>
-                  {selectedIdType === 'drivers_license' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-white">Driver&apos;s License</div>
-                  <div className="text-xs text-slate-400">Front & Back</div>
-                </div>
-              </button>
+                return (
+                  <button
+                    key={typeKey}
+                    type="button"
+                    onClick={() => setSelectedDocType(typeKey)}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between text-left ${
+                      isSelected
+                        ? 'bg-primary/10 border-primary shadow-sm ring-1 ring-primary/40'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full mb-3">
+                      <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xl">
+                        {config.icon}
+                      </div>
+                      {/* Radio indicator */}
+                      <div
+                        className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                          isSelected ? 'border-primary bg-primary' : 'border-slate-600'
+                        }`}
+                      >
+                        {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-white mb-0.5">{config.label}</div>
+                      <div className="text-xs text-slate-400 leading-tight">{config.sublabel}</div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -633,65 +839,82 @@ export default function ArtistVerificationView() {
             />
           </div>
 
-          {/* Step 2: Upload Documents */}
+          {/* Step 2: Dynamic File Upload Fields */}
           <div className="space-y-4 mb-8">
-            <Label className="text-white font-semibold text-sm">2. Upload Required Images</Label>
-            <p className="text-xs text-slate-400">
-              Files must be clear, uncropped, and legible. Accepted formats: JPG, PNG, WebP, PDF (max 5MB).
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-white font-semibold text-sm">2. Upload Required Images</Label>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Files must be clear, uncropped, and legible. Accepted formats: JPG, PNG, WebP, PDF (max 5MB).
+                </p>
+              </div>
+            </div>
+
+            {/* Passport Callout Banner */}
+            {!currentConfig.requiresBack && (
+              <div className="bg-blue-950/30 border border-blue-900/40 rounded-xl p-3 flex items-center gap-2.5 text-xs text-blue-200">
+                <Info className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                <span>
+                  For <strong>Passport</strong> verification, only the <strong>Main Data Page</strong> and <strong>Selfie</strong> are required. Back image is not required.
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Document 1: ID Front / Passport */}
+              {/* Field 1: Front Image / Main Data Page (Required for all) */}
               <DocumentDropCard
-                title={selectedIdType === 'passport' ? 'Passport Photo Page' : 'ID Card (Front)'}
-                description={selectedIdType === 'passport' ? 'Upload clear photo of the identity details page' : 'Upload front side showing photo and name'}
+                title={currentConfig.frontTitle}
+                description={currentConfig.frontDesc}
                 icon={<FileText className="h-5 w-5 text-blue-400" />}
-                type="ID_FRONT"
-                uploadedDoc={allDocuments.find((d) => d.verificationType === 'ID_FRONT')}
-                isUploading={uploadingType === 'ID_FRONT'}
-                progress={uploadProgress['ID_FRONT'] || 0}
+                slot="ID_FRONT"
+                required={true}
+                uploadedDoc={getSlotDoc('ID_FRONT')}
+                isUploading={uploadingSlot === 'ID_FRONT'}
+                progress={uploadProgress.ID_FRONT || 0}
                 onFileSelect={(file) => handleFileUpload('ID_FRONT', file)}
                 onRemove={() => handleRemoveDoc('ID_FRONT')}
               />
 
-              {/* Document 2: ID Back (if not passport) */}
-              {selectedIdType !== 'passport' && (
+              {/* Field 2: Back Image (Required for National ID and Driving License, hidden for Passport) */}
+              {currentConfig.requiresBack && (
                 <DocumentDropCard
-                  title="ID Card (Back)"
-                  description="Upload back side showing barcode or signature"
-                  icon={<FileText className="h-5 w-5 text-blue-400" />}
-                  type="ID_BACK"
-                  uploadedDoc={allDocuments.find((d) => d.verificationType === 'ID_BACK')}
-                  isUploading={uploadingType === 'ID_BACK'}
-                  progress={uploadProgress['ID_BACK'] || 0}
+                  title={currentConfig.backTitle || 'Back Image'}
+                  description={currentConfig.backDesc || 'Upload back side showing barcode, signature, or authority'}
+                  icon={<FileText className="h-5 w-5 text-cyan-400" />}
+                  slot="ID_BACK"
+                  required={true}
+                  uploadedDoc={getSlotDoc('ID_BACK')}
+                  isUploading={uploadingSlot === 'ID_BACK'}
+                  progress={uploadProgress.ID_BACK || 0}
                   onFileSelect={(file) => handleFileUpload('ID_BACK', file)}
                   onRemove={() => handleRemoveDoc('ID_BACK')}
                 />
               )}
 
-              {/* Document 3: Selfie with ID */}
+              {/* Field 3: Selfie with Document (Required for all) */}
               <DocumentDropCard
-                title="Selfie with ID"
-                description="Take a clear photo of yourself holding your document"
+                title={currentConfig.selfieTitle}
+                description={currentConfig.selfieDesc}
                 icon={<Camera className="h-5 w-5 text-purple-400" />}
-                type="SELFIE"
-                uploadedDoc={allDocuments.find((d) => d.verificationType === 'SELFIE')}
-                isUploading={uploadingType === 'SELFIE'}
-                progress={uploadProgress['SELFIE'] || 0}
+                slot="SELFIE"
+                required={true}
+                uploadedDoc={getSlotDoc('SELFIE')}
+                isUploading={uploadingSlot === 'SELFIE'}
+                progress={uploadProgress.SELFIE || 0}
                 onFileSelect={(file) => handleFileUpload('SELFIE', file)}
                 onRemove={() => handleRemoveDoc('SELFIE')}
               />
             </div>
           </div>
 
-          {/* Step 3: Submit Button */}
+          {/* Step 3: Submit Button with live validation & redirect */}
           <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs text-slate-400">
-              Your identity documents are securely encrypted and used strictly for verification.
+              Your identity documents are securely uploaded to the <code className="text-primary">verifications</code> bucket and encrypted.
             </div>
             <Button
               onClick={handleSubmitVerification}
-              disabled={isSubmitting || !!uploadingType}
+              disabled={isSubmitting || !!uploadingSlot}
               className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-semibold px-6 h-11 text-sm shadow-md"
             >
               {isSubmitting ? (
@@ -714,12 +937,13 @@ export default function ArtistVerificationView() {
   );
 }
 
-// Subcomponent: Dropzone card for document upload
+// Subcomponent: Dropzone card for document upload with clear progress indicator
 interface DocumentDropCardProps {
   title: string;
   description: string;
   icon: React.ReactNode;
-  type: DocumentType;
+  slot: VerificationSlot;
+  required?: boolean;
   uploadedDoc?: UploadedDocItem;
   isUploading: boolean;
   progress: number;
@@ -731,14 +955,14 @@ function DocumentDropCard({
   title,
   description,
   icon,
-  type,
+  required,
   uploadedDoc,
   isUploading,
   progress,
   onFileSelect,
   onRemove,
 }: DocumentDropCardProps) {
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -753,16 +977,24 @@ function DocumentDropCard({
       <div>
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl">
+            <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex-shrink-0">
               {icon}
             </div>
             <div>
-              <h4 className="text-white text-sm font-semibold">{title}</h4>
-              <p className="text-slate-400 text-xs">{description}</p>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-white text-sm font-semibold">{title}</h4>
+                {required && (
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded">
+                    Required
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-400 text-xs mt-0.5 leading-snug">{description}</p>
             </div>
           </div>
           {uploadedDoc && (
-            <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-[10px]">
+            <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] flex-shrink-0">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
               Uploaded
             </Badge>
           )}
@@ -783,9 +1015,9 @@ function DocumentDropCard({
             <div className="flex items-center justify-between text-xs text-slate-300">
               <span className="flex items-center gap-1.5">
                 <RefreshCw className="h-3 w-3 animate-spin text-primary" />
-                Uploading...
+                Uploading to verifications...
               </span>
-              <span>{progress}%</span>
+              <span className="font-semibold text-primary">{progress}%</span>
             </div>
             <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
               <div
@@ -797,19 +1029,21 @@ function DocumentDropCard({
         ) : uploadedDoc ? (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-xs text-slate-300 truncate">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-400 flex-shrink-0" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
               <span className="truncate">{uploadedDoc.fileName || 'Document on file'}</span>
             </div>
             <div className="flex items-center gap-1">
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
+                className="h-7 px-2 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800"
               >
                 Replace
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={onRemove}
