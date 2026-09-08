@@ -33,6 +33,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DocumentViewerModal } from '@/components/admin/DocumentViewerModal';
 import { formatRole } from '@/lib/utils';
 
@@ -50,15 +51,76 @@ type Document = {
 
 type UserWithVerifications = {
   id: string;
+  userId?: string;
+  user_id?: string;
   email: string;
   role?: string;
   clientType?: string | null;
   createdAt: string;
   isVerified?: boolean;
   is_verified?: boolean;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
+  avatar?: string | null;
+  full_name?: string | null;
+  name?: string | null;
+  user?: {
+    id?: string;
+    email?: string;
+    role?: string;
+    full_name?: string | null;
+    fullName?: string | null;
+    name?: string | null;
+    avatar_url?: string | null;
+    avatarUrl?: string | null;
+    avatar?: string | null;
+    image?: string | null;
+    Profile?: Array<{
+      firstName?: string | null;
+      lastName?: string | null;
+      companyName?: string | null;
+      full_name?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      avatar_url?: string | null;
+    }>;
+  };
+  profiles?: {
+    id?: string;
+    email?: string;
+    role?: string;
+    full_name?: string | null;
+    name?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    avatar_url?: string | null;
+    avatar?: string | null;
+    avatarUrl?: string | null;
+    client_type?: string | null;
+    is_verified?: boolean;
+    company_name?: string | null;
+  };
   Profile?:
-    | Array<{ firstName?: string | null; lastName?: string | null; companyName?: string | null; full_name?: string | null; first_name?: string | null; last_name?: string | null }>
-    | { firstName?: string | null; lastName?: string | null; companyName?: string | null; full_name?: string | null; first_name?: string | null; last_name?: string | null }
+    | Array<{
+        firstName?: string | null;
+        lastName?: string | null;
+        companyName?: string | null;
+        full_name?: string | null;
+        first_name?: string | null;
+        last_name?: string | null;
+        avatar_url?: string | null;
+        avatarUrl?: string | null;
+      }>
+    | {
+        firstName?: string | null;
+        lastName?: string | null;
+        companyName?: string | null;
+        full_name?: string | null;
+        first_name?: string | null;
+        last_name?: string | null;
+        avatar_url?: string | null;
+        avatarUrl?: string | null;
+      }
     | null;
   Verification?: Document[];
 };
@@ -130,7 +192,67 @@ export default function AdminVerificationsPage() {
     if (!Array.isArray(users)) return [];
 
     if (users.length > 0 && Array.isArray((users[0] as any).Verification)) {
-      return users as unknown as UserWithVerifications[];
+      return (users as any[]).map((u) => {
+        const prof = u.profiles || u.user?.Profile?.[0] || u.Profile?.[0] || u.user || {};
+        const userObj = u.user || {};
+        const avatarUrl =
+          u.avatarUrl ||
+          u.avatar_url ||
+          u.avatar ||
+          prof.avatar_url ||
+          prof.avatar ||
+          prof.profile_picture ||
+          userObj.avatar_url ||
+          userObj.avatarUrl ||
+          userObj.avatar ||
+          userObj.image ||
+          null;
+        const fullName =
+          userObj.full_name ||
+          userObj.name ||
+          prof.full_name ||
+          prof.name ||
+          u.full_name ||
+          u.name ||
+          `${prof.first_name || userObj.firstName || ''} ${prof.last_name || userObj.lastName || ''}`.trim() ||
+          userObj.email ||
+          u.email ||
+          'Artist';
+        return {
+          ...u,
+          avatarUrl,
+          avatar_url: avatarUrl,
+          avatar: avatarUrl,
+          full_name: fullName,
+          name: fullName,
+          userId: u.userId || u.user_id || u.id,
+          user_id: u.user_id || u.userId || u.id,
+          user: {
+            id: u.id,
+            email: u.email,
+            role: u.role,
+            full_name: fullName,
+            fullName,
+            name: fullName,
+            avatar_url: avatarUrl,
+            avatarUrl,
+            avatar: avatarUrl,
+            image: avatarUrl,
+            ...(u.user || {}),
+          },
+          profiles: {
+            id: u.id,
+            email: u.email,
+            role: u.role,
+            full_name: fullName,
+            name: fullName,
+            avatar_url: avatarUrl,
+            avatar: avatarUrl,
+            avatarUrl: avatarUrl,
+            ...(u.profiles || {}),
+          },
+        };
+      }) as unknown as UserWithVerifications[];
     }
 
     const userMap = new Map<string, UserWithVerifications>();
@@ -140,12 +262,35 @@ export default function AdminVerificationsPage() {
       if (!uid) continue;
 
       const prof = v.profiles || v.user?.Profile?.[0] || v.Profile?.[0] || v.user || {};
-      const fullName = prof.full_name || v.user?.full_name || `${prof.first_name || ''} ${prof.last_name || ''}`.trim() || 'Artist';
-      const email = prof.email || v.user?.email || v.email || 'User';
-      const rawRole = (prof.role || v.user?.role || v.role || 'ARTIST').toUpperCase();
+      const userObj = v.user || {};
+      const fullName =
+        userObj.full_name ||
+        userObj.name ||
+        prof.full_name ||
+        prof.name ||
+        v.full_name ||
+        v.name ||
+        `${prof.first_name || userObj.firstName || ''} ${prof.last_name || userObj.lastName || ''}`.trim() ||
+        userObj.email ||
+        v.email ||
+        'Artist';
+      const email = userObj.email || prof.email || v.email || 'User';
+      const rawRole = (prof.role || userObj.role || v.role || 'ARTIST').toUpperCase();
       const role = rawRole === 'FREELANCER' || rawRole === 'ARTIST' ? 'ARTIST' : rawRole;
       const clientType = prof.client_type || v.clientType || null;
       const isVerified = Boolean(prof.is_verified ?? v.isVerified ?? false);
+      const avatarUrl =
+        v.avatar_url ||
+        v.avatarUrl ||
+        v.avatar ||
+        prof.avatar_url ||
+        prof.avatar ||
+        prof.profile_picture ||
+        userObj.avatar_url ||
+        userObj.avatarUrl ||
+        userObj.avatar ||
+        userObj.image ||
+        null;
 
       const status = (v.status || 'pending').toUpperCase();
       const docType = v.document_type || v.documentType || 'ID Document';
@@ -213,15 +358,65 @@ export default function AdminVerificationsPage() {
       const existing = userMap.get(uid);
       if (existing) {
         existing.Verification = [...(existing.Verification || []), ...docs];
+        if (!existing.avatarUrl && avatarUrl) {
+          existing.avatarUrl = avatarUrl;
+          existing.avatar_url = avatarUrl;
+          existing.avatar = avatarUrl;
+        }
       } else {
         userMap.set(uid, {
           id: uid,
+          userId: uid,
+          user_id: uid,
           email,
           role,
           clientType,
           createdAt,
           isVerified,
           is_verified: isVerified,
+          avatarUrl,
+          avatar_url: avatarUrl,
+          avatar: avatarUrl,
+          full_name: fullName,
+          name: fullName,
+          user: {
+            id: uid,
+            email,
+            role,
+            full_name: fullName,
+            fullName,
+            name: fullName,
+            avatar_url: avatarUrl,
+            avatarUrl,
+            avatar: avatarUrl,
+            image: avatarUrl,
+            Profile: [
+              {
+                firstName: prof.first_name || fullName.split(' ')[0] || '',
+                lastName: prof.last_name || fullName.split(' ').slice(1).join(' ') || '',
+                companyName: prof.company_name || null,
+                full_name: fullName,
+                first_name: prof.first_name || '',
+                last_name: prof.last_name || '',
+                avatar_url: avatarUrl,
+              },
+            ],
+          },
+          profiles: {
+            id: uid,
+            email,
+            role,
+            full_name: fullName,
+            name: fullName,
+            first_name: prof.first_name || '',
+            last_name: prof.last_name || '',
+            avatar_url: avatarUrl,
+            avatar: avatarUrl,
+            avatarUrl: avatarUrl,
+            client_type: clientType,
+            is_verified: isVerified,
+            company_name: prof.company_name || null,
+          },
           Profile: [
             {
               firstName: prof.first_name || fullName.split(' ')[0] || '',
@@ -230,6 +425,7 @@ export default function AdminVerificationsPage() {
               full_name: fullName,
               first_name: prof.first_name || '',
               last_name: prof.last_name || '',
+              avatar_url: avatarUrl,
             },
           ],
           Verification: docs,
@@ -411,13 +607,24 @@ export default function AdminVerificationsPage() {
   const approvedDocs = allDocs.filter((doc) => (doc.status || '').toUpperCase() === 'APPROVED');
   const rejectedDocs = allDocs.filter((doc) => (doc.status || '').toUpperCase() === 'REJECTED');
 
-  // Filtered users
   const filteredUsers = useMemo(() => {
     return usersData.filter((user) => {
       const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
+      const userObj = (user as any).user;
+      const profilesObj = (user as any).profiles;
       const fullName =
+        userObj?.full_name ||
+        userObj?.name ||
+        profilesObj?.full_name ||
+        profilesObj?.name ||
+        (user as any).full_name ||
+        (user as any).name ||
         (profile as any)?.full_name ||
-        `${(profile as any)?.first_name || profile?.firstName || ''} ${(profile as any)?.last_name || profile?.lastName || ''}`.trim();
+        `${(profile as any)?.first_name || profile?.firstName || ''} ${(profile as any)?.last_name || profile?.lastName || ''}`.trim() ||
+        userObj?.email ||
+        user.email ||
+        profilesObj?.email ||
+        'Artist';
       const displayName =
         user.role === 'CLIENT'
           ? user.clientType === 'BUSINESS'
@@ -425,11 +632,14 @@ export default function AdminVerificationsPage() {
             : fullName || 'Individual Client'
           : fullName || 'Artist';
 
+      const userEmail = userObj?.email || profilesObj?.email || user.email || '';
+
       // Search filter
       const matchesSearch =
         !searchQuery ||
         displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.email || '').toLowerCase().includes(searchQuery.toLowerCase());
+        userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.id || '').toLowerCase().includes(searchQuery.toLowerCase());
 
       // User type filter
       const matchesUserType =
@@ -684,21 +894,74 @@ export default function AdminVerificationsPage() {
             <div className="divide-y divide-slate-800">
               {filteredUsers.map((user) => {
                 const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
-                const fullName =
+                const userObj = (user as any).user;
+                const profilesObj = (user as any).profiles;
+
+                // Exact prompt requirement:
+                // Display Name: verification.user?.full_name || verification.user?.name || verification.profiles?.full_name || verification.user?.email || 'Artist'
+                const displayName =
+                  userObj?.full_name ||
+                  userObj?.name ||
+                  profilesObj?.full_name ||
+                  profilesObj?.name ||
+                  (user as any).full_name ||
+                  (user as any).name ||
                   (profile as any)?.full_name ||
-                  `${(profile as any)?.first_name || profile?.firstName || ''} ${(profile as any)?.last_name || profile?.lastName || ''}`.trim();
-                const isClient = user.role === 'CLIENT';
-                const displayName = isClient
-                  ? user.clientType === 'BUSINESS'
-                    ? profile?.companyName || 'Business Client'
-                    : fullName || 'Individual Client'
-                  : fullName || 'Artist';
+                  `${(profile as any)?.first_name || profile?.firstName || ''} ${(profile as any)?.last_name || profile?.lastName || ''}`.trim() ||
+                  userObj?.email ||
+                  user.email ||
+                  profilesObj?.email ||
+                  'Artist';
+
+                // Exact prompt requirement:
+                // Display Subtext/Email: verification.user?.email || verification.profiles?.email || verification.userId
+                const displaySubtext =
+                  userObj?.email ||
+                  profilesObj?.email ||
+                  user.email ||
+                  (user as any).userId ||
+                  (user as any).user_id ||
+                  user.id;
+
+                // Exact prompt requirement:
+                // Avatar: Display user avatar if available, otherwise show initials or standard profile icon.
+                const avatarUrl =
+                  user.avatarUrl ||
+                  user.avatar_url ||
+                  user.avatar ||
+                  userObj?.avatar_url ||
+                  userObj?.avatarUrl ||
+                  userObj?.avatar ||
+                  profilesObj?.avatar_url ||
+                  profilesObj?.avatar ||
+                  profilesObj?.avatarUrl ||
+                  (profile as any)?.avatar_url ||
+                  (profile as any)?.avatarUrl ||
+                  null;
+
+                // Exact prompt requirement:
+                // Verify Role Badge: Ensure the badge dynamically reads the user's role (ARTIST).
+                const rawRole = (user.role || userObj?.role || profilesObj?.role || 'ARTIST').toUpperCase();
+                const isClient = rawRole === 'CLIENT';
+                const roleBadgeText = !isClient
+                  ? (rawRole === 'ADMIN' ? 'ADMIN' : 'ARTIST')
+                  : (user.clientType || profilesObj?.client_type || 'CLIENT');
 
                 const userDocs = user.Verification || [];
                 const isExpanded = expandedUsers.has(user.id);
                 const pendingCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'PENDING').length;
                 const approvedCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'APPROVED').length;
                 const rejectedCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'REJECTED').length;
+
+                const initials = displayName && displayName !== 'Artist' && displayName !== 'Individual Client' && displayName !== 'Business Client'
+                  ? displayName
+                      .split(/\s+/)
+                      .filter(Boolean)
+                      .map((n: string) => n[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()
+                  : null;
 
                 return (
                   <div key={user.id} className="hover:bg-white/5 transition-colors">
@@ -715,15 +978,24 @@ export default function AdminVerificationsPage() {
                         )}
                       </div>
                       <div className="flex-shrink-0">
-                        {isClient ? (
-                          user.clientType === 'BUSINESS' ? (
-                            <Building className="h-5 w-5 text-blue-400" />
-                          ) : (
-                            <User className="h-5 w-5 text-green-400" />
-                          )
-                        ) : (
-                          <User className="h-5 w-5 text-purple-400" />
-                        )}
+                        <Avatar className="h-10 w-10 border border-white/10 shadow-sm">
+                          {avatarUrl ? (
+                            <AvatarImage
+                              src={avatarUrl}
+                              alt={displayName}
+                              className="object-cover"
+                            />
+                          ) : null}
+                          <AvatarFallback className={
+                            !isClient
+                              ? 'bg-purple-500/20 text-purple-300 font-semibold text-xs'
+                              : 'bg-emerald-500/20 text-emerald-300 font-semibold text-xs'
+                          }>
+                            {initials || (
+                              <User className={`h-5 w-5 ${!isClient ? 'text-purple-400' : 'text-emerald-400'}`} />
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -733,12 +1005,10 @@ export default function AdminVerificationsPage() {
                               ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
                               : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                           }`}>
-                            {isClient
-                              ? user.clientType || 'INDIVIDUAL'
-                              : 'ARTIST'}
+                            {roleBadgeText}
                           </Badge>
                         </div>
-                        <p className="text-sm text-slate-400 truncate">{user.email}</p>
+                        <p className="text-sm text-slate-400 truncate">{displaySubtext}</p>
                       </div>
                       <div className="flex-shrink-0 flex items-center gap-2 text-sm">
                         {pendingCount > 0 && (

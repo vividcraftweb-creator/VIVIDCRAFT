@@ -307,18 +307,48 @@ export async function fetchAllVerificationsList(supabase: any) {
 
     console.log('[Admin getVerifications Router] Fetching verifications from public.verifications...');
 
-    // 1. Fetch strictly from public.verifications
+    // 1. Fetch strictly from public.verifications (with profiles join if available)
     let vList: any[] = [];
+    const profilesMap = new Map<string, any>();
+
     try {
       const { data, error } = await (supabase as any)
         .from('verifications')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            full_name,
+            first_name,
+            last_name,
+            email,
+            avatar_url,
+            role,
+            client_type,
+            is_verified,
+            company_name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
         vList = data;
+        for (const item of data) {
+          const uid = item.user_id || item.userId;
+          if (uid && item.profiles) {
+            const p = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
+            if (p) profilesMap.set(uid, p);
+          }
+        }
       } else if (error) {
-        console.warn('[Admin getVerifications Router] public.verifications query error:', error);
+        console.warn('[Admin getVerifications Router] public.verifications joined query notice, trying plain query:', error.message);
+        const { data: plainData } = await (supabase as any)
+          .from('verifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (Array.isArray(plainData)) {
+          vList = plainData;
+        }
       }
     } catch (e) {
       console.warn('[Admin getVerifications Router] Exception querying public.verifications:', e);
@@ -340,34 +370,35 @@ export async function fetchAllVerificationsList(supabase: any) {
 
     console.log(`[Admin getVerifications Router] Retrieved ${vList.length} records from public.verifications`);
 
-    // 2. Fetch profiles for user_ids
-    const userIds = Array.from(new Set(vList.map((v) => v.user_id).filter(Boolean)));
-    const profilesMap = new Map<string, any>();
+    // 2. Fetch profiles for all user_ids to guarantee name, email, avatar_url
+    const userIds = Array.from(new Set(vList.map((v) => v.user_id || v.userId).filter(Boolean)));
 
     if (userIds.length > 0) {
       try {
         const { data: pList, error: pErr } = await (supabase as any)
           .from('profiles')
-          .select('id, full_name, first_name, last_name, email, role, client_type, is_verified, company_name')
+          .select('id, full_name, first_name, last_name, email, avatar_url, profile_picture, role, client_type, is_verified, company_name')
           .in('id', userIds);
 
         if (Array.isArray(pList)) {
-          pList.forEach((p) => profilesMap.set(p.id, p));
+          pList.forEach((p) => {
+            const existing = profilesMap.get(p.id) || {};
+            profilesMap.set(p.id, { ...existing, ...p });
+          });
         }
         if (pErr) {
-          console.warn('[Admin getVerifications Router] profiles join notice:', pErr);
+          console.warn('[Admin getVerifications Router] profiles lookup notice:', pErr);
         }
       } catch (pErr) {
         console.warn('[Admin getVerifications Router] profiles lookup exception:', pErr);
       }
     }
 
-    // Supabase Auth fallback for missing emails
+    // Supabase Auth metadata lookup for avatar_url, email, name
     const authUsersMap = new Map<string, any>();
-    const missingEmailIds = userIds.filter((uid) => !profilesMap.get(uid)?.email);
-    if (missingEmailIds.length > 0) {
+    if (userIds.length > 0) {
       await Promise.all(
-        missingEmailIds.map(async (uid) => {
+        userIds.map(async (uid) => {
           try {
             const { data: authData } = await supabase.auth.admin.getUserById(uid);
             if (authData?.user) authUsersMap.set(uid, authData.user);
@@ -378,19 +409,32 @@ export async function fetchAllVerificationsList(supabase: any) {
 
     // 3. Map to normalized records
     const normalizedRecords = vList.map((v) => {
-      const prof = profilesMap.get(v.user_id);
-      const authUser = authUsersMap.get(v.user_id);
+      const uid = v.user_id || v.userId;
+      const prof = profilesMap.get(uid) || (v.profiles && (Array.isArray(v.profiles) ? v.profiles[0] : v.profiles)) || {};
+      const authUser = authUsersMap.get(uid);
 
-      const email = prof?.email || authUser?.email || 'User';
-      const rawRole = (prof?.role || authUser?.user_metadata?.role || 'ARTIST').toUpperCase();
+      const email = prof?.email || authUser?.email || v.email || 'User';
+      const rawRole = (prof?.role || authUser?.user_metadata?.role || v.role || 'ARTIST').toUpperCase();
       const role = rawRole === 'FREELANCER' || rawRole === 'ARTIST' ? 'ARTIST' : rawRole;
       const fullName =
         prof?.full_name ||
-        `${prof?.first_name || authUser?.user_metadata?.firstName || ''} ${prof?.last_name || authUser?.user_metadata?.lastName || ''}`.trim() ||
-        email.split('@')[0] ||
+        prof?.name ||
+        `${prof?.first_name || authUser?.user_metadata?.firstName || authUser?.user_metadata?.first_name || ''} ${prof?.last_name || authUser?.user_metadata?.lastName || authUser?.user_metadata?.last_name || ''}`.trim() ||
+        authUser?.user_metadata?.full_name ||
+        authUser?.user_metadata?.name ||
+        (email !== 'User' ? email.split('@')[0] : '') ||
         'Artist';
       const firstName = prof?.first_name || authUser?.user_metadata?.firstName || fullName.split(' ')[0] || '';
       const lastName = prof?.last_name || authUser?.user_metadata?.lastName || fullName.split(' ').slice(1).join(' ') || '';
+
+      const avatarUrl =
+        prof?.avatar_url ||
+        prof?.avatar ||
+        prof?.profile_picture ||
+        authUser?.user_metadata?.avatar_url ||
+        authUser?.user_metadata?.picture ||
+        authUser?.user_metadata?.avatar ||
+        null;
 
       const frontUrl = v.id_front_url || v.front_url || v.document_url || v.documentUrl || v.files || null;
       const backUrl = v.id_back_url || v.back_url || null;
@@ -401,8 +445,8 @@ export async function fetchAllVerificationsList(supabase: any) {
 
       return {
         id: v.id,
-        user_id: v.user_id,
-        userId: v.user_id,
+        user_id: uid,
+        userId: uid,
         document_type: v.document_type || 'ID Document',
         documentType: v.document_type || 'ID Document',
         id_front_url: frontUrl,
@@ -421,31 +465,52 @@ export async function fetchAllVerificationsList(supabase: any) {
         rejectionReason: v.rejection_reason || null,
         files: [frontUrl, backUrl, selfieUrl].filter(Boolean).join(','),
         documentUrl: frontUrl || selfieUrl || backUrl || null,
+        avatar_url: avatarUrl,
+        avatarUrl: avatarUrl,
+        avatar: avatarUrl,
+        email,
+        full_name: fullName,
+        name: fullName,
+        role,
         user: {
-          id: v.user_id,
+          id: uid,
           email,
           role,
           full_name: fullName,
           fullName,
+          name: fullName,
           firstName,
           lastName,
-          Profile: [{ firstName, lastName, full_name: fullName, companyName: prof?.company_name || null }],
+          avatar_url: avatarUrl,
+          avatarUrl: avatarUrl,
+          avatar: avatarUrl,
+          image: avatarUrl,
+          Profile: [{ firstName, lastName, full_name: fullName, companyName: prof?.company_name || null, avatar_url: avatarUrl }],
         },
         profiles: {
-          id: v.user_id,
+          id: uid,
           email,
           role,
           full_name: fullName,
+          name: fullName,
           first_name: firstName,
           last_name: lastName,
           client_type: prof?.client_type || null,
           is_verified: prof?.is_verified ?? false,
+          avatar_url: avatarUrl,
+          avatar: avatarUrl,
+          avatarUrl: avatarUrl,
+          company_name: prof?.company_name || null,
         },
         User: {
-          id: v.user_id,
+          id: uid,
           email,
           role,
-          Profile: [{ firstName, lastName, full_name: fullName }],
+          name: fullName,
+          full_name: fullName,
+          image: avatarUrl,
+          avatarUrl: avatarUrl,
+          Profile: [{ firstName, lastName, full_name: fullName, avatar_url: avatarUrl }],
         },
       };
     });

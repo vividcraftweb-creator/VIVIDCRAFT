@@ -590,6 +590,8 @@ export const adminRouter = router({
               first_name,
               last_name,
               email,
+              avatar_url,
+              profile_picture,
               role,
               client_type,
               is_verified,
@@ -662,7 +664,7 @@ export const adminRouter = router({
       try {
         const { data: pList } = await (supabase as any)
           .from('profiles')
-          .select('id, full_name, first_name, last_name, email, role, client_type, is_verified, company_name')
+          .select('id, full_name, first_name, last_name, email, avatar_url, profile_picture, role, client_type, is_verified, company_name')
           .in('id', allUserIds);
         if (Array.isArray(pList)) {
           pList.forEach((p: any) => {
@@ -756,6 +758,15 @@ export const adminRouter = router({
             (Array.isArray(userObj?.Profile) ? userObj?.Profile[0]?.companyName : userObj?.Profile?.companyName) ||
             null;
 
+          const avatarUrl =
+            prof?.avatar_url ||
+            prof?.avatar ||
+            prof?.profile_picture ||
+            authUser?.user_metadata?.avatar_url ||
+            authUser?.user_metadata?.picture ||
+            authUser?.user_metadata?.avatar ||
+            null;
+
           const profileObj = [
             {
               firstName,
@@ -764,6 +775,7 @@ export const adminRouter = router({
               full_name: fullName || `${firstName} ${lastName}`.trim(),
               first_name: firstName,
               last_name: lastName,
+              avatar_url: avatarUrl,
             },
           ];
 
@@ -876,12 +888,43 @@ export const adminRouter = router({
 
           return {
             id: userId,
+            userId,
+            user_id: userId,
             email,
             role,
             clientType,
             createdAt,
             isVerified,
             is_verified: isVerified,
+            avatar_url: avatarUrl,
+            avatarUrl: avatarUrl,
+            avatar: avatarUrl,
+            full_name: fullName,
+            name: fullName,
+            user: {
+              id: userId,
+              email,
+              role,
+              full_name: fullName,
+              fullName,
+              name: fullName,
+              avatar_url: avatarUrl,
+              avatarUrl: avatarUrl,
+              avatar: avatarUrl,
+              image: avatarUrl,
+              Profile: profileObj,
+            },
+            profiles: {
+              id: userId,
+              email,
+              role,
+              full_name: fullName,
+              name: fullName,
+              avatar_url: avatarUrl,
+              client_type: clientType,
+              is_verified: isVerified,
+              company_name: companyName,
+            },
             Profile: profileObj,
             Verification: docs,
           };
