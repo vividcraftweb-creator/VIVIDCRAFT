@@ -39,11 +39,11 @@ const workflowSteps: WorkflowStep[] = [
   {
     title: 'Clients share detailed job briefs',
     description:
-      'Verified hiring teams publish openings with scope, budget guidance, and collaboration expectations so freelancers know what success looks like.',
+      'Verified hiring teams publish openings with scope, budget guidance, and collaboration expectations so artists know what success looks like.',
     icon: ClipboardCheck,
   },
   {
-    title: 'Freelancers explore and shortlist',
+    title: 'Artists explore and shortlist',
     description:
       'Professionals filter jobs by skill, industry, rate, or timeline and bookmark the opportunities that align with their expertise.',
     icon: Search,
@@ -51,7 +51,7 @@ const workflowSteps: WorkflowStep[] = [
   {
     title: 'Applications arrive in client inboxes',
     description:
-      'Clients review structured proposals, compare portfolios, and message shortlisted freelancers directly from their dashboard.',
+      'Clients review structured proposals, compare portfolios, and message shortlisted artists directly from their dashboard.',
     icon: MessageCircle,
   },
   {
@@ -284,7 +284,7 @@ const HowItWorksPage = () => {
         <div className="container mx-auto max-w-6xl px-4">
           <div className="mx-auto max-w-3xl text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-              For Freelancers
+              For Artists
             </span>
             <h2 className="mt-6 text-3xl font-semibold text-foreground sm:text-4xl">
               Win work that matches your strengths

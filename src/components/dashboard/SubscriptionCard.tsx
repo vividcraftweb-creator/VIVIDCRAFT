@@ -205,11 +205,11 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
         case SubscriptionPlan.CLIENT_STARTER:
           return [
             { name: 'Post up to 1 job/month', included: true, icon: Briefcase },
-            { name: 'Access to verified freelancers', included: true, icon: Users },
+            { name: 'Access to verified artists', included: true, icon: Users },
             { name: 'Standard messaging', included: true },
             { name: 'Basic project management', included: false, icon: FileText },
             { name: 'Priority job placement', included: false, icon: Star },
-            { name: 'Advanced freelancer search', included: false },
+            { name: 'Advanced artist search', included: false },
             { name: 'Team collaboration', included: false },
           ];
         case SubscriptionPlan.CLIENT_BUSINESS:
@@ -218,7 +218,7 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
             { name: 'Priority job placement', included: true, icon: Star },
             { name: 'API access (100 req/hr)', included: true, icon: Zap },
             { name: 'Webhook integrations', included: true, icon: Sparkles },
-            { name: 'AI freelancer recommendations (top 5)', included: true, icon: TrendingUp },
+            { name: 'AI artist recommendations (top 5)', included: true, icon: TrendingUp },
             { name: 'Team collaboration (up to 2 members)', included: true, icon: Users },
             { name: 'Enhanced analytics dashboard', included: true, icon: BarChart3 },
             { name: 'Project management tools', included: true, icon: FileText },
@@ -254,7 +254,7 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
   const PLAN_CATALOG: PlanConfig[] = [
     {
       plan: SubscriptionPlan.FREELANCER_PRO,
-      name: 'Freelancer Pro',
+      name: 'Artist Pro',
       price: 9.99,
       description: 'Boost your visibility and unlock more opportunities.',
       roles: ['FREELANCER'],
@@ -262,7 +262,7 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
     },
     {
       plan: SubscriptionPlan.FREELANCER_ELITE,
-      name: 'Freelancer Elite',
+      name: 'Artist Elite',
       price: 12.99,
       description: 'Top-tier placement, analytics, and priority support.',
       roles: ['FREELANCER'],

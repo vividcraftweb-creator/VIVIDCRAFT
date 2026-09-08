@@ -374,7 +374,7 @@ const AboutPage = () => {
             <ul className="mt-6 space-y-4 text-sm text-muted-foreground">
               <li className="flex items-start gap-3">
                 <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />
-                <span>Freelancers control their pipeline while showcasing relevant expertise.</span>
+                <span>Artists control their pipeline while showcasing relevant expertise.</span>
               </li>
               <li className="flex items-start gap-3">
                 <CheckCircle className="mt-0.5 h-4 w-4 text-primary" />

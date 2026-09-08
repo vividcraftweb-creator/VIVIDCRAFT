@@ -23,10 +23,10 @@ const faqSchema = {
   mainEntity: [
     {
       '@type': 'Question',
-      name: 'How does Vivid Art work for freelancers?',
+      name: 'How does Vivid Art work for artists?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Freelancers create a profile showcasing their skills and portfolio, browse curated job opportunities, and apply using token-based applications. Once a client selects you, you collaborate directly with them off-platform using your preferred tools.',
+        text: 'Artists create a profile showcasing their skills and portfolio, browse curated job opportunities, and apply using token-based applications. Once a client selects you, you collaborate directly with them off-platform using your preferred tools.',
       },
     },
     {
@@ -34,7 +34,7 @@ const faqSchema = {
       name: 'How does Vivid Art work for clients?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Clients post detailed project briefs with scope, budget, and expectations. Freelancers submit structured proposals which clients review in a centralized dashboard. After selecting the right freelancer, both parties move the relationship to their preferred collaboration tools.',
+        text: 'Clients post detailed project briefs with scope, budget, and expectations. Artists submit structured proposals which clients review in a centralized dashboard. After selecting the right artist, both parties move the relationship to their preferred collaboration tools.',
       },
     },
     {
@@ -42,7 +42,7 @@ const faqSchema = {
       name: 'Do I need to pay to use Vivid Art?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Vivid Art offers free plans for both freelancers and clients. Premium plans (Pro and Elite for freelancers, Business and Enterprise for clients) provide additional features like more application tokens, advanced analytics, and priority support.',
+        text: 'Vivid Art offers free plans for both artists and clients. Premium plans (Pro and Elite for artists, Business and Enterprise for clients) provide additional features like more application tokens, advanced analytics, and priority support.',
       },
     },
     {
@@ -50,12 +50,12 @@ const faqSchema = {
       name: 'How do application tokens work?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Freelancers use tokens to apply for jobs. Free plan members get weekly tokens, while Pro and Elite members receive more tokens and faster refresh rates. This system ensures quality applications and helps freelancers focus on the best-fit opportunities.',
+        text: 'Artists use tokens to apply for jobs. Free plan members get weekly tokens, while Pro and Elite members receive more tokens and faster refresh rates. This system ensures quality applications and helps artists focus on the best-fit opportunities.',
       },
     },
     {
       '@type': 'Question',
-      name: 'What happens after I hire a freelancer or get hired?',
+      name: 'What happens after I hire an artist or get hired?',
       acceptedAnswer: {
         '@type': 'Answer',
         text: 'After both parties agree to work together, the relationship moves off-platform. You manage deliverables, contracts, and payments using your own preferred tools and systems. Vivid Art facilitates the connection, but doesn\'t handle ongoing project management.',
@@ -63,10 +63,10 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'Are freelancers verified on Vivid Art?',
+      name: 'Are artists verified on Vivid Art?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes, Vivid Art offers ID verification for freelancers. Verified profiles display a badge, helping build trust with clients. The platform also includes fraud detection and reporting systems to maintain a professional community.',
+        text: 'Yes, Vivid Art offers ID verification for artists. Verified profiles display a badge, helping build trust with clients. The platform also includes fraud detection and reporting systems to maintain a professional community.',
       },
     },
     {

@@ -263,13 +263,13 @@ export default function ProposalDetailModal({
             )}
           </div>
 
-          {/* Freelancer and Client Info */}
+          {/* Artist and Client Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <User className="h-4 w-4 text-blue-400" />
-                  Freelancer
+                  Artist
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">

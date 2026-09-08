@@ -64,7 +64,7 @@ export default function FreelancerRecommendationCard({
   };
 
   const freelancerSlug = profile?.slug;
-  const freelancerName = freelancer.name || 'Freelancer';
+  const freelancerName = freelancer.name || 'Artist';
   const rawAvatar = profile?.avatar || (profile as any)?.avatar_url || (profile as any)?.profilePicture || (freelancer as any)?.image;
   const avatarSrc = getProfilePictureUrl(freelancer.id, rawAvatar);
 

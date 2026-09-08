@@ -140,7 +140,7 @@ export default function ApiKeysView() {
     { value: 'write:*', label: 'Write All', description: 'Write access to all resources' },
     { value: 'read:jobs', label: 'Read Jobs', description: 'View jobs' },
     { value: 'write:jobs', label: 'Write Jobs', description: 'Create/update jobs' },
-    { value: 'read:freelancers', label: 'Read Freelancers', description: 'View freelancer profiles' },
+    { value: 'read:freelancers', label: 'Read Artists', description: 'View artist profiles' },
     { value: 'read:analytics', label: 'Read Analytics', description: 'View analytics data' },
   ];
 

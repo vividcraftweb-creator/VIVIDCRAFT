@@ -215,12 +215,12 @@ export default function AdminAnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Freelancers */}
+        {/* Artists */}
         <Card className="bg-slate-900/80 border border-slate-800 bg-cyan-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-xs text-cyan-300 font-medium">Freelancers</div>
+                <div className="text-xs text-cyan-300 font-medium">Artists</div>
                 <div className="text-2xl font-bold text-white mt-1">{analytics.freelancers}</div>
               </div>
               <Users className="h-4 w-4 text-cyan-400" />

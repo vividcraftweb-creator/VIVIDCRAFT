@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const fullName = `${profile.first_name || profile.firstName || ''} ${profile.last_name || profile.lastName || ''}`.trim() || 'Freelancer';
+  const fullName = `${profile.first_name || profile.firstName || ''} ${profile.last_name || profile.lastName || ''}`.trim() || 'Artist';
   const title = profile.title || 'Professional';
   const description = profile.bio
     ? profile.bio.slice(0, 160)
@@ -40,8 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     keywords: [
       fullName,
       title,
-      'freelancer profile',
-      'hire freelancer',
+      'artist profile',
+      'hire artist',
       ...(profile.skills ? profile.skills.split(',').map((s: string) => s.trim()) : []),
     ].filter(Boolean) as string[],
     noIndex: true, // Privacy consideration

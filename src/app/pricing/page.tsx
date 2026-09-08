@@ -174,7 +174,7 @@ export default function PricingPage() {
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-blue-200">
             <Users className="h-4 w-4" />
-            For Artists & Freelancers
+            For Artists
           </div>
           <h2 className="text-3xl font-bold text-white sm:text-4xl">
             Grow your independent career

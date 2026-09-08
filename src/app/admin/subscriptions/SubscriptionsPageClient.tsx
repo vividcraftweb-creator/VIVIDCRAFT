@@ -20,6 +20,7 @@ import {
   Shield
 } from 'lucide-react';
 import { useMemo, useState, Fragment } from 'react';
+import { formatRole } from '@/lib/utils';
 
 type SortField = 'email' | 'createdAt' | 'plan' | 'role';
 type SortOrder = 'asc' | 'desc';
@@ -76,7 +77,7 @@ export default function AdminSubscriptionsPage() {
     let filtered = users.filter(user => {
       const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesPlan = filterPlan === 'all' || user.subscriptionPlan === filterPlan;
-      const matchesRole = filterRole === 'all' || user.role === filterRole;
+      const matchesRole = filterRole === 'all' || (filterRole === 'FREELANCER' ? (user.role === 'FREELANCER' || user.role === 'ARTIST') : user.role === filterRole);
       const matchesStatus = filterStatus === 'all' ||
         (filterStatus === 'verified' && user.isVerified) ||
         (filterStatus === 'unverified' && !user.isVerified);
@@ -329,8 +330,8 @@ export default function AdminSubscriptionsPage() {
                 className="px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 <option value="all" className="bg-slate-900">All Plans</option>
-                <option value="FREELANCER_PRO" className="bg-slate-900">Freelancer Pro</option>
-                <option value="FREELANCER_ELITE" className="bg-slate-900">Freelancer Elite</option>
+                <option value="FREELANCER_PRO" className="bg-slate-900">Artist Pro</option>
+                <option value="FREELANCER_ELITE" className="bg-slate-900">Artist Elite</option>
                 <option value="CLIENT_BUSINESS" className="bg-slate-900">Client Business</option>
                 <option value="CLIENT_ENTERPRISE" className="bg-slate-900">Client Enterprise</option>
               </select>
@@ -341,7 +342,7 @@ export default function AdminSubscriptionsPage() {
                 className="px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 <option value="all" className="bg-slate-900">All Roles</option>
-                <option value="FREELANCER" className="bg-slate-900">Freelancer</option>
+                <option value="FREELANCER" className="bg-slate-900">Artist</option>
                 <option value="CLIENT" className="bg-slate-900">Client</option>
                 <option value="ADMIN" className="bg-slate-900">Admin</option>
               </select>
@@ -447,11 +448,11 @@ export default function AdminSubscriptionsPage() {
                       </td>
                       <td className="py-3 px-4">
                         <Badge className={`text-xs ${
-                          user.role === 'FREELANCER' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                          formatRole(user.role) === 'ARTIST' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
                           user.role === 'CLIENT' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
-                          'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                          'bg-blue-500/20 text-blue-300 border-blue-500/30'
                         }`}>
-                          {user.role}
+                          {formatRole(user.role)}
                         </Badge>
                       </td>
                       <td className="py-3 px-4">
@@ -526,11 +527,11 @@ export default function AdminSubscriptionsPage() {
                                 <div className="flex items-start justify-between">
                                   <span className="text-slate-400">Role:</span>
                                   <Badge className={`text-xs ${
-                                    user.role === 'FREELANCER' ? 'bg-blue-500/20 text-blue-300' :
-                                    user.role === 'CLIENT' ? 'bg-green-500/20 text-green-300' :
-                                    'bg-purple-500/20 text-purple-300'
+                                    formatRole(user.role) === 'ARTIST' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                    user.role === 'CLIENT' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                                    'bg-blue-500/20 text-blue-300 border-blue-500/30'
                                   }`}>
-                                    {user.role}
+                                    {formatRole(user.role)}
                                   </Badge>
                                 </div>
                                 <div className="flex items-start justify-between">

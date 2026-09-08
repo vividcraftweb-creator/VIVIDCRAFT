@@ -19,9 +19,9 @@ export default function ReviewSubmitStep({ clientType, onComplete, onBack }: Rev
   const { data: profile } = trpc.profiles.getMyProfile.useQuery({}, { retry: false });
   const { data: documents } = trpc.verifications.getUserDocuments.useQuery(undefined, { retry: false });
 
-  // Determine if user is freelancer or client for proper labeling
+  // Determine if user is artist or client for proper labeling
   const userRole = user?.role || 'CLIENT';
-  const isFreelancer = userRole === 'FREELANCER';
+  const isFreelancer = userRole === 'FREELANCER' || userRole === 'ARTIST';
 
   const utils = trpc.useUtils();
 
@@ -68,19 +68,19 @@ export default function ReviewSubmitStep({ clientType, onComplete, onBack }: Rev
           {clientType === 'INDIVIDUAL' ? (
             <>
               <User className="h-5 w-5 text-blue-400" />
-              Individual {isFreelancer ? 'Freelancer' : 'Client'}
+              Individual {isFreelancer ? 'Artist' : 'Client'}
             </>
           ) : (
             <>
               <Building2 className="h-5 w-5 text-purple-400" />
-              Business {isFreelancer ? 'Freelancer' : 'Client'}
+              Business {isFreelancer ? 'Artist' : 'Client'}
             </>
           )}
         </h3>
         <p className="text-sm text-slate-400">
           {clientType === 'INDIVIDUAL'
-            ? `You are verifying as an individual ${isFreelancer ? 'freelancer' : 'client'}`
-            : `You are verifying as a business ${isFreelancer ? 'freelancer' : 'client'}`}
+            ? `You are verifying as an individual ${isFreelancer ? 'artist' : 'client'}`
+            : `You are verifying as a business ${isFreelancer ? 'artist' : 'client'}`}
         </p>
       </div>
 

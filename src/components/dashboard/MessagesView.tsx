@@ -328,11 +328,11 @@ export default function MessagesView() {
                 <MessageSquare className="h-12 w-12 text-slate-600 mb-3" />
                 <p className="text-white font-medium mb-2">No contacts yet</p>
                 <p className="text-sm text-slate-400 mb-4 max-w-xs">
-                  Start a conversation by sending a message to a freelancer from their profile
+                  Start a conversation by sending a message to an artist from their profile
                 </p>
                 <Link href="/freelancers">
                   <Button className="bg-primary hover:bg-primary/90 text-white">
-                    Browse Freelancers
+                    Browse Artists
                   </Button>
                 </Link>
               </div>

@@ -147,7 +147,7 @@ export default function Step5Review({ formData, onEditStep }: Props) {
             <p className="font-medium mb-2">What happens next?</p>
             <ul className="text-muted-foreground space-y-1.5">
               <li>✓ Your job will be published immediately</li>
-              <li>✓ Freelancers with matching skills will be notified</li>
+              <li>✓ Artists with matching skills will be notified</li>
               <li>✓ You&apos;ll start receiving proposals within hours</li>
               <li>✓ You can edit or pause the job anytime</li>
             </ul>

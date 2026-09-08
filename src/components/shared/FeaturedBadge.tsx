@@ -18,7 +18,7 @@ export function FeaturedBadge({ plan, variant = 'default', className = '' }: Fea
 
   if (variant === 'compact') {
     return (
-      <Crown className={`h-5 w-5 text-yellow-400 fill-yellow-400 ${className}`} aria-label="Elite Freelancer" />
+      <Crown className={`h-5 w-5 text-yellow-400 fill-yellow-400 ${className}`} aria-label="Elite Artist" />
     );
   }
 

@@ -319,7 +319,7 @@ export default function ProposalTrackingCRM() {
             <div>
               <Label className="text-slate-300 mb-2 flex items-center gap-2">
                 <Search className="h-4 w-4" />
-                Search Freelancers
+                Search Artists
               </Label>
               <Input
                 placeholder="Search by name, email, or job title..."
@@ -391,7 +391,7 @@ export default function ProposalTrackingCRM() {
                           <h3 className="text-lg font-semibold text-white">
                             {[freelancerProfile?.firstName, freelancerProfile?.lastName]
                               .filter(Boolean)
-                              .join(' ') || 'Freelancer'}
+                              .join(' ') || 'Artist'}
                           </h3>
                           <Badge className={getStatusColor(tracked.status)}>
                             {getStatusLabel(tracked.status)}

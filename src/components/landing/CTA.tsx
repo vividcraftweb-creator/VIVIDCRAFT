@@ -24,7 +24,7 @@ export default function CTA() {
         <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-800 bg-white/50 dark:bg-black/50 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 mb-6 sm:mb-8 relative z-20">
           <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-neutral-600 dark:text-neutral-400" />
           <span className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            For Freelancers & Clients
+            For Artists & Clients
           </span>
         </div>
 
@@ -37,7 +37,7 @@ export default function CTA() {
 
         {/* Description */}
         <p className="max-w-2xl mx-auto text-sm sm:text-base md:text-lg lg:text-xl text-neutral-700 dark:text-neutral-400 text-center mb-6 sm:mb-8 md:mb-10 lg:mb-12 relative z-20 px-4">
-          Whether you're a freelancer seeking opportunities or a client looking for top talent,
+          Whether you're an artist seeking opportunities or a client looking for top talent,
           get started with 150 free tokens per week. No credit card required.
         </p>
 

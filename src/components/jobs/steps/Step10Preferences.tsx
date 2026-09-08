@@ -104,7 +104,7 @@ export default function Step10Preferences({ formData, updateFormData }: Props) {
       <div className="space-y-4">
         <Label className="text-base font-medium flex items-center gap-2">
           <MapPin className="h-4 w-4 text-primary" />
-          Preferred Freelancer Locations (Optional)
+          Preferred Artist Locations (Optional)
         </Label>
         <p className="text-sm text-muted-foreground">
           Select regions you prefer. Leave empty for worldwide talent.

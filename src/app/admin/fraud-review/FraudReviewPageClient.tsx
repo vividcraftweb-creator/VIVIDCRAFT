@@ -19,6 +19,7 @@ import {
   Ban,
 } from 'lucide-react';
 import { useState } from 'react';
+import { formatRole } from '@/lib/utils';
 
 export default function FraudReviewPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -222,12 +223,12 @@ export default function FraudReviewPage() {
                         </div>
                       </td>
                       <td className="py-2.5 px-4 align-top">
-                        <Badge variant="outline" className={`text-xs inline-flex ${
-                          user.role === 'FREELANCER' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
-                          user.role === 'CLIENT' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
-                          'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                        <Badge variant="outline" className={`text-xs font-semibold inline-flex ${
+                          formatRole(user.role) === 'ARTIST' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                          user.role === 'CLIENT' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                          'bg-blue-500/15 text-blue-300 border-blue-500/30'
                         }`}>
-                          {user.role}
+                          {formatRole(user.role)}
                         </Badge>
                       </td>
                       <td className="py-2.5 px-4 align-top">

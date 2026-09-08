@@ -30,7 +30,7 @@ import {
 export default function Benefits() {
   const features = [
     {
-      title: 'Advanced Freelancer Dashboard',
+      title: 'Advanced Artist Dashboard',
       description:
         'Track proposals, manage applications with token system, and monitor your career growth with detailed analytics.',
       skeleton: <SkeletonOne />,

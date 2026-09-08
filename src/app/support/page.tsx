@@ -73,7 +73,7 @@ export default async function SupportPage() {
             <div className="glass-card p-6 rounded-xl">
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                For Freelancers
+                For Artists
               </h3>
               <div className="space-y-4">
                 <div>

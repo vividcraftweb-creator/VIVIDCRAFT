@@ -224,7 +224,7 @@ export default function AdminProposalsPage() {
               <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by freelancer, client, or job title..."
+                placeholder="Search by artist, client, or job title..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -259,7 +259,7 @@ export default function AdminProposalsPage() {
               <thead className="bg-slate-950/60 border-b border-slate-800">
                 <tr>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Freelancer</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Artist</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Job</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Rate</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tokens</th>

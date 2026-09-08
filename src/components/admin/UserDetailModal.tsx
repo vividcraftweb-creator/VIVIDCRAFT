@@ -31,6 +31,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatRole, getRoleBadgeClass } from '@/lib/utils';
 
 interface UserDetailModalProps {
   userId: string;
@@ -90,11 +91,7 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
   };
 
   const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'ADMIN': return 'bg-red-500/20 text-red-300 border-red-500/30';
-      case 'CLIENT': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-      default: return 'bg-green-500/20 text-green-300 border-green-500/30';
-    }
+    return getRoleBadgeClass(role);
   };
 
   const getPlanBadge = (plan: string) => {
@@ -143,10 +140,10 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                 </Badge>
               )}
               <Badge className={getRoleBadge(user.role)}>
-                {user.role}
+                {formatRole(user.role)}
               </Badge>
               <Badge className={getPlanBadge(user.subscriptionPlan ?? 'FREE')}>
-                {user.subscriptionPlan?.replace('FREELANCER_', '').replace('CLIENT_', '') || 'FREE'}
+                {user.subscriptionPlan?.replace('FREELANCER_', '').replace('ARTIST_', '').replace('CLIENT_', '') || 'FREE'}
               </Badge>
               {stats && (
                 <>
@@ -156,7 +153,7 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                       {stats.jobsPosted} Jobs
                     </Badge>
                   )}
-                  {(user.role === 'FREELANCER' || user.role === 'ADMIN') && (
+                  {(formatRole(user.role) === 'ARTIST' || user.role === 'ADMIN') && (
                     <Badge variant="outline" className="border-green-400/30 text-green-300">
                       <FileText className="h-3 w-3 mr-1" />
                       {stats.proposalsSubmitted} Proposals
@@ -169,7 +166,7 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
             {/* Profile Details */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-white">
-                {user.role === 'FREELANCER' ? 'Freelancer Profile' :
+                {formatRole(user.role) === 'ARTIST' ? 'Artist Profile' :
                  user.role === 'CLIENT' ? 'Client Details' :
                  'Account Information'}
               </h3>
@@ -206,8 +203,8 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                   </div>
                 </div>
 
-                {/* Freelancer-specific fields */}
-                {user.role === 'FREELANCER' && (
+                {/* Artist-specific fields */}
+                {formatRole(user.role) === 'ARTIST' && (
                   <>
                     {profile?.title && (
                       <div>
@@ -270,7 +267,7 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                 )}
 
                 {/* Admin or users without specific fields */}
-                {user.role !== 'FREELANCER' && user.role !== 'CLIENT' && profile?.location && (
+                {formatRole(user.role) !== 'ARTIST' && user.role !== 'CLIENT' && profile?.location && (
                   <div>
                     <div className="text-slate-400 text-xs mb-0.5">Location</div>
                     <div className="text-white">{profile.location}</div>
@@ -283,24 +280,24 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                 </div>
               </div>
 
-              {/* Freelancer Skills */}
-              {user.role === 'FREELANCER' && profile?.skills && (
+              {/* Artist Skills */}
+              {formatRole(user.role) === 'ARTIST' && profile?.skills && (
                 <div className="pt-2.5 border-t border-white/10">
                   <div className="text-slate-400 text-xs mb-1">Skills</div>
                   <div className="text-white text-sm leading-relaxed">{profile.skills}</div>
                 </div>
               )}
 
-              {/* Freelancer Experience */}
-              {user.role === 'FREELANCER' && profile?.experience && (
+              {/* Artist Experience */}
+              {formatRole(user.role) === 'ARTIST' && profile?.experience && (
                 <div className="pt-2.5 border-t border-white/10">
                   <div className="text-slate-400 text-xs mb-1">Experience</div>
                   <div className="text-white text-sm leading-relaxed whitespace-pre-line">{profile.experience}</div>
                 </div>
               )}
 
-              {/* Freelancer Education */}
-              {user.role === 'FREELANCER' && profile?.education && (
+              {/* Artist Education */}
+              {formatRole(user.role) === 'ARTIST' && profile?.education && (
                 <div className="pt-2.5 border-t border-white/10">
                   <div className="text-slate-400 text-xs mb-1">Education</div>
                   <div className="text-white text-sm leading-relaxed whitespace-pre-line">{profile.education}</div>
@@ -357,7 +354,7 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-white/10">
-                      <SelectItem value="FREELANCER">Freelancer</SelectItem>
+                      <SelectItem value="FREELANCER">Artist</SelectItem>
                       <SelectItem value="CLIENT">Client</SelectItem>
                       <SelectItem value="ADMIN">Admin</SelectItem>
                     </SelectContent>

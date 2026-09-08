@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = createAuthPageMetadata({
-  title: 'Browse Freelancers',
-  description: 'Browse and hire verified freelancers for your projects.',
+  title: 'Browse Artists',
+  description: 'Browse and hire verified artists for your projects.',
 });
 
 export default async function BrowseFreelancersPage() {

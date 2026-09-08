@@ -55,6 +55,7 @@ import { Label } from '@/components/ui/label';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SubscriptionPlan } from '@/types/database.types';
 import { createClient } from '@/lib/supabase/client';
+import { formatRole, getRoleBadgeClass } from '@/lib/utils';
 
 type AdminUserRole = 'ADMIN' | 'CLIENT' | 'FREELANCER';
 
@@ -369,12 +370,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
   };
 
   const getRoleBadge = (userRole: string) => {
-    const colors = {
-      ADMIN: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-      CLIENT: 'bg-green-500/20 text-green-300 border-green-500/30',
-      FREELANCER: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    };
-    return colors[userRole as keyof typeof colors] || 'bg-gray-500/20 text-gray-300';
+    return getRoleBadgeClass(userRole);
   };
 
   const getPlanBadge = (plan: string) => {
@@ -596,7 +592,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 onClick={() => handleRoleChange('FREELANCER')}
                 className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
               >
-                Artists (Freelancers)
+                Artists
               </Button>
               <Button
                 variant={role === 'ADMIN' ? 'default' : 'ghost'}
@@ -755,7 +751,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                           </div>
                         </td>
                         <td className="py-2.5 px-4 align-top">
-                          <Badge variant="outline" className={`text-xs ${getRoleBadge(user.role)}`}>{user.role}</Badge>
+                          <Badge variant="outline" className={`text-xs font-semibold ${getRoleBadge(user.role)}`}>{formatRole(user.role)}</Badge>
                         </td>
                         <td className="py-2.5 px-4 align-top">
                           <Badge variant="outline" className={`text-xs ${getPlanBadge(user.subscriptionPlan ?? '')}`}>

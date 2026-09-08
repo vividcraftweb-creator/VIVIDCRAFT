@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import UserDetailModal from '@/components/admin/UserDetailModal';
+import { formatRole } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -103,7 +104,7 @@ export default function AdminOrganizationsPage() {
 
   const getPlanName = (plan: string) => {
     const names: Record<string, string> = {
-      'FREELANCER_ELITE': 'Freelancer Elite',
+      'FREELANCER_ELITE': 'Artist Elite',
       'CLIENT_BUSINESS': 'Client Business',
       'CLIENT_ENTERPRISE': 'Client Enterprise',
     };
@@ -274,11 +275,11 @@ export default function AdminOrganizationsPage() {
                         <div className="flex flex-col">
                           <span className="text-sm text-white truncate">{user.email}</span>
                           <Badge variant="outline" className={`text-xs inline-flex mt-1 ${
-                            user.role === 'FREELANCER' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
-                            user.role === 'CLIENT' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
-                            'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                            formatRole(user.role) === 'ARTIST' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                            user.role === 'CLIENT' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                            'bg-blue-500/15 text-blue-300 border-blue-500/30'
                           }`}>
-                            {user.role}
+                            {formatRole(user.role)}
                           </Badge>
                         </div>
                       </td>

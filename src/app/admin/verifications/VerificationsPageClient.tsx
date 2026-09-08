@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { DocumentViewerModal } from '@/components/admin/DocumentViewerModal';
+import { formatRole } from '@/lib/utils';
 
 type Document = {
   id: string;
@@ -305,8 +306,8 @@ export default function AdminVerificationsPage() {
             ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Individual Client'
             : 'Individual Client'
           : profile
-          ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Freelancer'
-          : 'Freelancer';
+          ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Artist'
+          : 'Artist';
 
       // Search filter
       const matchesSearch =
@@ -318,7 +319,7 @@ export default function AdminVerificationsPage() {
       const matchesUserType =
         userTypeFilter === 'ALL' ||
         (userTypeFilter === 'CLIENT' && user.role === 'CLIENT') ||
-        (userTypeFilter === 'FREELANCER' && user.role === 'FREELANCER') ||
+        (userTypeFilter === 'FREELANCER' && (user.role === 'FREELANCER' || user.role === 'ARTIST')) ||
         (userTypeFilter === 'INDIVIDUAL' && user.clientType === 'INDIVIDUAL') ||
         (userTypeFilter === 'BUSINESS' && user.clientType === 'BUSINESS');
 
@@ -539,7 +540,7 @@ export default function AdminVerificationsPage() {
               <SelectContent className="bg-slate-900 border-slate-800 text-white">
                 <SelectItem value="ALL">All Types</SelectItem>
                 <SelectItem value="CLIENT">Clients</SelectItem>
-                <SelectItem value="FREELANCER">Freelancers</SelectItem>
+                <SelectItem value="FREELANCER">Artists</SelectItem>
                 <SelectItem value="INDIVIDUAL">Individual</SelectItem>
                 <SelectItem value="BUSINESS">Business</SelectItem>
               </SelectContent>
@@ -576,8 +577,8 @@ export default function AdminVerificationsPage() {
                       'Individual Client'
                     : 'Individual Client'
                   : profile
-                  ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Freelancer'
-                  : 'Freelancer';
+                  ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Artist'
+                  : 'Artist';
 
                 const userDocs = user.Verification || [];
                 const isExpanded = expandedUsers.has(user.id);
@@ -613,10 +614,14 @@ export default function AdminVerificationsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-white font-medium truncate">{displayName}</h3>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className={`text-xs font-semibold ${
+                            !isClient
+                              ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          }`}>
                             {isClient
                               ? user.clientType || 'INDIVIDUAL'
-                              : 'FREELANCER'}
+                              : 'ARTIST'}
                           </Badge>
                         </div>
                         <p className="text-sm text-slate-400 truncate">{user.email}</p>

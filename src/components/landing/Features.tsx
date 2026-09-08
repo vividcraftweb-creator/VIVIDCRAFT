@@ -8,7 +8,7 @@ export default function Features() {
       {/* Scrolling Features - 2 Lines */}
       <div className="relative space-y-3 sm:space-y-4">
         <ScrollVelocity
-          texts={['150 Free Tokens Per Week • Real-Time Job Matching • Verified Freelancers • Secure Payment Processing']}
+          texts={['150 Free Tokens Per Week • Real-Time Job Matching • Verified Artists • Secure Payment Processing']}
           velocity={50}
           className="text-black/60 dark:text-white/60 px-4 sm:px-6 md:px-8"
           damping={50}

@@ -57,7 +57,7 @@ const TermsPage = () => {
               <div>
                 <h3 className="text-xl font-semibold text-foreground mb-3">Token System</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Freelancers receive 150 application tokens weekly. Tokens are used to apply for jobs 
+                  Artists receive 150 application tokens weekly. Tokens are used to apply for jobs 
                   and cannot be transferred, sold, or refunded. Unused tokens do not carry over to 
                   subsequent weeks.
                 </p>
@@ -85,7 +85,7 @@ const TermsPage = () => {
             
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground">For Freelancers</h3>
+                <h3 className="text-lg font-semibold text-foreground">For Artists</h3>
                 <ul className="space-y-2 text-muted-foreground">
                   <li>• Job discovery and application system</li>
                   <li>• Profile creation and portfolio showcase</li>
