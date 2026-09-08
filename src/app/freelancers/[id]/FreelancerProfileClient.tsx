@@ -202,7 +202,7 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
             portfolio: null,
             taxId: null,
             timezone: null,
-            verified: true,
+            verified: Boolean(data.is_verified || data.verified || false),
             website: null,
             experienceItems: [],
             educationItems: [],

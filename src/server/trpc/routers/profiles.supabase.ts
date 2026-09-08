@@ -1251,7 +1251,7 @@ export const profilesRouter = router({
                 email: u.email || existing.email,
                 role: u.role || existing.role || 'FREELANCER',
                 subscriptionPlan: u.subscriptionPlan || existing.subscriptionPlan || 'FREELANCER_PRO',
-                is_verified: u.isVerified ?? existing.is_verified ?? true,
+                is_verified: Boolean(u.isVerified ?? existing.is_verified ?? false),
                 ...existing,
               });
             }
@@ -1283,7 +1283,7 @@ export const profilesRouter = router({
               email: u.email || existing.email,
               role: uRole,
               subscriptionPlan: existing.subscriptionPlan || 'FREELANCER_PRO',
-              is_verified: existing.is_verified ?? true,
+              is_verified: Boolean(existing.is_verified ?? false),
               ...existing,
               first_name: fName,
               last_name: lName,
@@ -1373,7 +1373,7 @@ export const profilesRouter = router({
           email: p.email || null,
           role: p.role || 'FREELANCER',
           subscriptionPlan: p.subscription_plan || p.subscriptionPlan || 'FREELANCER_PRO',
-          isVerified: Boolean(p.is_verified || p.isVerified || (p.verified ?? true)),
+          isVerified: Boolean(p.is_verified || p.isVerified || p.verified || false),
           Profile: {
             id: p.id,
             userId: p.id,

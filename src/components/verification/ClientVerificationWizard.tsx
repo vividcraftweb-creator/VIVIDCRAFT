@@ -13,6 +13,7 @@ type VerificationStep = 'client-type' | 'documents' | 'review' | 'pending';
 
 export default function ClientVerificationWizard() {
   const [currentStep, setCurrentStep] = useState<VerificationStep | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const hasInitialized = useRef(false);
 
   const { data: user, isLoading: isLoadingUser } = trpc.user.getCurrentUser.useQuery();
@@ -21,31 +22,56 @@ export default function ClientVerificationWizard() {
     refetchInterval: false,
   });
 
+  // 5-second timeout fallback guarantees loading ceases even if queries hang
+  useEffect(() => {
+    let isMounted = true;
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        setIsLoading(false);
+        if (!hasInitialized.current) {
+          hasInitialized.current = true;
+          setCurrentStep('client-type');
+        }
+      }
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
   // Determine the initial step ONLY ONCE on first load
   useEffect(() => {
     if (isLoadingUser || isLoadingDocs) return;
     if (hasInitialized.current) return;
-    if (!user) return;
 
-    hasInitialized.current = true;
+    try {
+      hasInitialized.current = true;
 
-    // If user has officially submitted for review, show pending status
-    if (user.verificationSubmittedAt) {
-      setCurrentStep('pending');
-      return;
-    }
+      // If user has officially submitted for review, show pending status
+      if (user?.verificationSubmittedAt) {
+        setCurrentStep('pending');
+        return;
+      }
 
-    // If client type not selected, start there
-    if (!user.clientType) {
+      // If client type not selected, start there
+      if (!user?.clientType) {
+        setCurrentStep('client-type');
+        return;
+      }
+
+      // Default to documents step
+      setCurrentStep('documents');
+    } catch (err) {
+      console.warn('Client verification wizard init notice:', err);
       setCurrentStep('client-type');
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    // Default to documents step
-    setCurrentStep('documents');
   }, [user, documents, isLoadingUser, isLoadingDocs]);
 
-  if (isLoadingUser || isLoadingDocs || currentStep === null) {
+  if ((isLoadingUser || isLoadingDocs || isLoading) && currentStep === null) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-12 w-12 text-blue-400 animate-spin" />
@@ -61,7 +87,7 @@ export default function ClientVerificationWizard() {
       <div className="mb-8">
         <div className="flex w-full items-center justify-center">
           {['Account Type', 'Upload Documents', 'Review & Submit'].map((label, index) => {
-            const stepIndex = ['client-type', 'documents', 'review', 'pending'].indexOf(currentStep);
+            const stepIndex = ['client-type', 'documents', 'review', 'pending'].indexOf(currentStep || 'client-type');
             const stepNumber = index + 1;
             const isNotLastStep = index < 2;
             const isActive = stepIndex === index;

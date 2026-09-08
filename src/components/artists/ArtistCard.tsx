@@ -117,7 +117,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
   const avatarSrc = getPublicUrl(rawAvatar, artistId);
   const initialLetter = (firstName || displayName || 'A').charAt(0).toUpperCase();
   const locationVal = artist.location || artist.address || '';
-  const isVerified = Boolean(artist.is_verified || artist.isVerified);
+  const isVerified = Boolean(artist.is_verified || artist.isVerified || (artist as any).verified);
 
   // If avatar is missing from database row, query Supabase storage in the background for uploaded avatar
   useEffect(() => {

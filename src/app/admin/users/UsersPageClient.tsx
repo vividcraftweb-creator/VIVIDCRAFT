@@ -108,7 +108,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
               email: p.email || 'N/A',
               role,
               subscriptionPlan: p.subscriptionPlan || (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-              isVerified: true,
+              isVerified: Boolean(p.is_verified || p.verified || false),
               createdAt: p.created_at || new Date().toISOString(),
               Profile: {
                 firstName: p.first_name || p.firstName || '',
@@ -135,7 +135,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 email: u.email || 'N/A',
                 role,
                 subscriptionPlan: u.subscriptionPlan && !u.subscriptionPlan.toUpperCase().includes('FREE') && !u.subscriptionPlan.toUpperCase().includes('STARTER') ? u.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-                isVerified: u.isVerified ?? (u.status === 'Verified'),
+                isVerified: Boolean(u.isVerified ?? (u.status === 'Verified')),
                 createdAt: u.created_at || u.createdAt || new Date().toISOString(),
                 Profile: {
                   firstName: u.first_name || u.firstName || u.Profile?.firstName || u.Profile?.first_name || '',
@@ -181,13 +181,23 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
   }, [debouncedSearch, role, verificationStatus, planFilter, emailStatus, sortBy, sortOrder, pageSize]);
 
   const verifyMutation = trpc.admin.users.verifyUser.useMutation({
-    onSuccess: () => {
-      toast.success('User verified successfully');
+    onSuccess: (data) => {
+      toast.success(data?.message || 'User verified successfully');
       refetch();
       setVerifyTarget(null);
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to verify user');
+    },
+  });
+
+  const unverifyMutation = trpc.admin.users.unverifyUser.useMutation({
+    onSuccess: (data) => {
+      toast.success(data?.message || 'User unverified successfully');
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to unverify user');
     },
   });
 
@@ -306,6 +316,27 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
       return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
     }
     return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+  };
+
+  const handleToggleVerify = async (user: AdminUser) => {
+    const nextState = !user.isVerified;
+    // Optimistic UI update
+    setDirectUsers((prev) =>
+      prev.map((u) => (u.id === user.id ? { ...u, isVerified: nextState } : u))
+    );
+    try {
+      if (nextState) {
+        await verifyMutation.mutateAsync({ userId: user.id, isVerified: true });
+      } else {
+        await unverifyMutation.mutateAsync({ userId: user.id });
+      }
+    } catch (e: any) {
+      // Revert optimistic update
+      setDirectUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, isVerified: !nextState } : u))
+      );
+      toast.error(e?.message || 'Failed to update user verification');
+    }
   };
 
   const handleVerifyUser = (user: AdminUser) => {
@@ -598,12 +629,12 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
               <colgroup>
-                <col style={{ width: '30%' }} />
+                <col style={{ width: '27%' }} />
                 <col style={{ width: '12%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '15%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '16%' }} />
                 <col style={{ width: '18%' }} />
-                <col style={{ width: '10%' }} />
               </colgroup>
               <thead className="border-b border-slate-800 bg-slate-950/60">
                 <tr>
@@ -677,7 +708,33 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                           </span>
                         </td>
                         <td className="py-2.5 px-4 align-top">
-                          <div className="flex items-center justify-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Direct 1-Click Manual Verify / Unverify Toggle Button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleVerify(user)}
+                              disabled={verifyMutation.isPending || unverifyMutation.isPending}
+                              title={user.isVerified ? 'Click to unverify user' : 'Click to verify user'}
+                              className={`h-7 px-2 text-[11px] font-medium transition-all ${
+                                user.isVerified
+                                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300'
+                                  : 'border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300'
+                              }`}
+                            >
+                              {user.isVerified ? (
+                                <>
+                                  <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
+                                  Verified
+                                </>
+                              ) : (
+                                <>
+                                  <Shield className="h-3 w-3 mr-1 text-slate-400" />
+                                  Verify
+                                </>
+                              )}
+                            </Button>
+
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white h-7 w-7 p-0">
@@ -694,9 +751,17 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                                   <Eye className="h-3.5 w-3.5 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                {!user.isVerified && (
+                                {user.isVerified ? (
                                   <DropdownMenuItem
-                                    onClick={() => handleVerifyUser(user)}
+                                    onClick={() => handleToggleVerify(user)}
+                                    className="text-yellow-400 cursor-pointer hover:bg-white/5 text-xs"
+                                  >
+                                    <XCircle className="h-3.5 w-3.5 mr-2" />
+                                    Unverify User
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleVerify(user)}
                                     className="text-green-400 cursor-pointer hover:bg-white/5 text-xs"
                                   >
                                     <CheckCircle className="h-3.5 w-3.5 mr-2" />

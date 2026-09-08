@@ -363,13 +363,13 @@ export default function PublicArtistProfileClient() {
       fullName: fFullName,
       username: uName,
       avatarUrl: resolvedAvatar,
-      title: rawProfile?.title || rawProfile?.professional_title || 'Verified Artist & Creator',
+      title: rawProfile?.title || rawProfile?.professional_title || (Boolean(rawProfile?.is_verified || rawProfile?.verified) ? 'Verified Artist & Creator' : 'Artist & Creator'),
       bio: rawProfile?.bio || rawProfile?.description || 'Professional artist and digital creator on Vivid Art.',
       location: rawProfile?.location || rawProfile?.address || '',
       skills: skillsList,
       rate: typeof rawProfile?.rate === 'number' ? rawProfile.rate : 75,
       portfolio: rawProfile?.portfolio || null,
-      isVerified: Boolean(rawProfile?.verified ?? true),
+      isVerified: Boolean(rawProfile?.is_verified || rawProfile?.verified || false),
     };
   }, [rawProfile, id]);
 

@@ -238,6 +238,8 @@ export const verificationsRouter = router({
         .from('profiles')
         .update({
           verified: true,
+          is_verified: true,
+          status: 'active',
           updated_at: new Date().toISOString(),
         })
         .eq('id', verification.userId);
@@ -299,9 +301,22 @@ export const verificationsRouter = router({
         .update({
           status: 'REJECTED',
           details: input.reason,
+          rejectionReason: input.reason,
           updatedAt: new Date().toISOString(),
         })
         .eq('id', input.verificationId);
+
+      // Update user's profile to not be verified
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            verified: false,
+            is_verified: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', verification.userId);
+      } catch {}
 
       // Create notification
       await createNotification(supabase, {

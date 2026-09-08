@@ -29,6 +29,8 @@ import {
   Image as ImageIcon,
   FileText,
   ExternalLink,
+  UserCheck,
+  Shield,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { DocumentViewerModal } from '@/components/admin/DocumentViewerModal';
@@ -119,6 +121,26 @@ export default function AdminVerificationsPage() {
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to reject document');
+    },
+  });
+
+  const userVerifyMutation = trpc.admin.users.verifyUser.useMutation({
+    onSuccess: (data) => {
+      toast.success(data?.message || 'User verified successfully');
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to verify user');
+    },
+  });
+
+  const userUnverifyMutation = trpc.admin.users.unverifyUser.useMutation({
+    onSuccess: (data) => {
+      toast.success(data?.message || 'User unverified successfully');
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to unverify user');
     },
   });
 
@@ -476,7 +498,41 @@ export default function AdminVerificationsPage() {
                             {rejectedCount} rejected
                           </Badge>
                         )}
-                        <span className="text-slate-500 ml-2">{userDocs.length} docs</span>
+                        <span className="text-slate-500 ml-1 mr-2">{userDocs.length} docs</span>
+
+                        {/* Direct 1-Click Manual Verify / Unverify Toggle */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const isUserVerified = approvedCount > 0 || Boolean((user as any).isVerified || (user as any).is_verified);
+                            if (isUserVerified) {
+                              userUnverifyMutation.mutate({ userId: user.id });
+                            } else {
+                              userVerifyMutation.mutate({ userId: user.id, isVerified: true });
+                            }
+                          }}
+                          disabled={userVerifyMutation.isPending || userUnverifyMutation.isPending}
+                          title="1-click manual verification toggle"
+                          className={`h-7 px-2.5 text-xs font-medium transition-all ${
+                            approvedCount > 0 || Boolean((user as any).isVerified || (user as any).is_verified)
+                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300'
+                              : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300'
+                          }`}
+                        >
+                          {approvedCount > 0 || Boolean((user as any).isVerified || (user as any).is_verified) ? (
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
+                              Verified
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="h-3 w-3 mr-1 text-slate-400" />
+                              Verify User
+                            </>
+                          )}
+                        </Button>
                       </div>
                       <div className="flex-shrink-0 text-xs text-slate-500">
                         {new Date(user.createdAt).toLocaleDateString()}

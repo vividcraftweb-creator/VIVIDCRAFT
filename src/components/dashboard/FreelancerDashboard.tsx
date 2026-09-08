@@ -67,6 +67,7 @@ import { createClient } from '@/lib/supabase/client';
 
 // Dynamically import components to avoid SSR issues
 const ProfileView = dynamic(() => import('./ProfileView'), { ssr: false });
+const ArtistVerificationView = dynamic(() => import('../verification/ArtistVerificationView'), { ssr: false });
 const ClientVerificationWizard = dynamic(() => import('../verification/ClientVerificationWizard'), { ssr: false });
 const SubscriptionView = dynamic(() => import('./SubscriptionView'), { ssr: false });
 const GalleryView = dynamic(() => import('./GalleryView'), { ssr: false });
@@ -161,7 +162,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
           setDirectVerification({
             isVerified: isApproved,
-            status: isApproved ? 'approved' : 'not_started',
+            status: isApproved ? 'approved' : prof?.status === 'pending_verification' ? 'pending' : 'not_started',
           });
         }
       } catch (e) {}
@@ -1415,7 +1416,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
         return <ProfileView />;
 
       case 'verification':
-        return <ClientVerificationWizard />;
+        return <ArtistVerificationView />;
 
       case 'subscription':
         return <SubscriptionView />;

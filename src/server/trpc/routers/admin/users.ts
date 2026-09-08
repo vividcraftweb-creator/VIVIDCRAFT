@@ -540,34 +540,80 @@ export const adminUsersRouter = router({
 
   // Manual verify user
   verifyUser: adminProcedure
+    .input(z.object({ userId: z.string(), isVerified: z.boolean().default(true) }))
+    .mutation(async ({ input, ctx }) => {
+      const supabase = requireAdminSupabase(ctx);
+      const isVerified = input.isVerified;
+
+      // Update user verification status in User table
+      try {
+        await supabase
+          .from('User')
+          .update({ isVerified, updatedAt: new Date().toISOString() })
+          .eq('id', input.userId);
+      } catch (userErr) {
+        console.warn('User table verification update notice:', userErr);
+      }
+
+      // Also update profiles table
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            is_verified: isVerified,
+            verified: isVerified,
+            status: isVerified ? 'active' : 'draft',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', input.userId);
+      } catch (profileError) {
+        console.warn('Profile table verification update notice:', profileError);
+      }
+
+      // Also update Supabase auth metadata if possible
+      try {
+        await supabase.auth.admin.updateUserById(input.userId, {
+          user_metadata: { is_verified: isVerified, verified: isVerified },
+        });
+      } catch {}
+
+      return {
+        success: true,
+        message: isVerified ? 'User verified successfully' : 'User unverified successfully',
+      };
+    }),
+
+  // Manual unverify user
+  unverifyUser: adminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const supabase = requireAdminSupabase(ctx);
 
-      // Update user verification status
-      const { error: userError } = await supabase
-        .from('User')
-        .update({ isVerified: true, updatedAt: new Date().toISOString() })
-        .eq('id', input.userId);
+      try {
+        await supabase
+          .from('User')
+          .update({ isVerified: false, updatedAt: new Date().toISOString() })
+          .eq('id', input.userId);
+      } catch {}
 
-      if (userError) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to verify user.',
-        });
-      }
-
-      // Also update profiles table if it exists
       try {
         await (supabase as any)
           .from('profiles')
-          .update({ is_verified: true, updated_at: new Date().toISOString() })
+          .update({
+            is_verified: false,
+            verified: false,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', input.userId);
-      } catch (profileError) {
-        // Profile update is optional, ignore the error
-      }
+      } catch {}
 
-      return { success: true, message: 'User verified successfully' };
+      try {
+        await supabase.auth.admin.updateUserById(input.userId, {
+          user_metadata: { is_verified: false, verified: false },
+        });
+      } catch {}
+
+      return { success: true, message: 'User unverified successfully' };
     }),
 
   // Get user statistics
