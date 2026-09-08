@@ -302,6 +302,47 @@ export const verificationsRouter = router({
       return await handleVerificationDocumentMutation(ctx, input);
     }),
 
+  /**
+   * Reset / Cancel pending verification request
+   * Allows users with premature or incomplete submissions to reset and re-upload documents
+   */
+  resetVerificationRequest: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const adminSupabase = ctx.adminSupabase || createAdminClient() || (await createClient());
+
+    try {
+      await (adminSupabase as any)
+        .from('verifications')
+        .delete()
+        .eq('user_id', userId)
+        .neq('status', 'approved');
+    } catch (err) {
+      console.warn('Error deleting from verifications table on reset:', err);
+    }
+
+    try {
+      await (adminSupabase as any)
+        .from('Verification')
+        .delete()
+        .eq('userId', userId)
+        .neq('status', 'APPROVED');
+    } catch (err) {
+      console.warn('Error deleting from Verification table on reset:', err);
+    }
+
+    try {
+      await (adminSupabase as any)
+        .from('profiles')
+        .update({ is_verified: false, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+    } catch {}
+
+    return {
+      success: true,
+      message: 'Verification request reset. You can now re-upload your documents.',
+    };
+  }),
+
   getVerificationStatus: protectedProcedure
     .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx }) => {

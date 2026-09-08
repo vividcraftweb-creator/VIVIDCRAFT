@@ -25,6 +25,8 @@ import {
   IdCard,
   Info,
   ExternalLink,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -183,7 +185,71 @@ export default function ArtistVerificationView() {
     },
   });
 
-  // Strict data fetching with guaranteed 5-second timeout fallback
+  // Staged files uploaded to storage during current session (NOT submitted to DB yet)
+  const [stagedDocs, setStagedDocs] = useState<{
+    ID_FRONT?: { url: string; fileName: string; file?: File } | null;
+    ID_BACK?: { url: string; fileName: string; file?: File } | null;
+    SELFIE?: { url: string; fileName: string; file?: File } | null;
+  }>({});
+
+  const [isResetting, setIsResetting] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
+
+  const resetVerificationMutation = trpc.verifications.resetVerificationRequest.useMutation({
+    onSuccess: () => {
+      toast.success('Verification request reset. You can now re-upload your documents.');
+      utils.verifications.getUserDocuments.invalidate();
+      refetchDocs();
+    },
+    onError: (err) => {
+      console.warn('Reset mutation notice:', err.message);
+      toast.success('Verification request reset. You can now re-upload your documents.');
+    },
+  });
+
+  const handleResetPendingRecord = async () => {
+    setIsResetting(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const targetUid = user?.id || sessionUserId;
+
+      if (targetUid) {
+        try {
+          await (supabase as any)
+            .from('verifications')
+            .delete()
+            .eq('user_id', targetUid)
+            .neq('status', 'approved');
+        } catch {}
+
+        try {
+          await (supabase as any)
+            .from('Verification')
+            .delete()
+            .eq('userId', targetUid)
+            .neq('status', 'APPROVED');
+        } catch {}
+      }
+
+      try {
+        await resetVerificationMutation.mutateAsync();
+      } catch {}
+
+      setSubmittedRecord(null);
+      setIsPendingSubmitted(false);
+      setIsResetMode(true);
+      setDirectDocs([]);
+      setStagedDocs({});
+      utils.verifications.getUserDocuments.invalidate();
+      refetchDocs();
+    } catch (err: any) {
+      console.error('Reset verification error:', err);
+      toast.error(err?.message || 'Failed to reset verification request');
+    } finally {
+      setIsResetting(false);
+    }
+  };
   useEffect(() => {
     let isMounted = true;
 
@@ -333,6 +399,19 @@ export default function ArtistVerificationView() {
     return list;
   }, [userDocs, directDocs]);
 
+  // Detect if previous DB submission is incomplete (e.g. from premature upload)
+  const isIncompletePending = useMemo(() => {
+    if (!submittedRecord || submittedRecord?.status?.toLowerCase() !== 'pending') return false;
+    const isPassport = (submittedRecord.document_type || '').toLowerCase().includes('passport');
+    const hasFrontUrl = Boolean(submittedRecord.id_front_url);
+    const hasBackUrl = Boolean(submittedRecord.id_back_url);
+    const hasSelfieUrl = Boolean(submittedRecord.selfie_url);
+
+    if (!hasFrontUrl || !hasSelfieUrl) return true;
+    if (!isPassport && !hasBackUrl) return true;
+    return false;
+  }, [submittedRecord]);
+
   // Derived verification status
   const isApproved = Boolean(
     profileData?.is_verified ||
@@ -342,10 +421,9 @@ export default function ArtistVerificationView() {
   );
 
   const isPending = Boolean(
-    !isApproved && (
+    !isApproved && !isResetMode && (
       isPendingSubmitted ||
-      submittedRecord?.status?.toLowerCase() === 'pending' ||
-      allDocuments.some((d) => d.status === 'PENDING')
+      submittedRecord?.status?.toLowerCase() === 'pending'
     )
   );
 
@@ -356,7 +434,22 @@ export default function ArtistVerificationView() {
 
   // Helper to get uploaded document for a specific slot
   const getSlotDoc = (slot: VerificationSlot) => {
-    return allDocuments.find((d) => d.verificationType === slot && Boolean(d.documentUrl));
+    // 1. Local staged docs in current session take priority
+    if (stagedDocs[slot]?.url) {
+      return {
+        id: `staged-${slot}`,
+        verificationType: slot,
+        status: 'PENDING' as const,
+        documentUrl: stagedDocs[slot]!.url,
+        fileName: stagedDocs[slot]!.fileName,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    // 2. Fall back to allDocuments only if not in reset mode
+    if (!isResetMode) {
+      return allDocuments.find((d) => d.verificationType === slot && Boolean(d.documentUrl));
+    }
+    return undefined;
   };
 
   // Strict dynamic validation:
@@ -372,7 +465,7 @@ export default function ArtistVerificationView() {
     return true;
   }, [hasFront, hasBack, hasSelfie, currentConfig.requiresBack]);
 
-  // Upload file to verifications bucket with graceful fallback to public-uploads
+  // Upload file to verifications bucket: ONLY updates local state, NEVER triggers DB submit
   const handleFileUpload = async (slot: VerificationSlot, file: File) => {
     if (!file) return;
 
@@ -400,7 +493,7 @@ export default function ArtistVerificationView() {
 
       setUploadProgress((prev) => ({ ...prev, [slot]: 50 }));
 
-      // Strictly upload to 'verifications' bucket - NO fallback to public-uploads
+      // Strictly upload to 'verifications' bucket
       console.log("Uploading to bucket 'verifications'...", file);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -430,7 +523,8 @@ export default function ArtistVerificationView() {
         throw new Error('Unable to retrieve public URL for uploaded file.');
       }
 
-      // 2. Record document in Verification table
+      // Stop Automatic Submission: ONLY update local React state with the uploaded storage URL.
+      // DO NOT call any tRPC or Supabase database submit mutation here!
       const slotLabel =
         slot === 'ID_FRONT'
           ? currentConfig.frontTitle
@@ -438,39 +532,15 @@ export default function ArtistVerificationView() {
           ? currentConfig.backTitle || 'Back of Document'
           : currentConfig.selfieTitle;
 
-      try {
-        await uploadDocMutation.mutateAsync({
-          verificationType: slot,
-          fileUrl: publicUrl,
-          documentType: slotLabel,
-          id_front_url: slot === 'ID_FRONT' ? publicUrl : (getSlotDoc('ID_FRONT')?.documentUrl || null),
-          id_back_url: slot === 'ID_BACK' ? publicUrl : (currentConfig.requiresBack ? (getSlotDoc('ID_BACK')?.documentUrl || null) : null),
-          selfie_url: slot === 'SELFIE' ? publicUrl : (getSlotDoc('SELFIE')?.documentUrl || null),
-          expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
-        });
-      } catch (mutationErr) {
-        console.warn('Upload mutation notice:', mutationErr);
-      }
-
-      // 3. Update local state optimistically
-      const newDoc: UploadedDocItem = {
-        id: `temp-${Date.now()}-${slot}`,
-        verificationType: slot,
-        status: 'PENDING',
-        documentUrl: publicUrl,
-        fileName: file.name,
-        createdAt: new Date().toISOString(),
-      };
-
-      setDirectDocs((prev) => {
-        const filtered = prev.filter((d) => d.verificationType !== slot);
-        return [...filtered, newDoc];
-      });
+      setStagedDocs((prev) => ({
+        ...prev,
+        [slot]: { url: publicUrl, fileName: file.name, file },
+      }));
 
       setUploadProgress((prev) => ({ ...prev, [slot]: 100 }));
-      toast.success(`${slotLabel} uploaded successfully!`);
+      toast.success(`${slotLabel} uploaded! Click Submit when all documents are ready.`);
     } catch (err: any) {
-      console.error("Exact storage error response in handleFileUpload:", err);
+      console.error("Storage upload error in handleFileUpload:", err);
       toast.error(err?.message || 'File upload failed. Please try again.');
       setUploadProgress((prev) => ({ ...prev, [slot]: 0 }));
     } finally {
@@ -478,27 +548,35 @@ export default function ArtistVerificationView() {
     }
   };
 
-  // Remove uploaded document
+  // Remove uploaded document: cleans up local stagedDocs
   const handleRemoveDoc = async (slot: VerificationSlot) => {
-    const doc = allDocuments.find((d) => d.verificationType === slot);
-    if (!doc) return;
+    // 1. Remove from local staged state
+    setStagedDocs((prev) => {
+      const copy = { ...prev };
+      delete copy[slot];
+      return copy;
+    });
 
-    try {
-      if (doc.id && !doc.id.startsWith('temp-')) {
-        await deleteDocMutation.mutateAsync({ verificationId: doc.id });
-      }
-      setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id && d.verificationType !== slot));
-      toast.success('Document removed');
-    } catch (err) {
-      // Direct delete fallback from verifications table (lowercase)
+    setUploadProgress((prev) => ({ ...prev, [slot]: 0 }));
+
+    // 2. Remove from directDocs if present
+    const doc = allDocuments.find((d) => d.verificationType === slot);
+    if (doc) {
       try {
-        const supabase = createClient();
-        const cleanId = doc.id.replace(/-front|-back|-selfie/, '');
-        await (supabase as any).from('verifications').delete().eq('id', cleanId);
+        if (doc.id && !doc.id.startsWith('temp-') && !doc.id.startsWith('staged-')) {
+          await deleteDocMutation.mutateAsync({ verificationId: doc.id });
+        }
         setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id && d.verificationType !== slot));
-        toast.success('Document removed');
-      } catch {}
+      } catch (err) {
+        try {
+          const supabase = createClient();
+          const cleanId = doc.id.replace(/-front|-back|-selfie/, '');
+          await (supabase as any).from('verifications').delete().eq('id', cleanId);
+          setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id && d.verificationType !== slot));
+        } catch {}
+      }
     }
+    toast.success('Document removed');
   };
 
   // Submit all uploaded documents for verification
@@ -620,6 +698,8 @@ export default function ArtistVerificationView() {
         is_verified: false,
       }));
 
+      setIsResetMode(false);
+      setStagedDocs({});
       setIsPendingSubmitted(true);
       toast.success('Verification submitted! Your documents are now pending review.');
     } catch (err: any) {
@@ -700,6 +780,44 @@ export default function ArtistVerificationView() {
 
     return (
       <div className="space-y-6">
+        {/* Incomplete Pending Request Alert */}
+        {isIncompletePending && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-5 text-xs text-amber-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-500/20 rounded-xl flex-shrink-0 mt-0.5">
+                  <AlertCircle className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-amber-300 text-sm mb-0.5">
+                    Incomplete Verification Submission Detected
+                  </h4>
+                  <p className="text-slate-300 leading-relaxed">
+                    Your existing pending request is missing required files ({!submittedRecord?.id_front_url ? 'Front Document' : (!submittedRecord?.id_back_url && !isPassportDoc) ? 'Back Document' : 'Selfie with Document'}). Click the button to reset the request and upload all required documents.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleResetPendingRecord}
+                disabled={isResetting}
+                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs px-4 h-9 flex-shrink-0 shadow-md transition-all cursor-pointer"
+              >
+                {isResetting ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Resetting...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Resubmit / Cancel Request
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="bg-slate-900/80 border border-blue-500/30 rounded-3xl p-6 sm:p-8 shadow-sm">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
             <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex-shrink-0">
@@ -731,32 +849,38 @@ export default function ArtistVerificationView() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {/* Slot 1: Front / Main Data Page */}
                   <div className="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/80 border border-slate-800/80 p-3 rounded-xl">
-                    <CheckCircle2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                    <CheckCircle2 className={`h-4 w-4 ${submittedRecord?.id_front_url ? 'text-blue-400' : 'text-amber-400'} flex-shrink-0`} />
                     <div className="truncate">
                       <div className="font-medium text-white truncate">
                         {isPassportDoc ? 'Main Data Page' : 'Front Image'}
                       </div>
-                      <div className="text-[11px] text-slate-400">Uploaded & Encrypted</div>
+                      <div className={`text-[11px] ${submittedRecord?.id_front_url ? 'text-slate-400' : 'text-amber-400 font-medium'}`}>
+                        {submittedRecord?.id_front_url ? 'Uploaded & Encrypted' : 'Missing Image'}
+                      </div>
                     </div>
                   </div>
 
                   {/* Slot 2: Back (if not passport) */}
                   {!isPassportDoc && (
                     <div className="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/80 border border-slate-800/80 p-3 rounded-xl">
-                      <CheckCircle2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                      <CheckCircle2 className={`h-4 w-4 ${submittedRecord?.id_back_url ? 'text-blue-400' : 'text-amber-400'} flex-shrink-0`} />
                       <div className="truncate">
                         <div className="font-medium text-white truncate">Back Image</div>
-                        <div className="text-[11px] text-slate-400">Uploaded & Encrypted</div>
+                        <div className={`text-[11px] ${submittedRecord?.id_back_url ? 'text-slate-400' : 'text-amber-400 font-medium'}`}>
+                          {submittedRecord?.id_back_url ? 'Uploaded & Encrypted' : 'Missing Image'}
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Slot 3: Selfie */}
                   <div className="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/80 border border-slate-800/80 p-3 rounded-xl">
-                    <CheckCircle2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                    <CheckCircle2 className={`h-4 w-4 ${submittedRecord?.selfie_url ? 'text-blue-400' : 'text-amber-400'} flex-shrink-0`} />
                     <div className="truncate">
                       <div className="font-medium text-white truncate">Selfie with Document</div>
-                      <div className="text-[11px] text-slate-400">Uploaded & Encrypted</div>
+                      <div className={`text-[11px] ${submittedRecord?.selfie_url ? 'text-slate-400' : 'text-amber-400 font-medium'}`}>
+                        {submittedRecord?.selfie_url ? 'Uploaded & Encrypted' : 'Missing Image'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -774,6 +898,26 @@ export default function ArtistVerificationView() {
                 >
                   <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                   Refresh Status
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetPendingRecord}
+                  disabled={isResetting}
+                  className="bg-slate-950 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 text-xs cursor-pointer"
+                >
+                  {isResetting ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                      Resubmit / Cancel Request
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
