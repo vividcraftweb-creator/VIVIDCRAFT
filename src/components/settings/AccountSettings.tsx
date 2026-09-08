@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DangerZone } from '@/components/settings/DangerZone';
 
 export function AccountSettings() {
   const { data: session, update } = useSession();
@@ -32,30 +33,35 @@ export function AccountSettings() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Account</CardTitle>
-        <CardDescription>
-          Manage your account settings and email address.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              disabled
-              className="bg-slate-800/50 cursor-not-allowed opacity-60"
-            />
-            <p className="text-xs text-slate-400">
-              Your email address cannot be changed. Contact support if you need to update your email.
-            </p>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Account</CardTitle>
+          <CardDescription>
+            Manage your account settings and email address.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                disabled
+                className="bg-slate-800/50 cursor-not-allowed opacity-60"
+              />
+              <p className="text-xs text-slate-400">
+                Your email address cannot be changed. Contact support if you need to update your email.
+              </p>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone Section */}
+      <DangerZone />
+    </div>
   );
 }

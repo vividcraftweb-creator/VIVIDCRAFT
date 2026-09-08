@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, Loader2, Sparkles, AlertCircle, ShoppingBag, Palette } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, Sparkles, AlertCircle, CheckCircle, ShoppingBag, Palette } from 'lucide-react';
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (!error) return fallback;
@@ -25,6 +25,7 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams?.get('email') || '';
   const errorParam = searchParams?.get('error') || '';
+  const messageParam = searchParams?.get('message') || '';
   const redirectTo = searchParams?.get('redirect') || searchParams?.get('next') || '';
   const initialRoleParam = searchParams?.get('role')?.toLowerCase();
 
@@ -49,6 +50,15 @@ function SignInContent() {
       });
     }
   }, [errorParam]);
+
+  React.useEffect(() => {
+    if (messageParam === 'account_deleted') {
+      toast.success('Account Deleted', {
+        description: 'Your account has been permanently deleted.',
+        duration: 6000,
+      });
+    }
+  }, [messageParam]);
 
   const supabase = createClient();
 
@@ -295,6 +305,21 @@ function SignInContent() {
             </div>
           </button>
         </div>
+
+        {/* Account Deleted Success Banner */}
+        {messageParam === 'account_deleted' && (
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 space-y-1 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-semibold text-sm text-emerald-300">Account Deleted</p>
+                <p className="text-xs text-emerald-200/90 leading-relaxed">
+                  Your account and personal data have been permanently removed.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* OAuth Error Alert */}
         {oauthError && (

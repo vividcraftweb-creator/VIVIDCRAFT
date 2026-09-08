@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { DangerZone } from '@/components/settings/DangerZone';
 import {
   User,
   Mail,
@@ -302,6 +303,9 @@ export default function EditProfilePage() {
             </form>
           </CardContent>
         </Card>
+
+        {/* Danger Zone Section */}
+        <DangerZone />
       </div>
     </div>
   );
