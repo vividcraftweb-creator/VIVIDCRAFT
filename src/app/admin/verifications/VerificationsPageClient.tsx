@@ -80,20 +80,23 @@ export default function AdminVerificationsPage() {
     }
 
     // Construct Supabase storage URL
-    // Files are stored in the 'public-uploads' bucket
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     let cleanPath = url.startsWith('/') ? url.slice(1) : url;
 
-    // Fix path mapping: database has 'uploads/documents/' but actual storage uses 'verification-documents/'
-    // Also remove user ID subfolder if present (e.g., uploads/documents/{userId}/ -> verification-documents/)
+    // Route paths in verification-documents to 'verifications' bucket
+    if (cleanPath.startsWith('verification-documents/')) {
+      return `${supabaseUrl}/storage/v1/object/public/verifications/${cleanPath}`;
+    }
+
     if (cleanPath.startsWith('uploads/documents/')) {
-      // Extract just the filename from the path
+      // Extract filename
       const pathParts = cleanPath.split('/');
       const filename = pathParts[pathParts.length - 1];
       cleanPath = `verification-documents/${filename}`;
+      return `${supabaseUrl}/storage/v1/object/public/verifications/${cleanPath}`;
     }
 
-    // Return Supabase storage public URL
+    // Default fallback to public-uploads bucket
     return `${supabaseUrl}/storage/v1/object/public/public-uploads/${cleanPath}`;
   };
 

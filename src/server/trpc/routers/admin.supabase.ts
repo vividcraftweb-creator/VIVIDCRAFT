@@ -561,42 +561,176 @@ export const adminRouter = router({
       const supabase = ctx.adminSupabase;
       if (!supabase) return [];
 
-      // Get all users with verification documents (both clients and freelancers)
-      let { data: users, error } = await supabase
-        .from('User')
-        .select(`
-          id,
-          email,
-          role,
-          clientType,
-          createdAt,
-          Profile(firstName, lastName, companyName),
-          Verification!Verification_userId_fkey(*)
-        `)
-        .not('Verification!Verification_userId_fkey', 'is', null);
-
-      if (error) {
-        console.error('getUsersWithVerifications join error, attempting fallback query:', error);
-        const { data: verifications } = await supabase.from('Verification').select('*');
-        if (!verifications || verifications.length === 0) return [];
-
-        const userIds = Array.from(new Set(verifications.map((v: any) => v.userId).filter(Boolean)));
-        const { data: rawUsers } = await supabase
-          .from('User')
-          .select('id, email, role, clientType, createdAt, Profile(firstName, lastName, companyName)')
-          .in('id', userIds);
-
-        users = (rawUsers || []).map((u: any) => ({
-          ...u,
-          Verification: verifications.filter((v: any) => v.userId === u.id),
-        }));
+      // 1. Fetch from verifications table (lowercase)
+      let directVerifications: any[] = [];
+      try {
+        const { data: vList } = await (supabase as any)
+          .from('verifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (vList) directVerifications = vList;
+      } catch (err) {
+        console.warn('Error fetching from verifications table:', err);
       }
 
-      // Filter to only include users who have at least one verification document
-      const usersWithDocs = users?.filter(user => {
-        const verifications = Array.isArray(user.Verification) ? user.Verification : [];
-        return verifications.length > 0;
-      }) || [];
+      // 2. Fetch from Verification table (PascalCase)
+      let legacyVerifications: any[] = [];
+      try {
+        const { data: legList } = await supabase
+          .from('Verification')
+          .select('*')
+          .order('createdAt', { ascending: false });
+        if (legList) legacyVerifications = legList;
+      } catch (err) {
+        console.warn('Error fetching from Verification table:', err);
+      }
+
+      // Collect all user IDs who have submitted verification documents
+      const allUserIds = Array.from(
+        new Set([
+          ...directVerifications.map((v) => v.user_id),
+          ...legacyVerifications.map((v) => v.userId),
+        ].filter(Boolean))
+      );
+
+      if (allUserIds.length === 0) return [];
+
+      // 3. Fetch user accounts
+      let rawUsers: any[] = [];
+      try {
+        const { data: uList } = await supabase
+          .from('User')
+          .select(`
+            id,
+            email,
+            role,
+            clientType,
+            isVerified,
+            createdAt,
+            Profile(firstName, lastName, companyName)
+          `)
+          .in('id', allUserIds);
+        if (uList) rawUsers = uList;
+      } catch (uErr) {
+        console.warn('Error fetching users in getUsersWithVerifications:', uErr);
+      }
+
+      // 4. Fetch profiles to ensure is_verified and name accuracy
+      const profilesMap = new Map<string, any>();
+      try {
+        const { data: pList } = await (supabase as any)
+          .from('profiles')
+          .select('id, is_verified, first_name, last_name, company_name')
+          .in('id', allUserIds);
+        if (pList) {
+          pList.forEach((p: any) => profilesMap.set(p.id, p));
+        }
+      } catch {}
+
+      // 5. Build unified UserWithVerifications list
+      const usersWithDocs = allUserIds
+        .map((userId) => {
+          const userObj = rawUsers.find((u) => u.id === userId);
+          const prof = profilesMap.get(userId);
+
+          const email = userObj?.email || prof?.email || 'User';
+          const role = userObj?.role || 'FREELANCER';
+          const clientType = userObj?.clientType || null;
+          const createdAt = userObj?.createdAt || new Date().toISOString();
+          const isVerified = Boolean(userObj?.isVerified || prof?.is_verified);
+
+          const profileObj =
+            userObj?.Profile ||
+            (prof
+              ? [{ firstName: prof.first_name, lastName: prof.last_name, companyName: prof.company_name }]
+              : []);
+
+          const docs: any[] = [];
+
+          // Add documents from verifications table
+          const userDirects = directVerifications.filter((v) => v.user_id === userId);
+          for (const v of userDirects) {
+            const docType = v.document_type || 'ID Document';
+            const status = (v.status || 'PENDING').toUpperCase();
+            const docCreatedAt = v.created_at || createdAt;
+            const rejectionReason = v.rejection_reason || null;
+
+            if (v.id_front_url) {
+              docs.push({
+                id: `${v.id}-front`,
+                verificationType: 'ID_FRONT',
+                documentType: `${docType} (Front)`,
+                documentUrl: v.id_front_url,
+                files: v.id_front_url,
+                fileName: `${docType} - Front`,
+                status,
+                createdAt: docCreatedAt,
+                rejectionReason,
+              });
+            }
+            if (v.id_back_url) {
+              docs.push({
+                id: `${v.id}-back`,
+                verificationType: 'ID_BACK',
+                documentType: `${docType} (Back)`,
+                documentUrl: v.id_back_url,
+                files: v.id_back_url,
+                fileName: `${docType} - Back`,
+                status,
+                createdAt: docCreatedAt,
+                rejectionReason,
+              });
+            }
+            if (v.selfie_url) {
+              docs.push({
+                id: `${v.id}-selfie`,
+                verificationType: 'SELFIE',
+                documentType: `Selfie with ${docType}`,
+                documentUrl: v.selfie_url,
+                files: v.selfie_url,
+                fileName: `Selfie with ${docType}`,
+                status,
+                createdAt: docCreatedAt,
+                rejectionReason,
+              });
+            }
+          }
+
+          // Add documents from legacy Verification table
+          const userLegacies = legacyVerifications.filter((v) => v.userId === userId);
+          for (const leg of userLegacies) {
+            if (
+              !docs.some(
+                (d) => d.documentUrl && leg.documentUrl && d.documentUrl === leg.documentUrl
+              )
+            ) {
+              docs.push({
+                id: leg.id,
+                verificationType: leg.verificationType || 'ID_FRONT',
+                documentType: leg.documentType || 'Document',
+                documentUrl: leg.documentUrl || leg.files || null,
+                files: leg.files || leg.documentUrl || null,
+                fileName: leg.fileName || leg.documentType || null,
+                status: (leg.status || 'PENDING').toUpperCase(),
+                createdAt: leg.createdAt || createdAt,
+                rejectionReason: leg.rejectionReason || leg.details || null,
+              });
+            }
+          }
+
+          return {
+            id: userId,
+            email,
+            role,
+            clientType,
+            createdAt,
+            isVerified,
+            is_verified: isVerified,
+            Profile: profileObj,
+            Verification: docs,
+          };
+        })
+        .filter((u) => u.Verification.length > 0);
 
       return usersWithDocs;
     } catch (err) {

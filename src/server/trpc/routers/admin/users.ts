@@ -111,7 +111,7 @@ export const adminUsersRouter = router({
             email: au.email || dbUser.email || profile.email || '',
             role,
             subscriptionPlan: dbUser.subscriptionPlan && !dbUser.subscriptionPlan.toUpperCase().includes('FREE') && !dbUser.subscriptionPlan.toUpperCase().includes('STARTER') ? dbUser.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-            isVerified: dbUser.isVerified ?? Boolean(au.email_confirmed_at),
+            isVerified: dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : Boolean(profile.is_verified ?? au.user_metadata?.is_verified ?? false),
             createdAt: au.created_at || dbUser.createdAt || profile.created_at || new Date().toISOString(),
             lastLoginAt: au.last_sign_in_at || dbUser.lastLoginAt || null,
             Profile: {
@@ -153,7 +153,7 @@ export const adminUsersRouter = router({
               email: profile.email || dbUser.email || '',
               role,
               subscriptionPlan: dbUser.subscriptionPlan && !dbUser.subscriptionPlan.toUpperCase().includes('FREE') && !dbUser.subscriptionPlan.toUpperCase().includes('STARTER') ? dbUser.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-              isVerified: dbUser.isVerified ?? false,
+              isVerified: dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : Boolean(profile.is_verified ?? false),
               createdAt: profile.created_at || profile.createdAt || new Date().toISOString(),
               Profile: {
                 id: profile.id || profileId,
@@ -186,7 +186,7 @@ export const adminUsersRouter = router({
               email: dbUser.email || profile.email || '',
               role,
               subscriptionPlan: dbUser.subscriptionPlan || 'FREE',
-              isVerified: dbUser.isVerified ?? false,
+              isVerified: dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : Boolean(profile.is_verified ?? false),
               createdAt: dbUser.createdAt || new Date().toISOString(),
               Profile: {
                 id: profile.id || userId,
@@ -393,6 +393,31 @@ export const adminUsersRouter = router({
         });
       }
 
+      // If isVerified was changed, synchronize profiles and verifications tables
+      if (updates.isVerified !== undefined) {
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: updates.isVerified,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', userId);
+        } catch (pErr) {
+          console.warn('Profile sync error in updateUser:', pErr);
+        }
+
+        try {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: updates.isVerified ? 'approved' : 'rejected',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId);
+        } catch {}
+      }
+
       // Log the action
       await supabase.from('AuditLog').insert({
         userId: ctx.session.user.id,
@@ -545,7 +570,7 @@ export const adminUsersRouter = router({
       const supabase = requireAdminSupabase(ctx);
       const isVerified = input.isVerified;
 
-      // Update user verification status in User table
+      // 1. Update user verification status in User table
       try {
         await supabase
           .from('User')
@@ -555,14 +580,12 @@ export const adminUsersRouter = router({
         console.warn('User table verification update notice:', userErr);
       }
 
-      // Also update profiles table
+      // 2. Also update profiles table strictly using is_verified
       try {
         await (supabase as any)
           .from('profiles')
           .update({
             is_verified: isVerified,
-            verified: isVerified,
-            status: isVerified ? 'active' : 'draft',
             updated_at: new Date().toISOString(),
           })
           .eq('id', input.userId);
@@ -570,7 +593,18 @@ export const adminUsersRouter = router({
         console.warn('Profile table verification update notice:', profileError);
       }
 
-      // Also update Supabase auth metadata if possible
+      // 3. Also update verifications table if any records exist
+      try {
+        await (supabase as any)
+          .from('verifications')
+          .update({
+            status: isVerified ? 'approved' : 'rejected',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', input.userId);
+      } catch {}
+
+      // 4. Also update Supabase auth metadata if possible
       try {
         await supabase.auth.admin.updateUserById(input.userId, {
           user_metadata: { is_verified: isVerified, verified: isVerified },
@@ -589,6 +623,7 @@ export const adminUsersRouter = router({
     .mutation(async ({ input, ctx }) => {
       const supabase = requireAdminSupabase(ctx);
 
+      // 1. Update User table
       try {
         await supabase
           .from('User')
@@ -596,17 +631,29 @@ export const adminUsersRouter = router({
           .eq('id', input.userId);
       } catch {}
 
+      // 2. Update profiles table strictly using is_verified
       try {
         await (supabase as any)
           .from('profiles')
           .update({
             is_verified: false,
-            verified: false,
             updated_at: new Date().toISOString(),
           })
           .eq('id', input.userId);
       } catch {}
 
+      // 3. Update verifications table
+      try {
+        await (supabase as any)
+          .from('verifications')
+          .update({
+            status: 'rejected',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', input.userId);
+      } catch {}
+
+      // 4. Update auth metadata
       try {
         await supabase.auth.admin.updateUserById(input.userId, {
           user_metadata: { is_verified: false, verified: false },

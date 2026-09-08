@@ -298,20 +298,39 @@ export default function ArtistVerificationView() {
     };
   }, []);
 
-  // Combined documents: merge tRPC query results with direct fetch
+  // Combined documents: merge directDocs (local uploads + verifications table) with tRPC query results
   const allDocuments: UploadedDocItem[] = useMemo(() => {
-    if (userDocs && Array.isArray(userDocs)) {
-      return userDocs.map((d: any) => ({
-        id: d.id,
-        verificationType: d.verificationType || 'ID_FRONT',
-        status: (d.status as 'PENDING' | 'APPROVED' | 'REJECTED') || 'PENDING',
-        documentUrl: d.documentUrl || d.files || null,
-        fileName: d.fileName || null,
-        rejectionReason: d.rejectionReason || d.details || null,
-        createdAt: d.createdAt || new Date().toISOString(),
-      }));
+    const list: UploadedDocItem[] = [];
+    const seenSlots = new Set<string>();
+
+    // 1. Direct docs (local uploads + fetched from verifications table) take top priority for freshness
+    for (const d of directDocs) {
+      if (d.verificationType && d.documentUrl) {
+        list.push(d);
+        seenSlots.add(d.verificationType);
+      }
     }
-    return directDocs;
+
+    // 2. Merge in userDocs from tRPC if available
+    if (userDocs && Array.isArray(userDocs)) {
+      for (const d of userDocs) {
+        const vType = d.verificationType || 'ID_FRONT';
+        if (!seenSlots.has(vType) && (d.documentUrl || d.files)) {
+          list.push({
+            id: d.id,
+            verificationType: vType,
+            status: (d.status as 'PENDING' | 'APPROVED' | 'REJECTED') || 'PENDING',
+            documentUrl: d.documentUrl || d.files || null,
+            fileName: d.fileName || null,
+            rejectionReason: d.rejectionReason || d.details || null,
+            createdAt: d.createdAt || new Date().toISOString(),
+          });
+          seenSlots.add(vType);
+        }
+      }
+    }
+
+    return list;
   }, [userDocs, directDocs]);
 
   // Derived verification status
@@ -337,8 +356,21 @@ export default function ArtistVerificationView() {
 
   // Helper to get uploaded document for a specific slot
   const getSlotDoc = (slot: VerificationSlot) => {
-    return allDocuments.find((d) => d.verificationType === slot);
+    return allDocuments.find((d) => d.verificationType === slot && Boolean(d.documentUrl));
   };
+
+  // Strict dynamic validation:
+  // - National ID / Driving License requires Front, Back, and Selfie
+  // - Passport requires Front and Selfie (Back is hidden/optional)
+  const hasFront = Boolean(getSlotDoc('ID_FRONT')?.documentUrl);
+  const hasBack = Boolean(getSlotDoc('ID_BACK')?.documentUrl);
+  const hasSelfie = Boolean(getSlotDoc('SELFIE')?.documentUrl);
+
+  const isFormValid = useMemo(() => {
+    if (!hasFront || !hasSelfie) return false;
+    if (currentConfig.requiresBack && !hasBack) return false;
+    return true;
+  }, [hasFront, hasBack, hasSelfie, currentConfig.requiresBack]);
 
   // Upload file to verifications bucket with graceful fallback to public-uploads
   const handleFileUpload = async (slot: VerificationSlot, file: File) => {
@@ -472,19 +504,24 @@ export default function ArtistVerificationView() {
     const idBackDoc = getSlotDoc('ID_BACK');
     const selfieDoc = getSlotDoc('SELFIE');
 
-    // Dynamic field validation
-    if (!idFrontDoc?.documentUrl) {
+    // Strict upload validation: verify files exist before proceeding
+    if (!hasFront || !idFrontDoc?.documentUrl) {
       toast.error(`Please upload the ${currentConfig.frontTitle}`);
       return;
     }
 
-    if (currentConfig.requiresBack && !idBackDoc?.documentUrl) {
+    if (currentConfig.requiresBack && (!hasBack || !idBackDoc?.documentUrl)) {
       toast.error(`Please upload the ${currentConfig.backTitle || 'Back Image'}`);
       return;
     }
 
-    if (!selfieDoc?.documentUrl) {
+    if (!hasSelfie || !selfieDoc?.documentUrl) {
       toast.error(`Please upload your ${currentConfig.selfieTitle}`);
+      return;
+    }
+
+    if (!isFormValid) {
+      toast.error('Please upload all required documents before submitting.');
       return;
     }
 
@@ -923,13 +960,27 @@ export default function ArtistVerificationView() {
 
           {/* Step 3: Submit Button with live validation & redirect */}
           <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs text-slate-400">
-              Your identity documents are securely uploaded to the <code className="text-primary">verifications</code> bucket and encrypted.
+            <div className="flex flex-col gap-1 text-xs text-slate-400">
+              <div>
+                Your identity documents are securely uploaded to the <code className="text-primary">verifications</code> bucket and encrypted.
+              </div>
+              {!isFormValid && (
+                <div className="flex items-center gap-1.5 text-amber-400 font-medium mt-1">
+                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>
+                    Upload {!hasFront ? currentConfig.frontTitle : currentConfig.requiresBack && !hasBack ? (currentConfig.backTitle || 'Back Image') : currentConfig.selfieTitle} to enable submission
+                  </span>
+                </div>
+              )}
             </div>
             <Button
               onClick={handleSubmitVerification}
-              disabled={isSubmitting || !!uploadingSlot}
-              className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-semibold px-6 h-11 text-sm shadow-md"
+              disabled={!isFormValid || isSubmitting || !!uploadingSlot}
+              className={`w-full sm:w-auto font-semibold px-6 h-11 text-sm shadow-md transition-all ${
+                isFormValid && !isSubmitting && !uploadingSlot
+                  ? 'bg-primary hover:bg-primary/90 text-white cursor-pointer'
+                  : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60'
+              }`}
             >
               {isSubmitting ? (
                 <>
