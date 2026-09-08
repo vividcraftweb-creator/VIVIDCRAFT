@@ -39,6 +39,7 @@ import { formatRole } from '@/lib/utils';
 type Document = {
   id: string;
   verificationType: string;
+  documentType?: string;
   status: string;
   documentUrl?: string | null;
   files?: string | null; // Old schema: comma-separated URLs
@@ -129,7 +130,7 @@ export default function AdminVerificationsPage() {
     if (!Array.isArray(users)) return [];
 
     if (users.length > 0 && Array.isArray((users[0] as any).Verification)) {
-      return users as UserWithVerifications[];
+      return users as unknown as UserWithVerifications[];
     }
 
     const userMap = new Map<string, UserWithVerifications>();

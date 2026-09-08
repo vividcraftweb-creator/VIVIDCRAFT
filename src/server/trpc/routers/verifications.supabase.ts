@@ -297,6 +297,8 @@ async function handleVerificationDocumentMutation(
     selfie_url: selfieUrl ?? null,
     status: 'pending',
   };
+}
+
 export async function fetchAllVerificationsList(supabase: any) {
   try {
     if (!supabase) {
@@ -857,167 +859,13 @@ export const verificationsRouter = router({
     }),
 
   getVerifications: adminProcedure.query(async ({ ctx }) => {
-    try {
-      const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
-      if (!supabase) {
-        return [];
-      }
-
-      console.log('[Admin getVerifications Router] Fetching verifications from public.verifications...');
-
-      // 1. Fetch strictly from public.verifications
-      let vList: any[] = [];
-      try {
-        const { data, error } = await (supabase as any)
-          .from('verifications')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && Array.isArray(data)) {
-          vList = data;
-        } else if (error) {
-          console.warn('[Admin getVerifications Router] public.verifications query error:', error);
-        }
-      } catch (e) {
-        console.warn('[Admin getVerifications Router] Exception querying public.verifications:', e);
-      }
-
-      // Fallback with user client if admin client returned empty
-      if (vList.length === 0) {
-        try {
-          const userSupabase = await createClient();
-          const { data: fallbackData } = await (userSupabase as any)
-            .from('verifications')
-            .select('*')
-            .order('created_at', { ascending: false });
-          if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-            vList = fallbackData;
-          }
-        } catch {}
-      }
-
-      console.log(`[Admin getVerifications Router] Retrieved ${vList.length} records from public.verifications`);
-
-      // 2. Fetch profiles for user_ids
-      const userIds = Array.from(new Set(vList.map((v) => v.user_id).filter(Boolean)));
-      const profilesMap = new Map<string, any>();
-
-      if (userIds.length > 0) {
-        try {
-          const { data: pList, error: pErr } = await (supabase as any)
-            .from('profiles')
-            .select('id, full_name, first_name, last_name, email, role, client_type, is_verified, company_name')
-            .in('id', userIds);
-
-          if (Array.isArray(pList)) {
-            pList.forEach((p) => profilesMap.set(p.id, p));
-          }
-          if (pErr) {
-            console.warn('[Admin getVerifications Router] profiles join notice:', pErr);
-          }
-        } catch (pErr) {
-          console.warn('[Admin getVerifications Router] profiles lookup exception:', pErr);
-        }
-      }
-
-      // Supabase Auth fallback for missing emails
-      const authUsersMap = new Map<string, any>();
-      const missingEmailIds = userIds.filter((uid) => !profilesMap.get(uid)?.email);
-      if (missingEmailIds.length > 0) {
-        await Promise.all(
-          missingEmailIds.map(async (uid) => {
-            try {
-              const { data: authData } = await supabase.auth.admin.getUserById(uid);
-              if (authData?.user) authUsersMap.set(uid, authData.user);
-            } catch {}
-          })
-        );
-      }
-
-      // 3. Map to normalized records
-      const normalizedRecords = vList.map((v) => {
-        const prof = profilesMap.get(v.user_id);
-        const authUser = authUsersMap.get(v.user_id);
-
-        const email = prof?.email || authUser?.email || 'User';
-        const rawRole = (prof?.role || authUser?.user_metadata?.role || 'ARTIST').toUpperCase();
-        const role = rawRole === 'FREELANCER' || rawRole === 'ARTIST' ? 'ARTIST' : rawRole;
-        const fullName =
-          prof?.full_name ||
-          `${prof?.first_name || authUser?.user_metadata?.firstName || ''} ${prof?.last_name || authUser?.user_metadata?.lastName || ''}`.trim() ||
-          email.split('@')[0] ||
-          'Artist';
-        const firstName = prof?.first_name || authUser?.user_metadata?.firstName || fullName.split(' ')[0] || '';
-        const lastName = prof?.last_name || authUser?.user_metadata?.lastName || fullName.split(' ').slice(1).join(' ') || '';
-
-        const frontUrl = v.id_front_url || v.front_url || v.document_url || v.documentUrl || v.files || null;
-        const backUrl = v.id_back_url || v.back_url || null;
-        const selfieUrl = v.selfie_url || null;
-
-        const statusLower = (v.status || 'pending').toLowerCase();
-        const statusUpper = statusLower.toUpperCase();
-
-        return {
-          id: v.id,
-          user_id: v.user_id,
-          userId: v.user_id,
-          document_type: v.document_type || 'ID Document',
-          documentType: v.document_type || 'ID Document',
-          id_front_url: frontUrl,
-          front_url: frontUrl,
-          id_back_url: backUrl,
-          back_url: backUrl,
-          selfie_url: selfieUrl,
-          status: statusUpper,
-          statusLower,
-          statusUpper,
-          created_at: v.created_at,
-          createdAt: v.created_at,
-          updated_at: v.updated_at,
-          updatedAt: v.updated_at,
-          rejection_reason: v.rejection_reason || null,
-          rejectionReason: v.rejection_reason || null,
-          files: [frontUrl, backUrl, selfieUrl].filter(Boolean).join(','),
-          documentUrl: frontUrl || selfieUrl || backUrl || null,
-          user: {
-            id: v.user_id,
-            email,
-            role,
-            full_name: fullName,
-            fullName,
-            firstName,
-            lastName,
-            Profile: [{ firstName, lastName, full_name: fullName, companyName: prof?.company_name || null }],
-          },
-          profiles: {
-            id: v.user_id,
-            email,
-            role,
-            full_name: fullName,
-            first_name: firstName,
-            last_name: lastName,
-            client_type: prof?.client_type || null,
-            is_verified: prof?.is_verified ?? false,
-          },
-          User: {
-            id: v.user_id,
-            email,
-            role,
-            Profile: [{ firstName, lastName, full_name: fullName }],
-          },
-        };
-      });
-
-      console.log(`[Admin getVerifications Router] Returning ${normalizedRecords.length} records to client`);
-      return normalizedRecords;
-    } catch (err) {
-      console.error('[Admin getVerifications Router] Unexpected exception:', err);
-      return [];
-    }
+    const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
+    return await fetchAllVerificationsList(supabase);
   }),
 
   getQueue: adminProcedure.query(async ({ ctx }) => {
-    return await (verificationsRouter as any).createCaller(ctx).getVerifications();
+    const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
+    return await fetchAllVerificationsList(supabase);
   }),
 
   approveVerification: adminProcedure
