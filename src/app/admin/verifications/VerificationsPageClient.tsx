@@ -56,8 +56,8 @@ type UserWithVerifications = {
   isVerified?: boolean;
   is_verified?: boolean;
   Profile?:
-    | Array<{ firstName?: string | null; lastName?: string | null; companyName?: string | null }>
-    | { firstName?: string | null; lastName?: string | null; companyName?: string | null }
+    | Array<{ firstName?: string | null; lastName?: string | null; companyName?: string | null; full_name?: string | null; first_name?: string | null; last_name?: string | null }>
+    | { firstName?: string | null; lastName?: string | null; companyName?: string | null; full_name?: string | null; first_name?: string | null; last_name?: string | null }
     | null;
   Verification?: Document[];
 };
@@ -66,10 +66,15 @@ export default function AdminVerificationsPage() {
   const utils = trpc.useUtils();
 
   // Auto-Fetch / Poll Fallback: periodic refetch every 5s & window focus refetch
+  // Disable Caching on Admin Query: cacheTime: 0, staleTime: 0, refetchOnMount: 'always'
   const { data: users, isLoading, refetch } = trpc.admin.getUsersWithVerifications.useQuery(undefined, {
+    cacheTime: 0,
+    gcTime: 0,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     refetchInterval: 5000,
-  });
+  } as any);
 
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [rejectingDoc, setRejectingDoc] = useState<string | null>(null);
@@ -290,24 +295,23 @@ export default function AdminVerificationsPage() {
 
   // Calculate stats
   const allDocs = usersData.flatMap((user) => user.Verification || []);
-  const pendingDocs = allDocs.filter((doc) => doc.status === 'PENDING');
-  const approvedDocs = allDocs.filter((doc) => doc.status === 'APPROVED');
-  const rejectedDocs = allDocs.filter((doc) => doc.status === 'REJECTED');
+  const pendingDocs = allDocs.filter((doc) => (doc.status || '').toUpperCase() === 'PENDING');
+  const approvedDocs = allDocs.filter((doc) => (doc.status || '').toUpperCase() === 'APPROVED');
+  const rejectedDocs = allDocs.filter((doc) => (doc.status || '').toUpperCase() === 'REJECTED');
 
   // Filtered users
   const filteredUsers = useMemo(() => {
     return usersData.filter((user) => {
       const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
+      const fullName =
+        (profile as any)?.full_name ||
+        `${(profile as any)?.first_name || profile?.firstName || ''} ${(profile as any)?.last_name || profile?.lastName || ''}`.trim();
       const displayName =
         user.role === 'CLIENT'
           ? user.clientType === 'BUSINESS'
             ? profile?.companyName || 'Business Client'
-            : profile
-            ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Individual Client'
-            : 'Individual Client'
-          : profile
-          ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Artist'
-          : 'Artist';
+            : fullName || 'Individual Client'
+          : fullName || 'Artist';
 
       // Search filter
       const matchesSearch =
@@ -327,9 +331,9 @@ export default function AdminVerificationsPage() {
       const userDocs = user.Verification || [];
       const matchesStatus =
         statusFilter === 'ALL' ||
-        (statusFilter === 'PENDING' && userDocs.some((doc) => doc.status === 'PENDING')) ||
-        (statusFilter === 'APPROVED' && userDocs.some((doc) => doc.status === 'APPROVED')) ||
-        (statusFilter === 'REJECTED' && userDocs.some((doc) => doc.status === 'REJECTED'));
+        (statusFilter === 'PENDING' && userDocs.some((doc) => (doc.status || '').toUpperCase() === 'PENDING')) ||
+        (statusFilter === 'APPROVED' && userDocs.some((doc) => (doc.status || '').toUpperCase() === 'APPROVED')) ||
+        (statusFilter === 'REJECTED' && userDocs.some((doc) => (doc.status || '').toUpperCase() === 'REJECTED'));
 
       return matchesSearch && matchesUserType && matchesStatus;
     });
@@ -359,7 +363,7 @@ export default function AdminVerificationsPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch ((status || '').toUpperCase()) {
       case 'PENDING':
         return (
           <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
@@ -568,23 +572,21 @@ export default function AdminVerificationsPage() {
             <div className="divide-y divide-slate-800">
               {filteredUsers.map((user) => {
                 const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
+                const fullName =
+                  (profile as any)?.full_name ||
+                  `${(profile as any)?.first_name || profile?.firstName || ''} ${(profile as any)?.last_name || profile?.lastName || ''}`.trim();
                 const isClient = user.role === 'CLIENT';
                 const displayName = isClient
                   ? user.clientType === 'BUSINESS'
                     ? profile?.companyName || 'Business Client'
-                    : profile
-                    ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() ||
-                      'Individual Client'
-                    : 'Individual Client'
-                  : profile
-                  ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Artist'
-                  : 'Artist';
+                    : fullName || 'Individual Client'
+                  : fullName || 'Artist';
 
                 const userDocs = user.Verification || [];
                 const isExpanded = expandedUsers.has(user.id);
-                const pendingCount = userDocs.filter((doc) => doc.status === 'PENDING').length;
-                const approvedCount = userDocs.filter((doc) => doc.status === 'APPROVED').length;
-                const rejectedCount = userDocs.filter((doc) => doc.status === 'REJECTED').length;
+                const pendingCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'PENDING').length;
+                const approvedCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'APPROVED').length;
+                const rejectedCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'REJECTED').length;
 
                 return (
                   <div key={user.id} className="hover:bg-white/5 transition-colors">

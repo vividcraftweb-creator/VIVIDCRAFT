@@ -379,8 +379,81 @@ export const verificationsRouter = router({
       if (!supabase) return [];
 
       let verifications: any[] = [];
+      const userIds: string[] = [];
+
+      // 1. Fetch strictly from public.verifications table with profile joins
       try {
-        let { data, error } = await supabase
+        const { data: vList, error: vError } = await (supabase as any)
+          .from('verifications')
+          .select(`
+            *,
+            profiles (
+              id,
+              full_name,
+              first_name,
+              last_name,
+              email,
+              role,
+              client_type,
+              is_verified
+            )
+          `)
+          .ilike('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        let rawList = vList;
+        if (vError || !rawList) {
+          const { data: fallbackList } = await (supabase as any)
+            .from('verifications')
+            .select('*')
+            .ilike('status', 'pending')
+            .order('created_at', { ascending: false });
+          rawList = fallbackList || [];
+        }
+
+        if (Array.isArray(rawList)) {
+          for (const dp of rawList) {
+            const uid = dp.user_id || dp.userId;
+            if (uid) userIds.push(uid);
+
+            const frontUrl = dp.id_front_url || dp.front_url || dp.id_front || dp.frontUrl || dp.document_url || dp.documentUrl || dp.file_url || dp.fileUrl || dp.files || null;
+            const backUrl = dp.id_back_url || dp.back_url || dp.id_back || dp.backUrl || null;
+            const selfieUrl = dp.selfie_url || dp.selfieUrl || dp.selfie || null;
+            const prof = Array.isArray(dp.profiles) ? dp.profiles[0] : dp.profiles;
+
+            const userObj = prof ? {
+              id: uid,
+              email: prof.email,
+              role: prof.role,
+              Profile: [{
+                firstName: prof.first_name || prof.full_name?.split(' ')[0] || '',
+                lastName: prof.last_name || prof.full_name?.split(' ').slice(1).join(' ') || '',
+                full_name: prof.full_name,
+              }],
+            } : undefined;
+
+            verifications.push({
+              id: dp.id,
+              userId: uid,
+              verificationType: 'ID_FRONT',
+              documentType: dp.document_type || 'Identity Verification',
+              files: frontUrl || backUrl || selfieUrl,
+              id_front_url: frontUrl,
+              id_back_url: backUrl,
+              selfie_url: selfieUrl,
+              status: 'PENDING',
+              createdAt: dp.created_at,
+              user: userObj,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Error querying verifications table in getPendingVerifications:', err);
+      }
+
+      // 2. Fetch from legacy Verification table
+      try {
+        const { data: legacyList } = await supabase
           .from('Verification')
           .select(`
             *,
@@ -388,42 +461,16 @@ export const verificationsRouter = router({
           `)
           .eq('status', 'PENDING');
 
-        if (error) {
-          console.error('getPendingVerifications join error, trying plain select:', error);
-          const fallbackRes = await supabase
-            .from('Verification')
-            .select('*')
-            .eq('status', 'PENDING');
-          data = fallbackRes.data as any;
-        }
-        if (data) verifications = data;
-      } catch (err) {
-        console.error('getPendingVerifications legacy exception:', err);
-      }
-
-      // Also include pending from verifications (lowercase)
-      try {
-        const { data: directPending } = await (supabase as any)
-          .from('verifications')
-          .select('*')
-          .eq('status', 'pending');
-
-        if (directPending && directPending.length > 0) {
-          for (const dp of directPending) {
-            if (!verifications.some((v) => v.userId === dp.user_id || v.id === dp.id)) {
-              verifications.push({
-                id: dp.id,
-                userId: dp.user_id,
-                verificationType: 'ID_FRONT',
-                documentType: dp.document_type || 'Identity Verification',
-                files: dp.id_front_url || dp.id_back_url || dp.selfie_url,
-                status: 'PENDING',
-                createdAt: dp.created_at,
-              });
+        if (Array.isArray(legacyList)) {
+          for (const leg of legacyList) {
+            if (!verifications.some((v) => v.userId === leg.userId || v.id === leg.id)) {
+              verifications.push(leg);
             }
           }
         }
-      } catch {}
+      } catch (err) {
+        // legacy table fallback
+      }
 
       return verifications;
     } catch (err) {
@@ -438,8 +485,81 @@ export const verificationsRouter = router({
       if (!supabase) return [];
 
       let verifications: any[] = [];
+      const userIds: string[] = [];
+
+      // 1. Fetch strictly from public.verifications table with profile joins
       try {
-        let { data, error } = await supabase
+        const { data: vList, error: vError } = await (supabase as any)
+          .from('verifications')
+          .select(`
+            *,
+            profiles (
+              id,
+              full_name,
+              first_name,
+              last_name,
+              email,
+              role,
+              client_type,
+              is_verified
+            )
+          `)
+          .ilike('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        let rawList = vList;
+        if (vError || !rawList) {
+          const { data: fallbackList } = await (supabase as any)
+            .from('verifications')
+            .select('*')
+            .ilike('status', 'pending')
+            .order('created_at', { ascending: false });
+          rawList = fallbackList || [];
+        }
+
+        if (Array.isArray(rawList)) {
+          for (const dp of rawList) {
+            const uid = dp.user_id || dp.userId;
+            if (uid) userIds.push(uid);
+
+            const frontUrl = dp.id_front_url || dp.front_url || dp.id_front || dp.frontUrl || dp.document_url || dp.documentUrl || dp.file_url || dp.fileUrl || dp.files || null;
+            const backUrl = dp.id_back_url || dp.back_url || dp.id_back || dp.backUrl || null;
+            const selfieUrl = dp.selfie_url || dp.selfieUrl || dp.selfie || null;
+            const prof = Array.isArray(dp.profiles) ? dp.profiles[0] : dp.profiles;
+
+            const userObj = prof ? {
+              id: uid,
+              email: prof.email,
+              role: prof.role,
+              Profile: [{
+                firstName: prof.first_name || prof.full_name?.split(' ')[0] || '',
+                lastName: prof.last_name || prof.full_name?.split(' ').slice(1).join(' ') || '',
+                full_name: prof.full_name,
+              }],
+            } : undefined;
+
+            verifications.push({
+              id: dp.id,
+              userId: uid,
+              verificationType: 'ID_FRONT',
+              documentType: dp.document_type || 'Identity Verification',
+              files: frontUrl || backUrl || selfieUrl,
+              id_front_url: frontUrl,
+              id_back_url: backUrl,
+              selfie_url: selfieUrl,
+              status: 'PENDING',
+              createdAt: dp.created_at,
+              user: userObj,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Error querying verifications table in getAllPending:', err);
+      }
+
+      // 2. Fetch from legacy Verification table
+      try {
+        const { data: legacyList } = await supabase
           .from('Verification')
           .select(`
             *,
@@ -447,35 +567,10 @@ export const verificationsRouter = router({
           `)
           .eq('status', 'PENDING');
 
-        if (error) {
-          const fallbackRes = await supabase
-            .from('Verification')
-            .select('*')
-            .eq('status', 'PENDING');
-          data = fallbackRes.data as any;
-        }
-        if (data) verifications = data;
-      } catch {}
-
-      // Also include pending from verifications (lowercase)
-      try {
-        const { data: directPending } = await (supabase as any)
-          .from('verifications')
-          .select('*')
-          .eq('status', 'pending');
-
-        if (directPending && directPending.length > 0) {
-          for (const dp of directPending) {
-            if (!verifications.some((v) => v.userId === dp.user_id || v.id === dp.id)) {
-              verifications.push({
-                id: dp.id,
-                userId: dp.user_id,
-                verificationType: 'ID_FRONT',
-                documentType: dp.document_type || 'Identity Verification',
-                files: dp.id_front_url || dp.id_back_url || dp.selfie_url,
-                status: 'PENDING',
-                createdAt: dp.created_at,
-              });
+        if (Array.isArray(legacyList)) {
+          for (const leg of legacyList) {
+            if (!verifications.some((v) => v.userId === leg.userId || v.id === leg.id)) {
+              verifications.push(leg);
             }
           }
         }

@@ -563,41 +563,107 @@ export const adminRouter = router({
       const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
-      // 1. Fetch from verifications table (lowercase)
+      // 1. Fetch strictly from public.verifications table with user profile joins (profiles(full_name, email, role))
+      // By default, no status filter is applied so ALL verifications (pending, approved, rejected) are fetched
       let directVerifications: any[] = [];
+      const profilesMap = new Map<string, any>();
+
       try {
-        const { data: vList } = await (supabase as any)
+        const { data: vList, error: vError } = await (supabase as any)
           .from('verifications')
-          .select('*')
+          .select(`
+            *,
+            profiles (
+              id,
+              full_name,
+              first_name,
+              last_name,
+              email,
+              role,
+              client_type,
+              is_verified,
+              company_name
+            )
+          `)
           .order('created_at', { ascending: false });
-        if (vList) directVerifications = vList;
+
+        if (!vError && Array.isArray(vList)) {
+          directVerifications = vList;
+          for (const item of vList) {
+            const uid = item.user_id || item.userId;
+            if (uid && item.profiles) {
+              const prof = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
+              if (prof) {
+                profilesMap.set(uid, prof);
+              }
+            }
+          }
+        } else {
+          // Schema cache fallback if PostgREST foreign key relationship is missing
+          const { data: plainList } = await (supabase as any)
+            .from('verifications')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (Array.isArray(plainList)) {
+            directVerifications = plainList;
+          }
+        }
       } catch (err) {
-        console.warn('Error fetching from verifications table:', err);
+        console.warn('Error querying verifications table in getUsersWithVerifications:', err);
+        try {
+          const { data: plainList } = await (supabase as any)
+            .from('verifications')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (Array.isArray(plainList)) {
+            directVerifications = plainList;
+          }
+        } catch (fallbackErr) {
+          console.error('Fallback query to verifications table failed:', fallbackErr);
+        }
       }
 
-      // 2. Fetch from Verification table (PascalCase)
+      // 2. Fetch from legacy Verification table (PascalCase) for backwards compatibility
       let legacyVerifications: any[] = [];
       try {
         const { data: legList } = await supabase
           .from('Verification')
           .select('*')
           .order('createdAt', { ascending: false });
-        if (legList) legacyVerifications = legList;
+        if (Array.isArray(legList)) {
+          legacyVerifications = legList;
+        }
       } catch (err) {
-        console.warn('Error fetching from Verification table:', err);
+        // Legacy table may not exist
       }
 
       // Collect all user IDs who have submitted verification documents
       const allUserIds = Array.from(
         new Set([
-          ...directVerifications.map((v) => v.user_id),
-          ...legacyVerifications.map((v) => v.userId),
+          ...directVerifications.map((v) => v.user_id || v.userId),
+          ...legacyVerifications.map((v) => v.userId || v.user_id),
         ].filter(Boolean))
       );
 
       if (allUserIds.length === 0) return [];
 
-      // 3. Fetch user accounts
+      // 3. Fetch profiles from public.profiles table for any user IDs not already joined
+      try {
+        const { data: pList } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name, first_name, last_name, email, role, client_type, is_verified, company_name')
+          .in('id', allUserIds);
+        if (Array.isArray(pList)) {
+          pList.forEach((p: any) => {
+            const existing = profilesMap.get(p.id) || {};
+            profilesMap.set(p.id, { ...existing, ...p });
+          });
+        }
+      } catch (pErr) {
+        console.warn('profiles query notice in getUsersWithVerifications:', pErr);
+      }
+
+      // 4. Fetch legacy user accounts if needed
       let rawUsers: any[] = [];
       try {
         const { data: uList } = await supabase
@@ -612,31 +678,19 @@ export const adminRouter = router({
             Profile(firstName, lastName, companyName)
           `)
           .in('id', allUserIds);
-        if (uList) rawUsers = uList;
-      } catch (uErr) {
-        console.warn('Error fetching users in getUsersWithVerifications:', uErr);
-      }
-
-      // 4. Fetch profiles to ensure is_verified and user details accuracy
-      const profilesMap = new Map<string, any>();
-      try {
-        const { data: pList } = await (supabase as any)
-          .from('profiles')
-          .select('*')
-          .in('id', allUserIds);
-        if (pList) {
-          pList.forEach((p: any) => profilesMap.set(p.id, p));
+        if (Array.isArray(uList)) {
+          rawUsers = uList;
         }
-      } catch (pErr) {
-        console.warn('profiles query notice in getUsersWithVerifications:', pErr);
+      } catch (uErr) {
+        // User table may be absent or unmapped in pure Supabase setups
       }
 
-      // Fetch from Supabase Auth admin if email is missing from User and profiles
+      // 5. Fetch from Supabase Auth admin if email is missing
       const authUsersMap = new Map<string, any>();
       const missingEmailIds = allUserIds.filter((uid) => {
-        const u = rawUsers.find((r) => r.id === uid);
         const p = profilesMap.get(uid);
-        return !u?.email && !p?.email;
+        const u = rawUsers.find((r) => r.id === uid);
+        return !p?.email && !u?.email;
       });
 
       if (missingEmailIds.length > 0) {
@@ -652,75 +706,137 @@ export const adminRouter = router({
         );
       }
 
-      // 5. Build unified UserWithVerifications list
+      // 6. Build normalized UserWithVerifications list
       const usersWithDocs = allUserIds
         .map((userId) => {
           const userObj = rawUsers.find((u) => u.id === userId);
           const prof = profilesMap.get(userId);
           const authUser = authUsersMap.get(userId);
 
-          const email = userObj?.email || prof?.email || authUser?.email || 'User';
-          const role = (userObj?.role || prof?.role || authUser?.user_metadata?.role || 'FREELANCER').toUpperCase();
-          const clientType = userObj?.clientType || prof?.client_type || null;
-          const createdAt = userObj?.createdAt || prof?.created_at || authUser?.created_at || new Date().toISOString();
+          const email = prof?.email || userObj?.email || authUser?.email || 'User';
+          const rawRole = (prof?.role || userObj?.role || authUser?.user_metadata?.role || 'ARTIST').toUpperCase();
+          const role = rawRole === 'FREELANCER' || rawRole === 'ARTIST' ? 'ARTIST' : rawRole;
+          const clientType = prof?.client_type || userObj?.clientType || null;
+          const createdAt = prof?.created_at || userObj?.createdAt || authUser?.created_at || new Date().toISOString();
           const isVerified = Boolean(
             prof?.is_verified !== undefined && prof?.is_verified !== null
               ? prof.is_verified
               : (userObj?.isVerified ?? authUser?.user_metadata?.is_verified ?? false)
           );
 
-          const profileObj =
-            userObj?.Profile ||
-            (prof
-              ? [{ firstName: prof.first_name || prof.firstName || '', lastName: prof.last_name || prof.lastName || '', companyName: prof.company_name }]
-              : authUser
-              ? [{ firstName: authUser.user_metadata?.firstName || authUser.user_metadata?.first_name || '', lastName: authUser.user_metadata?.lastName || authUser.user_metadata?.last_name || '', companyName: null }]
-              : []);
+          const fullName = prof?.full_name || '';
+          const nameParts = fullName.trim().split(/\s+/);
+          const firstName =
+            prof?.first_name ||
+            prof?.firstName ||
+            (Array.isArray(userObj?.Profile) ? userObj?.Profile[0]?.firstName : userObj?.Profile?.firstName) ||
+            authUser?.user_metadata?.firstName ||
+            authUser?.user_metadata?.first_name ||
+            (nameParts[0] || '');
+          const lastName =
+            prof?.last_name ||
+            prof?.lastName ||
+            (Array.isArray(userObj?.Profile) ? userObj?.Profile[0]?.lastName : userObj?.Profile?.lastName) ||
+            authUser?.user_metadata?.lastName ||
+            authUser?.user_metadata?.last_name ||
+            (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+          const companyName =
+            prof?.company_name ||
+            (Array.isArray(userObj?.Profile) ? userObj?.Profile[0]?.companyName : userObj?.Profile?.companyName) ||
+            null;
+
+          const profileObj = [
+            {
+              firstName,
+              lastName,
+              companyName,
+              full_name: fullName || `${firstName} ${lastName}`.trim(),
+              first_name: firstName,
+              last_name: lastName,
+            },
+          ];
 
           const docs: any[] = [];
 
-          // Add documents from verifications table
-          const userDirects = directVerifications.filter((v) => v.user_id === userId);
+          // Add documents from verifications table with normalized column mappings
+          const userDirects = directVerifications.filter((v) => (v.user_id || v.userId) === userId);
           for (const v of userDirects) {
-            const docType = v.document_type || 'ID Document';
+            const docType = v.document_type || v.documentType || 'ID Document';
             const status = (v.status || 'PENDING').toUpperCase();
             const docCreatedAt = v.created_at || createdAt;
-            const rejectionReason = v.rejection_reason || null;
+            const rejectionReason = v.rejection_reason || v.rejectionReason || null;
 
-            if (v.id_front_url) {
+            // Map database columns: id_front_url or front_url
+            const frontUrl =
+              v.id_front_url ||
+              v.front_url ||
+              v.id_front ||
+              v.frontUrl ||
+              v.document_url ||
+              v.documentUrl ||
+              v.file_url ||
+              v.fileUrl ||
+              v.files ||
+              null;
+            // id_back_url or back_url
+            const backUrl = v.id_back_url || v.back_url || v.id_back || v.backUrl || null;
+            // selfie_url
+            const selfieUrl = v.selfie_url || v.selfieUrl || v.selfie || null;
+
+            let addedAny = false;
+
+            if (frontUrl) {
               docs.push({
                 id: `${v.id}-front`,
                 verificationType: 'ID_FRONT',
                 documentType: `${docType} (Front)`,
-                documentUrl: v.id_front_url,
-                files: v.id_front_url,
+                documentUrl: frontUrl,
+                files: frontUrl,
                 fileName: `${docType} - Front`,
                 status,
                 createdAt: docCreatedAt,
                 rejectionReason,
               });
+              addedAny = true;
             }
-            if (v.id_back_url) {
+            if (backUrl) {
               docs.push({
                 id: `${v.id}-back`,
                 verificationType: 'ID_BACK',
                 documentType: `${docType} (Back)`,
-                documentUrl: v.id_back_url,
-                files: v.id_back_url,
+                documentUrl: backUrl,
+                files: backUrl,
                 fileName: `${docType} - Back`,
                 status,
                 createdAt: docCreatedAt,
                 rejectionReason,
               });
+              addedAny = true;
             }
-            if (v.selfie_url) {
+            if (selfieUrl) {
               docs.push({
                 id: `${v.id}-selfie`,
                 verificationType: 'SELFIE',
                 documentType: `Selfie with ${docType}`,
-                documentUrl: v.selfie_url,
-                files: v.selfie_url,
+                documentUrl: selfieUrl,
+                files: selfieUrl,
                 fileName: `Selfie with ${docType}`,
+                status,
+                createdAt: docCreatedAt,
+                rejectionReason,
+              });
+              addedAny = true;
+            }
+
+            // Fallback: Ensure candidate record is never dropped if URLs are in other fields or single slot
+            if (!addedAny) {
+              docs.push({
+                id: `${v.id}`,
+                verificationType: 'ID_FRONT',
+                documentType: docType,
+                documentUrl: frontUrl || backUrl || selfieUrl || null,
+                files: frontUrl || backUrl || selfieUrl || null,
+                fileName: docType,
                 status,
                 createdAt: docCreatedAt,
                 rejectionReason,
@@ -729,18 +845,15 @@ export const adminRouter = router({
           }
 
           // Add documents from legacy Verification table
-          const userLegacies = legacyVerifications.filter((v) => v.userId === userId);
+          const userLegacies = legacyVerifications.filter((v) => (v.userId || v.user_id) === userId);
           for (const leg of userLegacies) {
-            if (
-              !docs.some(
-                (d) => d.documentUrl && leg.documentUrl && d.documentUrl === leg.documentUrl
-              )
-            ) {
+            const legacyUrl = leg.documentUrl || leg.files || null;
+            if (!docs.some((d) => d.documentUrl && legacyUrl && d.documentUrl === legacyUrl)) {
               docs.push({
                 id: leg.id,
                 verificationType: leg.verificationType || 'ID_FRONT',
                 documentType: leg.documentType || 'Document',
-                documentUrl: leg.documentUrl || leg.files || null,
+                documentUrl: legacyUrl,
                 files: leg.files || leg.documentUrl || null,
                 fileName: leg.fileName || leg.documentType || null,
                 status: (leg.status || 'PENDING').toUpperCase(),
