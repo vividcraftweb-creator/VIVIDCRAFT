@@ -587,7 +587,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                   className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-all ${
                     isPictureDragging
                       ? 'border-primary bg-primary/10'
-                      : 'border-slate-700 bg-slate-800/30 hover:border-slate-600 hover:bg-slate-800/50'
+                      : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/30 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                   }`}
                 >
                   <Input

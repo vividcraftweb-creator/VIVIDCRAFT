@@ -299,18 +299,18 @@ export function ArtistReviewsSection({
   };
 
   return (
-    <section className="glass-card glass-card-shine p-6 sm:p-8 rounded-2xl sm:rounded-3xl hover-lift space-y-6">
+    <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 icon-glow transition-all duration-300">
-            <MessageSquareHeart className="h-5 w-5 text-amber-400" />
+          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 icon-glow transition-all duration-300">
+            <MessageSquareHeart className="h-5 w-5 text-amber-500 dark:text-amber-400" />
           </div>
           <div>
-            <h2 className="text-sm sm:text-base font-bold tracking-wider uppercase text-white flex items-center gap-2">
+            <h2 className="text-sm sm:text-base font-bold tracking-wider uppercase text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
               Client Reviews &amp; Testimonials
             </h2>
-            <p className="text-xs text-white/60 mt-0.5">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
               Verified client experiences, commissions, and ratings for {artistName}.
             </p>
           </div>
@@ -318,10 +318,10 @@ export function ArtistReviewsSection({
 
         <div className="flex items-center gap-3 self-start sm:self-auto">
           {totalReviews > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
-              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-              <span>{averageRating.toFixed(1)}</span>
-              <span className="text-white/40">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+              <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{averageRating.toFixed(1)}</span>
+              <span className="text-zinc-500 dark:text-zinc-400">
                 ({totalReviews} {totalReviews === 1 ? 'review' : 'reviews'})
               </span>
             </div>
@@ -340,11 +340,11 @@ export function ArtistReviewsSection({
 
           {/* Carousel Arrows */}
           {totalReviews > 2 && (
-            <div className="hidden sm:flex items-center gap-1 pl-2 border-l border-white/10">
+            <div className="hidden sm:flex items-center gap-1 pl-2 border-l border-zinc-200 dark:border-zinc-800">
               <button
                 type="button"
                 onClick={() => scroll('left')}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 transition-colors"
+                className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 transition-colors"
                 aria-label="Previous review"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -352,7 +352,7 @@ export function ArtistReviewsSection({
               <button
                 type="button"
                 onClick={() => scroll('right')}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 transition-colors"
+                className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 transition-colors"
                 aria-label="Next review"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -366,22 +366,22 @@ export function ArtistReviewsSection({
       {isClient ? (
         <form
           onSubmit={handleSubmitReview}
-          className="rounded-2xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 p-5 sm:p-6 space-y-4 shadow-xl"
+          className="rounded-2xl bg-slate-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 p-5 sm:p-6 space-y-4 shadow-sm"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
             <div>
-              <h3 className="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              <h3 className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Star className="h-4 w-4 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
                 <span>Rate &amp; Review {artistName}</span>
               </h3>
-              <p className="text-xs text-white/50 mt-0.5">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
                 Share your feedback from your commission or project experience
               </p>
             </div>
 
             {/* Star Rating Selector */}
-            <div className="flex items-center gap-2 self-start sm:self-auto bg-black/40 px-3 py-1.5 rounded-xl border border-white/10">
-              <span className="text-xs font-semibold text-amber-300 mr-1">
+            <div className="flex items-center gap-2 self-start sm:self-auto bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm">
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-300 mr-1">
                 {rating} Star{rating > 1 ? 's' : ''}
               </span>
               <div className="flex items-center">
@@ -397,11 +397,11 @@ export function ArtistReviewsSection({
                       onMouseLeave={() => setHoverRating(null)}
                       title={`Rate ${star} star${star > 1 ? 's' : ''}`}
                       aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
-                      className="p-1 text-white/30 hover:scale-125 transition-transform focus:outline-none"
+                      className="p-1 text-zinc-300 dark:text-zinc-600 hover:scale-125 transition-transform focus:outline-none"
                     >
                       <Star
                         className={`h-5 w-5 transition-colors ${
-                          isFilled ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]' : 'text-white/20'
+                          isFilled ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]' : 'text-zinc-300 dark:text-zinc-600'
                         }`}
                       />
                     </button>
@@ -420,9 +420,9 @@ export function ArtistReviewsSection({
               placeholder={`Write your honest review and testimonial for ${artistName}...`}
               maxLength={2000}
               required
-              className="w-full bg-black/50 border border-white/15 rounded-xl p-4 text-xs sm:text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-purple-500/60 focus:ring-1 focus:ring-purple-500/60 resize-none transition-all"
+              className="w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400 rounded-xl p-4 text-xs sm:text-sm focus:outline-none focus:border-purple-500/60 focus:ring-1 focus:ring-purple-500/60 resize-none transition-all shadow-sm"
             />
-            <div className="flex justify-between items-center text-[10px] text-white/40 mt-1.5 px-1">
+            <div className="flex justify-between items-center text-[10px] text-zinc-500 dark:text-zinc-400 mt-1.5 px-1">
               <span>Your feedback will be published on this artist&apos;s public profile.</span>
               <span>{reviewText.length}/2000</span>
             </div>
@@ -450,20 +450,20 @@ export function ArtistReviewsSection({
           </div>
         </form>
       ) : !isAuthenticated ? (
-        <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-white/5 text-white/70">
-              <LogIn className="h-4 w-4 text-purple-400" />
+            <div className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+              <LogIn className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-white/90">Worked with {artistName}?</p>
-              <p className="text-[11px] text-white/50">Log in as a client to leave a star rating and review.</p>
+              <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100">Worked with {artistName}?</p>
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400">Log in as a client to leave a star rating and review.</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => router.push(`/auth/signin?callbackUrl=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`)}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium border border-white/10 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors shadow-sm"
           >
             Sign In to Review
           </button>
@@ -472,8 +472,8 @@ export function ArtistReviewsSection({
 
       {/* Reviews Content */}
       {isLoading && reviews.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-white/50">
-          <Loader2 className="h-7 w-7 animate-spin text-purple-400 mb-2" />
+        <div className="flex flex-col items-center justify-center py-12 text-zinc-500 dark:text-zinc-400">
+          <Loader2 className="h-7 w-7 animate-spin text-purple-600 dark:text-purple-400 mb-2" />
           <p className="text-xs">Loading client reviews...</p>
         </div>
       ) : totalReviews > 0 ? (
@@ -494,7 +494,7 @@ export function ArtistReviewsSection({
               return (
                 <article
                   key={rev.id}
-                  className="w-[290px] sm:w-[350px] md:w-[380px] flex-shrink-0 snap-start flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-black/40 border border-white/10 hover:border-purple-500/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-500/5 group/card"
+                  className="w-[290px] sm:w-[350px] md:w-[380px] flex-shrink-0 snap-start flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-purple-400 dark:hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md group/card"
                 >
                   {/* Card Top: Stars + Quote + Date */}
                   <div>
@@ -506,22 +506,22 @@ export function ArtistReviewsSection({
                             className={`h-3.5 w-3.5 ${
                               s <= rev.rating
                                 ? 'fill-amber-400 text-amber-400'
-                                : 'text-white/20'
+                                : 'text-zinc-300 dark:text-zinc-600'
                             }`}
                           />
                         ))}
                       </div>
-                      <Quote className="h-5 w-5 text-purple-400/40 group-hover/card:text-purple-400/80 transition-colors" />
+                      <Quote className="h-5 w-5 text-purple-400/40 group-hover/card:text-purple-600 dark:group-hover/card:text-purple-400 transition-colors" />
                     </div>
 
                     {/* Review text */}
-                    <p className="text-xs sm:text-sm text-white/85 leading-relaxed line-clamp-4 italic">
+                    <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed line-clamp-4 italic">
                       &ldquo;{rev.comment || rev.reviewText}&rdquo;
                     </p>
                   </div>
 
                   {/* Card Bottom: Client Info */}
-                  <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-white/5">
+                  <div className="flex items-center justify-between gap-2 pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="relative h-8 w-8 rounded-full overflow-hidden flex-shrink-0">
                         {rev.clientAvatar && isValidImageUrl(rev.clientAvatar) ? (
@@ -529,7 +529,7 @@ export function ArtistReviewsSection({
                           <img
                             src={rev.clientAvatar}
                             alt={rev.clientName}
-                            className="h-full w-full rounded-full object-cover border border-white/15"
+                            className="h-full w-full rounded-full object-cover border border-zinc-200 dark:border-zinc-700"
                             onError={(e) => {
                               const target = e.currentTarget;
                               target.onerror = null;
@@ -540,7 +540,7 @@ export function ArtistReviewsSection({
                           />
                         ) : null}
                         <div
-                          className="h-full w-full rounded-full bg-gradient-to-tr from-purple-600 to-amber-600 flex items-center justify-center text-xs font-bold text-white uppercase border border-white/15"
+                          className="h-full w-full rounded-full bg-gradient-to-tr from-purple-600 to-amber-600 flex items-center justify-center text-xs font-bold text-white uppercase border border-zinc-200 dark:border-zinc-700"
                           style={{ display: (rev.clientAvatar && isValidImageUrl(rev.clientAvatar)) ? 'none' : 'flex' }}
                         >
                           {initial}
@@ -548,16 +548,16 @@ export function ArtistReviewsSection({
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1">
-                          <h3 className="text-xs font-semibold text-white truncate">
+                          <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                             {rev.clientName}
                           </h3>
-                          <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                         </div>
-                        <p className="text-[10px] text-white/40">Verified Buyer</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Verified Buyer</p>
                       </div>
                     </div>
 
-                    <time className="text-[10px] text-white/40 flex-shrink-0" suppressHydrationWarning>
+                    <time className="text-[10px] text-zinc-500 dark:text-zinc-400 flex-shrink-0" suppressHydrationWarning>
                       {formatDate(rev.createdAt)}
                     </time>
                   </div>
@@ -568,13 +568,13 @@ export function ArtistReviewsSection({
         </div>
       ) : (
         /* Empty State */
-        <div className="text-center py-10 px-4 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 space-y-3">
-          <MessageSquareHeart className="h-10 w-10 text-white/20 mx-auto" />
+        <div className="text-center py-10 px-4 rounded-2xl bg-zinc-50/60 dark:bg-zinc-800/20 border border-dashed border-zinc-300 dark:border-zinc-800 space-y-3">
+          <MessageSquareHeart className="h-10 w-10 text-zinc-400 dark:text-zinc-600 mx-auto" />
           <div className="max-w-md mx-auto">
-            <h3 className="text-sm font-semibold text-white/80">
+            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
               No client reviews yet
             </h3>
-            <p className="text-xs text-white/50 mt-1">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
               Have you commissioned or worked with {artistName}? Be the first to share your experience!
             </p>
           </div>
@@ -594,18 +594,18 @@ export function ArtistReviewsSection({
       {/* Review Submission Modal Dialog */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="relative max-w-lg w-full rounded-3xl overflow-hidden glass-card border border-white/20 bg-slate-950 p-6 sm:p-8 space-y-6 shadow-2xl"
+            className="relative max-w-lg w-full rounded-3xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 space-y-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-black/60 text-white/70 hover:text-white hover:bg-black/90 border border-white/10 transition-colors"
+              className="absolute top-5 right-5 p-2 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 transition-colors"
               aria-label="Close review dialog"
             >
               <X className="h-4 w-4" />
@@ -613,12 +613,12 @@ export function ArtistReviewsSection({
 
             {/* Modal Header */}
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Star className="h-5 w-5 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
                 Write a Review
               </h2>
-              <p className="text-xs text-slate-300 mt-1">
-                Share your feedback on artworks or commissions completed by <span className="font-semibold text-white">{artistName}</span>.
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                Share your feedback on artworks or commissions completed by <span className="font-semibold text-zinc-900 dark:text-zinc-100">{artistName}</span>.
               </p>
             </div>
 
@@ -626,7 +626,7 @@ export function ArtistReviewsSection({
             <form onSubmit={handleSubmitReview} className="space-y-5">
               {/* Star Rating Picker */}
               <div>
-                <label className="block text-xs font-semibold text-white/80 mb-2">
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
                   Overall Rating
                 </label>
                 <div className="flex items-center gap-2">
@@ -642,19 +642,19 @@ export function ArtistReviewsSection({
                         onMouseEnter={() => setHoverRating(star)}
                         onMouseLeave={() => setHoverRating(null)}
                         aria-label={`Select ${star} stars`}
-                        className="p-1 text-white/30 hover:scale-125 transition-transform focus:outline-none"
+                        className="p-1 text-zinc-300 dark:text-zinc-600 hover:scale-125 transition-transform focus:outline-none"
                       >
                         <Star
                           className={`h-7 w-7 transition-colors ${
                             isFilled
                               ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
-                              : 'text-white/20'
+                              : 'text-zinc-300 dark:text-zinc-600'
                           }`}
                         />
                       </button>
                     );
                   })}
-                  <span className="text-sm font-bold text-amber-300 ml-2">
+                  <span className="text-sm font-bold text-amber-600 dark:text-amber-400 ml-2">
                     {rating} of 5 Stars
                   </span>
                 </div>
@@ -662,7 +662,7 @@ export function ArtistReviewsSection({
 
               {/* Review Text */}
               <div>
-                <label htmlFor="review-text" className="block text-xs font-semibold text-white/80 mb-2">
+                <label htmlFor="review-text" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
                   Your Review / Testimonial
                 </label>
                 <textarea
@@ -673,9 +673,9 @@ export function ArtistReviewsSection({
                   placeholder="Describe the artist's professionalism, creativity, artwork quality, or communication..."
                   maxLength={2000}
                   required
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs sm:text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-purple-500/50 resize-none transition-colors"
+                  className="w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400 rounded-2xl p-4 text-xs sm:text-sm focus:outline-none focus:border-purple-500/60 focus:ring-1 focus:ring-purple-500/60 resize-none transition-colors"
                 />
-                <div className="flex justify-between items-center text-[10px] text-white/40 mt-1">
+                <div className="flex justify-between items-center text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
                   <span>Minimum 5 characters</span>
                   <span>{reviewText.length}/2000</span>
                 </div>
@@ -686,7 +686,7 @@ export function ArtistReviewsSection({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 text-xs font-medium border border-white/10 transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors"
                 >
                   Cancel
                 </button>

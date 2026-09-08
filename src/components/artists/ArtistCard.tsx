@@ -149,7 +149,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
 
   return (
     <Link href={`/freelancers/${artistId}`} className="block">
-      <article className="group flex h-full flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-br from-background/70 via-background/60 to-background/30 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.35)] transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:cursor-pointer">
+      <article className="group flex h-full flex-col justify-between rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm dark:shadow-[0_20px_80px_rgba(15,23,42,0.35)] transition duration-300 hover:-translate-y-1 hover:border-primary/40 dark:hover:border-primary/40 hover:cursor-pointer">
         <div className="flex flex-col gap-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -172,14 +172,14 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
 
               {/* Name & Title */}
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-foreground line-clamp-2 break-words text-base leading-snug transition-colors group-hover:text-primary">
+                <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-2 break-words text-base leading-snug transition-colors group-hover:text-primary">
                   {displayName}
                 </h3>
                 {professionalTitle && (
-                  <p className="text-sm text-muted-foreground truncate">{professionalTitle}</p>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 truncate">{professionalTitle}</p>
                 )}
                 {isVerified && (
-                  <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] font-semibold text-emerald-400">
+                  <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/15 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
                     <CheckCircle className="h-3.5 w-3.5" />
                     Verified Artist
                   </div>
@@ -189,7 +189,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
           </div>
 
           {bio && (
-            <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{bio}</p>
+            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 line-clamp-2">{bio}</p>
           )}
 
           {skills.length > 0 && (
@@ -206,16 +206,16 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
           )}
         </div>
 
-        <footer className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+        <footer className="mt-4 flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800 pt-4">
           <div className="space-y-1">
             {locationVal ? (
-              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <p className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                 <MapPin className="h-3.5 w-3.5 text-primary" />
                 {locationVal}
               </p>
             ) : (
-              <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3.5 w-3.5 text-yellow-400" />
+              <p className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+                <Clock className="h-3.5 w-3.5 text-amber-500 dark:text-yellow-400" />
                 Available for commissions
               </p>
             )}

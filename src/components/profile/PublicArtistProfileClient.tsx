@@ -438,13 +438,13 @@ export default function PublicArtistProfileClient() {
     return (
       <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
         <div className="container mx-auto max-w-5xl space-y-8 animate-pulse">
-          <div className="rounded-3xl border border-white/10 bg-background/60 p-8 sm:p-10 shadow-2xl">
+          <div className="rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 sm:p-10 shadow-sm dark:shadow-2xl">
             <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
-              <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-full bg-white/10 border-2 border-primary/20" />
+              <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-full bg-zinc-200 dark:bg-zinc-800 border-2 border-primary/20" />
               <div className="flex-1 space-y-3 text-center sm:text-left">
-                <div className="h-10 w-56 rounded-xl bg-white/10 mx-auto sm:mx-0" />
-                <div className="h-5 w-36 rounded-lg bg-white/10 mx-auto sm:mx-0" />
-                <div className="h-4 w-72 rounded-lg bg-white/5 mx-auto sm:mx-0" />
+                <div className="h-10 w-56 rounded-xl bg-zinc-200 dark:bg-zinc-800 mx-auto sm:mx-0" />
+                <div className="h-5 w-36 rounded-lg bg-zinc-200 dark:bg-zinc-800 mx-auto sm:mx-0" />
+                <div className="h-4 w-72 rounded-lg bg-zinc-100 dark:bg-zinc-800/60 mx-auto sm:mx-0" />
               </div>
             </div>
           </div>
@@ -462,20 +462,20 @@ export default function PublicArtistProfileClient() {
             variant="ghost"
             size="sm"
             onClick={() => router.back()}
-            className="gap-2 text-muted-foreground hover:text-foreground"
+            className="gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           {isOwnProfile && (
-            <Button asChild variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary">
+            <Button asChild variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5">
               <Link href="/profile/edit">Edit Profile</Link>
             </Button>
           )}
         </div>
 
         {/* Header Component: Direct Mapping of first_name, last_name, full_name, username, avatar_url */}
-        <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-background/90 via-background/70 to-background/50 p-6 sm:p-8 lg:p-10 shadow-2xl backdrop-blur-md">
+        <div className="relative rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 sm:p-8 lg:p-10 shadow-sm dark:shadow-2xl">
           <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 lg:gap-8">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left flex-1 min-w-0">
               {/* Profile Avatar Component: Checks for valid image URL and uses loop-safe fallback */}
@@ -506,18 +506,18 @@ export default function PublicArtistProfileClient() {
               {/* Identity & Metadata */}
               <div className="space-y-3 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                     {fullName}
                   </h1>
                   {isVerified && (
-                    <Badge className="gap-1 border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 font-medium">
+                    <Badge className="gap-1 border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium">
                       <CheckCircle className="h-3.5 w-3.5" />
                       Verified Artist
                     </Badge>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                   <span className="font-semibold text-primary">@{username}</span>
                   <span>•</span>
                   <span>{firstName}</span>
@@ -525,40 +525,40 @@ export default function PublicArtistProfileClient() {
                 </div>
 
                 {title && (
-                  <p className="text-base sm:text-lg font-medium text-foreground/90">
+                  <p className="text-base sm:text-lg font-medium text-zinc-900 dark:text-zinc-100">
                     {title}
                   </p>
                 )}
 
                 {bio && (
-                  <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-2xl leading-relaxed">
                     {bio}
                   </p>
                 )}
 
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-zinc-600 dark:text-zinc-400">
                   {/* Aggregated Artist Star Rating */}
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-medium text-amber-300">
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-1 font-medium text-amber-700 dark:text-amber-300">
+                    <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
                     {totalReviewsCount > 0 ? (
                       <>
-                        <span className="font-semibold text-foreground">{artistAverageRating.toFixed(1)}</span>
-                        <span className="text-muted-foreground">
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{artistAverageRating.toFixed(1)}</span>
+                        <span className="text-zinc-600 dark:text-zinc-400">
                           ({totalReviewsCount} {totalReviewsCount === 1 ? 'review' : 'reviews'})
                         </span>
                       </>
                     ) : (
-                      <span className="text-muted-foreground">No reviews yet</span>
+                      <span className="text-zinc-600 dark:text-zinc-400">No reviews yet</span>
                     )}
                   </span>
                   {location && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 px-3 py-1">
                       <MapPin className="h-3.5 w-3.5 text-primary" />
                       {location}
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                    <Clock className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 px-3 py-1">
+                    <Clock className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
                     Available for commissions
                   </span>
                 </div>
@@ -571,7 +571,7 @@ export default function PublicArtistProfileClient() {
                 <Mail className="h-4 w-4" />
                 Contact Artist
               </Button>
-              <Button variant="outline" onClick={handleShare} className="gap-2 border-white/10 hover:bg-white/5">
+              <Button variant="outline" onClick={handleShare} className="gap-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
                 <Share2 className="h-4 w-4" />
                 {copied ? 'Copied!' : 'Share Profile'}
               </Button>
@@ -583,13 +583,13 @@ export default function PublicArtistProfileClient() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Left / Main Details */}
           <div className="md:col-span-2 space-y-6">
-            <Card className="border-white/10 bg-background/60 backdrop-blur">
+            <Card className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl font-semibold">
+                <CardTitle className="flex items-center gap-2 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
                   <Sparkles className="h-5 w-5 text-primary" />
                   Skills &amp; Expertise
                 </CardTitle>
-                <CardDescription>Creative proficiencies and specialties</CardDescription>
+                <CardDescription className="text-zinc-600 dark:text-zinc-400">Creative proficiencies and specialties</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
@@ -597,7 +597,7 @@ export default function PublicArtistProfileClient() {
                     <Badge
                       key={index}
                       variant="outline"
-                      className="border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-foreground hover:bg-primary/10 transition"
+                      className="border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary hover:bg-primary/10 transition"
                     >
                       {skill}
                     </Badge>
@@ -607,9 +607,9 @@ export default function PublicArtistProfileClient() {
             </Card>
 
             {portfolio && (
-              <Card className="border-white/10 bg-background/60 backdrop-blur">
+              <Card className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Portfolio &amp; External Links</CardTitle>
+                  <CardTitle className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Portfolio &amp; External Links</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <a
@@ -628,16 +628,16 @@ export default function PublicArtistProfileClient() {
 
           {/* Right Column: Rate & Commission Info */}
           <div className="space-y-6">
-            <Card className="border-white/10 bg-background/60 backdrop-blur">
+            <Card className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Standard Rate</CardTitle>
-                <CardDescription>Base hourly commission rate</CardDescription>
+                <CardTitle className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Standard Rate</CardTitle>
+                <CardDescription className="text-zinc-600 dark:text-zinc-400">Base hourly commission rate</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-primary">
-                  ${rate}<span className="text-sm font-normal text-muted-foreground">/hour</span>
+                  ${rate}<span className="text-sm font-normal text-zinc-600 dark:text-zinc-400">/hour</span>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+                <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                   Direct commissions and bespoke digital creations available upon inquiry.
                 </p>
               </CardContent>

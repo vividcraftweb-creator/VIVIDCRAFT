@@ -83,10 +83,10 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
 
   return (
     <>
-      <div className="group relative rounded-2xl overflow-hidden glass-card glass-card-shine border border-white/10 hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10 flex flex-col bg-black/30">
+      <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-purple-400 dark:hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl hover:shadow-purple-500/5 flex flex-col">
         {/* Artwork Image Container */}
         <div
-          className="relative aspect-[4/3] w-full overflow-hidden bg-black/60 cursor-pointer"
+          className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-900 cursor-pointer"
           onClick={() => setIsZoomOpen(true)}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -123,7 +123,7 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
         </div>
 
         {/* Interactive Action Bar below image */}
-        <div className="p-4 flex flex-wrap items-center justify-between gap-3 bg-black/40 border-t border-white/5">
+        <div className="p-4 flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
           {/* Like Button */}
           <button
             type="button"
@@ -132,8 +132,8 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             aria-label={isLiked ? 'Unlike artwork' : 'Like artwork'}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 interactive-scale ${
               isLiked
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
-                : 'bg-white/5 text-white/70 border border-white/10 hover:bg-rose-500/10 hover:text-rose-300 hover:border-rose-500/30'
+                ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 hover:bg-rose-100 dark:hover:bg-rose-500/30'
+                : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/30'
             }`}
           >
             <Heart
@@ -150,9 +150,9 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             type="button"
             onClick={() => setIsZoomOpen(true)}
             aria-label="View artwork details and comments"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all duration-200"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 transition-all duration-200"
           >
-            <ZoomIn className="h-3.5 w-3.5 text-purple-400" />
+            <ZoomIn className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
             <span>Feedback</span>
           </button>
         </div>

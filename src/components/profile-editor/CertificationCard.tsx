@@ -233,8 +233,8 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Award className="h-5 w-5 text-blue-400" />
-          <h3 className="text-lg font-semibold text-white">Certifications</h3>
+          <Award className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Certifications</h3>
         </div>
         {!isAdding && !editingId && (
           <Button variant="outline" size="sm" onClick={handleAdd} className="glass-button">
@@ -246,65 +246,65 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
 
       {/* Add/Edit Form */}
       {(isAdding || editingId) && (
-        <form onSubmit={handleSubmit} className="space-y-5 p-4 border border-slate-700 rounded-lg bg-slate-800/30">
+        <form onSubmit={handleSubmit} className="space-y-5 p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-slate-50 dark:bg-zinc-800/30">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-slate-300">Certification Name *</Label>
+            <Label htmlFor="name" className="text-zinc-700 dark:text-zinc-300 font-medium">Certification Name *</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., AWS Certified Solutions Architect"
               required
-              className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+              className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="issuer" className="text-slate-300">Issuing Organization *</Label>
+            <Label htmlFor="issuer" className="text-zinc-700 dark:text-zinc-300 font-medium">Issuing Organization *</Label>
             <Input
               id="issuer"
               value={formData.issuer}
               onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
               placeholder="e.g., Amazon Web Services"
               required
-              className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+              className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="issueDate" className="text-slate-300">Issue Date</Label>
+              <Label htmlFor="issueDate" className="text-zinc-700 dark:text-zinc-300 font-medium">Issue Date</Label>
               <DatePicker
                 value={formData.issueDate}
                 onChange={(date) => setFormData({ ...formData, issueDate: date })}
                 placeholder="Select issue date"
-                className="bg-slate-800/50 border-slate-700"
+                className="bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="expiryDate" className="text-slate-300">Expiry Date</Label>
+              <Label htmlFor="expiryDate" className="text-zinc-700 dark:text-zinc-300 font-medium">Expiry Date</Label>
               <DatePicker
                 value={formData.expiryDate}
                 onChange={(date) => setFormData({ ...formData, expiryDate: date })}
                 placeholder="Select expiry date"
-                className="bg-slate-800/50 border-slate-700"
+                className="bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="credentialId" className="text-slate-300">Credential ID</Label>
+            <Label htmlFor="credentialId" className="text-zinc-700 dark:text-zinc-300 font-medium">Credential ID</Label>
             <Input
               id="credentialId"
               value={formData.credentialId}
               onChange={(e) => setFormData({ ...formData, credentialId: e.target.value })}
               placeholder="e.g., ABC123XYZ"
-              className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+              className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="credentialFile" className="flex items-center gap-2 text-slate-300">
+            <Label htmlFor="credentialFile" className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 font-medium">
               <FileText className="h-4 w-4" />
               Certification File {editingId ? '(optional)' : '*'}
             </Label>
@@ -313,7 +313,7 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
               <div className="space-y-3">
                 {/* Image Preview or PDF Icon */}
                 {filePreview ? (
-                  <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-slate-700 bg-slate-900">
+                  <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900">
                     <img
                       src={filePreview}
                       alt="Preview"
@@ -321,18 +321,18 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
                     />
                   </div>
                 ) : (
-                  <div className="w-full h-32 rounded-lg border-2 border-slate-700 bg-slate-900 flex items-center justify-center">
-                    <FileText className="h-16 w-16 text-slate-600" />
+                  <div className="w-full h-32 rounded-lg border-2 border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+                    <FileText className="h-16 w-16 text-zinc-400 dark:text-zinc-600" />
                   </div>
                 )}
 
                 {/* File Info & Remove Button */}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/30">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <FileCheck className="h-5 w-5 text-green-400 flex-shrink-0" />
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-green-400 font-medium truncate">{credentialFile.name}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-sm text-green-700 dark:text-green-400 font-medium truncate">{credentialFile.name}</p>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
                         {(credentialFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
@@ -342,7 +342,7 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
                     variant="ghost"
                     size="sm"
                     onClick={handleRemoveFile}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 flex-shrink-0"
+                    className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10 flex-shrink-0"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -355,7 +355,7 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
                   className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all ${
                     isDragging
                       ? 'border-blue-500 bg-blue-500/10'
-                      : 'border-slate-700 bg-slate-800/30 hover:border-slate-600 hover:bg-slate-800/50'
+                      : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/30 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                   }`}
                 >
                   <Input
@@ -367,13 +367,13 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
                   />
                   <div className="flex flex-col items-center gap-3 pointer-events-none">
                     <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <Upload className="h-8 w-8 text-blue-400" />
+                      <Upload className="h-8 w-8 text-blue-500 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-slate-300 font-medium mb-1">
-                        Drop your certification here, or <span className="text-blue-400">browse</span>
+                      <p className="text-zinc-700 dark:text-zinc-300 font-medium mb-1">
+                        Drop your certification here, or <span className="text-blue-600 dark:text-blue-400">browse</span>
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
                         PDF or Image (JPG, PNG, WEBP) • Max 2MB
                       </p>
                     </div>
@@ -381,8 +381,8 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
                 </div>
 
                 {formData.credentialUrl && !credentialFile && (
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700">
-                    <p className="text-xs text-slate-400 flex items-center gap-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Current file available
                     </p>
@@ -394,7 +394,7 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
                         : `/${formData.credentialUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 hover:underline flex items-center gap-1"
                     >
                       View File <ExternalLink className="h-3 w-3" />
                     </a>
@@ -430,8 +430,8 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
         {items.length === 0 && !isAdding && !editingId && (
           <div className="glass-card p-8 rounded-2xl text-center">
             <Award className="h-12 w-12 text-primary/50 mx-auto mb-3" />
-            <p className="text-slate-300 font-medium mb-1">No certifications added yet</p>
-            <p className="text-slate-400 text-sm mb-4">
+            <p className="text-zinc-900 dark:text-zinc-100 font-medium mb-1">No certifications added yet</p>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-4">
               Showcase your professional credentials and industry certifications
             </p>
             <Button
@@ -449,24 +449,24 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
         {items.map((item) => (
           <div
             key={item.id}
-            className="p-4 border border-slate-700 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors"
+            className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors shadow-sm"
           >
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-start gap-2">
-                  <Award className="h-5 w-5 text-blue-400 mt-0.5" />
+                  <Award className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5" />
                   <div>
-                    <h4 className="font-semibold text-lg text-white">{item.name}</h4>
-                    <p className="text-slate-300">{item.issuer}</p>
+                    <h4 className="font-semibold text-lg text-zinc-900 dark:text-zinc-100">{item.name}</h4>
+                    <p className="text-zinc-700 dark:text-zinc-300">{item.issuer}</p>
                     {(item.issueDate || item.expiryDate) && (
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
                         {item.issueDate && `Issued: ${new Date(item.issueDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}`}
                         {item.issueDate && item.expiryDate && ' • '}
                         {item.expiryDate && `Expires: ${new Date(item.expiryDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}`}
                       </p>
                     )}
                     {item.credentialId && (
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
                         Credential ID: {item.credentialId}
                       </p>
                     )}
@@ -479,7 +479,7 @@ export default function CertificationCard({ items, onUpdate }: CertificationCard
                           : `/${item.credentialUrl}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 mt-1"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 hover:underline flex items-center gap-1 mt-1"
                       >
                         Verify Credential <ExternalLink className="h-3 w-3" />
                       </a>

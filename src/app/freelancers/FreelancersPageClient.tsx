@@ -150,7 +150,7 @@ export default function FreelancersPageClient({
 
           {/* Simple Search Input & Button */}
           <div className="mx-auto mt-10 max-w-3xl">
-            <div className="glass-card rounded-3xl border border-white/5 bg-background/75 p-4 shadow-[0_30px_120px_rgba(15,23,42,0.35)] backdrop-blur">
+            <div className="glass-card rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-4 shadow-xl dark:shadow-[0_30px_120px_rgba(15,23,42,0.35)] backdrop-blur">
               <form
                 className="flex flex-col gap-3 sm:flex-row sm:items-center"
                 onSubmit={(event) => {
@@ -165,7 +165,7 @@ export default function FreelancersPageClient({
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Search by artist name, style, or skills…"
-                    className="w-full rounded-2xl border border-white/10 bg-background/60 py-3 pl-12 pr-4 text-sm text-foreground shadow-inner shadow-black/20 transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-3 pl-12 pr-4 text-sm text-foreground shadow-sm transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
                 <button
@@ -201,7 +201,7 @@ export default function FreelancersPageClient({
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
           {loading && (!displayedArtists || displayedArtists.length === 0) &&
             Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="glass-card rounded-3xl border border-white/10 p-6">
+              <div key={index} className="glass-card rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6">
                 <Skeleton className="mb-4 h-10 w-10 rounded-full" />
                 <Skeleton className="mb-2 h-4 w-32" />
                 <Skeleton className="mb-4 h-3 w-48" />
