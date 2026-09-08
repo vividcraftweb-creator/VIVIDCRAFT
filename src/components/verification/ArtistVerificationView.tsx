@@ -443,7 +443,10 @@ export default function ArtistVerificationView() {
           verificationType: slot,
           fileUrl: publicUrl,
           documentType: slotLabel,
-          expiryDate: expiryDate ? new Date(expiryDate).toISOString() : undefined,
+          id_front_url: slot === 'ID_FRONT' ? publicUrl : (getSlotDoc('ID_FRONT')?.documentUrl || null),
+          id_back_url: slot === 'ID_BACK' ? publicUrl : (currentConfig.requiresBack ? (getSlotDoc('ID_BACK')?.documentUrl || null) : null),
+          selfie_url: slot === 'SELFIE' ? publicUrl : (getSlotDoc('SELFIE')?.documentUrl || null),
+          expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
         });
       } catch (mutationErr) {
         console.warn('Upload mutation notice:', mutationErr);
@@ -541,9 +544,9 @@ export default function ArtistVerificationView() {
       const verificationsPayload = {
         user_id: targetUserId,
         document_type: currentConfig.label,
-        id_front_url: idFrontDoc.documentUrl,
+        id_front_url: idFrontDoc.documentUrl || null,
         id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
-        selfie_url: selfieDoc.documentUrl,
+        selfie_url: selfieDoc.documentUrl || null,
         status: 'pending',
       };
 
@@ -556,7 +559,20 @@ export default function ArtistVerificationView() {
         throw new Error(vInsertErr.message || 'Failed to submit verification record.');
       }
 
-      // 2. Call tRPC submitForReview mutation to register overall verification
+      // 2. Sync record via tRPC uploadDocMutation
+      try {
+        await uploadDocMutation.mutateAsync({
+          documentType: currentConfig.label,
+          id_front_url: idFrontDoc.documentUrl || null,
+          id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
+          selfie_url: selfieDoc.documentUrl || null,
+          status: 'pending',
+        });
+      } catch (tErr) {
+        console.warn('tRPC uploadDocMutation submit sync notice:', tErr);
+      }
+
+      // 3. Call tRPC submitForReview mutation to register overall verification
       try {
         await submitForReviewMutation.mutateAsync({
           documentType: currentConfig.label,
