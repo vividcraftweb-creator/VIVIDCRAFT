@@ -173,7 +173,7 @@ export const verificationsRouter = router({
         await (supabase as any)
           .from('profiles')
           .update({
-            verified: true,
+            is_verified: true,
             updated_at: new Date().toISOString(),
           })
           .eq('id', verification.userId);
@@ -237,9 +237,7 @@ export const verificationsRouter = router({
       await (supabase as any)
         .from('profiles')
         .update({
-          verified: true,
           is_verified: true,
-          status: 'active',
           updated_at: new Date().toISOString(),
         })
         .eq('id', verification.userId);
@@ -311,7 +309,6 @@ export const verificationsRouter = router({
         await (supabase as any)
           .from('profiles')
           .update({
-            verified: false,
             is_verified: false,
             updated_at: new Date().toISOString(),
           })

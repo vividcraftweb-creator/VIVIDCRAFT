@@ -201,10 +201,10 @@ export default function ArtistVerificationView() {
         if (user && isMounted) {
           setSessionUserId(user.id);
 
-          // 1. Fetch Profile
+          // 1. Fetch Profile (strictly select is_verified to prevent 400 Bad Request)
           const { data: prof, error: profErr } = await (supabase as any)
             .from('profiles')
-            .select('id, is_verified, verified, status')
+            .select('id, is_verified')
             .eq('id', user.id)
             .limit(1)
             .maybeSingle();
@@ -213,39 +213,64 @@ export default function ArtistVerificationView() {
             setProfileData(prof);
           }
 
-          // 2. Fetch User Verification Documents from Verification table
-          const { data: docs, error: docErr } = await supabase
-            .from('Verification')
+          // 2. Fetch User Verification Documents from verifications table (lowercase)
+          const { data: docs, error: docErr } = await (supabase as any)
+            .from('verifications')
             .select('*')
-            .eq('userId', user.id);
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
           if (!docErr && docs && isMounted) {
-            const mappedDocs: UploadedDocItem[] = docs.map((d: any) => ({
-              id: d.id,
-              verificationType: d.verificationType || 'ID_FRONT',
-              status: d.status || 'PENDING',
-              documentUrl: d.documentUrl || d.files || null,
-              fileName: d.fileName || null,
-              rejectionReason: d.rejectionReason || d.details || null,
-              createdAt: d.createdAt || d.created_at || new Date().toISOString(),
-            }));
+            const mappedDocs: UploadedDocItem[] = [];
+            docs.forEach((d: any) => {
+              if (d.id_front_url) {
+                mappedDocs.push({
+                  id: `${d.id}-front`,
+                  verificationType: 'ID_FRONT',
+                  status: (d.status?.toUpperCase() as any) || 'PENDING',
+                  documentUrl: d.id_front_url,
+                  fileName: `${d.document_type || 'ID'} (Front)`,
+                  createdAt: d.created_at || new Date().toISOString(),
+                });
+              }
+              if (d.id_back_url) {
+                mappedDocs.push({
+                  id: `${d.id}-back`,
+                  verificationType: 'ID_BACK',
+                  status: (d.status?.toUpperCase() as any) || 'PENDING',
+                  documentUrl: d.id_back_url,
+                  fileName: `${d.document_type || 'ID'} (Back)`,
+                  createdAt: d.created_at || new Date().toISOString(),
+                });
+              }
+              if (d.selfie_url) {
+                mappedDocs.push({
+                  id: `${d.id}-selfie`,
+                  verificationType: 'SELFIE',
+                  status: (d.status?.toUpperCase() as any) || 'PENDING',
+                  documentUrl: d.selfie_url,
+                  fileName: `Selfie with ${d.document_type || 'ID'}`,
+                  createdAt: d.created_at || new Date().toISOString(),
+                });
+              }
+              if (d.verificationType && (d.documentUrl || d.files)) {
+                mappedDocs.push({
+                  id: d.id,
+                  verificationType: d.verificationType,
+                  status: (d.status?.toUpperCase() as any) || 'PENDING',
+                  documentUrl: d.documentUrl || d.files,
+                  fileName: d.fileName || d.documentType,
+                  createdAt: d.created_at || d.createdAt || new Date().toISOString(),
+                });
+              }
+            });
             setDirectDocs(mappedDocs);
-          }
 
-          // 3. Fetch latest record from verifications table
-          try {
-            const { data: vRecord, error: vErr } = await (supabase as any)
-              .from('verifications')
-              .select('*')
-              .eq('user_id', user.id)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (!vErr && vRecord && isMounted) {
-              setSubmittedRecord(vRecord);
-              // Infer selected doc type if possible
-              const docTypeStr = (vRecord.document_type || '').toLowerCase();
+            // Infer selected doc type from latest record
+            const latestV = docs[0];
+            if (latestV) {
+              setSubmittedRecord(latestV);
+              const docTypeStr = (latestV.document_type || '').toLowerCase();
               if (docTypeStr.includes('passport')) {
                 setSelectedDocType('passport');
               } else if (docTypeStr.includes('license')) {
@@ -254,8 +279,6 @@ export default function ArtistVerificationView() {
                 setSelectedDocType('national_id');
               }
             }
-          } catch (verificationsTableErr) {
-            console.warn('verifications table query notice:', verificationsTableErr);
           }
         }
       } catch (err) {
@@ -294,25 +317,21 @@ export default function ArtistVerificationView() {
   // Derived verification status
   const isApproved = Boolean(
     profileData?.is_verified ||
-    profileData?.verified ||
     (myProfile as any)?.is_verified ||
-    (myProfile as any)?.verified ||
-    submittedRecord?.status === 'approved' ||
+    submittedRecord?.status?.toLowerCase() === 'approved' ||
     allDocuments.some((d) => d.status === 'APPROVED')
   );
 
   const isPending = Boolean(
     !isApproved && (
       isPendingSubmitted ||
-      submittedRecord?.status === 'pending' ||
-      profileData?.status === 'pending_verification' ||
-      (myProfile as any)?.status === 'pending_verification' ||
+      submittedRecord?.status?.toLowerCase() === 'pending' ||
       allDocuments.some((d) => d.status === 'PENDING')
     )
   );
 
   const rejectedDocs = allDocuments.filter((d) => d.status === 'REJECTED');
-  const isRejected = !isApproved && !isPending && (rejectedDocs.length > 0 || submittedRecord?.status === 'rejected');
+  const isRejected = !isApproved && !isPending && (rejectedDocs.length > 0 || submittedRecord?.status?.toLowerCase() === 'rejected');
 
   const currentConfig = DOC_CONFIGS[selectedDocType];
 
@@ -347,41 +366,37 @@ export default function ArtistVerificationView() {
       const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
       const filePath = `verification-documents/${sessionUserId || 'user'}/${cleanFileName}`;
 
-      setUploadProgress((prev) => ({ ...prev, [slot]: 40 }));
+      setUploadProgress((prev) => ({ ...prev, [slot]: 50 }));
 
-      // 1. Upload to verifications bucket (with fallback to public-uploads)
+      // Strictly upload to 'verifications' bucket - NO fallback to public-uploads
       console.log("Uploading to bucket 'verifications'...", file);
 
-      let bucketName = 'verifications';
-      let uploadRes = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('verifications')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
         });
 
-      if (uploadRes.error) {
-        console.error("Storage upload error for bucket 'verifications':", uploadRes.error);
-        console.warn('Verifications bucket upload failed, using public-uploads fallback:', uploadRes.error.message);
-        bucketName = 'public-uploads';
-        uploadRes = await supabase.storage
-          .from('public-uploads')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-
-        if (uploadRes.error) {
-          console.error("Storage upload error for fallback bucket 'public-uploads':", uploadRes.error);
-          throw new Error(uploadRes.error.message || 'File upload to storage failed');
-        }
+      if (uploadError) {
+        console.error("Storage upload error for bucket 'verifications':", uploadError);
+        const userMsg = uploadError.message?.includes('Bucket not found')
+          ? "Storage bucket 'verifications' was not found. Please ensure the bucket exists in Supabase."
+          : uploadError.message?.includes('row-level security') || uploadError.message?.includes('RLS')
+          ? "Permission error: Storage RLS policy prevented upload to 'verifications'. Please check bucket policies."
+          : uploadError.message || "Failed to upload file to 'verifications' bucket.";
+        throw new Error(userMsg);
       }
 
-      setUploadProgress((prev) => ({ ...prev, [slot]: 80 }));
+      setUploadProgress((prev) => ({ ...prev, [slot]: 85 }));
 
       const { data: { publicUrl } } = supabase.storage
-        .from(bucketName)
+        .from('verifications')
         .getPublicUrl(filePath);
+
+      if (!publicUrl) {
+        throw new Error('Unable to retrieve public URL for uploaded file.');
+      }
 
       // 2. Record document in Verification table
       const slotLabel =
@@ -404,7 +419,7 @@ export default function ArtistVerificationView() {
 
       // 3. Update local state optimistically
       const newDoc: UploadedDocItem = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${slot}`,
         verificationType: slot,
         status: 'PENDING',
         documentUrl: publicUrl,
@@ -421,7 +436,8 @@ export default function ArtistVerificationView() {
       toast.success(`${slotLabel} uploaded successfully!`);
     } catch (err: any) {
       console.error("Exact storage error response in handleFileUpload:", err);
-      toast.error(err.message || 'Failed to upload document');
+      toast.error(err?.message || 'File upload failed. Please try again.');
+      setUploadProgress((prev) => ({ ...prev, [slot]: 0 }));
     } finally {
       setUploadingSlot(null);
     }
@@ -439,10 +455,11 @@ export default function ArtistVerificationView() {
       setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id && d.verificationType !== slot));
       toast.success('Document removed');
     } catch (err) {
-      // Direct delete fallback
+      // Direct delete fallback from verifications table (lowercase)
       try {
         const supabase = createClient();
-        await supabase.from('Verification').delete().eq('id', doc.id);
+        const cleanId = doc.id.replace(/-front|-back|-selfie/, '');
+        await (supabase as any).from('verifications').delete().eq('id', cleanId);
         setDirectDocs((prev) => prev.filter((d) => d.id !== doc.id && d.verificationType !== slot));
         toast.success('Document removed');
       } catch {}
@@ -482,7 +499,7 @@ export default function ArtistVerificationView() {
         throw new Error('User session not found. Please log in again.');
       }
 
-      // 1. Insert record into `verifications` table
+      // 1. Insert record into `verifications` table (lowercase)
       // Payload: { user_id, document_type, id_front_url, id_back_url, selfie_url, status: 'pending' }
       const verificationsPayload = {
         user_id: targetUserId,
@@ -493,16 +510,13 @@ export default function ArtistVerificationView() {
         status: 'pending',
       };
 
-      try {
-        const { error: vInsertErr } = await (supabase as any)
-          .from('verifications')
-          .insert(verificationsPayload);
+      const { error: vInsertErr } = await (supabase as any)
+        .from('verifications')
+        .insert(verificationsPayload);
 
-        if (vInsertErr) {
-          console.warn('Notice inserting into verifications table:', vInsertErr.message);
-        }
-      } catch (insertTableEx) {
-        console.warn('verifications table insert exception:', insertTableEx);
+      if (vInsertErr) {
+        console.error('Error inserting into verifications table:', vInsertErr);
+        throw new Error(vInsertErr.message || 'Failed to submit verification record.');
       }
 
       // 2. Call tRPC submitForReview mutation to register overall verification
@@ -514,14 +528,12 @@ export default function ArtistVerificationView() {
         console.warn('submitForReview mutation notice:', mutationErr);
       }
 
-      // 3. Update profiles table status to pending_verification
+      // 3. Update profiles table is_verified to false (strictly select/update is_verified, no status or verified to prevent 400 Bad Request)
       try {
         await (supabase as any)
           .from('profiles')
           .update({
-            status: 'pending_verification',
             is_verified: false,
-            verified: false,
             updated_at: new Date().toISOString(),
           })
           .eq('id', targetUserId);
@@ -552,9 +564,7 @@ export default function ArtistVerificationView() {
 
       setProfileData((prev) => ({
         ...(prev || {}),
-        status: 'pending_verification',
         is_verified: false,
-        verified: false,
       }));
 
       setIsPendingSubmitted(true);

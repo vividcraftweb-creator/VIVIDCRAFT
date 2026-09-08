@@ -200,8 +200,7 @@ export default function DocumentUploadCard({
 
       console.log("Uploading to bucket 'verifications'...", fileToUpload);
 
-      let bucketName = 'verifications';
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('verifications')
         .upload(filePath, fileToUpload, {
           cacheControl: '3600',
@@ -210,25 +209,23 @@ export default function DocumentUploadCard({
 
       if (uploadError) {
         console.error("Storage upload error for bucket 'verifications':", uploadError);
-        console.warn("Verifications bucket upload failed, attempting fallback to 'public-uploads':", uploadError.message);
-        bucketName = 'public-uploads';
-        const fallbackRes = await supabase.storage
-          .from('public-uploads')
-          .upload(filePath, fileToUpload, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-        if (fallbackRes.error) {
-          console.error("Storage upload error for fallback bucket 'public-uploads':", fallbackRes.error);
-          throw uploadError;
-        }
+        const userMsg = uploadError.message?.includes('Bucket not found')
+          ? "Storage bucket 'verifications' was not found. Please ensure the bucket exists in Supabase."
+          : uploadError.message?.includes('row-level security') || uploadError.message?.includes('RLS')
+          ? "Permission error: Storage RLS policy prevented upload to 'verifications'."
+          : uploadError.message || "Failed to upload file to 'verifications' bucket.";
+        throw new Error(userMsg);
       }
 
       setUploadProgress(60);
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+      } = supabase.storage.from('verifications').getPublicUrl(filePath);
+
+      if (!publicUrl) {
+        throw new Error('Unable to retrieve public URL for uploaded file.');
+      }
 
       setUploadProgress(80);
 
