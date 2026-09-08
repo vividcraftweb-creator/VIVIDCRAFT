@@ -7,6 +7,7 @@ import { router, adminProcedure } from '../trpc';
 import type { Context } from '../context';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { adminUsersRouter } from './admin/users';
 import { adminJobsRouter } from './admin/jobs';
 import { adminAuditLogsRouter } from './admin/auditLogs';
@@ -18,7 +19,7 @@ import { adminArtworksRouter } from './admin/artworks';
 import { adminChatConnectionsRouter } from './admin/chatConnections';
 
 const requireAdminSupabase = (ctx: Context) => {
-  const supabase = ctx.adminSupabase;
+  const supabase = ctx.adminSupabase || createAdminClient();
 
   if (!supabase) {
     throw new TRPCError({
@@ -43,7 +44,7 @@ export const adminRouter = router({
   chatConnections: adminChatConnectionsRouter,
   getSystemStats: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) {
         return {
           totalUsers: 0,
@@ -104,7 +105,7 @@ export const adminRouter = router({
 
   getGrowthAnalytics: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
       const monthFormatter = new Intl.DateTimeFormat('en-US', {
@@ -158,7 +159,7 @@ export const adminRouter = router({
 
   getHealthSummary: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) {
         return {
           totalUsers: 0,
@@ -214,7 +215,7 @@ export const adminRouter = router({
     )
     .query(async ({ input, ctx }) => {
       try {
-        const supabase = ctx.adminSupabase;
+        const supabase = ctx.adminSupabase || createAdminClient();
         if (!supabase) return [];
 
         const limit = input?.limit || 20;
@@ -248,7 +249,7 @@ export const adminRouter = router({
 
   getDatabaseHealth: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) {
         return {
           status: 'Offline',
@@ -286,7 +287,7 @@ export const adminRouter = router({
 
   getRecentActivity: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
       // Get recent user registrations
@@ -344,7 +345,7 @@ export const adminRouter = router({
 
   getSystemHealth: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) {
         return {
           database: { status: 'Degraded', healthy: false },
@@ -426,7 +427,7 @@ export const adminRouter = router({
 
   getAllUsers: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
       const { data: users, error } = await supabase
@@ -448,7 +449,7 @@ export const adminRouter = router({
 
   getAllJobs: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
       const { data: jobs, error } = await supabase
@@ -492,7 +493,7 @@ export const adminRouter = router({
 
   getEliteUsers: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
       let { data: users, error } = await supabase
@@ -559,7 +560,7 @@ export const adminRouter = router({
 
   getUsersWithVerifications: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
       // 1. Fetch from verifications table (lowercase)
@@ -616,34 +617,64 @@ export const adminRouter = router({
         console.warn('Error fetching users in getUsersWithVerifications:', uErr);
       }
 
-      // 4. Fetch profiles to ensure is_verified and name accuracy
+      // 4. Fetch profiles to ensure is_verified and user details accuracy
       const profilesMap = new Map<string, any>();
       try {
         const { data: pList } = await (supabase as any)
           .from('profiles')
-          .select('id, is_verified, first_name, last_name, company_name')
+          .select('*')
           .in('id', allUserIds);
         if (pList) {
           pList.forEach((p: any) => profilesMap.set(p.id, p));
         }
-      } catch {}
+      } catch (pErr) {
+        console.warn('profiles query notice in getUsersWithVerifications:', pErr);
+      }
+
+      // Fetch from Supabase Auth admin if email is missing from User and profiles
+      const authUsersMap = new Map<string, any>();
+      const missingEmailIds = allUserIds.filter((uid) => {
+        const u = rawUsers.find((r) => r.id === uid);
+        const p = profilesMap.get(uid);
+        return !u?.email && !p?.email;
+      });
+
+      if (missingEmailIds.length > 0) {
+        await Promise.all(
+          missingEmailIds.map(async (uid) => {
+            try {
+              const { data: authData } = await supabase.auth.admin.getUserById(uid);
+              if (authData?.user) {
+                authUsersMap.set(uid, authData.user);
+              }
+            } catch {}
+          })
+        );
+      }
 
       // 5. Build unified UserWithVerifications list
       const usersWithDocs = allUserIds
         .map((userId) => {
           const userObj = rawUsers.find((u) => u.id === userId);
           const prof = profilesMap.get(userId);
+          const authUser = authUsersMap.get(userId);
 
-          const email = userObj?.email || prof?.email || 'User';
-          const role = userObj?.role || 'FREELANCER';
-          const clientType = userObj?.clientType || null;
-          const createdAt = userObj?.createdAt || new Date().toISOString();
-          const isVerified = Boolean(userObj?.isVerified || prof?.is_verified);
+          const email = userObj?.email || prof?.email || authUser?.email || 'User';
+          const role = (userObj?.role || prof?.role || authUser?.user_metadata?.role || 'FREELANCER').toUpperCase();
+          const clientType = userObj?.clientType || prof?.client_type || null;
+          const createdAt = userObj?.createdAt || prof?.created_at || authUser?.created_at || new Date().toISOString();
+          const isVerified = Boolean(
+            prof?.is_verified !== undefined && prof?.is_verified !== null
+              ? prof.is_verified
+              : (userObj?.isVerified ?? authUser?.user_metadata?.is_verified ?? false)
+          );
 
           const profileObj =
             userObj?.Profile ||
             (prof
-              ? [{ firstName: prof.first_name, lastName: prof.last_name, companyName: prof.company_name }]
+              ? [{ firstName: prof.first_name || prof.firstName || '', lastName: prof.last_name || prof.lastName || '', companyName: prof.company_name }]
+              : authUser
+              ? [{ firstName: authUser.user_metadata?.firstName || authUser.user_metadata?.first_name || '', lastName: authUser.user_metadata?.lastName || authUser.user_metadata?.last_name || '', companyName: null }]
               : []);
 
           const docs: any[] = [];
@@ -742,7 +773,7 @@ export const adminRouter = router({
 
   getAccountManagers: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
       // Get all users with ADMIN role who can be account managers

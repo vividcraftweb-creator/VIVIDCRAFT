@@ -89,6 +89,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
   const [suspendReason, setSuspendReason] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
+  const [optimisticUserVerified, setOptimisticUserVerified] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setIsMounted(true);
@@ -191,7 +192,8 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
 
   const verifyMutation = trpc.admin.users.verifyUser.useMutation({
     onMutate: async ({ userId }) => {
-      // Optimistic UI update: instantly mark user as verified in local state
+      // Optimistic UI update: instantly mark user as verified
+      setOptimisticUserVerified((prev) => ({ ...prev, [userId]: true }));
       setDirectUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u))
       );
@@ -212,6 +214,11 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
       setVerifyTarget(null);
     },
     onError: (error, { userId }) => {
+      setOptimisticUserVerified((prev) => {
+        const copy = { ...prev };
+        delete copy[userId];
+        return copy;
+      });
       setDirectUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, isVerified: false } : u))
       );
@@ -221,7 +228,8 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
 
   const unverifyMutation = trpc.admin.users.unverifyUser.useMutation({
     onMutate: async ({ userId }) => {
-      // Optimistic UI update: instantly mark user as unverified in local state
+      // Optimistic UI update: instantly mark user as unverified
+      setOptimisticUserVerified((prev) => ({ ...prev, [userId]: false }));
       setDirectUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, isVerified: false } : u))
       );
@@ -241,6 +249,11 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
       refetch();
     },
     onError: (error, { userId }) => {
+      setOptimisticUserVerified((prev) => {
+        const copy = { ...prev };
+        delete copy[userId];
+        return copy;
+      });
       setDirectUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u))
       );
@@ -274,13 +287,22 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
 
   const allFilteredUsers = useMemo<AdminUser[]>(() => {
     let list: AdminUser[] = [];
-    if (data && Array.isArray(data.users) && data.users.length > 0) {
+    if (data && Array.isArray(data.users)) {
       list = data.users as AdminUser[];
     } else if (directUsers.length > 0) {
       list = [...directUsers];
     } else if (initialUsers.length > 0) {
       list = [...initialUsers];
     }
+
+    // Apply optimistic verification status overrides
+    list = list.map((u) => {
+      const override = optimisticUserVerified[u.id];
+      if (override !== undefined) {
+        return { ...u, isVerified: override };
+      }
+      return u;
+    });
 
     // Apply functional client-side filters
     if (debouncedSearch) {
@@ -321,11 +343,11 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
     }
 
     return list;
-  }, [data, directUsers, initialUsers, debouncedSearch, role, verificationStatus, planFilter, emailStatus]);
+  }, [data, directUsers, initialUsers, optimisticUserVerified, debouncedSearch, role, verificationStatus, planFilter, emailStatus]);
 
   const users = useMemo(() => {
     // If backend pagination exists via tRPC, use that; otherwise page on client
-    if (data && Array.isArray(data.users) && data.users.length > 0) {
+    if (data && Array.isArray(data.users)) {
       return allFilteredUsers;
     }
     return allFilteredUsers.slice(page * pageSize, (page + 1) * pageSize);
@@ -366,8 +388,13 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
   };
 
   const handleToggleVerify = async (user: AdminUser) => {
-    const nextState = !user.isVerified;
-    // Optimistic UI update
+    const currentVerified = optimisticUserVerified[user.id] !== undefined
+      ? optimisticUserVerified[user.id]
+      : Boolean(user.isVerified);
+    const nextState = !currentVerified;
+
+    // Optimistic UI update across both state sources
+    setOptimisticUserVerified((prev) => ({ ...prev, [user.id]: nextState }));
     setDirectUsers((prev) =>
       prev.map((u) => (u.id === user.id ? { ...u, isVerified: nextState } : u))
     );
@@ -379,8 +406,9 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
       }
     } catch (e: any) {
       // Revert optimistic update
+      setOptimisticUserVerified((prev) => ({ ...prev, [user.id]: currentVerified }));
       setDirectUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, isVerified: !nextState } : u))
+        prev.map((u) => (u.id === user.id ? { ...u, isVerified: currentVerified } : u))
       );
       toast.error(e?.message || 'Failed to update user verification');
     }

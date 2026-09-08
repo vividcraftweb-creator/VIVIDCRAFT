@@ -617,7 +617,7 @@ export default function ArtistVerificationView() {
         throw new Error('User session not found. Please log in again.');
       }
 
-      // 1. Insert record into `verifications` table (lowercase)
+      // 1. Insert/upsert record into `verifications` table (lowercase)
       // Payload: { user_id, document_type, id_front_url, id_back_url, selfie_url, status: 'pending' }
       const verificationsPayload = {
         user_id: targetUserId,
@@ -628,27 +628,32 @@ export default function ArtistVerificationView() {
         status: 'pending',
       };
 
-      const { error: vInsertErr } = await (supabase as any)
-        .from('verifications')
-        .insert(verificationsPayload);
-
-      if (vInsertErr) {
-        console.error('Error inserting into verifications table:', vInsertErr);
-        throw new Error(vInsertErr.message || 'Failed to submit verification record.');
-      }
-
-      // 2. Sync record via tRPC uploadDocMutation
       try {
-        await uploadDocMutation.mutateAsync({
-          documentType: currentConfig.label,
-          id_front_url: idFrontDoc.documentUrl || null,
-          id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
-          selfie_url: selfieDoc.documentUrl || null,
-          status: 'pending',
-        });
-      } catch (tErr) {
-        console.warn('tRPC uploadDocMutation submit sync notice:', tErr);
+        const { error: vUpsertErr } = await (supabase as any)
+          .from('verifications')
+          .upsert(verificationsPayload, { onConflict: 'user_id' });
+
+        if (vUpsertErr) {
+          console.warn('Direct upsert on verifications failed, trying insert:', vUpsertErr);
+          const { error: vInsertErr } = await (supabase as any)
+            .from('verifications')
+            .insert(verificationsPayload);
+          if (vInsertErr) {
+            console.warn('Direct client insert notice (will be safely written by server mutation):', vInsertErr);
+          }
+        }
+      } catch (clientWriteErr) {
+        console.warn('Direct client write notice, proceeding to server mutation:', clientWriteErr);
       }
+
+      // 2. Sync record via server tRPC uploadDocMutation (uses admin client with service privileges)
+      await uploadDocMutation.mutateAsync({
+        documentType: currentConfig.label,
+        id_front_url: idFrontDoc.documentUrl || null,
+        id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
+        selfie_url: selfieDoc.documentUrl || null,
+        status: 'pending',
+      });
 
       // 3. Call tRPC submitForReview mutation to register overall verification
       try {
@@ -702,6 +707,19 @@ export default function ArtistVerificationView() {
       setStagedDocs({});
       setIsPendingSubmitted(true);
       toast.success('Verification submitted! Your documents are now pending review.');
+
+      // Invalidate queries so admin queues pick up the new submission immediately
+      try {
+        await Promise.all([
+          utils.verification.getAllPending.invalidate(),
+          utils.verifications.getAllPending.invalidate(),
+          utils.verification.getVerificationStatus.invalidate(),
+          utils.verifications.getUserDocuments.invalidate(),
+          utils.admin.getUsersWithVerifications.invalidate(),
+          utils.admin.getUsers.invalidate(),
+          utils.admin.users.getUsers.invalidate(),
+        ]);
+      } catch {}
     } catch (err: any) {
       console.error('Submit verification error:', err);
       toast.error(err.message || 'Could not submit documents. Please try again.');

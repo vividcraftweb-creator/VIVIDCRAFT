@@ -61,7 +61,7 @@ export async function GET() {
       const address = prof.address || prof.location || u.address || u.location || '';
       const whatsappNumber = prof.whatsapp_number || prof.phone || u.whatsapp_number || u.phone || '';
       const email = u.email || prof.email || 'N/A';
-      const isVerified = u.email_confirmed_at ? true : (u.isVerified ?? false);
+      const isVerified = Boolean(prof.is_verified ?? u.isVerified ?? (u.user_metadata?.is_verified ?? false));
 
       return {
         id: u.id,

@@ -15,7 +15,7 @@ import { createNotification } from '@/lib/notifications/create-notification';
 
 
 const requireAdminSupabase = (ctx: Context) => {
-  const supabase = ctx.adminSupabase;
+  const supabase = ctx.adminSupabase || createAdminClient();
 
   if (!supabase) {
     throw new TRPCError({
@@ -375,27 +375,57 @@ export const verificationsRouter = router({
 
   getPendingVerifications: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
-      let { data: verifications, error } = await supabase
-        .from('Verification')
-        .select(`
-          *,
-          user:User!Verification_userId_fkey(*)
-        `)
-        .eq('status', 'PENDING');
-
-      if (error) {
-        console.error('getPendingVerifications join error, trying plain select:', error);
-        const fallbackRes = await supabase
+      let verifications: any[] = [];
+      try {
+        let { data, error } = await supabase
           .from('Verification')
-          .select('*')
+          .select(`
+            *,
+            user:User!Verification_userId_fkey(*)
+          `)
           .eq('status', 'PENDING');
-        verifications = fallbackRes.data as any;
+
+        if (error) {
+          console.error('getPendingVerifications join error, trying plain select:', error);
+          const fallbackRes = await supabase
+            .from('Verification')
+            .select('*')
+            .eq('status', 'PENDING');
+          data = fallbackRes.data as any;
+        }
+        if (data) verifications = data;
+      } catch (err) {
+        console.error('getPendingVerifications legacy exception:', err);
       }
 
-      return verifications || [];
+      // Also include pending from verifications (lowercase)
+      try {
+        const { data: directPending } = await (supabase as any)
+          .from('verifications')
+          .select('*')
+          .eq('status', 'pending');
+
+        if (directPending && directPending.length > 0) {
+          for (const dp of directPending) {
+            if (!verifications.some((v) => v.userId === dp.user_id || v.id === dp.id)) {
+              verifications.push({
+                id: dp.id,
+                userId: dp.user_id,
+                verificationType: 'ID_FRONT',
+                documentType: dp.document_type || 'Identity Verification',
+                files: dp.id_front_url || dp.id_back_url || dp.selfie_url,
+                status: 'PENDING',
+                createdAt: dp.created_at,
+              });
+            }
+          }
+        }
+      } catch {}
+
+      return verifications;
     } catch (err) {
       console.error('getPendingVerifications exception:', err);
       return [];
@@ -404,26 +434,54 @@ export const verificationsRouter = router({
 
   getAllPending: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
-      let { data: verifications, error } = await supabase
-        .from('Verification')
-        .select(`
-          *,
-          user:User!Verification_userId_fkey(*)
-        `)
-        .eq('status', 'PENDING');
-
-      if (error) {
-        const fallbackRes = await supabase
+      let verifications: any[] = [];
+      try {
+        let { data, error } = await supabase
           .from('Verification')
-          .select('*')
+          .select(`
+            *,
+            user:User!Verification_userId_fkey(*)
+          `)
           .eq('status', 'PENDING');
-        verifications = fallbackRes.data as any;
-      }
 
-      return verifications || [];
+        if (error) {
+          const fallbackRes = await supabase
+            .from('Verification')
+            .select('*')
+            .eq('status', 'PENDING');
+          data = fallbackRes.data as any;
+        }
+        if (data) verifications = data;
+      } catch {}
+
+      // Also include pending from verifications (lowercase)
+      try {
+        const { data: directPending } = await (supabase as any)
+          .from('verifications')
+          .select('*')
+          .eq('status', 'pending');
+
+        if (directPending && directPending.length > 0) {
+          for (const dp of directPending) {
+            if (!verifications.some((v) => v.userId === dp.user_id || v.id === dp.id)) {
+              verifications.push({
+                id: dp.id,
+                userId: dp.user_id,
+                verificationType: 'ID_FRONT',
+                documentType: dp.document_type || 'Identity Verification',
+                files: dp.id_front_url || dp.id_back_url || dp.selfie_url,
+                status: 'PENDING',
+                createdAt: dp.created_at,
+              });
+            }
+          }
+        }
+      } catch {}
+
+      return verifications;
     } catch (err) {
       return [];
     }
@@ -447,7 +505,7 @@ export const verificationsRouter = router({
         const { data: vRow } = await (supabase as any)
           .from('verifications')
           .select('user_id')
-          .eq('id', cleanId)
+          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
           .maybeSingle();
         if (vRow) targetUserId = vRow.user_id;
       } catch {}
@@ -458,9 +516,21 @@ export const verificationsRouter = router({
           const { data: verification } = await supabase
             .from('Verification')
             .select('userId')
-            .eq('id', cleanId)
+            .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
             .maybeSingle();
           if (verification) targetUserId = verification.userId;
+        } catch {}
+      }
+
+      // 3. Check profiles table
+      if (!targetUserId) {
+        try {
+          const { data: prof } = await (supabase as any)
+            .from('profiles')
+            .select('id')
+            .eq('id', cleanId)
+            .maybeSingle();
+          if (prof) targetUserId = prof.id;
         } catch {}
       }
 
@@ -519,7 +589,7 @@ export const verificationsRouter = router({
 
   getVerifications: adminProcedure.query(async ({ ctx }) => {
     try {
-      const supabase = ctx.adminSupabase;
+      const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) {
         return [];
       }
@@ -558,7 +628,9 @@ export const verificationsRouter = router({
         const { data: vRow } = await (supabase as any)
           .from('verifications')
           .select('*')
-          .eq('id', cleanId)
+          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (vRow) {
@@ -570,7 +642,7 @@ export const verificationsRouter = router({
               status: 'approved',
               updated_at: new Date().toISOString(),
             })
-            .eq('id', cleanId);
+            .or(`id.eq.${cleanId},user_id.eq.${vRow.user_id}`);
         }
       } catch (vErr) {
         console.warn('verifications table lookup notice in approveVerification:', vErr);
@@ -580,8 +652,10 @@ export const verificationsRouter = router({
       try {
         const { data: verification } = await supabase
           .from('Verification')
-          .select('userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
-          .eq('id', cleanId)
+          .select('id, userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
+          .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
+          .order('createdAt', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (verification) {
@@ -597,13 +671,13 @@ export const verificationsRouter = router({
               status: 'APPROVED',
               updatedAt: new Date().toISOString(),
             })
-            .eq('id', cleanId);
+            .or(`id.eq.${cleanId},userId.eq.${verification.userId}`);
         }
       } catch (verErr) {
         console.warn('Verification table lookup notice in approveVerification:', verErr);
       }
 
-      // 3. Fallback: cleanId might be a userId directly
+      // 3. Fallback: cleanId might be a userId directly in User table
       if (!targetUserId) {
         try {
           const { data: userCheck } = await supabase
@@ -620,8 +694,40 @@ export const verificationsRouter = router({
         } catch {}
       }
 
+      // 3b. Fallback: check profiles table
       if (!targetUserId) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Verification record or user not found' });
+        try {
+          const { data: profCheck } = await (supabase as any)
+            .from('profiles')
+            .select('id, email, first_name, last_name')
+            .eq('id', cleanId)
+            .maybeSingle();
+          if (profCheck) {
+            targetUserId = profCheck.id;
+            userEmail = profCheck.email;
+            firstName = profCheck.first_name;
+          }
+        } catch {}
+      }
+
+      // 3c. Fallback: check Supabase auth admin
+      if (!targetUserId) {
+        try {
+          const { data: authData } = await supabase.auth.admin.getUserById(cleanId);
+          if (authData?.user) {
+            targetUserId = authData.user.id;
+            userEmail = authData.user.email || null;
+            firstName = authData.user.user_metadata?.firstName || authData.user.user_metadata?.first_name || null;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
+          targetUserId = cleanId;
+        } else {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Verification record or user not found' });
+        }
       }
 
       // 4. Update status in verifications table for this user
@@ -725,7 +831,9 @@ export const verificationsRouter = router({
         const { data: vRow } = await (supabase as any)
           .from('verifications')
           .select('*')
-          .eq('id', cleanId)
+          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (vRow) {
@@ -738,7 +846,7 @@ export const verificationsRouter = router({
               rejection_reason: input.reason,
               updated_at: new Date().toISOString(),
             })
-            .eq('id', cleanId);
+            .or(`id.eq.${cleanId},user_id.eq.${vRow.user_id}`);
         }
       } catch (vErr) {
         console.warn('verifications table lookup notice in reject:', vErr);
@@ -748,8 +856,10 @@ export const verificationsRouter = router({
       try {
         const { data: verification } = await supabase
           .from('Verification')
-          .select('userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
-          .eq('id', cleanId)
+          .select('id, userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
+          .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
+          .order('createdAt', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (verification) {
@@ -767,13 +877,13 @@ export const verificationsRouter = router({
               rejectionReason: input.reason,
               updatedAt: new Date().toISOString(),
             })
-            .eq('id', cleanId);
+            .or(`id.eq.${cleanId},userId.eq.${verification.userId}`);
         }
       } catch (verErr) {
         console.warn('Verification table lookup notice in reject:', verErr);
       }
 
-      // 3. Fallback: cleanId might be a userId directly
+      // 3. Fallback: cleanId might be a userId directly in User table
       if (!targetUserId) {
         try {
           const { data: userCheck } = await supabase
@@ -790,8 +900,40 @@ export const verificationsRouter = router({
         } catch {}
       }
 
+      // 3b. Fallback: check profiles table
       if (!targetUserId) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Verification record or user not found' });
+        try {
+          const { data: profCheck } = await (supabase as any)
+            .from('profiles')
+            .select('id, email, first_name, last_name')
+            .eq('id', cleanId)
+            .maybeSingle();
+          if (profCheck) {
+            targetUserId = profCheck.id;
+            userEmail = profCheck.email;
+            firstName = profCheck.first_name;
+          }
+        } catch {}
+      }
+
+      // 3c. Fallback: check Supabase auth admin
+      if (!targetUserId) {
+        try {
+          const { data: authData } = await supabase.auth.admin.getUserById(cleanId);
+          if (authData?.user) {
+            targetUserId = authData.user.id;
+            userEmail = authData.user.email || null;
+            firstName = authData.user.user_metadata?.firstName || authData.user.user_metadata?.first_name || null;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
+          targetUserId = cleanId;
+        } else {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Verification record or user not found' });
+        }
       }
 
       // 4. Update status in verifications table for this user

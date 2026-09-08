@@ -52,6 +52,8 @@ type UserWithVerifications = {
   role?: string;
   clientType?: string | null;
   createdAt: string;
+  isVerified?: boolean;
+  is_verified?: boolean;
   Profile?:
     | Array<{ firstName?: string | null; lastName?: string | null; companyName?: string | null }>
     | { firstName?: string | null; lastName?: string | null; companyName?: string | null }
@@ -310,7 +312,7 @@ export default function AdminVerificationsPage() {
       const matchesSearch =
         !searchQuery ||
         displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase());
+        (user.email || '').toLowerCase().includes(searchQuery.toLowerCase());
 
       // User type filter
       const matchesUserType =
@@ -643,7 +645,7 @@ export default function AdminVerificationsPage() {
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const isUserVerified = approvedCount > 0 || Boolean((user as any).isVerified || (user as any).is_verified);
+                            const isUserVerified = Boolean(user.isVerified);
                             if (isUserVerified) {
                               userUnverifyMutation.mutate({ userId: user.id });
                             } else {
@@ -653,12 +655,12 @@ export default function AdminVerificationsPage() {
                           disabled={userVerifyMutation.isPending || userUnverifyMutation.isPending}
                           title="1-click manual verification toggle"
                           className={`h-7 px-2.5 text-xs font-medium transition-all ${
-                            approvedCount > 0 || Boolean((user as any).isVerified || (user as any).is_verified)
+                            user.isVerified
                               ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300'
                               : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300'
                           }`}
                         >
-                          {approvedCount > 0 || Boolean((user as any).isVerified || (user as any).is_verified) ? (
+                          {user.isVerified ? (
                             <>
                               <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
                               Verified

@@ -111,7 +111,7 @@ export const adminUsersRouter = router({
             email: au.email || dbUser.email || profile.email || '',
             role,
             subscriptionPlan: dbUser.subscriptionPlan && !dbUser.subscriptionPlan.toUpperCase().includes('FREE') && !dbUser.subscriptionPlan.toUpperCase().includes('STARTER') ? dbUser.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-            isVerified: dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : Boolean(profile.is_verified ?? au.user_metadata?.is_verified ?? false),
+            isVerified: profile.is_verified !== undefined && profile.is_verified !== null ? Boolean(profile.is_verified) : (dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : Boolean(au.user_metadata?.is_verified ?? false)),
             createdAt: au.created_at || dbUser.createdAt || profile.created_at || new Date().toISOString(),
             lastLoginAt: au.last_sign_in_at || dbUser.lastLoginAt || null,
             Profile: {
@@ -153,7 +153,7 @@ export const adminUsersRouter = router({
               email: profile.email || dbUser.email || '',
               role,
               subscriptionPlan: dbUser.subscriptionPlan && !dbUser.subscriptionPlan.toUpperCase().includes('FREE') && !dbUser.subscriptionPlan.toUpperCase().includes('STARTER') ? dbUser.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-              isVerified: dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : Boolean(profile.is_verified ?? false),
+              isVerified: profile.is_verified !== undefined && profile.is_verified !== null ? Boolean(profile.is_verified) : (dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : false),
               createdAt: profile.created_at || profile.createdAt || new Date().toISOString(),
               Profile: {
                 id: profile.id || profileId,
@@ -186,7 +186,7 @@ export const adminUsersRouter = router({
               email: dbUser.email || profile.email || '',
               role,
               subscriptionPlan: dbUser.subscriptionPlan || 'FREE',
-              isVerified: dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : Boolean(profile.is_verified ?? false),
+              isVerified: profile.is_verified !== undefined && profile.is_verified !== null ? Boolean(profile.is_verified) : (dbUser.isVerified !== undefined && dbUser.isVerified !== null ? Boolean(dbUser.isVerified) : false),
               createdAt: dbUser.createdAt || new Date().toISOString(),
               Profile: {
                 id: profile.id || userId,
@@ -604,6 +604,17 @@ export const adminUsersRouter = router({
           .eq('user_id', input.userId);
       } catch {}
 
+      // 3b. Also update legacy Verification table if any records exist
+      try {
+        await supabase
+          .from('Verification')
+          .update({
+            status: isVerified ? 'APPROVED' : 'REJECTED',
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('userId', input.userId);
+      } catch {}
+
       // 4. Also update Supabase auth metadata if possible
       try {
         await supabase.auth.admin.updateUserById(input.userId, {
@@ -651,6 +662,17 @@ export const adminUsersRouter = router({
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', input.userId);
+      } catch {}
+
+      // 3b. Update legacy Verification table
+      try {
+        await supabase
+          .from('Verification')
+          .update({
+            status: 'REJECTED',
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('userId', input.userId);
       } catch {}
 
       // 4. Update auth metadata
