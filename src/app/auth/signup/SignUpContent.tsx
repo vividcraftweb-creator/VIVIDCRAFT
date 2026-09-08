@@ -12,9 +12,9 @@ export default function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryRole = searchParams?.get('role')?.toLowerCase();
-  const initialRole: 'CLIENT' | 'FREELANCER' = (queryRole === 'client' || queryRole === 'buyer') ? 'CLIENT' : 'FREELANCER';
+  const initialRoleParam: 'client' | 'artist' = (queryRole === 'artist' || queryRole === 'freelancer') ? 'artist' : 'client';
 
-  const [role, setRole] = useState<'CLIENT' | 'FREELANCER'>(initialRole);
+  const [selectedRole, setSelectedRole] = useState<'client' | 'artist'>(initialRoleParam);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -329,8 +329,8 @@ export default function SignUpContent() {
             Create an Account
           </h1>
           <p className="text-sm text-slate-400">
-            {role === 'CLIENT'
-              ? 'Join as a Buyer to commission original art and explore creators'
+            {selectedRole === 'client'
+              ? 'Sign in as a Client with Google'
               : 'Join as an Artist to showcase and sell your artwork'}
           </p>
         </div>
@@ -340,48 +340,48 @@ export default function SignUpContent() {
           <button
             type="button"
             onClick={() => {
-              setRole('CLIENT');
+              setSelectedRole('client');
               setErrorMessage(null);
             }}
             className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-              role === 'CLIENT'
+              selectedRole === 'client'
                 ? 'bg-blue-600/20 border-blue-500 text-white ring-1 ring-blue-500/40 shadow-lg shadow-blue-500/15'
                 : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
             }`}
           >
-            <ShoppingBag className={`h-5 w-5 ${role === 'CLIENT' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <ShoppingBag className={`h-5 w-5 ${selectedRole === 'client' ? 'text-blue-400' : 'text-slate-400'}`} />
             <div className="text-center">
               <div className="font-semibold text-sm">Buyer / Client</div>
-              <div className="text-xs text-slate-400">Quick Google access</div>
+              <div className="text-xs text-slate-400">Google OAuth only</div>
             </div>
           </button>
 
           <button
             type="button"
             onClick={() => {
-              setRole('FREELANCER');
+              setSelectedRole('artist');
               setErrorMessage(null);
             }}
             className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-              role === 'FREELANCER'
+              selectedRole === 'artist'
                 ? 'bg-purple-600/20 border-purple-500 text-white ring-1 ring-purple-500/40 shadow-lg shadow-purple-500/15'
                 : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
             }`}
           >
-            <Palette className={`h-5 w-5 ${role === 'FREELANCER' ? 'text-purple-400' : 'text-slate-400'}`} />
+            <Palette className={`h-5 w-5 ${selectedRole === 'artist' ? 'text-purple-400' : 'text-slate-400'}`} />
             <div className="text-center">
               <div className="font-semibold text-sm">Artist / Creator</div>
-              <div className="text-xs text-slate-400">Full portfolio setup</div>
+              <div className="text-xs text-slate-400">Email & Password only</div>
             </div>
           </button>
         </div>
 
         {/* View for Buyer / Client: Clean Google OAuth Only */}
-        {role === 'CLIENT' ? (
+        {selectedRole === 'client' ? (
           <div className="space-y-6 pt-2">
             <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 text-center space-y-1">
               <p className="text-xs text-blue-300 font-medium">Fast 1-Click Client Onboarding</p>
-              <p className="text-xs text-slate-400">No passwords or manual forms required for buyers.</p>
+              <p className="text-xs text-slate-400">Sign in as a Client with Google</p>
             </div>
 
             <button
@@ -412,7 +412,7 @@ export default function SignUpContent() {
                   />
                 </svg>
               )}
-              <span>Sign up with Google</span>
+              <span>Continue with Google</span>
             </button>
           </div>
         ) : (
@@ -586,7 +586,7 @@ export default function SignUpContent() {
         <div className="flex flex-col space-y-4 pt-4 border-t border-slate-800">
           <p className="text-center text-sm text-slate-400">
             Already have an account?{' '}
-            <Link href={`/auth/signin?role=${role === 'CLIENT' ? 'client' : 'artist'}`} className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
+            <Link href={`/auth/login?role=${selectedRole}`} className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
               Sign in
             </Link>
           </p>

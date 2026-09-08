@@ -28,8 +28,8 @@ function SignInContent() {
   const redirectTo = searchParams?.get('redirect') || searchParams?.get('next') || '';
   const initialRoleParam = searchParams?.get('role')?.toLowerCase();
 
-  const [selectedRole, setSelectedRole] = useState<'artist' | 'client'>(
-    initialRoleParam === 'client' ? 'client' : 'artist'
+  const [selectedRole, setSelectedRole] = useState<'client' | 'artist'>(
+    initialRoleParam === 'artist' ? 'artist' : 'client'
   );
   const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState('');
@@ -250,13 +250,32 @@ function SignInContent() {
           </h1>
           <p className="text-sm text-slate-400">
             {selectedRole === 'artist'
-              ? 'Sign in to your Artist Dashboard with email'
-              : 'Sign in as a Client with Google or email'}
+              ? 'Log in to your Artist Dashboard with email'
+              : 'Sign in as a Client with Google'}
           </p>
         </div>
 
         {/* Dynamic Role Tabs */}
         <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('client');
+              setOauthError('');
+            }}
+            className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+              selectedRole === 'client'
+                ? 'bg-blue-600/20 border-blue-500 text-white ring-1 ring-blue-500/40 shadow-lg shadow-blue-500/15'
+                : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+            }`}
+          >
+            <ShoppingBag className={`h-5 w-5 ${selectedRole === 'client' ? 'text-blue-400' : 'text-slate-400'}`} />
+            <div className="text-center">
+              <div className="font-semibold text-sm">Buyer / Client</div>
+              <div className="text-xs text-slate-400">Google OAuth only</div>
+            </div>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -273,25 +292,6 @@ function SignInContent() {
             <div className="text-center">
               <div className="font-semibold text-sm">Artist / Creator</div>
               <div className="text-xs text-slate-400">Email & Password only</div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedRole('client');
-              setOauthError('');
-            }}
-            className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-              selectedRole === 'client'
-                ? 'bg-blue-600/20 border-blue-500 text-white ring-1 ring-blue-500/40 shadow-lg shadow-blue-500/15'
-                : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-            }`}
-          >
-            <ShoppingBag className={`h-5 w-5 ${selectedRole === 'client' ? 'text-blue-400' : 'text-slate-400'}`} />
-            <div className="text-center">
-              <div className="font-semibold text-sm">Buyer / Client</div>
-              <div className="text-xs text-slate-400">Google or Email</div>
             </div>
           </button>
         </div>
@@ -343,101 +343,24 @@ function SignInContent() {
           </div>
         )}
 
-        {/* Email & Password Form */}
-        <form onSubmit={(e) => handleEmailSignIn(e)} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="email" className="block text-slate-200 text-sm font-medium">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-slate-200 text-sm font-medium">
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-10 pr-10 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
-              />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowPassword(!showPassword);
-                }}
-                className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading || isGoogleLoading}
-            className={`w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer ${
-              selectedRole === 'artist'
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-600/25'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-indigo-600/25'
-            }`}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              selectedRole === 'artist' ? 'Log in as Artist' : 'Sign in with Email'
-            )}
-          </button>
-        </form>
-
-        {/* Google OAuth Button & Divider - ONLY for Client */}
-        {selectedRole === 'client' && (
-          <>
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-800" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-slate-900 px-3 text-slate-500 font-medium">
-                  Or continue with
-                </span>
-              </div>
+        {/* Client Interface: ONLY Google OAuth */}
+        {selectedRole === 'client' ? (
+          <div className="space-y-6 pt-2">
+            <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 text-center space-y-1">
+              <p className="text-xs text-blue-300 font-medium">Fast 1-Click Client Access</p>
+              <p className="text-xs text-slate-400">Sign in as a Client with Google</p>
             </div>
 
             <button
               type="button"
               onClick={(e) => handleGoogleSignIn(e)}
-              disabled={isLoading || isGoogleLoading}
-              className="w-full h-11 bg-white hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-xl shadow-lg shadow-white/10 transition-all flex items-center justify-center gap-3 text-sm cursor-pointer"
+              disabled={isGoogleLoading}
+              className="w-full h-12 bg-white hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-xl shadow-lg shadow-white/10 transition-all flex items-center justify-center gap-3 text-sm cursor-pointer"
             >
               {isGoogleLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-slate-900" />
+                <Loader2 className="h-5 w-5 animate-spin text-slate-900" />
               ) : (
-                <svg viewBox="0 0 24 24" width="18" height="18" className="w-4 h-4 flex-shrink-0" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" className="w-5 h-5 flex-shrink-0" aria-hidden="true">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -458,7 +381,82 @@ function SignInContent() {
               )}
               <span>Continue with Google</span>
             </button>
-          </>
+          </div>
+        ) : (
+          /* Artist Interface: Email & Password Only */
+          <form onSubmit={(e) => handleEmailSignIn(e)} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-slate-200 text-sm font-medium">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="artist@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="block text-slate-200 text-sm font-medium">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={handlePasswordResetRequest}
+                  disabled={isResettingPassword}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer disabled:opacity-50"
+                >
+                  {isResettingPassword ? 'Sending...' : 'Forgot password?'}
+                </button>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-10 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowPassword(!showPassword);
+                  }}
+                  className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-600/25"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                  <span>Logging in...</span>
+                </>
+              ) : (
+                'Log in as Artist'
+              )}
+            </button>
+          </form>
         )}
 
         <div className="flex flex-col space-y-4 pt-2 border-t border-slate-800">
