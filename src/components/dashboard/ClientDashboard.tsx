@@ -233,9 +233,9 @@ export default function ClientDashboard() {
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="glass-card p-6 rounded-2xl bg-white/5 border border-white/10 animate-pulse">
-                <div className="h-4 bg-white/10 rounded mb-2"></div>
-                <div className="h-8 bg-white/20 rounded"></div>
+              <div key={i} className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 animate-pulse">
+                <div className="h-4 bg-slate-800 rounded mb-2"></div>
+                <div className="h-8 bg-slate-800 rounded"></div>
               </div>
             ))}
           </div>
@@ -250,7 +250,7 @@ export default function ClientDashboard() {
 
         {/* Stats Overview */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="glass-card p-4 sm:p-6 rounded-2xl bg-blue-500/10 border border-blue-500/20 hover:border-blue-400/40 transition-all duration-300 group">
+        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-blue-500/40 transition-all duration-300 group shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-200 text-sm font-medium uppercase tracking-wide">Commissions &amp; Projects Posted</p>
@@ -268,7 +268,7 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-4 sm:p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-400/40 transition-all duration-300 group">
+        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-all duration-300 group shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-emerald-200 text-sm font-medium uppercase tracking-wide">Artist Proposals Received</p>
@@ -286,7 +286,7 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-4 sm:p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 hover:border-amber-400/40 transition-all duration-300 group">
+        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all duration-300 group shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-amber-200 text-sm font-medium uppercase tracking-wide">Pending Decisions</p>
@@ -304,7 +304,7 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-4 sm:p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:border-purple-400/40 transition-all duration-300 group">
+        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-purple-500/40 transition-all duration-300 group shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-200 text-sm font-medium uppercase tracking-wide">Artist Consultations</p>
@@ -332,7 +332,7 @@ export default function ClientDashboard() {
         <div className="lg:col-span-2 space-y-8">
 
           {/* Recent Projects */}
-          <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+          <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl shadow-sm">
             <div className="flex flex-col gap-4 mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
@@ -346,10 +346,10 @@ export default function ClientDashboard() {
                 <div className="flex items-center gap-3">
                   <p className="text-xs uppercase tracking-wide text-slate-400">Quick Filters</p>
                   <Select value={jobFilter} onValueChange={(value) => setJobFilter(value as typeof jobFilter)}>
-                    <SelectTrigger className="w-full sm:w-44 bg-white/5 border border-white/10 text-slate-200 focus:ring-0 focus:ring-offset-0">
+                    <SelectTrigger className="w-full sm:w-44 bg-slate-950 border border-slate-800 text-slate-200 focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder="All Jobs" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 text-slate-100 border border-white/10">
+                    <SelectContent className="bg-slate-900 text-slate-100 border border-slate-800">
                       {jobFilterOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value} className="focus:bg-primary/20 focus:text-white">
                           {option.label}
@@ -366,7 +366,7 @@ export default function ClientDashboard() {
 
             <div className="space-y-4">
               {recentJobs.map((job) => (
-                <div key={job.id} className="flex items-start sm:items-center flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-300">
+                <div key={job.id} className="flex items-start sm:items-center flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-950/60 rounded-xl border border-slate-800 hover:border-slate-700 transition-all duration-300">
                   <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
                     <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                   </div>
@@ -424,7 +424,7 @@ export default function ClientDashboard() {
         {/* Right Column - Actions and Info */}
         <div className="space-y-8">
           {/* Recent Messages */}
-          <div className="glass-card p-6 rounded-3xl bg-white/5 border border-white/10 shadow-lg shadow-blue-500/10">
+          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-white">Recent Messages</h3>
               <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -436,7 +436,7 @@ export default function ClientDashboard() {
               {conversationsLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, index) => (
-                    <div key={index} className="h-12 bg-white/10 rounded-xl animate-pulse" />
+                    <div key={index} className="h-12 bg-slate-800 rounded-xl animate-pulse" />
                   ))}
                 </div>
               ) : recentConversations.length > 0 ? (
@@ -445,7 +445,7 @@ export default function ClientDashboard() {
                   return (
                     <div
                       key={conversationItem.partnerId}
-                      className="p-3 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
+                      className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <p className="text-sm font-semibold text-white truncate">{partnerDetails.name}</p>
@@ -484,7 +484,7 @@ export default function ClientDashboard() {
           </div>
 
           {/* Notifications Summary */}
-          <div className="glass-card p-6 rounded-3xl bg-white/5 border border-white/10 shadow-lg shadow-amber-500/10">
+          <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-white">Notifications Summary</h3>
               <div className="p-2 bg-amber-500/20 rounded-lg">
@@ -493,7 +493,7 @@ export default function ClientDashboard() {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+              <div className="flex items-start gap-3 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <Clock className="h-4 w-4 text-amber-300 mt-0.5" />
                 <div>
                   <p className="text-sm text-white font-medium">
@@ -507,7 +507,7 @@ export default function ClientDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+              <div className="flex items-start gap-3 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <MessageSquare className="h-4 w-4 text-blue-300 mt-0.5" />
                 <div>
                   <p className="text-sm text-white font-medium">
@@ -526,12 +526,12 @@ export default function ClientDashboard() {
               {notificationsLoading ? (
                 <div className="space-y-2">
                   {[...Array(2)].map((_, index) => (
-                    <div key={index} className="h-10 bg-white/10 rounded-lg animate-pulse" />
+                    <div key={index} className="h-10 bg-slate-800 rounded-lg animate-pulse" />
                   ))}
                 </div>
               ) : recentNotifications.length > 0 ? (
                 recentNotifications.map((notification: any) => (
-                  <div key={notification.id} className="p-3 bg-white/5 rounded-xl border border-white/10">
+                  <div key={notification.id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                     <p className="text-sm text-white">{notification.message}</p>
                     <p className="text-[10px] uppercase tracking-wide text-slate-500 mt-1">
                       {new Date(notification.createdAt).toLocaleString()}

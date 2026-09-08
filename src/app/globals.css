@@ -188,13 +188,13 @@
   }
 
   .dark .glass-card {
-    background: oklch(0.15 0.01 264 / 30%);
+    background: rgba(15, 23, 42, 0.85);
     backdrop-filter: blur(12px) saturate(130%);
     -webkit-backdrop-filter: blur(12px) saturate(130%);
-    border: 1px solid oklch(0.3 0.02 264 / 35%);
+    border: 1px solid rgba(51, 65, 85, 0.8);
     box-shadow:
-      0 4px 24px oklch(0.05 0.01 264 / 8%),
-      inset 0 0.5px 0 oklch(0.95 0.01 264 / 5%);
+      0 4px 24px rgba(0, 0, 0, 0.35),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.05);
   }
   
   .glass-button {
@@ -214,11 +214,9 @@
   }
 
   .dark .glass-button {
-    background: oklch(0.18 0.012 264 / 35%);
-    backdrop-filter: blur(8px) saturate(120%);
-    -webkit-backdrop-filter: blur(8px) saturate(120%);
-    border: 1px solid oklch(0.4 0.02 264 / 25%);
-    color: inherit;
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(51, 65, 85, 0.8);
+    color: #f1f5f9;
   }
 
   .dark .glass-button:hover {
@@ -395,14 +393,14 @@
   }
 
   .dark .glass-card-elevated {
-    background: oklch(0.15 0.01 264 / 35%);
+    background: rgba(15, 23, 42, 0.9);
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
-    border: 1px solid oklch(0.35 0.02 264 / 40%);
+    border: 1px solid rgba(51, 65, 85, 0.85);
     box-shadow:
-      0 8px 32px oklch(0.05 0.01 264 / 12%),
-      0 2px 8px oklch(0.05 0.01 264 / 6%),
-      inset 0 0.5px 0 oklch(0.95 0.01 264 / 6%);
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
   }
 
   /* Premium shine effect on hover */

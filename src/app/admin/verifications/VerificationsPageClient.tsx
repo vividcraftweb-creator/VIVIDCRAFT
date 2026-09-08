@@ -293,13 +293,13 @@ export default function AdminVerificationsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="glass-card border-white/10 bg-yellow-500/10">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-yellow-300 font-medium">Pending Review</div>
-                <div className="text-2xl font-bold text-white">{pendingDocs.length}</div>
-                <div className="text-xs text-yellow-400 mt-1">
+                <div className="text-xs text-yellow-400 font-medium">Pending Review</div>
+                <div className="text-2xl font-bold text-white mt-1">{pendingDocs.length}</div>
+                <div className="text-xs text-slate-400 mt-1">
                   {usersData.filter((u) => u.Verification?.some((d) => d.status === 'PENDING')).length} users
                 </div>
               </div>
@@ -307,37 +307,37 @@ export default function AdminVerificationsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-white/10 bg-green-500/10">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-green-300 font-medium">Approved</div>
-                <div className="text-2xl font-bold text-white">{approvedDocs.length}</div>
-                <div className="text-xs text-green-400 mt-1">docs</div>
+                <div className="text-xs text-green-400 font-medium">Approved</div>
+                <div className="text-2xl font-bold text-white mt-1">{approvedDocs.length}</div>
+                <div className="text-xs text-slate-400 mt-1">docs</div>
               </div>
               <CheckCircle className="h-6 w-6 text-green-400" />
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-white/10 bg-red-500/10">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-red-300 font-medium">Rejected</div>
-                <div className="text-2xl font-bold text-white">{rejectedDocs.length}</div>
-                <div className="text-xs text-red-400 mt-1">docs</div>
+                <div className="text-xs text-red-400 font-medium">Rejected</div>
+                <div className="text-2xl font-bold text-white mt-1">{rejectedDocs.length}</div>
+                <div className="text-xs text-slate-400 mt-1">docs</div>
               </div>
               <XCircle className="h-6 w-6 text-red-400" />
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-white/10 bg-blue-500/10">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-blue-300 font-medium">Total Users</div>
-                <div className="text-2xl font-bold text-white">{usersData.length}</div>
-                <div className="text-xs text-blue-400 mt-1">{allDocs.length} docs</div>
+                <div className="text-xs text-blue-400 font-medium">Total Users</div>
+                <div className="text-2xl font-bold text-white mt-1">{usersData.length}</div>
+                <div className="text-xs text-slate-400 mt-1">{allDocs.length} docs</div>
               </div>
               <User className="h-6 w-6 text-blue-400" />
             </div>
@@ -346,7 +346,7 @@ export default function AdminVerificationsPage() {
       </div>
 
       {/* Filters */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -355,15 +355,15 @@ export default function AdminVerificationsPage() {
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-black/20 border-white/10 text-white"
+                className="pl-10 bg-slate-950 border-slate-800 text-white placeholder:text-slate-400"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px] bg-black/20 border-white/10 text-white">
+              <SelectTrigger className="w-full md:w-[180px] bg-slate-950 border-slate-800 text-white">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-900 border-slate-800 text-white">
                 <SelectItem value="ALL">All Statuses</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
                 <SelectItem value="APPROVED">Approved</SelectItem>
@@ -371,11 +371,11 @@ export default function AdminVerificationsPage() {
               </SelectContent>
             </Select>
             <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-              <SelectTrigger className="w-full md:w-[180px] bg-black/20 border-white/10 text-white">
+              <SelectTrigger className="w-full md:w-[180px] bg-slate-950 border-slate-800 text-white">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="User Type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-900 border-slate-800 text-white">
                 <SelectItem value="ALL">All Types</SelectItem>
                 <SelectItem value="CLIENT">Clients</SelectItem>
                 <SelectItem value="FREELANCER">Freelancers</SelectItem>
@@ -388,7 +388,7 @@ export default function AdminVerificationsPage() {
       </Card>
 
       {/* Verifications List */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-8 text-center text-slate-400">Loading verifications...</div>
@@ -403,7 +403,7 @@ export default function AdminVerificationsPage() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-slate-800">
               {filteredUsers.map((user) => {
                 const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
                 const isClient = user.role === 'CLIENT';

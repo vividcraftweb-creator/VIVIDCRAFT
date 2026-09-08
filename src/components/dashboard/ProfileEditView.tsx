@@ -91,7 +91,7 @@ export default function ProfileEditView() {
 
   return (
     <div className="space-y-6">
-      <div className="glass-card p-6 sm:p-8 rounded-3xl bg-white/5 border border-white/10">
+      <div className="bg-slate-900/80 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-sm">
         <div className="mb-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Edit Your Profile</h2>
           <p className="text-slate-400">Update your professional information</p>
@@ -111,7 +111,7 @@ export default function ProfileEditView() {
                 value={profile.firstName || ''}
                 onChange={handleChange}
                 placeholder="John"
-                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
               />
             </div>
 
@@ -126,7 +126,7 @@ export default function ProfileEditView() {
                 value={profile.lastName || ''}
                 onChange={handleChange}
                 placeholder="Doe"
-                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
               />
             </div>
           </div>
@@ -145,7 +145,7 @@ export default function ProfileEditView() {
                   value={profile.title || ''}
                   onChange={handleChange}
                   placeholder="e.g., Senior Software Engineer"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
 
@@ -160,7 +160,7 @@ export default function ProfileEditView() {
                   value={profile.bio || ''}
                   onChange={handleChange}
                   placeholder="Tell us about yourself..."
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 min-h-32"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 min-h-32"
                 />
               </div>
 
@@ -175,7 +175,7 @@ export default function ProfileEditView() {
                   value={profile.location || ''}
                   onChange={(value) => setProfile((prev) => ({ ...prev, location: value }))}
                   placeholder="e.g., San Francisco, CA"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                   types={['(cities)']}
                 />
               </div>
@@ -191,7 +191,7 @@ export default function ProfileEditView() {
                   value={profile.phone || ''}
                   onChange={handleChange}
                   placeholder="+1 (555) 123-4567"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
 
@@ -206,7 +206,7 @@ export default function ProfileEditView() {
                   value={profile.skills || ''}
                   onChange={handleChange}
                   placeholder="e.g., React, TypeScript, Node.js"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
 
@@ -222,7 +222,7 @@ export default function ProfileEditView() {
                   value={profile.rate || ''}
                   onChange={handleChange}
                   placeholder="e.g., 50"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
 
@@ -237,7 +237,7 @@ export default function ProfileEditView() {
                   value={profile.portfolio || ''}
                   onChange={handleChange}
                   placeholder="https://yourportfolio.com"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
 
@@ -252,7 +252,7 @@ export default function ProfileEditView() {
                   value={profile.experience || ''}
                   onChange={handleChange}
                   placeholder="e.g., 5 years"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
             </>
@@ -272,7 +272,7 @@ export default function ProfileEditView() {
                   value={profile.location || profile.businessAddressLine1 || ''}
                   onChange={handleChange}
                   placeholder="e.g., 123 Main Street, Suite 400, New York, NY"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                  className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
               </div>
 
@@ -288,7 +288,7 @@ export default function ProfileEditView() {
                     value={profile.phone || profile.businessPhone || ''}
                     onChange={handleChange}
                     placeholder="+1 (555) 123-4567"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                   />
                 </div>
 
@@ -304,7 +304,7 @@ export default function ProfileEditView() {
                     value={profile.businessEmail || session?.session?.user?.email || ''}
                     onChange={handleChange}
                     placeholder="client@example.com"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                   />
                 </div>
               </div>

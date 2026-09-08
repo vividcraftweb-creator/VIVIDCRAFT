@@ -29,7 +29,7 @@ export default function VerificationCard({ user, verificationStatus }: Verificat
   // Account is verified
   if (user?.isVerified) {
     return (
-      <div className="glass-card p-6 rounded-3xl bg-green-500/10 border border-green-500/20">
+      <div className="bg-slate-900/90 p-6 rounded-3xl border border-green-500/30 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-3 bg-green-500/20 rounded-xl">
@@ -57,7 +57,7 @@ export default function VerificationCard({ user, verificationStatus }: Verificat
   // Verification submitted and pending review
   if (verificationStatus?.status === 'PENDING') {
     return (
-      <div className="glass-card p-6 rounded-3xl bg-yellow-500/10 border border-yellow-500/20">
+      <div className="bg-slate-900/90 p-6 rounded-3xl border border-yellow-500/30 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-3 bg-yellow-500/20 rounded-xl">
@@ -85,7 +85,7 @@ export default function VerificationCard({ user, verificationStatus }: Verificat
   // Verification rejected
   if (verificationStatus?.status === 'REJECTED') {
     return (
-      <div className="glass-card p-6 rounded-3xl bg-red-500/10 border border-red-500/20">
+      <div className="bg-slate-900/90 p-6 rounded-3xl border border-red-500/30 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-3 bg-red-500/20 rounded-xl">
@@ -117,7 +117,7 @@ export default function VerificationCard({ user, verificationStatus }: Verificat
 
   // Not verified - show free verification prompt
   return (
-    <div className="glass-card p-8 rounded-3xl bg-blue-500/10 border border-blue-500/20">
+    <div className="bg-slate-900/90 p-8 rounded-3xl border border-blue-500/30 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-start space-x-4">

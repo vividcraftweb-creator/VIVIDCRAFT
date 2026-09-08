@@ -251,11 +251,11 @@ export default function Dashboard({ session }: { session: AppSession }) {
   };
 
   return (
-    <div className="h-screen bg-gray-950 flex overflow-hidden">
+    <div className="h-screen bg-slate-950 dark flex overflow-hidden text-slate-100">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
         </div>
       )}
 
@@ -263,9 +263,9 @@ export default function Dashboard({ session }: { session: AppSession }) {
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <div className="flex h-full flex-col backdrop-blur-xl bg-gray-900/95 border-r border-white/10">
+        <div className="flex h-full flex-col backdrop-blur-xl bg-slate-900/95 border-r border-slate-800">
           {/* Logo/Brand */}
-          <div className="flex h-16 shrink-0 items-center px-6 border-b border-white/10">
+          <div className="flex h-16 shrink-0 items-center px-6 border-b border-slate-800">
             <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
               <svg
                 className="w-8 h-8"
@@ -413,12 +413,12 @@ export default function Dashboard({ session }: { session: AppSession }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar for mobile */}
         <div className="lg:hidden">
-          <div className="flex h-16 items-center gap-x-4 border-b border-white/10 bg-gray-900/95 px-4 shadow-sm sm:gap-x-6 sm:px-6">
+          <div className="flex h-16 items-center gap-x-4 border-b border-slate-800 bg-slate-900/95 px-4 shadow-sm sm:gap-x-6 sm:px-6">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSidebarOpen(true)}
-              className="text-white hover:bg-white/10"
+              className="text-white hover:bg-slate-800"
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -432,7 +432,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-950">
+        <main className="flex-1 overflow-y-auto bg-slate-950">
           <div className="p-4 sm:p-6">
             {/* Desktop header */}
             <div className="hidden lg:block mb-6 lg:mb-8 max-w-7xl mx-auto">
@@ -441,13 +441,13 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   <h1 className="text-3xl font-bold text-white mb-2">
                     {role === 'ADMIN' ? 'Admin' : 'Artist'} Dashboard
                   </h1>
-                  <p className="text-gray-400 text-lg">
+                  <p className="text-slate-400 text-lg">
                     Welcome back, {userFirstName}
                   </p>
                 </div>
                 <NotificationDropdown />
-          </div>
-        </div>
+              </div>
+            </div>
             
             {/* Dashboard content */}
             <div className="max-w-7xl mx-auto">

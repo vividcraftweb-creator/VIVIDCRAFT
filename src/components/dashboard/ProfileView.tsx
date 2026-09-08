@@ -83,7 +83,7 @@ export default function ProfileView() {
     return (
       <div className="space-y-6 max-w-5xl mx-auto">
         {/* Match actual header structure */}
-        <div className="glass-card rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+        <div className="bg-slate-900/80 rounded-3xl border border-slate-800 overflow-hidden">
           {/* Header Background - matches line 147 height */}
           <div className="h-32 relative">
             <div className="absolute top-4 right-4">
@@ -196,7 +196,7 @@ export default function ProfileView() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto contain-layout">
       {/* Resume Header - Top Section */}
-      <div className="glass-card rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+      <div className="bg-slate-900/80 rounded-3xl border border-slate-800 overflow-hidden shadow-sm">
         {/* Header Background */}
         <div className="h-32 relative">
           {/* Edit Button - Absolute positioned */}
@@ -302,7 +302,7 @@ export default function ProfileView() {
 
       {/* Professional Summary */}
       {profile?.bio && (
-        <div className="glass-card p-6 sm:p-8 rounded-2xl bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-primary/20 rounded-lg">
               <FileText className="h-5 w-5 text-primary" />
@@ -317,7 +317,7 @@ export default function ProfileView() {
 
       {/* Company Info - For CLIENT users */}
       {profile?.companyInfo && sessionUser?.role === 'CLIENT' && (
-        <div className="glass-card p-6 sm:p-8 rounded-2xl bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-blue-500/20 rounded-lg">
               <Building2 className="h-5 w-5 text-blue-400" />
@@ -335,7 +335,7 @@ export default function ProfileView() {
         <>
           {/* Company Details Grid - 2x2 Layout */}
           {(profile?.industry || profile?.country || profile?.timezone || profile?.website) && (
-            <div className="glass-card p-6 sm:p-8 rounded-2xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-sm">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-cyan-500/20 rounded-lg">
                   <Briefcase className="h-5 w-5 text-cyan-400" />
@@ -346,7 +346,7 @@ export default function ProfileView() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {/* Industry Card */}
                 {profile?.industry && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:bg-white/10 transition-all">
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-6 hover:border-slate-700 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <Briefcase className="h-4 w-4 text-cyan-400" />
                       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide">Industry</h3>
@@ -357,7 +357,7 @@ export default function ProfileView() {
 
                 {/* Country Card */}
                 {profile?.country && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:bg-white/10 transition-all">
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-6 hover:border-slate-700 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <Globe className="h-4 w-4 text-blue-400" />
                       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide">Country</h3>
@@ -368,7 +368,7 @@ export default function ProfileView() {
 
                 {/* Timezone Card */}
                 {profile?.timezone && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:bg-white/10 transition-all">
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-6 hover:border-slate-700 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <Clock className="h-4 w-4 text-purple-400" />
                       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide">Timezone</h3>
@@ -379,7 +379,7 @@ export default function ProfileView() {
 
                 {/* Website Card */}
                 {profile?.website && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 hover:bg-white/10 transition-all">
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-6 hover:border-slate-700 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <Globe className="h-4 w-4 text-green-400" />
                       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide">Website</h3>
@@ -407,7 +407,7 @@ export default function ProfileView() {
           <div className="lg:col-span-2 space-y-6">
             {/* Skills & Expertise */}
             {skills.length > 0 && (
-              <div className="glass-card p-6 sm:p-8 rounded-2xl bg-white/5 border border-white/10">
+              <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-sm">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="p-2 bg-purple-500/20 rounded-lg">
                     <Star className="h-5 w-5 text-purple-400" />
@@ -429,7 +429,7 @@ export default function ProfileView() {
 
             {/* Education */}
             {education.length > 0 && (
-              <div className="glass-card p-6 sm:p-8 rounded-2xl bg-white/5 border border-white/10">
+              <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="p-2 bg-green-500/20 rounded-lg">
                     <GraduationCap className="h-5 w-5 text-green-400" />
@@ -439,7 +439,7 @@ export default function ProfileView() {
 
                 <div className="space-y-4">
                   {education.map((edu: any, index: number) => (
-                    <div key={index} className="bg-white/5 rounded-xl p-5 border border-white/10">
+                    <div key={index} className="bg-slate-950/60 rounded-xl p-5 border border-slate-800">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                         <div>
                           <h3 className="text-lg font-bold text-white">{edu.degree}</h3>
@@ -466,7 +466,7 @@ export default function ProfileView() {
           <div className="space-y-6">
             {/* Rate & Availability */}
             {profile?.rate && (
-              <div className="glass-card p-6 rounded-2xl bg-green-500/10 border border-green-500/20">
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-green-500/30 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-green-500/20 rounded-lg">
                     <DollarSign className="h-5 w-5 text-green-400" />
@@ -488,7 +488,7 @@ export default function ProfileView() {
 
             {/* Portfolio & Links */}
             {profile?.portfolio && (
-              <div className="glass-card p-6 rounded-2xl bg-white/5 border border-white/10">
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-purple-500/20 rounded-lg">
                     <Globe className="h-5 w-5 text-purple-400" />
@@ -512,7 +512,7 @@ export default function ProfileView() {
 
       {/* Empty State - Only for FREELANCER users */}
       {!profile?.firstName && !profile?.lastName && sessionUser?.role !== 'CLIENT' && (
-        <div className="glass-card p-8 rounded-3xl bg-primary/10 border border-primary/20 text-center">
+        <div className="bg-slate-900/80 p-8 rounded-3xl border border-primary/30 text-center shadow-sm">
           <div className="max-w-md mx-auto">
             <div className="inline-flex p-6 bg-primary/20 rounded-full mb-6 shadow-lg shadow-primary/10">
               <Edit className="h-16 w-16 text-primary" />
@@ -535,7 +535,7 @@ export default function ProfileView() {
 
       {/* Empty State - For CLIENT users */}
       {!profile?.firstName && !profile?.lastName && sessionUser?.role === 'CLIENT' && (
-        <div className="glass-card p-8 rounded-3xl bg-white/5 border border-white/10 text-center">
+        <div className="bg-slate-900/80 p-8 rounded-3xl border border-slate-800 text-center shadow-sm">
           <div className="max-w-md mx-auto">
             <div className="inline-flex p-6 bg-blue-500/20 rounded-full mb-6">
               <Edit className="h-16 w-16 text-blue-400" />

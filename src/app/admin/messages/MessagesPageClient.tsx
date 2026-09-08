@@ -114,59 +114,59 @@ export default function AdminMessagesPage() {
 
       {/* Compact Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-blue-300/70 uppercase tracking-wide">Total</div>
+                <div className="text-xs text-blue-400 font-medium uppercase tracking-wide">Total</div>
                 <div className="text-xl font-bold text-white mt-0.5">{totalMessages.toLocaleString()}</div>
               </div>
-              <MessageSquare className="h-5 w-5 text-blue-400/60" />
+              <MessageSquare className="h-5 w-5 text-blue-400/80" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-red-500/10 to-red-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-red-300/70 uppercase tracking-wide">Flagged</div>
+                <div className="text-xs text-red-400 font-medium uppercase tracking-wide">Flagged</div>
                 <div className="text-xl font-bold text-white mt-0.5">{flaggedMessages.toLocaleString()}</div>
               </div>
-              <AlertTriangle className="h-5 w-5 text-red-400/60" />
+              <AlertTriangle className="h-5 w-5 text-red-400/80" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-green-500/10 to-green-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-green-300/70 uppercase tracking-wide">Last 24h</div>
+                <div className="text-xs text-green-400 font-medium uppercase tracking-wide">Last 24h</div>
                 <div className="text-xl font-bold text-white mt-0.5">{last24Hours.toLocaleString()}</div>
               </div>
-              <TrendingUp className="h-5 w-5 text-green-400/60" />
+              <TrendingUp className="h-5 w-5 text-green-400/80" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-purple-300/70 uppercase tracking-wide">Page</div>
+                <div className="text-xs text-purple-400 font-medium uppercase tracking-wide">Page</div>
                 <div className="text-xl font-bold text-white mt-0.5">
                   {currentPage}/{totalPages}
                 </div>
               </div>
-              <Filter className="h-5 w-5 text-purple-400/60" />
+              <Filter className="h-5 w-5 text-purple-400/80" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Compact Filters */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-3">
           <div className="flex flex-col md:flex-row gap-2">
             <div className="flex-1 relative">
@@ -176,7 +176,7 @@ export default function AdminMessagesPage() {
                 placeholder="Search messages..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
               />
             </div>
             <Button
@@ -186,7 +186,7 @@ export default function AdminMessagesPage() {
               className={
                 showFlaggedOnly
                   ? 'bg-red-600 hover:bg-red-700 text-white text-xs h-8'
-                  : 'bg-white/5 border-white/10 text-white hover:bg-white/10 text-xs h-8'
+                  : 'bg-slate-950 border-slate-800 text-white hover:bg-slate-800 text-xs h-8'
               }
             >
               <Flag className="h-3.5 w-3.5 mr-1.5" />
@@ -197,7 +197,7 @@ export default function AdminMessagesPage() {
       </Card>
 
       {/* Compact Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           {filteredMessages.length === 0 ? (
             <div className="text-center py-12">
@@ -215,7 +215,7 @@ export default function AdminMessagesPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-slate-800">
                     <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
                       Date
                     </th>
@@ -257,7 +257,7 @@ export default function AdminMessagesPage() {
                     return (
                       <tr
                         key={message.id}
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+                        className="border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors cursor-pointer"
                         onClick={() => setSelectedMessageId(message.id)}
                       >
                         <td className="py-2 px-3">
@@ -346,7 +346,7 @@ export default function AdminMessagesPage() {
               size="sm"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="bg-white/5 border-white/10 text-white hover:bg-white/10 disabled:opacity-50 h-7 text-xs"
+              className="bg-slate-900 border-slate-800 text-white hover:bg-slate-800 disabled:opacity-50 h-7 text-xs"
             >
               <ChevronLeft className="h-3.5 w-3.5 mr-1" />
               Prev
@@ -356,7 +356,7 @@ export default function AdminMessagesPage() {
               size="sm"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="bg-white/5 border-white/10 text-white hover:bg-white/10 disabled:opacity-50 h-7 text-xs"
+              className="bg-slate-900 border-slate-800 text-white hover:bg-slate-800 disabled:opacity-50 h-7 text-xs"
             >
               Next
               <ChevronRight className="h-3.5 w-3.5 ml-1" />

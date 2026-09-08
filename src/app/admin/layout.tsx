@@ -40,7 +40,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-950 dark text-slate-100">
       {/* Sidebar */}
       <AdminSidebar />
 

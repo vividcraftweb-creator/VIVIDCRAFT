@@ -197,7 +197,7 @@ export default function WebhooksView() {
       </div>
 
       {/* Security Notice */}
-      <div className="glass-card p-6 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+      <div className="bg-slate-900/90 p-6 rounded-2xl border border-blue-500/30 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle className="h-5 w-5 text-blue-400" />
           <h3 className="text-lg font-semibold text-blue-100">Security Information</h3>
@@ -212,7 +212,7 @@ export default function WebhooksView() {
 
       {/* Create New Webhook */}
       {isCreating ? (
-        <div className="glass-card p-6 rounded-2xl bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-sm">
           <div className="mb-6">
             <h3 className="text-xl font-semibold text-white mb-2">Create New Webhook</h3>
             <p className="text-sm text-slate-400">
@@ -310,13 +310,13 @@ export default function WebhooksView() {
 
       {/* Webhooks List */}
       {isLoading ? (
-        <div className="glass-card p-8 rounded-2xl bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 p-8 rounded-2xl border border-slate-800 shadow-sm">
           <p className="text-center text-slate-400">Loading webhooks...</p>
         </div>
       ) : webhookList.length > 0 ? (
         <div className="space-y-4">
           {webhookList.map((webhook) => (
-            <div key={webhook.id} className="glass-card p-6 rounded-2xl bg-white/5 border border-white/10">
+            <div key={webhook.id} className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-sm">
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <h4 className="text-lg font-semibold text-white truncate">{webhook.url}</h4>
@@ -452,7 +452,7 @@ export default function WebhooksView() {
           ))}
         </div>
       ) : (
-        <div className="glass-card p-8 rounded-2xl bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 p-8 rounded-2xl border border-slate-800 shadow-sm">
           <div className="text-center">
             <p className="text-slate-400 mb-4">No webhooks configured yet</p>
             <Button onClick={() => setIsCreating(true)} className="bg-blue-600 hover:bg-blue-700 text-white">

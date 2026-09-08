@@ -84,14 +84,14 @@ export default function VerificationBanner() {
   const Icon = config.icon;
 
   return (
-    <div className={`glass-card p-6 rounded-2xl bg-${config.bgColor} border ${config.borderColor} mb-6`}>
+    <div className={`p-6 rounded-2xl bg-slate-900/90 border ${config.borderColor} mb-6 shadow-sm`}>
       <div className="flex items-start gap-4">
-        <div className={`p-3 bg-white/10 rounded-xl ${config.iconColor}`}>
+        <div className={`p-3 bg-slate-950/80 border border-slate-800 rounded-xl ${config.iconColor}`}>
           <Icon className="h-6 w-6" />
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-white mb-1">{config.title}</h3>
-          <p className="text-gray-300 text-sm mb-3">{config.description}</p>
+          <p className="text-slate-300 text-sm mb-3">{config.description}</p>
 
           {verificationStatus.status === 'incomplete' && verificationStatus.missingDocs.length > 0 && (
             <div className="mb-3">

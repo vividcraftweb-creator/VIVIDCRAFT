@@ -28,6 +28,7 @@ import {
   UserPlus,
   UserCheck,
   Filter,
+  RefreshCw,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -423,27 +424,27 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
         {/* Inline Stats */}
         {statsOverview && (
           <div className="flex items-center gap-3 flex-1 justify-center">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
               <UsersIcon className="h-4 w-4 text-blue-400" />
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-white">{statsOverview.total}</span>
-                <span className="text-xs text-blue-300">Total</span>
+                <span className="text-xs text-slate-400">Total</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
               <UserCheck className="h-4 w-4 text-green-400" />
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-white">{statsOverview.verified}</span>
-                <span className="text-xs text-green-300">Verified</span>
+                <span className="text-xs text-slate-400">Verified</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
               <UserPlus className="h-4 w-4 text-purple-400" />
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-white">{statsOverview.newThisWeek}</span>
-                <span className="text-xs text-purple-300">New</span>
+                <span className="text-xs text-slate-400">New</span>
               </div>
             </div>
           </div>
@@ -452,25 +453,26 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
         <Button
           variant="outline"
           size="sm"
-          className="border-white/10 text-white hover:bg-white/5 h-8 px-3"
-          onClick={handleExport}
+          className="border-slate-800 text-white hover:bg-slate-800 h-8 px-3"
+          onClick={() => refetch()}
+          disabled={isLoading}
         >
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          <span className="text-xs">Export</span>
+          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
         </Button>
       </div>
 
       {/* Compact Filters */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-3">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
             {/* Role Filter Tabs (moved to top of filters) */}
-            <div className="md:col-span-6 flex gap-2 mb-2 border-b border-white/10 pb-2">
+            <div className="md:col-span-6 flex gap-2 mb-2 border-b border-slate-800 pb-2">
               <Button
                 variant={role === 'ALL' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => handleRoleChange('ALL')}
-                className={`text-xs h-7 px-3 rounded-full ${role === 'ALL' ? 'bg-blue-600 hover:bg-blue-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'ALL' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
               >
                 All Users
               </Button>
@@ -478,7 +480,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 variant={role === 'CLIENT' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => handleRoleChange('CLIENT')}
-                className={`text-xs h-7 px-3 rounded-full ${role === 'CLIENT' ? 'bg-green-600 hover:bg-green-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'CLIENT' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
               >
                 Buyers (Clients)
               </Button>
@@ -486,7 +488,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 variant={role === 'FREELANCER' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => handleRoleChange('FREELANCER')}
-                className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-purple-600 hover:bg-purple-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
               >
                 Artists (Freelancers)
               </Button>
@@ -591,7 +593,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
       </Card>
 
       {/* Compact Users Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
@@ -603,7 +605,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 <col style={{ width: '18%' }} />
                 <col style={{ width: '10%' }} />
               </colgroup>
-              <thead className="border-b border-white/10 bg-white/5">
+              <thead className="border-b border-slate-800 bg-slate-950/60">
                 <tr>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">User</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
@@ -631,7 +633,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                     return (
                       <tr
                         key={user.id}
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                        className="border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors"
                       >
                         <td className="py-2.5 px-4 align-top">
                           <div className="flex items-center gap-2.5">

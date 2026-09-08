@@ -150,34 +150,34 @@ export default function EliteUsersPage() {
 
         {/* Inline Stats */}
         <div className="flex items-center gap-3 flex-1 justify-center">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Crown className="h-4 w-4 text-yellow-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{normalizedUsers.length}</span>
-              <span className="text-xs text-yellow-300">Elite Users</span>
+              <span className="text-xs text-slate-400">Elite Users</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <UserCheck className="h-4 w-4 text-green-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{assignedUsers}</span>
-              <span className="text-xs text-green-300">Assigned</span>
+              <span className="text-xs text-slate-400">Assigned</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Users className="h-4 w-4 text-orange-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{unassignedUsers}</span>
-              <span className="text-xs text-orange-300">Unassigned</span>
+              <span className="text-xs text-slate-400">Unassigned</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Compact Elite Users Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           {normalizedUsers.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
@@ -193,7 +193,7 @@ export default function EliteUsersPage() {
                   <col style={{ width: '30%' }} />
                   <col style={{ width: '15%' }} />
                 </colgroup>
-                <thead className="border-b border-white/10 bg-white/5">
+                <thead className="border-b border-slate-800 bg-slate-950/60">
                   <tr>
                     <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">User</th>
                     <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Email</th>
@@ -290,7 +290,7 @@ export default function EliteUsersPage() {
 
       {/* Compact Account Managers Overview */}
       {managers && managers.length > 0 && (
-        <Card className="glass-card border-white/10 bg-white/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <Users className="h-4 w-4 text-blue-400" />
@@ -306,7 +306,7 @@ export default function EliteUsersPage() {
                 return (
                   <div
                     key={manager.id}
-                    className="p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                    className="p-3 bg-slate-950/60 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors"
                   >
                     <div className="flex items-start justify-between">
                       <div className="min-w-0 flex-1">

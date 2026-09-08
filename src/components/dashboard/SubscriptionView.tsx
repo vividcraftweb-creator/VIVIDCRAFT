@@ -356,10 +356,10 @@ export default function SubscriptionView() {
     return (
       <div className={`relative p-6 rounded-2xl border transition-all duration-300 hover-lift ${
         isCurrentPlan
-          ? 'border-primary bg-primary/10 glass-card'
+          ? 'border-primary/50 bg-slate-900/90 shadow-sm'
           : isPopular
-            ? 'border-chart-4 bg-chart-4/10 glass-card'
-            : 'border-glass-border glass-card'
+            ? 'border-chart-4/50 bg-slate-900/90 shadow-sm'
+            : 'border-slate-800 bg-slate-900/80 shadow-sm'
       }`}>
 
         {isPopular && !isCurrentPlan && (
@@ -503,17 +503,17 @@ export default function SubscriptionView() {
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="glass-card p-6 rounded-2xl border border-glass-border animate-pulse">
-                <div className="h-16 bg-white/10 rounded-xl mb-4" />
-                <div className="h-8 bg-white/10 rounded mb-2" />
-                <div className="h-4 bg-white/10 rounded mb-4" />
-                <div className="h-12 bg-white/10 rounded mb-6" />
+              <div key={i} className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 animate-pulse">
+                <div className="h-16 bg-slate-800 rounded-xl mb-4" />
+                <div className="h-8 bg-slate-800 rounded mb-2" />
+                <div className="h-4 bg-slate-800 rounded mb-4" />
+                <div className="h-12 bg-slate-800 rounded mb-6" />
                 <div className="space-y-3 mb-6">
                   {[1, 2, 3, 4].map((j) => (
-                    <div key={j} className="h-4 bg-white/10 rounded" />
+                    <div key={j} className="h-4 bg-slate-800 rounded" />
                   ))}
                 </div>
-                <div className="h-12 bg-white/10 rounded" />
+                <div className="h-12 bg-slate-800 rounded" />
               </div>
             ))}
           </div>
@@ -535,7 +535,7 @@ export default function SubscriptionView() {
 
       {/* Current Subscription Status Card */}
       {currentSubscription?.planConfig && currentPlan !== 'FREELANCER_FREE' && currentPlan !== 'CLIENT_STARTER' && (
-        <div className="glass-card p-6 rounded-2xl border border-primary/20 bg-primary/5">
+        <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-2">

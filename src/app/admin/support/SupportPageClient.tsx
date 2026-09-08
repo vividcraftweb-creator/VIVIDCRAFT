@@ -60,42 +60,42 @@ export default function AdminSupportPage() {
 
         {/* Inline Stats */}
         <div className="flex items-center gap-3 flex-1 justify-center">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <LifeBuoy className="h-4 w-4 text-blue-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{tickets.length}</span>
-              <span className="text-xs text-blue-300">Total</span>
+              <span className="text-xs text-slate-400">Total</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{openTickets}</span>
-              <span className="text-xs text-red-300">Open</span>
+              <span className="text-xs text-slate-400">Open</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Clock className="h-4 w-4 text-yellow-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{inProgressTickets}</span>
-              <span className="text-xs text-yellow-300">In Progress</span>
+              <span className="text-xs text-slate-400">In Progress</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <CheckCircle className="h-4 w-4 text-green-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{resolvedTickets}</span>
-              <span className="text-xs text-green-300">Resolved</span>
+              <span className="text-xs text-slate-400">Resolved</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Compact Tickets List */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           {tickets.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
@@ -103,9 +103,9 @@ export default function AdminSupportPage() {
               <p className="text-sm">No support tickets found</p>
             </div>
           ) : (
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-slate-800">
               {tickets.map((ticket) => (
-                <div key={ticket.id} className="p-4 hover:bg-white/5 transition-colors">
+                <div key={ticket.id} className="p-4 hover:bg-slate-800/40 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">

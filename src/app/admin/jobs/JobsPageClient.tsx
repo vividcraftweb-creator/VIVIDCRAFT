@@ -226,47 +226,47 @@ export default function AdminJobsPage() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <Card className="glass-card border-white/10 bg-blue-500/10">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-4">
-              <div className="text-xs text-blue-300">Total Jobs</div>
-              <div className="text-2xl font-bold text-white">{stats.totalJobs}</div>
+              <div className="text-xs text-blue-400 font-medium">Total Jobs</div>
+              <div className="text-2xl font-bold text-white mt-1">{stats.totalJobs}</div>
             </CardContent>
           </Card>
-          <Card className="glass-card border-white/10 bg-green-500/10">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-4">
-              <div className="text-xs text-green-300">Open</div>
-              <div className="text-2xl font-bold text-white">{stats.openJobs}</div>
+              <div className="text-xs text-green-400 font-medium">Open</div>
+              <div className="text-2xl font-bold text-white mt-1">{stats.openJobs}</div>
             </CardContent>
           </Card>
-          <Card className="glass-card border-white/10 bg-red-500/10">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-4">
-              <div className="text-xs text-red-300">Closed</div>
-              <div className="text-2xl font-bold text-white">{stats.closedJobs}</div>
+              <div className="text-xs text-red-400 font-medium">Closed</div>
+              <div className="text-2xl font-bold text-white mt-1">{stats.closedJobs}</div>
             </CardContent>
           </Card>
-          <Card className="glass-card border-white/10 bg-yellow-500/10">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-4">
-              <div className="text-xs text-yellow-300">Pending</div>
-              <div className="text-2xl font-bold text-white">{stats.pendingApproval}</div>
+              <div className="text-xs text-yellow-400 font-medium">Pending</div>
+              <div className="text-2xl font-bold text-white mt-1">{stats.pendingApproval}</div>
             </CardContent>
           </Card>
-          <Card className="glass-card border-white/10 bg-green-500/10">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-4">
-              <div className="text-xs text-green-300">Approved</div>
-              <div className="text-2xl font-bold text-white">{stats.approvedJobs}</div>
+              <div className="text-xs text-green-400 font-medium">Approved</div>
+              <div className="text-2xl font-bold text-white mt-1">{stats.approvedJobs}</div>
             </CardContent>
           </Card>
-          <Card className="glass-card border-white/10 bg-red-500/10">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-4">
-              <div className="text-xs text-red-300">Rejected</div>
-              <div className="text-2xl font-bold text-white">{stats.rejectedJobs}</div>
+              <div className="text-xs text-red-400 font-medium">Rejected</div>
+              <div className="text-2xl font-bold text-white mt-1">{stats.rejectedJobs}</div>
             </CardContent>
           </Card>
         </div>
       )}
 
       {/* Filters */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
@@ -275,14 +275,14 @@ export default function AdminJobsPage() {
                 placeholder="Search jobs..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 bg-white/5 border-white/10 text-white"
+                className="pl-10 bg-slate-950 border-slate-800 text-white placeholder:text-slate-400"
               />
             </div>
             <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+              <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
+              <SelectContent className="bg-slate-900 border-slate-800">
                 <SelectItem value="ALL">All Status</SelectItem>
                 <SelectItem value="OPEN">Open</SelectItem>
                 <SelectItem value="PAUSED">Paused</SelectItem>
@@ -290,10 +290,10 @@ export default function AdminJobsPage() {
               </SelectContent>
             </Select>
             <Select value={approvalFilter} onValueChange={handleApprovalFilterChange}>
-              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+              <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
+              <SelectContent className="bg-slate-900 border-slate-800">
                 <SelectItem value="ALL">All</SelectItem>
                 <SelectItem value="pending">Pending Approval</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
@@ -305,37 +305,37 @@ export default function AdminJobsPage() {
       </Card>
 
       {/* Jobs List */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-slate-400">
             {totalJobs === 0 ? 'No jobs found' : `Showing ${startItem}-${endItem} of ${totalJobs} job${totalJobs === 1 ? '' : 's'}`}
           </div>
           <div className="flex flex-wrap gap-2 sm:items-center">
             <Select value={`${pageSize}`} onValueChange={(value) => setPageSize(Number(value))}>
-              <SelectTrigger className="w-[140px] bg-white/5 border-white/10 text-white text-sm">
+              <SelectTrigger className="w-[140px] bg-slate-950 border-slate-800 text-white text-sm">
                 <SelectValue placeholder="Page size" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
+              <SelectContent className="bg-slate-900 border-slate-800">
                 <SelectItem value="10">10 per page</SelectItem>
                 <SelectItem value="20">20 per page</SelectItem>
                 <SelectItem value="50">50 per page</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={(value: 'createdAt' | 'budget' | 'deadline') => setSortBy(value)}>
-              <SelectTrigger className="w-[150px] bg-white/5 border-white/10 text-white text-sm">
+              <SelectTrigger className="w-[150px] bg-slate-950 border-slate-800 text-white text-sm">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
+              <SelectContent className="bg-slate-900 border-slate-800">
                 <SelectItem value="createdAt">Created Date</SelectItem>
                 <SelectItem value="budget">Budget</SelectItem>
                 <SelectItem value="deadline">Deadline</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
-              <SelectTrigger className="w-[120px] bg-white/5 border-white/10 text-white text-sm">
+              <SelectTrigger className="w-[120px] bg-slate-950 border-slate-800 text-white text-sm">
                 <SelectValue placeholder="Order" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
+              <SelectContent className="bg-slate-900 border-slate-800">
                 <SelectItem value="desc">Descending</SelectItem>
                 <SelectItem value="asc">Ascending</SelectItem>
               </SelectContent>
@@ -346,7 +346,7 @@ export default function AdminJobsPage() {
                 size="sm"
                 disabled={page === 0}
                 onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-                className="border-white/10 text-slate-300 hover:bg-white/5"
+                className="border-slate-800 text-slate-300 hover:bg-slate-800"
               >
                 Previous
               </Button>
@@ -358,7 +358,7 @@ export default function AdminJobsPage() {
                 size="sm"
                 disabled={!hasMore}
                 onClick={() => setPage((prev) => prev + 1)}
-                className="border-white/10 text-slate-300 hover:bg-white/5"
+                className="border-slate-800 text-slate-300 hover:bg-slate-800"
               >
                 Next
               </Button>
@@ -369,11 +369,11 @@ export default function AdminJobsPage() {
 
       <div className="space-y-4">
         {isLoading ? (
-          <Card className="glass-card border-white/10 bg-white/5">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-8 text-center text-slate-400">Loading jobs...</CardContent>
           </Card>
         ) : jobs.length === 0 ? (
-          <Card className="glass-card border-white/10 bg-white/5">
+          <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
             <CardContent className="p-8 text-center text-slate-400">No jobs found</CardContent>
           </Card>
         ) : (
@@ -384,7 +384,7 @@ export default function AdminJobsPage() {
             const profile = Array.isArray(profileData) ? profileData[0] : profileData ?? null;
 
             return (
-              <Card key={job.id} className="glass-card border-white/10 bg-white/5">
+              <Card key={job.id} className="bg-slate-900/80 border-slate-800 shadow-sm hover:border-slate-700 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1">

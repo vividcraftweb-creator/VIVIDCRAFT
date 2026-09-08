@@ -184,40 +184,40 @@ export default function AdminProposalsPage() {
       </div>
 
       {/* Compact Additional Metrics */}
-      <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg p-2">
+      <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-lg p-2 shadow-sm">
         <span className="text-xs text-slate-400 px-2">Metrics:</span>
         <div className="flex items-center gap-2 flex-1">
-          <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded border border-green-500/20">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
             <DollarSign className="h-3 w-3 text-green-400" />
             <span className="text-sm font-bold text-white">${avgProposedRate.toFixed(0)}</span>
-            <span className="text-xs text-green-300">/hr avg</span>
+            <span className="text-xs text-slate-400">/hr avg</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 rounded border border-purple-500/20">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
             <Award className="h-3 w-3 text-purple-400" />
             <span className="text-sm font-bold text-white">
               {proposals.length > 0
                 ? (proposals.reduce((sum, p) => sum + p.tokenBid, 0) / proposals.length).toFixed(1)
                 : 0}
             </span>
-            <span className="text-xs text-purple-300">tokens avg</span>
+            <span className="text-xs text-slate-400">tokens avg</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded border border-blue-500/20">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
             <Brain className="h-3 w-3 text-blue-400" />
             <span className="text-sm font-bold text-white">
               {avgAiScore > 0 ? avgAiScore.toFixed(0) : 'N/A'}
             </span>
-            <span className="text-xs text-blue-300">AI score avg</span>
+            <span className="text-xs text-slate-400">AI score avg</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 rounded border border-red-500/20">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
             <XCircle className="h-3 w-3 text-red-400" />
             <span className="text-sm font-bold text-white">{rejectedProposals}</span>
-            <span className="text-xs text-red-300">Rejected</span>
+            <span className="text-xs text-slate-400">Rejected</span>
           </div>
         </div>
       </div>
 
       {/* Compact Filters */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-3">
           <div className="flex flex-col md:flex-row gap-2">
             <div className="flex-1 relative">
@@ -230,7 +230,7 @@ export default function AdminProposalsPage() {
                   setSearchTerm(e.target.value);
                   setPage(1);
                 }}
-                className="w-full pl-8 pr-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
               />
             </div>
             <select
@@ -239,7 +239,7 @@ export default function AdminProposalsPage() {
                 setFilterStatus(e.target.value as typeof filterStatus);
                 setPage(1);
               }}
-              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
+              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
             >
               <option value="" className="bg-slate-900">All Statuses</option>
               <option value="PENDING" className="bg-slate-900">Pending</option>
@@ -252,11 +252,11 @@ export default function AdminProposalsPage() {
       </Card>
 
       {/* Proposals Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-white/5 border-b border-white/10">
+              <thead className="bg-slate-950/60 border-b border-slate-800">
                 <tr>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Freelancer</th>
@@ -268,7 +268,7 @@ export default function AdminProposalsPage() {
                   <th className="text-center py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-800/80">
                 {proposals.map((proposal) => {
                   const StatusIcon = getStatusIcon(proposal.status as ProposalStatus);
                   const freelancer = Array.isArray(proposal.freelancer) ? proposal.freelancer[0] : proposal.freelancer;

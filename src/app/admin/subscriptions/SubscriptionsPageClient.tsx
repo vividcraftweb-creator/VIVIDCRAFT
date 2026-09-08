@@ -222,11 +222,11 @@ export default function AdminSubscriptionsPage() {
 
       {/* Compact Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-blue-300/80 font-medium">Total Users</div>
+                <div className="text-xs text-blue-400 font-medium">Total Users</div>
                 <div className="text-2xl font-bold text-white mt-0.5">{stats.totalSubscriptions}</div>
               </div>
               <div className="p-2.5 bg-blue-500/20 rounded-lg">
@@ -236,13 +236,13 @@ export default function AdminSubscriptionsPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-green-500/10 to-green-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-green-300/80 font-medium">Premium</div>
+                <div className="text-xs text-green-400 font-medium">Premium</div>
                 <div className="text-2xl font-bold text-white mt-0.5">{stats.activeSubscriptions}</div>
-                <div className="text-xs text-green-400/70 mt-0.5">{stats.premiumPercentage}% conversion</div>
+                <div className="text-xs text-slate-400 mt-0.5">{stats.premiumPercentage}% conversion</div>
               </div>
               <div className="p-2.5 bg-green-500/20 rounded-lg">
                 <CreditCard className="h-5 w-5 text-green-400" />
@@ -251,13 +251,13 @@ export default function AdminSubscriptionsPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-purple-300/80 font-medium">Free Tier</div>
+                <div className="text-xs text-purple-400 font-medium">Free Tier</div>
                 <div className="text-2xl font-bold text-white mt-0.5">{stats.freeUsers}</div>
-                <div className="text-xs text-purple-400/70 mt-0.5">
+                <div className="text-xs text-slate-400 mt-0.5">
                   {((stats.freeUsers/stats.totalSubscriptions) * 100).toFixed(1)}% of total
                 </div>
               </div>
@@ -268,13 +268,13 @@ export default function AdminSubscriptionsPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-gradient-to-br from-orange-500/10 to-orange-600/5">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-orange-300/80 font-medium">Verified</div>
+                <div className="text-xs text-orange-400 font-medium">Verified</div>
                 <div className="text-2xl font-bold text-white mt-0.5">{stats.verifiedUsers}</div>
-                <div className="text-xs text-orange-400/70 mt-0.5">
+                <div className="text-xs text-slate-400 mt-0.5">
                   {((stats.verifiedUsers/stats.totalSubscriptions) * 100).toFixed(1)}% verified
                 </div>
               </div>
@@ -287,14 +287,14 @@ export default function AdminSubscriptionsPage() {
       </div>
 
       {/* Plan Distribution - Compact */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-white">Plan Distribution</h3>
           </div>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {Object.entries(stats.planCounts).map(([plan, count]) => (
-              <div key={plan} className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-colors">
+              <div key={plan} className="flex flex-col items-center justify-center p-3 bg-slate-950/60 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors">
                 <div className="text-xl font-bold text-white">{count as number}</div>
                 <Badge className={`mt-1.5 text-xs ${getPlanBadge(plan)}`}>
                   {getPlanName(plan)}
@@ -306,7 +306,7 @@ export default function AdminSubscriptionsPage() {
       </Card>
 
       {/* Filters */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-3">
             {/* Search */}
@@ -317,7 +317,7 @@ export default function AdminSubscriptionsPage() {
                 placeholder="Search by email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full pl-10 pr-4 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
 
@@ -326,7 +326,7 @@ export default function AdminSubscriptionsPage() {
               <select
                 value={filterPlan}
                 onChange={(e) => setFilterPlan(e.target.value)}
-                className="px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 <option value="all" className="bg-slate-900">All Plans</option>
                 <option value="FREELANCER_PRO" className="bg-slate-900">Freelancer Pro</option>
@@ -338,7 +338,7 @@ export default function AdminSubscriptionsPage() {
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className="px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 <option value="all" className="bg-slate-900">All Roles</option>
                 <option value="FREELANCER" className="bg-slate-900">Freelancer</option>
@@ -349,7 +349,7 @@ export default function AdminSubscriptionsPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 <option value="all" className="bg-slate-900">All Status</option>
                 <option value="verified" className="bg-slate-900">Verified</option>
@@ -379,11 +379,11 @@ export default function AdminSubscriptionsPage() {
       </Card>
 
       {/* Compact Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b border-white/10 bg-white/5">
+              <thead className="border-b border-slate-800 bg-slate-950/60">
                 <tr>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-300">
                     <button
@@ -429,7 +429,7 @@ export default function AdminSubscriptionsPage() {
                 {filteredUsers.map((user) => (
                   <Fragment key={user.id}>
                     <tr
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+                      className="border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors cursor-pointer"
                       onClick={() => toggleRowExpansion(user.id)}
                     >
                       <td className="py-3 px-4">

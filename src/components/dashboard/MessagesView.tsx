@@ -236,7 +236,7 @@ export default function MessagesView() {
   return (
     <div className="h-[calc(100vh-200px)] flex gap-6">
       {/* Contacts Sidebar */}
-      <Card className="w-1/3 glass-card bg-white/5 border-white/10 flex flex-col">
+      <Card className="w-1/3 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
@@ -248,12 +248,12 @@ export default function MessagesView() {
             {contactsLoading ? (
               <div className="space-y-1 p-4">
                 {[...Array(5)].map((_, index) => (
-                  <div key={index} className="p-3 rounded-lg bg-white/5 border border-white/10 animate-pulse">
+                  <div key={index} className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 animate-pulse">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-white/10" />
+                      <div className="h-10 w-10 rounded-full bg-slate-800" />
                       <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-white/10 rounded w-3/4" />
-                        <div className="h-3 bg-white/10 rounded w-1/2" />
+                        <div className="h-4 bg-slate-800 rounded w-3/4" />
+                        <div className="h-3 bg-slate-800 rounded w-1/2" />
                       </div>
                     </div>
                   </div>
@@ -272,7 +272,7 @@ export default function MessagesView() {
                       className={`p-3 rounded-lg cursor-pointer transition-all ${
                         selectedUser?.id === contact.id
                           ? 'bg-primary/20 border border-primary/30'
-                          : 'bg-white/5 hover:bg-white/10 border border-white/10'
+                          : 'bg-slate-950/60 hover:bg-slate-900/80 border border-slate-800'
                       }`}
                       onClick={() => setSelectedUser(contact)}
                     >
@@ -342,11 +342,11 @@ export default function MessagesView() {
       </Card>
 
       {/* Chat Area */}
-      <Card className="flex-1 glass-card bg-white/5 border-white/10 flex flex-col">
+      <Card className="flex-1 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col">
         {selectedUser ? (
           <>
             {/* Chat Header */}
-            <CardHeader className="border-b border-white/10 flex-shrink-0">
+            <CardHeader className="border-b border-slate-800 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 border-2 border-primary/50">
@@ -388,19 +388,19 @@ export default function MessagesView() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-slate-400 hover:text-white hover:bg-white/10"
+                      className="text-slate-400 hover:text-white hover:bg-slate-800"
                     >
                       <MoreHorizontal className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-slate-900 border-white/10">
-                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                  <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
+                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
                       Delete conversation
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
                       Block user
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white/10" />
+                    <DropdownMenuSeparator className="bg-slate-800" />
                     <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
                       Report user
                     </DropdownMenuItem>
@@ -409,9 +409,9 @@ export default function MessagesView() {
               </div>
             </CardHeader>
 
-            {/* Messages */}
-            <CardContent className="flex-1 overflow-hidden p-0">
-              <div className="h-full overflow-y-auto p-6">
+            {/* Messages List */}
+            <CardContent className="flex-1 p-4 overflow-y-auto">
+              <div className="space-y-4">
                 {chatHistory.length > 0 ? (
                   <div className="space-y-4">
                     {chatHistory.map((chat, index) => {
@@ -426,7 +426,7 @@ export default function MessagesView() {
                               className={`p-3 rounded-lg ${
                                 isOwn
                                   ? 'bg-primary text-white'
-                                  : 'bg-white/10 text-slate-200 border border-white/10'
+                                  : 'bg-slate-800 text-slate-100 border border-slate-700'
                               }`}
                             >
                               <p className="break-words">{chat.content}</p>
@@ -455,7 +455,7 @@ export default function MessagesView() {
             </CardContent>
 
             {/* Message Input */}
-            <div className="border-t border-white/10 p-4 flex-shrink-0">
+            <div className="border-t border-slate-800 p-4 flex-shrink-0">
               {!canChat ? (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center text-sm text-red-300">
                   Chat disabled for this connection. Please contact the administrator.
@@ -468,7 +468,7 @@ export default function MessagesView() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                    className="flex-1 bg-slate-950 border-slate-800 text-white placeholder:text-slate-500"
                     disabled={sendMessageMutation.isPending}
                   />
                   <Button

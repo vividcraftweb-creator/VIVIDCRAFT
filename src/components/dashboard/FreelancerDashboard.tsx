@@ -580,9 +580,9 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       <div className="space-y-8">
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="glass-card p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10 animate-pulse">
-              <div className="h-4 bg-white/10 rounded mb-2"></div>
-              <div className="h-8 bg-white/20 rounded"></div>
+            <div key={i} className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm animate-pulse">
+              <div className="h-4 bg-slate-800 rounded mb-2"></div>
+              <div className="h-8 bg-slate-800/60 rounded"></div>
             </div>
           ))}
         </div>
@@ -624,14 +624,14 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
           <>
             {/* Not Started / Incomplete */}
             {(verificationStatus?.status === 'not_started' || verificationStatus?.status === 'incomplete') && (
-              <div className="glass-card p-4 sm:p-6 rounded-2xl lg:rounded-3xl bg-yellow-500/10 border border-yellow-500/20">
+              <div className="bg-slate-900/90 border border-yellow-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-yellow-500/20 rounded-lg flex-shrink-0">
+                  <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex-shrink-0">
                     <AlertTriangle className="h-6 w-6 text-yellow-400" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-yellow-300 mb-2">Account Verification Required</h3>
-                    <p className="text-yellow-200/80 mb-4">
+                    <p className="text-slate-300 mb-4">
                       {verificationStatus?.message || 'Upload a government-issued ID to fully activate your account and apply for jobs. This keeps our marketplace safe for everyone.'}
                     </p>
                     {verificationStatus?.status === 'incomplete' && Array.isArray(verificationStatus?.missingDocs) && verificationStatus.missingDocs.length > 0 && (
@@ -656,14 +656,14 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
             {/* Pending Review */}
             {verificationStatus?.status === 'pending' && (
-              <div className="glass-card p-4 sm:p-6 rounded-2xl lg:rounded-3xl bg-blue-500/10 border border-blue-500/20">
+              <div className="bg-slate-900/90 border border-blue-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
+                  <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg flex-shrink-0">
                     <Clock className="h-6 w-6 text-blue-400" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-blue-300 mb-2">Verification In Review</h3>
-                    <p className="text-blue-200/80 mb-4">
+                    <p className="text-slate-300 mb-4">
                       Thanks for submitting your ID. Our admin typically reviews requests within 1–2 business days. You&apos;ll be notified as soon as it&apos;s approved.
                     </p>
                     <Button asChild className="bg-blue-500/20 border border-blue-500/30 text-blue-200 hover:bg-blue-500/30">
@@ -679,14 +679,14 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
             {/* Rejected */}
             {verificationStatus?.status === 'rejected' && (
-              <div className="glass-card p-4 sm:p-6 rounded-2xl lg:rounded-3xl bg-red-500/10 border border-red-500/20">
+              <div className="bg-slate-900/90 border border-red-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="p-2 bg-red-500/20 rounded-lg flex-shrink-0">
+                  <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex-shrink-0">
                     <AlertTriangle className="h-6 w-6 text-red-400" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-red-300 mb-2">Verification Needs Attention</h3>
-                    <p className="text-red-200/80 mb-4">
+                    <p className="text-slate-300 mb-4">
                       We couldn&apos;t approve the documents provided. Please review the guidelines and resubmit clear photos of your ID.
                     </p>
                     {Array.isArray(verificationStatus?.rejectedDocs) && verificationStatus.rejectedDocs.length > 0 && (
@@ -714,14 +714,14 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
         {/* Approved - Success Message */}
         {hasFetchedVerification && verificationStatus?.isVerified && verificationStatus?.status === 'approved' && !isBannerDismissed && (
-          <div className="glass-card p-4 sm:p-6 rounded-2xl lg:rounded-3xl bg-green-500/10 border border-green-500/20">
+          <div className="bg-slate-900/90 border border-green-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-green-500/20 rounded-lg flex-shrink-0">
+              <div className="p-2 bg-green-500/10 border border-green-500/20 rounded-lg flex-shrink-0">
                 <CheckCircle className="h-6 w-6 text-green-400" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-green-300 mb-2">Verification Successful</h3>
-                <p className="text-green-200/80">
+                <p className="text-slate-300">
                   Your account has been verified! You now have full access to all platform features.
                 </p>
               </div>
@@ -739,65 +739,65 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
         {/* Stats Overview */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {/* Commissions Inquired */}
-          <div className="glass-card p-4 sm:p-6 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-400/30 transition-all duration-300 group">
+          <div className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 p-4 sm:p-6 rounded-2xl shadow-sm transition-all duration-300 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-indigo-300 text-sm font-medium">Commissions Inquired</p>
+                <p className="text-slate-400 text-sm font-medium">Commissions Inquired</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
                   {totalProposals}
                 </p>
-                <p className="text-indigo-200 text-sm mt-1 flex items-center gap-1">
-                  <Send className="h-4 w-4" />
-                  {acceptedProposals.length} accepted • {(proposalStatusMap.PENDING ?? 0)} pending
+                <p className="text-slate-400 text-sm mt-1 flex items-center gap-1">
+                  <Send className="h-4 w-4 text-indigo-400" />
+                  <span className="text-indigo-300">{acceptedProposals.length} accepted</span> • <span className="text-slate-400">{(proposalStatusMap.PENDING ?? 0)} pending</span>
                 </p>
               </div>
-              <div className="p-2 sm:p-3 bg-indigo-500/20 rounded-xl group-hover:bg-indigo-500/30 transition-colors">
-                <Send className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-300" />
+              <div className="p-2 sm:p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl group-hover:bg-indigo-500/20 transition-colors">
+                <Send className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-400" />
               </div>
             </div>
           </div>
 
           {/* Accepted Commissions */}
-          <div className="glass-card p-4 sm:p-6 rounded-2xl bg-blue-500/10 border border-blue-500/20 hover:border-blue-400/30 transition-all duration-300 group">
+          <div className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 p-4 sm:p-6 rounded-2xl shadow-sm transition-all duration-300 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-300 text-sm font-medium">Accepted Commissions</p>
+                <p className="text-slate-400 text-sm font-medium">Accepted Commissions</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">{acceptedProposals.length || 0}</p>
-                <p className="text-blue-400 text-sm mt-1 flex items-center">
-                  <Activity className="h-4 w-4 mr-1" />
-                  {acceptedProposals.length || 0} completed commissions
+                <p className="text-slate-400 text-sm mt-1 flex items-center">
+                  <Activity className="h-4 w-4 mr-1 text-blue-400" />
+                  <span className="text-blue-300">{acceptedProposals.length || 0} completed</span>
                 </p>
               </div>
-              <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
+              <div className="p-2 sm:p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl group-hover:bg-blue-500/20 transition-colors">
                 <Briefcase className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
               </div>
             </div>
           </div>
 
           {/* Success Rate */}
-          <div className="glass-card p-4 sm:p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:border-purple-400/30 transition-all duration-300 group">
+          <div className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 p-4 sm:p-6 rounded-2xl shadow-sm transition-all duration-300 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-300 text-sm font-medium">Success Rate</p>
+                <p className="text-slate-400 text-sm font-medium">Success Rate</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
                   {safeProposals.length > 0 ? Math.round((acceptedProposals.length / safeProposals.length) * 100) : 0}%
                 </p>
-                <p className="text-purple-400 text-sm mt-1 flex items-center">
-                  <Target className="h-4 w-4 mr-1" />
-                  {acceptedProposals.length || 0} of {safeProposals.length} commissions
+                <p className="text-slate-400 text-sm mt-1 flex items-center">
+                  <Target className="h-4 w-4 mr-1 text-purple-400" />
+                  <span className="text-purple-300">{acceptedProposals.length || 0} of {safeProposals.length} commissions</span>
                 </p>
               </div>
-              <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
+              <div className="p-2 sm:p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl group-hover:bg-purple-500/20 transition-colors">
                 <Award className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400" />
               </div>
             </div>
           </div>
 
           {/* Portfolio Artworks */}
-          <Link href="/dashboard?tab=gallery" className="glass-card p-4 sm:p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-400/30 transition-all duration-300 group block">
+          <Link href="/dashboard?tab=gallery" className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 p-4 sm:p-6 rounded-2xl shadow-sm transition-all duration-300 group block">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-300 text-sm font-medium">Portfolio Artworks</p>
+                <p className="text-slate-400 text-sm font-medium">Portfolio Artworks</p>
                 <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
                   {Array.isArray(myArtworks) ? myArtworks.length : 0}
                 </p>
@@ -806,7 +806,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                   Manage gallery &rarr;
                 </p>
               </div>
-              <div className="p-2 sm:p-3 bg-emerald-500/20 rounded-xl group-hover:bg-emerald-500/30 transition-colors">
+              <div className="p-2 sm:p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl group-hover:bg-emerald-500/20 transition-colors">
                 <ImageIcon className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400" />
               </div>
             </div>
@@ -818,7 +818,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
           {/* Left Column - Analytics and Activity */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Recent Activity */}
-            <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl shadow-sm">
               <div className="mb-4 sm:mb-6">
                 <h3 className="text-lg sm:text-xl font-bold text-white">Recent Activity</h3>
                 <p className="text-sm sm:text-base text-slate-400">Your latest commission inquiries</p>
@@ -826,7 +826,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
               <div className="space-y-4">
                 {safeProposals.slice(0, 5).map((proposal) => (
-                  <div key={proposal.id} className="flex items-start sm:items-center flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
+                  <div key={proposal.id} className="flex items-start sm:items-center flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-950/60 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
                     <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
                       <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                     </div>
@@ -863,7 +863,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
             </div>
 
             {/* Earnings / Analytics */}
-            <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
                 <div>
                   <h3 className="text-lg sm:text-xl font-bold text-white">Commission Pipeline &amp; Analytics</h3>
@@ -881,7 +881,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                   {proposalOverview.map((item) => (
                     <div key={item.label} className="flex items-center space-x-4">
                       <span className="text-slate-300 text-sm w-24">{item.label}</span>
-                      <div className="flex-1 bg-white/10 rounded-full h-2">
+                      <div className="flex-1 bg-slate-950 border border-slate-800/80 rounded-full h-2">
                         <div
                           className={`${item.color} h-2 rounded-full transition-all duration-500`}
                           style={{ width: `${totalProposals > 0 ? Math.round((item.count / totalProposals) * 100) : 0}%` }}
@@ -901,46 +901,46 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
             </div>
 
             {/* Market Demand Trends */}
-            <div className="glass-card p-4 sm:p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm">
               <div className="flex flex-col gap-3 mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <h3 className="text-base sm:text-lg font-semibold text-white">Market Demand Trends</h3>
-                    <p className="text-xs sm:text-sm text-purple-200">Weekly insight into in-demand skills across the platform</p>
+                    <p className="text-xs sm:text-sm text-purple-300">Weekly insight into in-demand skills across the platform</p>
                   </div>
                   <Badge className="bg-purple-500/20 text-purple-200 border-purple-500/30 w-fit">Unlocked</Badge>
                 </div>
               </div>
               <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Highest demand</p>
+                <div className="bg-slate-950/60 rounded-xl p-4 border border-slate-800">
+                  <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Highest demand</p>
                   <p className="text-white font-semibold">AI &amp; Machine Learning</p>
                   <p className="text-xs text-green-400 mt-2">+18% week over week</p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Top-paying skill</p>
+                <div className="bg-slate-950/60 rounded-xl p-4 border border-slate-800">
+                  <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Top-paying skill</p>
                   <p className="text-white font-semibold">Senior React Architecture</p>
                   <p className="text-xs text-green-400 mt-2">Average rate: $110/hr</p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Emerging trend</p>
+                <div className="bg-slate-950/60 rounded-xl p-4 border border-slate-800">
+                  <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Emerging trend</p>
                   <p className="text-white font-semibold">Generative design automation</p>
                   <p className="text-xs text-blue-400 mt-2">High growth opportunity</p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide">Client watchlist</p>
+                <div className="bg-slate-950/60 rounded-xl p-4 border border-slate-800">
+                  <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Client watchlist</p>
                   <p className="text-white font-semibold">FinTech product revamps</p>
                   <p className="text-xs text-blue-400 mt-2">12 active projects this week</p>
                 </div>
               </div>
             </div>
 
-            <div className="glass-card p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm">
               <div className="flex flex-col gap-3 mb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <h3 className="text-base sm:text-lg font-semibold text-white">Support</h3>
-                    <p className="text-xs sm:text-sm text-slate-300">{supportLabel}</p>
+                    <p className="text-xs sm:text-sm text-slate-400">{supportLabel}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Headphones className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
@@ -950,7 +950,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                   </div>
                 </div>
               </div>
-              <div className="bg-white/5 rounded-xl p-3 sm:p-4 border border-white/10 text-xs sm:text-sm text-slate-300">
+              <div className="bg-slate-950/60 rounded-xl p-3 sm:p-4 border border-slate-800 text-xs sm:text-sm text-slate-300">
                 Our support team responds via email. {supportLevel === 'priority-email' ? 'Priority plans receive replies in under 60 minutes.' : 'Expect a response within one business day.'}
               </div>
             </div>
@@ -959,7 +959,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
           {/* Right Column - Profile and Actions */}
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Profile Completion */}
-            <div className="glass-card p-4 sm:p-6 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h3 className="text-base sm:text-lg font-bold text-white">Profile Status</h3>
                 <div className="p-2 bg-primary/20 rounded-lg">
@@ -973,7 +973,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     <span className="text-slate-300 text-sm">Completion</span>
                     <span className="text-white font-semibold">{Math.round(profileCompleteness)}%</span>
                   </div>
-                  <div className="w-full bg-white/10 rounded-full h-2">
+                  <div className="w-full bg-slate-950 border border-slate-800 rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full transition-all duration-500"
                       style={{ width: `${profileCompleteness}%` }}
@@ -987,7 +987,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     <ul className="space-y-1">
                       {missingFields.slice(0, 5).map((field, index) => (
                         <li key={index} className="flex items-center">
-                          <span className="mr-2">•</span> {field}
+                          <span className="mr-2 text-primary">•</span> {field}
                         </li>
                       ))}
                       {missingFields.length > 5 && (
@@ -1000,7 +1000,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                 )}
 
                 {/* Publish Profile Toggle */}
-                <div className="mt-4 pt-4 border-t border-white/10">
+                <div className="mt-4 pt-4 border-t border-slate-800">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Globe className="h-4 w-4 text-primary" />
@@ -1011,7 +1011,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     </Badge>
                   </div>
 
-                  <p className="text-xs text-white/60 mb-3">
+                  <p className="text-xs text-slate-400 mb-3">
                     {isCurrentlyPublished
                       ? "Your profile is visible to clients"
                       : "Your profile is hidden from clients"}
@@ -1055,7 +1055,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                       <TooltipTrigger asChild>
                         <div className="w-full">
                           <Button
-                            className="w-full glass-button"
+                            className="w-full bg-slate-800/80 hover:bg-slate-700/80 text-white border border-slate-700"
                             disabled={!isProfileComplete}
                             onClick={() => {
                               if (isProfileComplete) {
@@ -1093,7 +1093,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
             </div>
 
             {/* Verification Status */}
-            <div className="glass-card p-4 sm:p-6 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-white">Verification</h3>
                 <div className={`p-2 rounded-lg ${
@@ -1120,8 +1120,8 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
               <div className="space-y-4">
                 {verificationLoading ? (
                   <div className="space-y-2">
-                    <div className="h-4 bg-white/10 rounded animate-pulse" />
-                    <div className="h-3 bg-white/5 rounded animate-pulse" />
+                    <div className="h-4 bg-slate-800 rounded animate-pulse" />
+                    <div className="h-3 bg-slate-800/60 rounded animate-pulse" />
                   </div>
                 ) : verificationStatus?.status === 'approved' ? (
                   <div className="flex items-center space-x-3">
@@ -1195,12 +1195,12 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
     return (
       <div className="space-y-6">
-        <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl shadow-sm">
           <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Messages</h2>
 
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-auto lg:h-[600px]">
             {/* Contacts List */}
-            <div className={`w-full lg:w-1/3 lg:border-r border-white/10 lg:pr-6 overflow-y-auto ${selectedContact ? 'hidden lg:block' : 'block'}`}>
+            <div className={`w-full lg:w-1/3 lg:border-r border-slate-800 lg:pr-6 overflow-y-auto ${selectedContact ? 'hidden lg:block' : 'block'}`}>
               <h3 className="text-lg font-semibold text-white mb-4">Contacts</h3>
               <div className="space-y-2">
                 {safeContacts.map((contact) => (
@@ -1210,7 +1210,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
                       selectedContact?.id === contact.id
                         ? 'bg-primary/20 border border-primary/30 shadow-lg'
-                        : 'bg-white/5 hover:bg-white/10 border border-transparent'
+                        : 'bg-slate-950/60 hover:bg-slate-800/60 border border-slate-800/80'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -1249,13 +1249,13 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
             <div className={`flex-1 flex flex-col ${selectedContact ? 'block' : 'hidden lg:flex'}`}>
               {selectedContact ? (
                 <>
-                  <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
                     <div className="flex items-center gap-3">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedContact(null)}
-                        className="lg:hidden text-white hover:bg-white/10"
+                        className="lg:hidden text-white hover:bg-slate-800"
                       >
                         ← Back
                       </Button>
@@ -1286,18 +1286,18 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-white/10">
+                        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-800">
                           <MoreHorizontal className="h-5 w-5" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-slate-900 border-white/10">
-                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                      <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
+                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
                           Delete conversation
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
                           Block user
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuSeparator className="bg-slate-800" />
                         <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
                           Report user
                         </DropdownMenuItem>
@@ -1316,7 +1316,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                         <div
                           className={`max-w-[70%] p-4 rounded-2xl ${
                             msg.senderId === selectedContact.id
-                              ? 'bg-white/10 text-white'
+                              ? 'bg-slate-800 text-white'
                               : 'bg-primary text-white'
                           }`}
                         >
@@ -1343,7 +1343,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
                       placeholder="Type a message..."
-                      className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-400 h-10 sm:h-12 text-sm"
+                      className="flex-1 bg-slate-950 border-slate-800 text-white placeholder:text-slate-400 h-10 sm:h-12 text-sm"
                     />
                     <Button
                       type="submit"
@@ -1380,13 +1380,13 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       case 'proposals':
         return (
           <div className="space-y-4 sm:space-y-6">
-            <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl shadow-sm">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">My Commissions &amp; Proposals</h2>
               {proposalsLoading ? (
                 <div className="space-y-4">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full bg-slate-800" />
+                  <Skeleton className="h-12 w-full bg-slate-800" />
+                  <Skeleton className="h-12 w-full bg-slate-800" />
                 </div>
               ) : safeProposals.length > 0 ? (
                 <DataTable
@@ -1423,10 +1423,10 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       case 'settings':
         return (
           <div className="space-y-4 sm:space-y-6">
-            <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl shadow-sm">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Settings</h2>
               <Tabs defaultValue="account" className="w-full">
-                <TabsList>
+                <TabsList className="bg-slate-950 border border-slate-800">
                   <TabsTrigger value="account">Account</TabsTrigger>
                   <TabsTrigger value="security">Security</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -1480,7 +1480,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
         open={isWithdrawAlertOpen}
         onOpenChange={setWithdrawAlertOpen}
       >
-        <AlertDialogContent className="glass-card bg-slate-900/90 border-white/10">
+        <AlertDialogContent className="bg-slate-900 border border-slate-800 text-slate-100 shadow-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -1488,7 +1488,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleWithdrawConfirm}
               className="bg-red-500 hover:bg-red-600 text-white"

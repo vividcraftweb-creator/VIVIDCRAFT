@@ -200,7 +200,7 @@ export default function ProposalDetailModal({
 
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="glass-card border-white/10 bg-blue-500/10">
+            <Card className="bg-slate-900/90 border border-blue-500/30 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -214,7 +214,7 @@ export default function ProposalDetailModal({
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-white/10 bg-purple-500/10">
+            <Card className="bg-slate-900/90 border border-purple-500/30 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-500/20 rounded-lg">
@@ -229,7 +229,7 @@ export default function ProposalDetailModal({
             </Card>
 
             {proposal.estimatedDuration && (
-              <Card className="glass-card border-white/10 bg-green-500/10">
+              <Card className="bg-slate-900/90 border border-green-500/30 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-green-500/20 rounded-lg">
@@ -245,7 +245,7 @@ export default function ProposalDetailModal({
             )}
 
             {proposal.aiScore !== undefined && proposal.aiScore !== null && (
-              <Card className={`glass-card border-white/10 ${proposal.aiScore >= 80 ? 'bg-green-500/10' : proposal.aiScore >= 60 ? 'bg-yellow-500/10' : 'bg-red-500/10'}`}>
+              <Card className={`bg-slate-900/90 border shadow-sm ${proposal.aiScore >= 80 ? 'border-green-500/30' : proposal.aiScore >= 60 ? 'border-yellow-500/30' : 'border-red-500/30'}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 ${proposal.aiScore >= 80 ? 'bg-green-500/20' : proposal.aiScore >= 60 ? 'bg-yellow-500/20' : 'bg-red-500/20'} rounded-lg`}>
@@ -265,7 +265,7 @@ export default function ProposalDetailModal({
 
           {/* Freelancer and Client Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="glass-card border-white/10 bg-white/5">
+            <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <User className="h-4 w-4 text-blue-400" />
@@ -290,7 +290,7 @@ export default function ProposalDetailModal({
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-white/10 bg-white/5">
+            <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <Building className="h-4 w-4 text-green-400" />
@@ -322,7 +322,7 @@ export default function ProposalDetailModal({
 
           {/* Cover Letter */}
           {proposal.coverLetter && (
-            <Card className="glass-card border-white/10 bg-white/5">
+            <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-blue-400" />
@@ -341,7 +341,7 @@ export default function ProposalDetailModal({
 
           {/* AI Analysis */}
           {proposal.aiAnalysis && (
-            <Card className="glass-card border-white/10 bg-blue-500/5 border-blue-500/20">
+            <Card className="bg-slate-900/90 border border-blue-500/30 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <Brain className="h-4 w-4 text-blue-400" />
@@ -361,7 +361,7 @@ export default function ProposalDetailModal({
 
           {/* Screening Answers */}
           {proposal.screeningAnswers && proposal.screeningAnswers.length > 0 && (
-            <Card className="glass-card border-white/10 bg-white/5">
+            <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-purple-400" />
@@ -370,7 +370,7 @@ export default function ProposalDetailModal({
               </CardHeader>
               <CardContent className="space-y-4">
                 {proposal.screeningAnswers.map((qa, index) => (
-                  <div key={index} className="p-4 bg-white/5 rounded-lg border border-white/10">
+                  <div key={index} className="p-4 bg-slate-950/60 rounded-lg border border-slate-800">
                     <p className="text-sm font-medium text-white mb-2">Q: {qa.question}</p>
                     <p className="text-sm text-slate-300 pl-4 border-l-2 border-blue-500/50">
                       {qa.answer}
@@ -382,7 +382,7 @@ export default function ProposalDetailModal({
           )}
 
           {/* Timeline */}
-          <Card className="glass-card border-white/10 bg-white/5">
+          <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
             <CardHeader>
               <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-green-400" />

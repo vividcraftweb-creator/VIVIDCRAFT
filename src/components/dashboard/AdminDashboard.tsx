@@ -184,7 +184,7 @@ export default function AdminDashboard() {
       {isLoading ? (
         <div className="flex items-center gap-3 flex-wrap">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-10 w-28 bg-white/5 border border-white/10 rounded-lg animate-pulse" />
+            <div key={i} className="h-10 w-28 bg-slate-900/80 border border-slate-800 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : (
@@ -238,7 +238,7 @@ export default function AdminDashboard() {
         {/* Left Column - Analytics */}
         <div className="lg:col-span-2 space-y-3">
           {/* User Growth Chart */}
-          <div className="glass-card p-4 rounded-lg bg-white/5 border border-white/10">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-base font-bold text-white">User Growth</h3>
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
             {growthLoading ? (
               <div className="space-y-2">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-6 bg-white/5 rounded animate-pulse"></div>
+                  <div key={i} className="h-6 bg-slate-950/60 rounded animate-pulse"></div>
                 ))}
               </div>
             ) : userGrowthChartData.length === 0 ? (
@@ -321,7 +321,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Platform Activity Overview */}
-          <div className="glass-card p-4 rounded-lg bg-white/5 border border-white/10">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-base font-bold text-white">Platform Activity</h3>
@@ -333,7 +333,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 bg-white/5 rounded-lg border border-white/10">
+              <div className="p-2.5 bg-slate-950/60 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Briefcase className="h-3 w-3 text-green-400" />
                   <span className="text-xs text-slate-400">Active Jobs</span>
@@ -341,7 +341,7 @@ export default function AdminDashboard() {
                 <div className="text-lg font-bold text-white">{totalJobs}</div>
               </div>
 
-              <div className="p-2.5 bg-white/5 rounded-lg border border-white/10">
+              <div className="p-2.5 bg-slate-950/60 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-1.5 mb-1">
                   <FileText className="h-3 w-3 text-purple-400" />
                   <span className="text-xs text-slate-400">Proposals</span>
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
                 <div className="text-lg font-bold text-white">{totalProposals}</div>
               </div>
 
-              <div className="p-2.5 bg-white/5 rounded-lg border border-white/10">
+              <div className="p-2.5 bg-slate-950/60 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-1.5 mb-1">
                   <ClipboardList className="h-3 w-3 text-orange-400" />
                   <span className="text-xs text-slate-400">Avg / Job</span>
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="mt-3 pt-3 border-t border-white/10">
+            <div className="mt-3 pt-3 border-t border-slate-800">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -369,7 +369,7 @@ export default function AdminDashboard() {
                       {totalJobs > 0 ? Math.round((totalProposals / totalJobs) * 100) / 100 : 0} p/j
                     </span>
                   </div>
-                  <div className="w-full bg-white/10 rounded-full h-1.5">
+                  <div className="w-full bg-slate-950 border border-slate-800 rounded-full h-1.5">
                     <div
                       className="bg-green-500 h-1.5 rounded-full"
                       style={{ width: `${Math.min((totalProposals / Math.max(totalJobs, 1)) * 10, 100)}%` }}
@@ -384,7 +384,7 @@ export default function AdminDashboard() {
                       {pendingVerificationCount}
                     </span>
                   </div>
-                  <div className="w-full bg-white/10 rounded-full h-1.5">
+                  <div className="w-full bg-slate-950 border border-slate-800 rounded-full h-1.5">
                     <div
                       className="bg-orange-500 h-1.5 rounded-full"
                       style={{ width: `${Math.min(pendingVerificationCount * 10, 100)}%` }}
@@ -399,14 +399,14 @@ export default function AdminDashboard() {
         {/* Right Column - Admin Actions */}
         <div className="space-y-3">
           {/* Quick Actions */}
-          <div className="glass-card p-4 rounded-lg bg-white/5 border border-white/10">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
             <h3 className="text-base font-bold text-white mb-3">Admin Actions</h3>
 
             <div className="space-y-2">
               <Button
                 asChild
                 size="sm"
-                className="w-full justify-start bg-purple-500 hover:bg-purple-600 text-white h-8 text-xs"
+                className="w-full justify-start bg-purple-600 hover:bg-purple-500 text-white h-8 text-xs shadow-md shadow-purple-600/20"
               >
                 <Link href="/admin/fraud-review">
                   <Shield className="h-3.5 w-3.5 mr-2" />
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
               <Button
                 asChild
                 size="sm"
-                className="w-full justify-start bg-white/5 border border-white/10 text-white hover:bg-white/10 h-8 text-xs"
+                className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
               >
                 <Link href="/admin/users">
                   <Users className="h-3.5 w-3.5 mr-2" />
@@ -433,7 +433,7 @@ export default function AdminDashboard() {
               <Button
                 asChild
                 size="sm"
-                className="w-full justify-start bg-white/5 border border-white/10 text-white hover:bg-white/10 h-8 text-xs"
+                className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
               >
                 <Link href="/admin/jobs">
                   <Briefcase className="h-3.5 w-3.5 mr-2" />
@@ -444,7 +444,7 @@ export default function AdminDashboard() {
               <Button
                 asChild
                 size="sm"
-                className="w-full justify-start bg-white/5 border border-white/10 text-white hover:bg-white/10 h-8 text-xs"
+                className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
               >
                 <Link href="/admin/settings">
                   <Settings className="h-3.5 w-3.5 mr-2" />
@@ -455,7 +455,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* System Health */}
-          <div className="glass-card p-4 rounded-lg bg-white/5 border border-white/10">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-white">System Health</h3>
               <div className={`p-1.5 rounded-lg ${activeHealth?.database?.healthy && activeHealth?.payment?.healthy ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
@@ -466,12 +466,12 @@ export default function AdminDashboard() {
             {healthLoading ? (
               <div className="space-y-2">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-8 bg-white/5 rounded-lg animate-pulse"></div>
+                  <div key={i} className="h-8 bg-slate-950/60 rounded-lg animate-pulse"></div>
                 ))}
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <div className="flex items-center justify-between p-2.5 bg-slate-950/60 border border-slate-800/80 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <div className={`p-1 rounded ${activeHealth.database.healthy ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
                       {activeHealth.database.healthy ? (
@@ -480,7 +480,7 @@ export default function AdminDashboard() {
                         <AlertTriangle className="h-3 w-3 text-red-400" />
                       )}
                     </div>
-                    <span className="text-white text-xs">Database</span>
+                    <span className="text-white text-xs font-medium">Database</span>
                   </div>
                   <Badge className={`text-xs ${
                     activeHealth.database.healthy
@@ -491,7 +491,7 @@ export default function AdminDashboard() {
                   </Badge>
                 </div>
 
-                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <div className="flex items-center justify-between p-2.5 bg-slate-950/60 border border-slate-800/80 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <div className={`p-1 rounded ${
                       activeHealth.api.status === 'Fast' ? 'bg-green-500/20' :
@@ -506,7 +506,7 @@ export default function AdminDashboard() {
                         <AlertTriangle className="h-3 w-3 text-red-400" />
                       )}
                     </div>
-                    <span className="text-white text-xs">API Response</span>
+                    <span className="text-white text-xs font-medium">API Response</span>
                   </div>
                   <Badge className={`text-xs ${
                     activeHealth.api.status === 'Fast'
@@ -519,7 +519,7 @@ export default function AdminDashboard() {
                   </Badge>
                 </div>
 
-                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <div className="flex items-center justify-between p-2.5 bg-slate-950/60 border border-slate-800/80 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <div className={`p-1 rounded ${
                       activeHealth.queue.status === 'Idle' ? 'bg-slate-500/20' :
@@ -534,7 +534,7 @@ export default function AdminDashboard() {
                         <Clock className="h-3 w-3 text-yellow-400" />
                       )}
                     </div>
-                    <span className="text-white text-xs">Queue Processing</span>
+                    <span className="text-white text-xs font-medium">Queue Processing</span>
                   </div>
                   <Badge className={`text-xs ${
                     activeHealth.queue.status === 'Idle'
@@ -547,7 +547,7 @@ export default function AdminDashboard() {
                   </Badge>
                 </div>
 
-                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <div className="flex items-center justify-between p-2.5 bg-slate-950/60 border border-slate-800/80 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <div className={`p-1 rounded ${activeHealth.payment.healthy ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
                       {activeHealth.payment.healthy ? (
@@ -556,7 +556,7 @@ export default function AdminDashboard() {
                         <AlertTriangle className="h-3 w-3 text-red-400" />
                       )}
                     </div>
-                    <span className="text-white text-xs">Payment Gateway</span>
+                    <span className="text-white text-xs font-medium">Payment Gateway</span>
                   </div>
                   <Badge className={`text-xs ${
                     activeHealth.payment.healthy
@@ -575,9 +575,9 @@ export default function AdminDashboard() {
       {/* Bottom Section - Verification/Payout Queue and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Legacy Tabs Section (keeping for compatibility) */}
-        <div className="glass-card p-4 rounded-lg bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
           <Tabs defaultValue="verifications" className="w-full">
-            <TabsList className="bg-white/10 border border-white/20 h-8 flex flex-wrap mb-4">
+            <TabsList className="bg-slate-950/80 border border-slate-800 h-8 flex flex-wrap mb-4">
               <TabsTrigger value="verifications" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Verifications
               </TabsTrigger>
@@ -599,7 +599,7 @@ export default function AdminDashboard() {
               {pendingListLoading ? (
                 <div className="space-y-2">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-16 rounded-lg bg-white/5 border border-white/10 animate-pulse" />
+                    <div key={i} className="h-16 rounded-lg bg-slate-950/60 border border-slate-800/80 animate-pulse" />
                   ))}
                 </div>
               ) : pendingVerificationCount > 0 ? (
@@ -651,7 +651,7 @@ export default function AdminDashboard() {
                     return (
                       <div
                         key={String(record.id)}
-                        className="rounded-lg border border-white/10 bg-white/5 p-2.5 space-y-2"
+                        className="rounded-lg border border-slate-800 bg-slate-950/60 p-2.5 space-y-2"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-0.5">
@@ -670,29 +670,32 @@ export default function AdminDashboard() {
                                 {idTypeLabel}
                               </Badge>
                             )}
-                            {files.length > 0 && (
-                              <Badge className="bg-blue-500/20 text-blue-200 border border-blue-500/30 text-xs">
-                                {files.length} file{files.length === 1 ? '' : 's'}
-                              </Badge>
-                            )}
                           </div>
                         </div>
+
                         {formattedSnippet && (
-                          <p className="text-xs text-slate-300 leading-snug line-clamp-2">
+                          <p className="text-xs text-slate-300 bg-slate-900/60 border border-slate-800/60 rounded p-2 line-clamp-2">
                             {formattedSnippet}
                           </p>
+                        )}
+
+                        {files.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {files.map((fileUrl, index) => (
+                              <span
+                                key={index}
+                                className="text-[11px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
+                              >
+                                Doc {index + 1}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     );
                   })}
 
-                  {pendingVerificationRecords.length > 5 && (
-                    <p className="text-xs text-slate-500">
-                      +{pendingVerificationRecords.length - 5} more waiting
-                    </p>
-                  )}
-
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-2">
                     <Button
                       asChild
                       size="sm"
@@ -705,18 +708,16 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <Shield className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <h3 className="text-white font-semibold text-sm mb-1">Verification Queue</h3>
-                  <p className="text-slate-400 text-xs">No pending verifications</p>
+                <div className="text-center py-6 text-slate-400">
+                  <CheckCircle className="h-8 w-8 text-green-500/50 mx-auto mb-2" />
+                  <p className="text-xs">No pending verifications</p>
                 </div>
               )}
             </TabsContent>
 
             <TabsContent value="payments" className="mt-3">
-              <div className="text-center py-6 space-y-2 text-xs text-slate-300">
-                <CircleDollarSign className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                <h3 className="text-white font-semibold text-sm">External Payments</h3>
+              <div className="space-y-2 text-xs text-slate-300 bg-slate-950/60 border border-slate-800/80 rounded-lg p-3">
+                <p className="font-semibold text-white">Manual Payment Invoicing</p>
                 <p>
                   Vivid Art no longer holds funds or releases payouts. Remind clients and freelancers to settle invoices
                   directly using services such as PayPal, Wise, or traditional bank transfers.
@@ -750,13 +751,13 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Activity - Moved from above */}
-        <div className="glass-card p-4 rounded-lg bg-white/5 border border-white/10">
+        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
           <h3 className="text-base font-bold text-white mb-3">Recent Activity</h3>
 
           {activityLoading && displayActivities.length === 0 ? (
             <div className="space-y-2">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-12 bg-white/5 rounded-lg animate-pulse"></div>
+                <div key={i} className="h-12 bg-slate-950/60 border border-slate-800/80 rounded-lg animate-pulse"></div>
               ))}
             </div>
           ) : displayActivities && displayActivities.length > 0 ? (
@@ -779,12 +780,12 @@ export default function AdminDashboard() {
                 const timeAgo = getTimeAgo(activity.timestamp);
 
                 return (
-                  <div key={activity.id} className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg">
+                  <div key={activity.id} className="flex items-center space-x-2 p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg">
                     <div className={`p-1 bg-${color}-500/20 rounded`}>
                       <Icon className={`h-3 w-3 text-${color}-400`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs truncate">{activity.description}</p>
+                      <p className="text-white text-xs truncate font-medium">{activity.description}</p>
                       <p className="text-slate-400 text-xs">{timeAgo}</p>
                     </div>
                   </div>

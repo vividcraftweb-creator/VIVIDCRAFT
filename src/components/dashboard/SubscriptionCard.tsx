@@ -55,12 +55,12 @@ function PlanCard({
   loading 
 }: PlanCardProps) {
   return (
-    <div className={`relative glass-card p-6 rounded-3xl bg-white/5 border ${
+    <div className={`relative p-6 rounded-3xl border shadow-sm ${
       isCurrentPlan 
-        ? 'border-blue-500/50' 
+        ? 'bg-slate-900/90 border-blue-500/50' 
         : isPopular 
-          ? 'border-yellow-500/50' 
-          : 'border-white/10'
+          ? 'bg-slate-900/90 border-yellow-500/50' 
+          : 'bg-slate-900/80 border-slate-800'
     }`}>
       {isPopular && (
         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -342,7 +342,7 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
   return (
     <div className="space-y-6">
       {/* Current Plan Status */}
-      <Card className="glass-card bg-white/5 border-white/10">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -360,7 +360,7 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+            <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800">
               <div className="flex items-center space-x-2 mb-2">
                 <Crown className="h-4 w-4 text-blue-400" />
                 <span className="text-white font-medium">Current Plan</span>
@@ -371,7 +371,7 @@ export default function SubscriptionCard({ userRole }: SubscriptionCardProps) {
             </div>
             
             {statusMetrics.map((metric) => (
-              <div key={metric.label} className="p-4 bg-white/5 rounded-xl border border-white/10">
+              <div key={metric.label} className="p-4 bg-slate-950/60 rounded-xl border border-slate-800">
                 <div className="flex items-center space-x-2 mb-2">
                   <metric.icon className="h-4 w-4 text-slate-300" />
                   <span className="text-white font-medium">{metric.label}</span>

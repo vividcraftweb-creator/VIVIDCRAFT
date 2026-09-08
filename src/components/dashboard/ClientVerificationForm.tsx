@@ -89,7 +89,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
   };
 
   return (
-    <div className="glass-card p-8 rounded-3xl bg-white/5 border border-white/10">
+    <div className="bg-slate-900/80 p-8 rounded-3xl border border-slate-800 shadow-sm">
       {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex p-4 bg-blue-500/20 rounded-2xl mb-4">
@@ -115,7 +115,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="e.g., JobHorizons"
             required
-            className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+            className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
           />
           <p className="text-xs text-slate-500">Individual clients can use their full name</p>
         </div>
@@ -132,7 +132,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
             required
-            className="w-full h-12 bg-white/5 border border-white/10 rounded-lg px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full h-12 bg-slate-950 border border-slate-800 rounded-lg px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
             <option value="" className="bg-slate-900">Select your industry</option>
             {INDUSTRIES.map((ind) => (
@@ -156,7 +156,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
               value={country}
               onChange={setCountry}
               placeholder="e.g., United States"
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+              className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
               types={['(regions)']}
             />
           </div>
@@ -172,7 +172,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               required
-              className="w-full h-12 bg-white/5 border border-white/10 rounded-lg px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full h-12 bg-slate-950 border border-slate-800 rounded-lg px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             >
               <option value="" className="bg-slate-900">Select timezone</option>
               {TIMEZONES.map((tz) => (
@@ -197,7 +197,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
             value={website}
             onChange={(e) => setWebsite(e.target.value)}
             placeholder="https://www.yourcompany.com"
-            className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 h-12"
+            className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
           />
         </div>
 

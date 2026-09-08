@@ -112,35 +112,35 @@ export default function FraudReviewPage() {
 
         {/* Inline Stats */}
         <div className="flex items-center gap-3 flex-1 justify-center">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{flaggedUsers.length}</span>
-              <span className="text-xs text-red-300">Flags</span>
+              <span className="text-xs text-slate-400">Flags</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <TrendingDown className="h-4 w-4 text-orange-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{users.filter(u => getUserTrustScore(u) < 60).length}</span>
-              <span className="text-xs text-orange-300">High Risk</span>
+              <span className="text-xs text-slate-400">High Risk</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <XCircle className="h-4 w-4 text-yellow-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{suspiciousUsers.length}</span>
-              <span className="text-xs text-yellow-300">Unverified</span>
+              <span className="text-xs text-slate-400">Unverified</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <CheckCircle className="h-4 w-4 text-green-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{verifiedUsers.length}</span>
-              <span className="text-xs text-green-300">Verified</span>
+              <span className="text-xs text-slate-400">Verified</span>
             </div>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function FraudReviewPage() {
           onClick={() => refetch()}
           variant="outline"
           size="sm"
-          className="flex items-center gap-1.5 bg-white/5 border-white/10 text-white hover:bg-white/10 h-8 px-3"
+          className="flex items-center gap-1.5 bg-slate-900 border-slate-800 text-white hover:bg-slate-800 h-8 px-3"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span className="text-xs">Refresh</span>
@@ -157,7 +157,7 @@ export default function FraudReviewPage() {
       </div>
 
       {/* Compact Filter Bar */}
-      <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg p-2">
+      <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-lg p-2 shadow-sm">
         <div className="flex-1 relative">
           <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
@@ -165,13 +165,13 @@ export default function FraudReviewPage() {
             placeholder="Search by email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
           />
         </div>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+          className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
         >
           <option value="all" className="bg-slate-900">All Flags</option>
           <option value="high_risk" className="bg-slate-900">High Risk</option>
@@ -181,7 +181,7 @@ export default function FraudReviewPage() {
       </div>
 
       {/* Compact Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
@@ -195,7 +195,7 @@ export default function FraudReviewPage() {
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '8%' }} />
               </colgroup>
-              <thead className="border-b border-white/10 bg-white/5">
+              <thead className="border-b border-slate-800 bg-slate-950/60">
                 <tr>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">User</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
@@ -214,7 +214,7 @@ export default function FraudReviewPage() {
                   const riskLevel = getRiskLevel(trustScore);
 
                   return (
-                    <tr key={user.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <tr key={user.id} className="border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors">
                       <td className="py-2.5 px-4 align-top">
                         <div className="flex flex-col">
                           <span className="text-sm text-white font-medium truncate">{user.email}</span>

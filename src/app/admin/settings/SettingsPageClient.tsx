@@ -108,7 +108,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* General Settings */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-white flex items-center gap-2 text-base">
             <Settings className="h-4 w-4" />
@@ -125,7 +125,7 @@ export default function AdminSettingsPage() {
               <Input
                 value={platformName}
                 onChange={(e) => setPlatformName(e.target.value)}
-                className="bg-white/5 border-white/10 text-white h-8 text-sm"
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-400 h-8 text-sm"
               />
             </div>
             <div className="space-y-1.5">
@@ -134,11 +134,11 @@ export default function AdminSettingsPage() {
                 type="email"
                 value={supportEmail}
                 onChange={(e) => setSupportEmail(e.target.value)}
-                className="bg-white/5 border-white/10 text-white h-8 text-sm"
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-400 h-8 text-sm"
               />
             </div>
           </div>
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800 rounded-lg">
             <div>
               <div className="text-white font-medium text-sm">Maintenance Mode</div>
               <div className="text-xs text-slate-400">Temporarily disable public access</div>
@@ -153,7 +153,7 @@ export default function AdminSettingsPage() {
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800 rounded-lg">
             <div>
               <div className="text-white font-medium text-sm">User Registration</div>
               <div className="text-xs text-slate-400">Allow new user signups</div>
@@ -172,7 +172,7 @@ export default function AdminSettingsPage() {
       </Card>
 
       {/* Email Settings */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-white flex items-center gap-2 text-base">
             <Mail className="h-4 w-4" />
@@ -190,7 +190,7 @@ export default function AdminSettingsPage() {
                 value={smtpHost}
                 onChange={(e) => setSmtpHost(e.target.value)}
                 placeholder="smtp.example.com"
-                className="bg-white/5 border-white/10 text-white h-8 text-sm"
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-400 h-8 text-sm"
               />
             </div>
             <div className="space-y-1.5">
@@ -199,7 +199,7 @@ export default function AdminSettingsPage() {
                 value={smtpPort}
                 onChange={(e) => setSmtpPort(e.target.value)}
                 placeholder="587"
-                className="bg-white/5 border-white/10 text-white h-8 text-sm"
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-400 h-8 text-sm"
               />
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function AdminSettingsPage() {
       </Card>
 
       {/* Security Settings */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-white flex items-center gap-2 text-base">
             <Shield className="h-4 w-4" />
@@ -218,7 +218,7 @@ export default function AdminSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 pt-0">
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800 rounded-lg">
             <div>
               <div className="text-white font-medium text-sm">Two-Factor Authentication</div>
               <div className="text-xs text-slate-400">Require 2FA for all admin accounts</div>
@@ -233,7 +233,7 @@ export default function AdminSettingsPage() {
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800 rounded-lg">
             <div>
               <div className="text-white font-medium text-sm">Auto-ban Suspicious Activity</div>
               <div className="text-xs text-slate-400">Automatically suspend flagged accounts</div>
@@ -252,7 +252,7 @@ export default function AdminSettingsPage() {
       </Card>
 
       {/* Feature Flags */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-white flex items-center gap-2 text-base">
             <Zap className="h-4 w-4" />
@@ -263,7 +263,7 @@ export default function AdminSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 pt-0">
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800 rounded-lg">
             <div>
               <div className="text-white font-medium text-sm">AI Recommendations</div>
               <div className="text-xs text-slate-400">Enable AI-powered job matching</div>
@@ -278,7 +278,7 @@ export default function AdminSettingsPage() {
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800 rounded-lg">
             <div>
               <div className="text-white font-medium text-sm">Video Interviews</div>
               <div className="text-xs text-slate-400">Enable video interview scheduling</div>
@@ -293,7 +293,7 @@ export default function AdminSettingsPage() {
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 border border-slate-800 rounded-lg">
             <div>
               <div className="text-white font-medium text-sm">Team Collaboration</div>
               <div className="text-xs text-slate-400">Allow business accounts to add team members</div>

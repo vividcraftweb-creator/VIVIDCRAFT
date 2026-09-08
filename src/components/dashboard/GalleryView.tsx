@@ -97,7 +97,7 @@ export default function GalleryView() {
 
   return (
     <div className="space-y-6">
-      <div className="glass-card p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl bg-white/5 border border-white/10">
+      <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
@@ -114,7 +114,7 @@ export default function GalleryView() {
         </div>
 
         {/* Add new image */}
-        <div className="flex flex-col gap-3 mb-8 bg-black/20 p-5 rounded-2xl border border-white/10">
+        <div className="flex flex-col gap-3 mb-8 bg-slate-950/60 p-5 rounded-2xl border border-slate-800">
           <label htmlFor="artwork-title" className="text-sm font-medium text-white/90">
             Add New Artwork to Portfolio
           </label>
@@ -124,7 +124,7 @@ export default function GalleryView() {
             placeholder="Artwork Title (e.g. Neon Horizon, Celestial Dreams)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 h-11"
+            className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-11"
           />
           <div className="flex flex-wrap items-center gap-4 mt-1">
             <Button
@@ -166,7 +166,7 @@ export default function GalleryView() {
               return (
                 <div
                   key={artwork.id}
-                  className="group relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 transition-all duration-300 hover:border-purple-500/40 hover:shadow-xl hover:shadow-purple-500/10 flex flex-col"
+                  className="group relative rounded-2xl overflow-hidden bg-slate-950/60 border border-slate-800 transition-all duration-300 hover:border-purple-500/40 hover:shadow-xl hover:shadow-purple-500/10 flex flex-col"
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -194,12 +194,12 @@ export default function GalleryView() {
                     </div>
                   </div>
                   
-                  <div className="p-4 flex flex-col flex-1 justify-between bg-black/20">
+                  <div className="p-4 flex flex-col flex-1 justify-between bg-slate-950/80">
                     <h3 className="text-white font-semibold text-base truncate mb-2">
                       {artwork.title}
                     </h3>
 
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+                    <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">
                       <span className="flex items-center gap-1 text-rose-400">
                         <Heart className="h-3.5 w-3.5 fill-rose-500/20" />
                         {artwork.likesCount ?? 0} {artwork.likesCount === 1 ? 'like' : 'likes'}
@@ -218,7 +218,7 @@ export default function GalleryView() {
             })}
           </div>
         ) : (
-          <div className="text-center py-16 bg-white/5 rounded-2xl border border-white/5 border-dashed">
+          <div className="text-center py-16 bg-slate-950/40 rounded-2xl border border-slate-800 border-dashed">
             <ImageIcon className="h-12 w-12 text-slate-500 mx-auto mb-4 opacity-50" />
             <p className="text-slate-300 font-medium mb-1">Your gallery is empty</p>
             <p className="text-slate-500 text-sm">

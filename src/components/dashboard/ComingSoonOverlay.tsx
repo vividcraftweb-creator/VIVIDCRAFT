@@ -82,7 +82,7 @@ export default function ComingSoonOverlay({
 
           {/* Features preview */}
           {features.length > 0 && (
-            <div className="glass-card rounded-2xl p-6 border border-glass-border text-left space-y-3">
+            <div className="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 text-left space-y-3 shadow-sm">
               <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
                 What to expect
               </h3>

@@ -166,56 +166,56 @@ export default function AdminOrganizationsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Crown className="h-4 w-4 text-purple-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{totalEliteUsers}</span>
-              <span className="text-xs text-purple-300">Elite</span>
+              <span className="text-xs text-slate-400">Elite</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Users className="h-4 w-4 text-green-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{totalPremiumUsers}</span>
-              <span className="text-xs text-green-300">Total</span>
+              <span className="text-xs text-slate-400">Total</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Shield className="h-4 w-4 text-orange-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{enterpriseClients.length}</span>
-              <span className="text-xs text-orange-300">Enterprise</span>
+              <span className="text-xs text-slate-400">Enterprise</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Compact Plan Distribution */}
-      <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg p-2">
+      <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-lg p-2 shadow-sm">
         <span className="text-xs text-slate-400 px-2">Plan Distribution:</span>
         <div className="flex items-center gap-2 flex-1">
-          <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 rounded border border-purple-500/20">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
             <Crown className="h-3 w-3 text-purple-400" />
             <span className="text-sm font-bold text-white">{eliteUsers.length}</span>
-            <span className="text-xs text-purple-300">Elite</span>
+            <span className="text-xs text-slate-400">Elite</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded border border-green-500/20">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
             <Building2 className="h-3 w-3 text-green-400" />
             <span className="text-sm font-bold text-white">{businessClients.length}</span>
-            <span className="text-xs text-green-300">Business</span>
+            <span className="text-xs text-slate-400">Business</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-orange-500/10 rounded border border-orange-500/20">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
             <Shield className="h-3 w-3 text-orange-400" />
             <span className="text-sm font-bold text-white">{enterpriseClients.length}</span>
-            <span className="text-xs text-orange-300">Enterprise</span>
+            <span className="text-xs text-slate-400">Enterprise</span>
           </div>
         </div>
       </div>
 
       {/* Compact Search */}
-      <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg p-2">
+      <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-lg p-2 shadow-sm">
         <div className="flex-1 relative">
           <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
@@ -223,13 +223,13 @@ export default function AdminOrganizationsPage() {
             placeholder="Search by organization, email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
           />
         </div>
       </div>
 
       {/* Compact Premium Users Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
@@ -242,7 +242,7 @@ export default function AdminOrganizationsPage() {
                 <col style={{ width: '12%' }} />
                 <col style={{ width: '10%' }} />
               </colgroup>
-              <thead className="border-b border-white/10 bg-white/5">
+              <thead className="border-b border-slate-800 bg-slate-950/60">
                 <tr>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Organization</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact Email</th>
@@ -260,7 +260,7 @@ export default function AdminOrganizationsPage() {
                   const industry = getIndustry(user);
 
                   return (
-                    <tr key={user.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <tr key={user.id} className="border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors">
                       <td className="py-2.5 px-4 align-top">
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">

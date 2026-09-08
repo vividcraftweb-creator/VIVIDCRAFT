@@ -127,27 +127,27 @@ export default function AdminAuditLogsPage() {
 
         {/* Inline Stats */}
         <div className="flex items-center gap-3 flex-1 justify-center">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <ScrollText className="h-4 w-4 text-blue-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{stats?.totalLogs ?? 0}</span>
-              <span className="text-xs text-blue-300">Total</span>
+              <span className="text-xs text-slate-400">Total</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Activity className="h-4 w-4 text-green-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{todayLogs}</span>
-              <span className="text-xs text-green-300">Last 24h</span>
+              <span className="text-xs text-slate-400">Last 24h</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <Shield className="h-4 w-4 text-orange-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{securityEvents}</span>
-              <span className="text-xs text-orange-300">Security</span>
+              <span className="text-xs text-slate-400">Security</span>
             </div>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function AdminAuditLogsPage() {
           onClick={() => refetch()}
           variant="outline"
           size="sm"
-          className="border-white/10 text-white hover:bg-white/5 h-8 px-3"
+          className="border-slate-800 text-white hover:bg-slate-800 h-8 px-3"
         >
           <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
           <span className="text-xs">Refresh</span>
@@ -165,7 +165,7 @@ export default function AdminAuditLogsPage() {
 
 
       {/* Compact Filters */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-3">
           <div className="flex flex-col md:flex-row gap-2">
             <div className="flex-1 relative">
@@ -175,7 +175,7 @@ export default function AdminAuditLogsPage() {
                 placeholder="Search logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
               />
             </div>
             <div className="flex gap-2">
@@ -185,7 +185,7 @@ export default function AdminAuditLogsPage() {
                   setFilterAction(e.target.value);
                   setPage(1);
                 }}
-                className="px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
+                className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
               >
                 <option value="" className="bg-slate-900">All Actions</option>
                 {actions?.map((action) => (
@@ -201,7 +201,7 @@ export default function AdminAuditLogsPage() {
                   setFilterEntity(e.target.value);
                   setPage(1);
                 }}
-                className="px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
+                className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-8"
               >
                 <option value="" className="bg-slate-900">All Entities</option>
                 {entityTypes?.map((entityType) => (
@@ -216,11 +216,11 @@ export default function AdminAuditLogsPage() {
       </Card>
 
       {/* Audit Logs Table */}
-      <Card className="glass-card border-white/10 bg-white/5">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b border-white/10 bg-white/5">
+              <thead className="border-b border-slate-800 bg-slate-950/60">
                 <tr>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Timestamp</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">User</th>
@@ -236,7 +236,7 @@ export default function AdminAuditLogsPage() {
                   const userEmail = Array.isArray(log.user) ? log.user[0]?.email : log.user?.email;
 
                   return (
-                    <tr key={log.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <tr key={log.id} className="border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors">
                       <td className="py-2.5 px-4 align-top">
                         <div className="text-xs text-slate-300">
                           {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

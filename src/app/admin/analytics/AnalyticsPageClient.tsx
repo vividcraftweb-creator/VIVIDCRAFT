@@ -108,7 +108,7 @@ export default function AdminAnalyticsPage() {
 
       {/* System Health Bar - Compact */}
       {health && (
-        <Card className="glass-card border-white/10 bg-white/5">
+        <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
           <CardContent className="p-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export default function AdminAnalyticsPage() {
       {/* Key Metrics Grid - Ultra Compact */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Total Users */}
-        <Card className="glass-card border-white/10 bg-blue-500/10">
+        <Card className="bg-slate-900/80 border border-slate-800 bg-blue-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -184,7 +184,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Total Jobs */}
-        <Card className="glass-card border-white/10 bg-green-500/10">
+        <Card className="bg-slate-900/80 border border-slate-800 bg-green-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -200,7 +200,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Proposals */}
-        <Card className="glass-card border-white/10 bg-purple-500/10">
+        <Card className="bg-slate-900/80 border border-slate-800 bg-purple-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -216,7 +216,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Freelancers */}
-        <Card className="glass-card border-white/10 bg-cyan-500/10">
+        <Card className="bg-slate-900/80 border border-slate-800 bg-cyan-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -232,7 +232,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Clients */}
-        <Card className="glass-card border-white/10 bg-pink-500/10">
+        <Card className="bg-slate-900/80 border border-slate-800 bg-pink-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -248,7 +248,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Verified Users */}
-        <Card className="glass-card border-white/10 bg-yellow-500/10">
+        <Card className="bg-slate-900/80 border border-slate-800 bg-yellow-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -264,7 +264,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Premium Users */}
-        <Card className="glass-card border-white/10 bg-indigo-500/10">
+        <Card className="bg-slate-900/80 border border-slate-800 bg-indigo-500/10 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -283,7 +283,7 @@ export default function AdminAnalyticsPage() {
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Growth Chart - 2 columns */}
-        <Card className="glass-card border-white/10 bg-white/5 lg:col-span-2">
+        <Card className="bg-slate-900/80 border border-slate-800 shadow-sm lg:col-span-2">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -304,7 +304,7 @@ export default function AdminAnalyticsPage() {
                 return (
                   <div key={index} className="flex items-center gap-3">
                     <div className="text-xs text-slate-400 w-16">{item.month}</div>
-                    <div className="flex-1 h-8 bg-white/5 rounded overflow-hidden relative">
+                    <div className="flex-1 h-8 bg-slate-950/60 border border-slate-800/80 rounded overflow-hidden relative">
                       <div
                         className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded flex items-center justify-end px-2 transition-all duration-500"
                         style={{ width: `${percentage}%` }}
@@ -323,7 +323,7 @@ export default function AdminAnalyticsPage() {
             </div>
 
             {/* Growth Stats */}
-            <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/10">
+            <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-800">
               <div className="text-center">
                 <div className="text-xs text-slate-400">Today</div>
                 <div className="text-lg font-bold text-white mt-1">{analytics.newUsersToday}</div>
@@ -341,7 +341,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Recent Activity - 1 column */}
-        <Card className="glass-card border-white/10 bg-white/5">
+        <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
               <Activity className="h-4 w-4 text-green-400" />
@@ -356,15 +356,15 @@ export default function AdminAnalyticsPage() {
                 const color = activity.type === 'user_registered' ? 'text-blue-400' :
                             activity.type === 'verification_approved' ? 'text-green-400' :
                             'text-yellow-400';
-                const bgColor = activity.type === 'user_registered' ? 'bg-blue-500/10' :
-                              activity.type === 'verification_approved' ? 'bg-green-500/10' :
-                              'bg-yellow-500/10';
+                const bgColor = activity.type === 'user_registered' ? 'bg-blue-500/10 border border-blue-500/20' :
+                              activity.type === 'verification_approved' ? 'bg-green-500/10 border border-green-500/20' :
+                              'bg-yellow-500/10 border border-yellow-500/20';
 
                 return (
                   <div key={activity.id} className={`p-2.5 rounded-lg ${bgColor} flex items-start gap-2`}>
                     <IconComponent className={`h-3.5 w-3.5 ${color} mt-0.5 flex-shrink-0`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white truncate">{activity.description}</p>
+                      <p className="text-xs text-white truncate font-medium">{activity.description}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {new Date(activity.timestamp).toLocaleTimeString()} • {new Date(activity.timestamp).toLocaleDateString()}
                       </p>
@@ -384,7 +384,7 @@ export default function AdminAnalyticsPage() {
 
       {/* Performance Indicators - Compact Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card className="glass-card border-white/10 bg-white/5">
+        <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs text-slate-400">Pending Verifications</div>
@@ -397,7 +397,7 @@ export default function AdminAnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-white/5">
+        <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs text-slate-400">Avg Proposals/Job</div>
@@ -410,7 +410,7 @@ export default function AdminAnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-white/10 bg-white/5">
+        <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs text-slate-400">Monthly Growth</div>

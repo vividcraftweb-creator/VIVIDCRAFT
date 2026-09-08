@@ -167,7 +167,7 @@ export default function ApiKeysView() {
       </div>
 
       {/* Warning Banner */}
-      <div className="glass-card p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+      <div className="bg-slate-900/90 p-4 rounded-xl border border-yellow-500/30 shadow-sm">
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
           <div>
@@ -181,7 +181,7 @@ export default function ApiKeysView() {
 
       {/* New API Key Display */}
       {newApiKey && showNewKey && (
-        <div className="glass-card p-6 rounded-2xl bg-green-500/10 border border-green-500/20">
+        <div className="bg-slate-900/90 p-6 rounded-2xl border border-green-500/30 shadow-sm">
           <div className="flex items-start gap-3 mb-4">
             <Shield className="h-6 w-6 text-green-400 flex-shrink-0 mt-0.5" />
             <div>
@@ -232,7 +232,7 @@ export default function ApiKeysView() {
       )}
 
       {/* Create New Key */}
-      <div className="glass-card p-6 rounded-2xl bg-white/5 border border-white/10">
+      <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-sm">
         <h2 className="text-xl font-bold text-white mb-4">Create New API Key</h2>
 
         <div className="space-y-4">
@@ -247,7 +247,7 @@ export default function ApiKeysView() {
               placeholder="e.g., Production API Key"
               value={keyName}
               onChange={(e) => setKeyName(e.target.value)}
-              className="bg-black/20 border-white/10 text-white"
+              className="bg-slate-950 border-slate-800 text-white"
             />
             <p className="text-xs text-slate-500 mt-1">
               A descriptive name to help you identify this key
@@ -266,7 +266,7 @@ export default function ApiKeysView() {
                   className={`text-left p-3 rounded-lg border transition-all ${
                     selectedScopes.includes(scope.value)
                       ? 'bg-primary/20 border-primary/40 text-primary'
-                      : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -299,7 +299,7 @@ export default function ApiKeysView() {
       </div>
 
       {/* Existing Keys */}
-      <div className="glass-card p-6 rounded-2xl bg-white/5 border border-white/10">
+      <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-sm">
         <h2 className="text-xl font-bold text-white mb-4">Your API Keys</h2>
 
         {apiKeysList.length === 0 ? (
@@ -315,7 +315,7 @@ export default function ApiKeysView() {
             {apiKeysList.map((key) => (
               <div
                 key={key.id}
-                className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                className="flex items-center justify-between p-4 bg-slate-950/60 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -364,7 +364,7 @@ export default function ApiKeysView() {
       </div>
 
       {/* Documentation Link */}
-      <div className="glass-card p-6 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+      <div className="bg-slate-900/90 p-6 rounded-2xl border border-blue-500/30 shadow-sm">
         <div className="flex items-start gap-3">
           <Key className="h-6 w-6 text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
@@ -386,7 +386,7 @@ export default function ApiKeysView() {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteKeyId} onOpenChange={(open) => !open && setDeleteKeyId(null)}>
-        <AlertDialogContent className="glass-card bg-slate-900/90 border-white/10">
+        <AlertDialogContent className="bg-slate-900 border border-slate-800 text-slate-100">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Revoke API Key?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -395,7 +395,7 @@ export default function ApiKeysView() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

@@ -436,14 +436,14 @@ export default function MyJobsView() {
       </div>
 
       {/* Filters */}
-      <div className="glass-card bg-white/5 border-white/10 p-4 rounded-xl">
+      <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <span className="text-sm text-slate-400 font-medium">Filter by Status:</span>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-48 bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="w-full sm:w-48 bg-slate-950 border border-slate-800 text-white">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-white/10">
+            <SelectContent className="bg-slate-900 border border-slate-800">
               <SelectItem value="all" className="text-white">All Jobs</SelectItem>
               <SelectItem value="open" className="text-white">Open</SelectItem>
               <SelectItem value="closed" className="text-white">Closed</SelectItem>
@@ -451,17 +451,17 @@ export default function MyJobsView() {
             </SelectContent>
           </Select>
 
-          <div className="h-6 w-px bg-white/10 hidden sm:block" />
+          <div className="h-6 w-px bg-slate-800 hidden sm:block" />
 
           <span className="text-sm text-slate-400 font-medium flex items-center gap-2">
             <Brain className="h-4 w-4" />
             AI Score:
           </span>
           <Select value={aiScoreFilter} onValueChange={setAiScoreFilter}>
-            <SelectTrigger className="w-full sm:w-48 bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="w-full sm:w-48 bg-slate-950 border border-slate-800 text-white">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-white/10">
+            <SelectContent className="bg-slate-900 border border-slate-800">
               <SelectItem value="all" className="text-white">All Scores</SelectItem>
               <SelectItem value="80+" className="text-white">
                 <span className="flex items-center gap-2">
@@ -509,7 +509,7 @@ export default function MyJobsView() {
       {/* Jobs List */}
       <div className="space-y-4">
         {filteredJobs.length === 0 ? (
-          <Card className="glass-card bg-white/5 border-white/10 text-center py-12">
+          <Card className="bg-slate-900/80 border-slate-800 text-center py-12 shadow-sm">
             <CardContent className="space-y-4">
               <Briefcase className="h-16 w-16 text-slate-500 mx-auto" />
               <div>
@@ -538,7 +538,7 @@ export default function MyJobsView() {
             const isExpanded = expandedJobId === job.id;
 
             return (
-              <Card key={job.id} className="glass-card bg-white/5 border-white/10 hover:border-white/20 transition-all">
+              <Card key={job.id} className="bg-slate-900/80 border-slate-800 hover:border-slate-700 transition-all shadow-sm">
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="flex-1">
@@ -601,7 +601,7 @@ export default function MyJobsView() {
                   )}
                   {/* Proposal Summary */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="glass-card bg-white/5 p-4 rounded-lg border border-white/10">
+                    <div className="bg-slate-950/60 p-4 rounded-lg border border-slate-800">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-slate-400">Total Proposals</p>
@@ -610,7 +610,7 @@ export default function MyJobsView() {
                         <Mail className="h-8 w-8 text-blue-400" />
                       </div>
                     </div>
-                    <div className="glass-card bg-white/5 p-4 rounded-lg border border-yellow-500/20">
+                    <div className="bg-slate-950/60 p-4 rounded-lg border border-yellow-500/30">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-slate-400">Pending Review</p>
@@ -619,7 +619,7 @@ export default function MyJobsView() {
                         <Clock className="h-8 w-8 text-yellow-400" />
                       </div>
                     </div>
-                    <div className="glass-card bg-white/5 p-4 rounded-lg border border-green-500/20">
+                    <div className="bg-slate-950/60 p-4 rounded-lg border border-green-500/30">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-slate-400">Accepted</p>
@@ -682,7 +682,7 @@ export default function MyJobsView() {
                                 const freelancerSkills = getFreelancerSkills(proposal.freelancer);
 
                                 return (
-                                  <div key={proposal.id} className="glass-card bg-white/5 p-4 rounded-lg border border-white/10 hover:border-white/20 transition-all">
+                                  <div key={proposal.id} className="bg-slate-950/60 p-4 rounded-lg border border-slate-800 hover:border-slate-700 transition-all">
                                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                                       <div className="flex-1 space-y-3">
                                         {/* Freelancer Header */}
@@ -905,7 +905,7 @@ export default function MyJobsView() {
                   <div className="lg:col-span-2 space-y-6">
                     {/* Key Metrics */}
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="glass-card bg-green-500/10 p-5 rounded-xl border border-green-500/20">
+                      <div className="bg-slate-900/90 p-5 rounded-xl border border-green-500/30 shadow-sm">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium text-green-200">Proposed Rate</p>
                           <DollarSign className="h-5 w-5 text-green-400" />
@@ -913,7 +913,7 @@ export default function MyJobsView() {
                         <p className="text-3xl font-bold text-white">${selectedProposal.proposedRate}</p>
                         <p className="text-xs text-green-300 mt-1">Per project</p>
                       </div>
-                      <div className="glass-card bg-blue-500/10 p-5 rounded-xl border border-blue-500/20">
+                      <div className="bg-slate-900/90 p-5 rounded-xl border border-blue-500/30 shadow-sm">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium text-blue-200">Timeline</p>
                           <Clock className="h-5 w-5 text-blue-400" />
@@ -931,7 +931,7 @@ export default function MyJobsView() {
                         <>
                           {/* Cover Letter / Introduction */}
                           {sections.intro && (
-                            <Card className="glass-card bg-white/5 border-white/10">
+                            <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                               <CardHeader>
                                 <CardTitle className="text-lg text-white flex items-center gap-2">
                                   <FileText className="h-5 w-5 text-primary" />
@@ -948,7 +948,7 @@ export default function MyJobsView() {
 
                           {/* Experience Section */}
                           {sections.experience && (
-                            <Card className="glass-card bg-white/5 border-white/10">
+                            <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                               <CardHeader>
                                 <CardTitle className="text-lg text-white flex items-center gap-2">
                                   <Briefcase className="h-5 w-5 text-amber-400" />
@@ -965,7 +965,7 @@ export default function MyJobsView() {
 
                           {/* Approach Section */}
                           {sections.approach && (
-                            <Card className="glass-card bg-white/5 border-white/10">
+                            <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                               <CardHeader>
                                 <CardTitle className="text-lg text-white flex items-center gap-2">
                                   <FileText className="h-5 w-5 text-cyan-400" />
@@ -982,7 +982,7 @@ export default function MyJobsView() {
 
                           {/* Timeline Section */}
                           {sections.timeline && (
-                            <Card className="glass-card bg-white/5 border-white/10">
+                            <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                               <CardHeader>
                                 <CardTitle className="text-lg text-white flex items-center gap-2">
                                   <Clock className="h-5 w-5 text-blue-400" />
@@ -999,7 +999,7 @@ export default function MyJobsView() {
 
                           {/* Availability Section */}
                           {sections.availability && (
-                            <Card className="glass-card bg-white/5 border-white/10">
+                            <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                               <CardHeader>
                                 <CardTitle className="text-lg text-white flex items-center gap-2">
                                   <Calendar className="h-5 w-5 text-purple-400" />
@@ -1019,7 +1019,7 @@ export default function MyJobsView() {
 
                     {/* Additional Experience (if separate from cover letter) */}
                     {selectedProposal.experience && !selectedProposal.coverLetter.includes('** EXPERIENCE **') && (
-                      <Card className="glass-card bg-white/5 border-white/10">
+                      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                         <CardHeader>
                           <CardTitle className="text-lg text-white flex items-center gap-2">
                             <Briefcase className="h-5 w-5 text-amber-400" />
@@ -1036,7 +1036,7 @@ export default function MyJobsView() {
 
                     {/* Additional Approach (if separate from cover letter) */}
                     {selectedProposal.approach && !selectedProposal.coverLetter.includes('** APPROACH **') && (
-                      <Card className="glass-card bg-white/5 border-white/10">
+                      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                         <CardHeader>
                           <CardTitle className="text-lg text-white flex items-center gap-2">
                             <FileText className="h-5 w-5 text-cyan-400" />
@@ -1055,7 +1055,7 @@ export default function MyJobsView() {
                     {(() => {
                       const links = selectedProposal.portfolioLinks;
                       return Array.isArray(links) && links.length > 0 && (
-                        <Card className="glass-card bg-white/5 border-white/10">
+                        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                           <CardHeader>
                             <CardTitle className="text-lg text-white flex items-center gap-2">
                               <Eye className="h-5 w-5 text-primary" />
@@ -1084,7 +1084,7 @@ export default function MyJobsView() {
 
                     {/* Milestones */}
                     {selectedProposal.milestones && (
-                      <Card className="glass-card bg-white/5 border-white/10">
+                      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                         <CardHeader>
                           <CardTitle className="text-lg text-white flex items-center gap-2">
                             <CheckCircle className="h-5 w-5 text-primary" />
@@ -1101,7 +1101,7 @@ export default function MyJobsView() {
 
                     {/* Why Choose Me */}
                     {selectedProposal.whyMe && (
-                      <Card className="glass-card bg-white/5 border-white/10">
+                      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                         <CardHeader>
                           <CardTitle className="text-lg text-white flex items-center gap-2">
                             <User className="h-5 w-5 text-primary" />
@@ -1118,7 +1118,7 @@ export default function MyJobsView() {
 
                     {/* Questions or Concerns */}
                     {selectedProposal.questionsOrConcerns && (
-                      <Card className="glass-card bg-white/5 border-white/10">
+                      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                         <CardHeader>
                           <CardTitle className="text-lg text-white flex items-center gap-2">
                             <Mail className="h-5 w-5 text-primary" />
@@ -1135,7 +1135,7 @@ export default function MyJobsView() {
 
                     {/* Screening Questions */}
                     {selectedProposal.screeningAnswers && Array.isArray(selectedProposal.screeningAnswers) && selectedProposal.screeningAnswers.length > 0 && (
-                      <Card className="glass-card bg-white/5 border-white/10">
+                      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                         <CardHeader>
                           <CardTitle className="text-lg text-white flex items-center gap-2">
                             <HelpCircle className="h-5 w-5 text-indigo-400" />
@@ -1167,7 +1167,7 @@ export default function MyJobsView() {
                   {/* Right Column - Freelancer Info & Actions (1/3 width) */}
                   <div className="lg:col-span-1 space-y-6">
                     {/* Freelancer Profile Card */}
-                    <Card className="glass-card bg-primary/10 border-primary/20">
+                    <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                       <CardHeader>
                         <CardTitle className="text-lg text-white">Freelancer Profile</CardTitle>
                       </CardHeader>
@@ -1218,7 +1218,7 @@ export default function MyJobsView() {
                     </Card>
 
                     {/* Quick Actions Card */}
-                    <Card className="glass-card bg-white/5 border-white/10">
+                    <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                       <CardHeader>
                         <CardTitle className="text-lg text-white">Actions</CardTitle>
                       </CardHeader>
@@ -1312,7 +1312,7 @@ export default function MyJobsView() {
                     </Card>
 
                     {/* Next Steps Guide */}
-                    <Card className="glass-card bg-white/5 border-white/10">
+                    <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                       <CardHeader>
                         <CardTitle className="text-sm text-white">Next Steps</CardTitle>
                       </CardHeader>
