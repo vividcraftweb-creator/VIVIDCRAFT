@@ -121,7 +121,7 @@ interface SubmittedVerificationRecord {
 export default function ArtistVerificationView() {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [profileData, setProfileData] = useState<{ is_verified?: boolean; verified?: boolean; status?: string } | null>(null);
+  const [profileData, setProfileData] = useState<{ is_verified?: boolean; verified?: boolean; status?: string; verification_status?: string } | null>(null);
   const [directDocs, setDirectDocs] = useState<UploadedDocItem[]>([]);
   const [submittedRecord, setSubmittedRecord] = useState<SubmittedVerificationRecord | null>(null);
   const [isPendingSubmitted, setIsPendingSubmitted] = useState(false);
@@ -276,15 +276,35 @@ export default function ArtistVerificationView() {
         if (user && isMounted) {
           setSessionUserId(user.id);
 
-          // 1. Fetch Profile (strictly select is_verified to prevent 400 Bad Request)
-          const { data: prof, error: profErr } = await (supabase as any)
-            .from('profiles')
-            .select('id, is_verified')
-            .eq('id', user.id)
-            .limit(1)
-            .maybeSingle();
+          // 1. Fetch Profile (query is_verified and verification_status safely)
+          let prof: any = null;
+          try {
+            const res = await (supabase as any)
+              .from('profiles')
+              .select('id, is_verified, verification_status')
+              .eq('id', user.id)
+              .limit(1)
+              .maybeSingle();
+            if (!res.error && res.data) {
+              prof = res.data;
+            }
+          } catch {}
 
-          if (!profErr && prof && isMounted) {
+          if (!prof) {
+            try {
+              const res = await (supabase as any)
+                .from('profiles')
+                .select('id, is_verified')
+                .eq('id', user.id)
+                .limit(1)
+                .maybeSingle();
+              if (!res.error && res.data) {
+                prof = res.data;
+              }
+            } catch {}
+          }
+
+          if (prof && isMounted) {
             setProfileData(prof);
           }
 
@@ -446,7 +466,9 @@ export default function ArtistVerificationView() {
     rejectedDocs.length > 0 ||
     submittedRecord?.status?.toLowerCase() === 'rejected' ||
     verificationData?.status === 'rejected' ||
-    Boolean(verificationData?.hasRejected);
+    Boolean(verificationData?.hasRejected) ||
+    (myProfile as any)?.verification_status === 'rejected' ||
+    (profileData as any)?.verification_status === 'rejected';
 
   const pendingDocs = allDocuments.filter((d) => d.status === 'PENDING');
   const approvedDocs = allDocuments.filter((d) => d.status === 'APPROVED');
@@ -467,7 +489,7 @@ export default function ArtistVerificationView() {
     verificationData?.status === 'approved' ||
     Boolean(verificationData?.allApproved) ||
     (approvedDocs.length > 0 && allDocuments.length > 0 && allDocuments.every((d) => d.status === 'APPROVED')) ||
-    (Boolean(profileData?.is_verified || (myProfile as any)?.is_verified) && allDocuments.length === 0)
+    (Boolean(profileData?.is_verified || (myProfile as any)?.is_verified) && allDocuments.length === 0 && (myProfile as any)?.verification_status !== 'rejected')
   );
 
   const isPending = !isResetMode && !isRejected && !isApproved && (
