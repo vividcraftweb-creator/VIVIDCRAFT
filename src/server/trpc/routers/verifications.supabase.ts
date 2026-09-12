@@ -315,7 +315,8 @@ export async function fetchAllVerificationsList(supabase: any) {
     try {
       const { data: queueData, error: queueError } = await (supabase as any)
         .from('admin_verification_queue')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (!queueError && Array.isArray(queueData)) {
         console.log(`[Admin getVerifications Router] Retrieved ${queueData.length} records directly from admin_verification_queue`);

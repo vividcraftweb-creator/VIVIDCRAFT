@@ -141,24 +141,33 @@ export default function ArtistVerificationView() {
 
   const utils = trpc.useUtils();
 
-  // Queries for live synchronization
+  // Queries for live synchronization directly against database
   const { data: verificationData, refetch, isFetching } = trpc.verification.getStatus.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
     staleTime: 0,
-  });
+    cacheTime: 0,
+    gcTime: 0,
+  } as any);
 
   const { data: userDocs, refetch: refetchDocs } = trpc.verifications.getUserDocuments.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
     staleTime: 0,
-  });
+    cacheTime: 0,
+    gcTime: 0,
+  } as any);
 
   const { data: myProfile, refetch: refetchProfile } = trpc.profiles.getMyProfile.useQuery({}, {
     retry: false,
     refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
     staleTime: 0,
-  });
+    cacheTime: 0,
+    gcTime: 0,
+  } as any);
 
   const uploadDocMutation = trpc.verifications.uploadDocument.useMutation({
     onSuccess: () => {

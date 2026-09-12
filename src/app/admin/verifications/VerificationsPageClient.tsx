@@ -37,6 +37,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DocumentViewerModal } from '@/components/admin/DocumentViewerModal';
 import { formatRole } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 type Document = {
   id: string;
@@ -265,13 +266,17 @@ const DocumentThumbnail = ({
 };
 
 export default function AdminVerificationsPage() {
+  const router = useRouter();
   const utils = trpc.useUtils();
 
-  // Queries without polling interval (avoids infinite re-renders)
+  // Queries with caching disabled to guarantee live data directly from DB
   const { data: users, isLoading, refetch } = trpc.admin.getVerifications.useQuery(undefined, {
+    cacheTime: 0,
+    gcTime: 0,
     staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-  });
+  } as any);
 
   // Rely solely on react-query / tRPC data without forcing local state updates
   const effectiveUsers = users;
@@ -708,7 +713,7 @@ export default function AdminVerificationsPage() {
         await (supabase as any)
           .from('verifications')
           .update({ status: 'approved', rejection_reason: null })
-          .or(`id.eq.${cleanDocId},user_id.eq.${userId}`);
+          .eq('user_id', userId);
       } catch (e) {
         console.warn('Direct verifications update notice:', e);
       }
@@ -717,32 +722,17 @@ export default function AdminVerificationsPage() {
         await (supabase as any)
           .from('Verification')
           .update({ status: 'APPROVED' })
-          .or(`id.eq.${cleanDocId},userId.eq.${userId}`);
+          .eq('userId', userId);
       } catch (e) {}
 
-      // Check if all docs are approved for this user
-      let allApproved = true;
+      // Direct DB Update for User Profile Status
       try {
-        const { data: userVerifs } = await (supabase as any)
-          .from('verifications')
-          .select('status')
-          .eq('user_id', userId);
-
-        if (Array.isArray(userVerifs) && userVerifs.length > 0) {
-          allApproved = userVerifs.every((v: any) => (v.status || '').toLowerCase() === 'approved');
-        }
-      } catch (e) {}
-
-      // Direct DB Update for User Profile Status: if all docs approved, set is_verified = true
-      if (allApproved) {
-        try {
-          await (supabase as any)
-            .from('profiles')
-            .update({ is_verified: true, verification_status: 'approved' })
-            .eq('id', userId);
-        } catch (e) {
-          console.warn('Direct profiles update notice:', e);
-        }
+        await (supabase as any)
+          .from('profiles')
+          .update({ is_verified: true, verification_status: 'approved' })
+          .eq('id', userId);
+      } catch (e) {
+        console.warn('Direct profiles update notice:', e);
       }
 
       // tRPC mutation execution
@@ -752,6 +742,7 @@ export default function AdminVerificationsPage() {
         console.warn('tRPC approve mutation notice:', mErr);
       }
 
+      router.refresh();
       toast.success('Document approved');
 
       // Force refetch queues and invalidate caches
@@ -786,7 +777,7 @@ export default function AdminVerificationsPage() {
         await (supabase as any)
           .from('verifications')
           .update({ status: 'rejected', rejection_reason: finalReason })
-          .or(`id.eq.${cleanDocId},user_id.eq.${userId}`);
+          .eq('user_id', userId);
       } catch (e) {
         console.warn('Direct verifications reject update notice:', e);
       }
@@ -795,7 +786,7 @@ export default function AdminVerificationsPage() {
         await (supabase as any)
           .from('Verification')
           .update({ status: 'REJECTED', rejectionReason: finalReason })
-          .or(`id.eq.${cleanDocId},userId.eq.${userId}`);
+          .eq('userId', userId);
       } catch (e) {}
 
       // Direct DB Update for User Profile Status: set is_verified = false, verification_status = 'rejected'
@@ -820,6 +811,7 @@ export default function AdminVerificationsPage() {
 
       setRejectingDoc(null);
       setRejectionReason('');
+      router.refresh();
       toast.success('Document rejected');
 
       // Force refetch queues and invalidate caches
@@ -852,6 +844,7 @@ export default function AdminVerificationsPage() {
         await userVerifyMutation.mutateAsync({ userId, isVerified: true });
       } catch (e) {}
 
+      router.refresh();
       toast.success('User verified successfully');
       await Promise.allSettled([
         refetch(),
@@ -879,6 +872,7 @@ export default function AdminVerificationsPage() {
         await userUnverifyMutation.mutateAsync({ userId });
       } catch (e) {}
 
+      router.refresh();
       toast.success('User unverified successfully');
       await Promise.allSettled([
         refetch(),

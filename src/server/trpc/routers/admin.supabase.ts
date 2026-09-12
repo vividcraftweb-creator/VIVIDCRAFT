@@ -582,7 +582,8 @@ export const adminRouter = router({
       try {
         const { data: queueList, error: qError } = await (supabase as any)
           .from('admin_verification_queue')
-          .select('*');
+          .select('*')
+          .order('created_at', { ascending: false });
 
         if (!qError && Array.isArray(queueList) && queueList.length > 0) {
           directVerifications = queueList;
