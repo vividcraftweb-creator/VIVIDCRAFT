@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, ZoomIn, ZoomOut, Download, RotateCw } from 'lucide-react';
 import { useState } from 'react';
@@ -57,6 +57,7 @@ export function DocumentViewerModal({
               <DialogTitle className="text-white text-xl">
                 {getDocumentTypeLabel(documentType)}
               </DialogTitle>
+              <DialogDescription className="sr-only">Verification Details</DialogDescription>
               <p className="text-sm text-slate-400 mt-1">{userName}</p>
             </div>
             <div className="flex items-center gap-2">

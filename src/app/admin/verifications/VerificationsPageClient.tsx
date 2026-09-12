@@ -32,7 +32,7 @@ import {
   UserCheck,
   Shield,
 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DocumentViewerModal } from '@/components/admin/DocumentViewerModal';
 import { formatRole } from '@/lib/utils';
@@ -126,42 +126,171 @@ type UserWithVerifications = {
   Verification?: Document[];
 };
 
+// Helper function to convert relative paths to full Supabase storage URLs
+const getFullDocumentUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+
+  // If already a full URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
+  // Construct Supabase storage URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  let cleanPath = url.startsWith('/') ? url.slice(1) : url;
+
+  // Route paths in verification-documents to 'verifications' bucket
+  if (cleanPath.startsWith('verification-documents/')) {
+    return `${supabaseUrl}/storage/v1/object/public/verifications/${cleanPath}`;
+  }
+
+  if (cleanPath.startsWith('uploads/documents/')) {
+    // Extract filename
+    const pathParts = cleanPath.split('/');
+    const filename = pathParts[pathParts.length - 1];
+    cleanPath = `verification-documents/${filename}`;
+    return `${supabaseUrl}/storage/v1/object/public/verifications/${cleanPath}`;
+  }
+
+  // Default fallback to public-uploads bucket
+  return `${supabaseUrl}/storage/v1/object/public/public-uploads/${cleanPath}`;
+};
+
+const getDocumentTypeLabel = (type: string) => {
+  const labels: Record<string, string> = {
+    ID_FRONT: 'ID Front',
+    ID_BACK: 'ID Back',
+    SELFIE: 'Selfie with ID',
+    BUSINESS_REGISTRATION: 'Business Registration',
+    PROOF_OF_ADDRESS: 'Proof of Address',
+    TAX_DOCUMENT: 'Tax Document',
+    BUSINESS_LICENSE: 'Business License',
+  };
+  return labels[type] || type;
+};
+
+const getStatusBadge = (status: string) => {
+  switch ((status || '').toUpperCase()) {
+    case 'PENDING':
+      return (
+        <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+          <Clock className="h-3 w-3 mr-1" />
+          Pending
+        </Badge>
+      );
+    case 'APPROVED':
+      return (
+        <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Approved
+        </Badge>
+      );
+    case 'REJECTED':
+      return (
+        <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
+          <XCircle className="h-3 w-3 mr-1" />
+          Rejected
+        </Badge>
+      );
+    default:
+      return <Badge>{status}</Badge>;
+  }
+};
+
+const DocumentThumbnail = ({
+  url,
+  type,
+  fileName,
+  onOpenNewTab,
+}: {
+  url: string;
+  type: string;
+  fileName?: string | null;
+  onOpenNewTab: () => void;
+}) => {
+  const [imageError, setImageError] = useState(false);
+
+  // Check if URL is an image by trying to detect common patterns
+  const urlLower = url?.toLowerCase() || '';
+  const isPdf = urlLower.includes('.pdf') || urlLower.includes('application/pdf');
+
+  // For Supabase storage URLs or any URL that's not explicitly PDF, try to render as image
+  const shouldTryImage = !isPdf;
+
+  return (
+    <div className="relative w-full h-48 rounded border border-white/10 overflow-hidden bg-black/20 flex items-center justify-center group/thumbnail">
+      {shouldTryImage && !imageError ? (
+        <img
+          src={url}
+          alt={type}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          crossOrigin="anonymous"
+          onError={(e) => {
+            setImageError(true);
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+      ) : isPdf ? (
+        <div className="flex flex-col items-center justify-center p-4">
+          <FileText className="h-16 w-16 text-slate-400 mb-2" />
+          <p className="text-xs text-slate-400 mb-1">PDF Document</p>
+          {fileName && <p className="text-xs text-slate-300 break-all text-center px-2">{fileName}</p>}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-4">
+          <FileCheck className="h-16 w-16 text-slate-400 mb-2" />
+          <p className="text-xs text-slate-400 mb-1">Document</p>
+          {fileName && <p className="text-xs text-slate-300 break-all text-center px-2">{fileName}</p>}
+        </div>
+      )}
+
+      {/* Hover overlay with action buttons */}
+      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover/thumbnail:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+        <Button
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenNewTab();
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+        >
+          <ExternalLink className="h-3 w-3 mr-1" />
+          Open in New Tab
+        </Button>
+        <p className="text-white text-xs">or click anywhere to preview</p>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminVerificationsPage() {
   const utils = trpc.useUtils();
 
-  // Auto-Fetch / Poll Fallback: periodic refetch every 5s & window focus refetch
-  // Disable Caching on Admin Query: cacheTime: 0, staleTime: 0, refetchOnMount: 'always'
+  // Queries without polling interval (avoids infinite re-renders)
   const { data: users, isLoading, refetch } = trpc.admin.getVerifications.useQuery(undefined, {
-    cacheTime: 0,
-    gcTime: 0,
     staleTime: 0,
-    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    refetchInterval: 5000,
-  } as any);
+  });
 
   // Direct fetch from supabase.from('admin_verification_queue').select('*')
   const [directQueueData, setDirectQueueData] = useState<any[] | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchDirectQueue() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await (supabase as any).from('admin_verification_queue').select('*');
-        if (!error && Array.isArray(data) && isMounted) {
-          console.log('[Admin Verification Queue] Fetched directly from admin_verification_queue:', data);
-          setDirectQueueData(data);
-        }
-      } catch (err) {
-        console.warn('Direct query to admin_verification_queue notice:', err);
+  const fetchDirectQueue = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await (supabase as any).from('admin_verification_queue').select('*');
+      if (!error && Array.isArray(data)) {
+        setDirectQueueData(data);
       }
+    } catch (err) {
+      console.warn('Direct query to admin_verification_queue notice:', err);
     }
-    fetchDirectQueue();
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    fetchDirectQueue();
+  }, [fetchDirectQueue]);
 
   const effectiveUsers = useMemo(() => {
     if (Array.isArray(directQueueData) && directQueueData.length > 0) {
@@ -173,6 +302,7 @@ export default function AdminVerificationsPage() {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [rejectingDoc, setRejectingDoc] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [isActionProcessing, setIsActionProcessing] = useState<string | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{
     url: string;
     type: string;
@@ -182,36 +312,6 @@ export default function AdminVerificationsPage() {
   // Optimistic UI state overrides: respond instantly without waiting for server roundtrip
   const [optimisticDocStatus, setOptimisticDocStatus] = useState<Record<string, { status: string; rejectionReason?: string }>>({});
   const [optimisticUserVerified, setOptimisticUserVerified] = useState<Record<string, boolean>>({});
-
-  // Helper function to convert relative paths to full Supabase storage URLs
-  const getFullDocumentUrl = (url: string | null | undefined): string | null => {
-    if (!url) return null;
-
-    // If already a full URL, return as-is
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-
-    // Construct Supabase storage URL
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    let cleanPath = url.startsWith('/') ? url.slice(1) : url;
-
-    // Route paths in verification-documents to 'verifications' bucket
-    if (cleanPath.startsWith('verification-documents/')) {
-      return `${supabaseUrl}/storage/v1/object/public/verifications/${cleanPath}`;
-    }
-
-    if (cleanPath.startsWith('uploads/documents/')) {
-      // Extract filename
-      const pathParts = cleanPath.split('/');
-      const filename = pathParts[pathParts.length - 1];
-      cleanPath = `verification-documents/${filename}`;
-      return `${supabaseUrl}/storage/v1/object/public/verifications/${cleanPath}`;
-    }
-
-    // Default fallback to public-uploads bucket
-    return `${supabaseUrl}/storage/v1/object/public/public-uploads/${cleanPath}`;
-  };
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -473,7 +573,7 @@ export default function AdminVerificationsPage() {
     }
 
     return Array.from(userMap.values());
-  }, [users]);
+  }, [effectiveUsers]);
 
   const approveMutation = trpc.verifications.approveVerification.useMutation({
     onMutate: async ({ verificationId }) => {
@@ -619,6 +719,190 @@ export default function AdminVerificationsPage() {
     },
   });
 
+  // Direct DB Update + tRPC async mutations (unblocked DB mutations)
+  const handleApprove = async (docId: string, userId: string) => {
+    setIsActionProcessing(docId);
+    try {
+      const cleanDocId = docId.replace(/-(front|back|selfie)$/, '');
+      const supabase = createClient();
+
+      // Direct DB Update for Verification Document
+      try {
+        await (supabase as any)
+          .from('verifications')
+          .update({ status: 'approved', rejection_reason: null })
+          .or(`id.eq.${cleanDocId},user_id.eq.${userId}`);
+      } catch (e) {
+        console.warn('Direct verifications update notice:', e);
+      }
+
+      try {
+        await (supabase as any)
+          .from('Verification')
+          .update({ status: 'APPROVED' })
+          .or(`id.eq.${cleanDocId},userId.eq.${userId}`);
+      } catch (e) {}
+
+      // Direct DB Update for User Profile Status
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({ is_verified: true, verification_status: 'approved' })
+          .eq('id', userId);
+      } catch (e) {
+        console.warn('Direct profiles update notice:', e);
+      }
+
+      // tRPC mutation execution
+      try {
+        await approveMutation.mutateAsync({ verificationId: docId });
+      } catch (mErr) {
+        console.warn('tRPC approve mutation notice:', mErr);
+      }
+
+      toast.success('Document approved');
+
+      // Force refetch queues
+      await Promise.allSettled([
+        refetch(),
+        fetchDirectQueue(),
+        utils.verification.invalidate(),
+        utils.verifications.invalidate(),
+        utils.admin.invalidate(),
+      ]);
+    } catch (err: any) {
+      console.error('handleApprove error:', err);
+      toast.error(err?.message || 'Failed to approve document');
+    } finally {
+      setIsActionProcessing(null);
+    }
+  };
+
+  const handleReject = async (docId: string, userId: string, reason?: string) => {
+    const finalReason = (reason || rejectionReason || 'Document could not be verified').trim();
+    if (!finalReason) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+
+    setIsActionProcessing(docId);
+    try {
+      const cleanDocId = docId.replace(/-(front|back|selfie)$/, '');
+      const supabase = createClient();
+
+      // Direct DB Update for Verification Document
+      try {
+        await (supabase as any)
+          .from('verifications')
+          .update({ status: 'rejected', rejection_reason: finalReason })
+          .or(`id.eq.${cleanDocId},user_id.eq.${userId}`);
+      } catch (e) {
+        console.warn('Direct verifications reject update notice:', e);
+      }
+
+      try {
+        await (supabase as any)
+          .from('Verification')
+          .update({ status: 'REJECTED', rejectionReason: finalReason })
+          .or(`id.eq.${cleanDocId},userId.eq.${userId}`);
+      } catch (e) {}
+
+      // Direct DB Update for User Profile Status
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({ is_verified: false, verification_status: 'rejected' })
+          .eq('id', userId);
+      } catch (e) {
+        console.warn('Direct profiles reject update notice:', e);
+      }
+
+      // tRPC mutation execution
+      try {
+        await rejectMutation.mutateAsync({
+          verificationId: docId,
+          reason: finalReason,
+        });
+      } catch (mErr) {
+        console.warn('tRPC reject mutation notice:', mErr);
+      }
+
+      setRejectingDoc(null);
+      setRejectionReason('');
+      toast.success('Document rejected');
+
+      // Force refetch queues
+      await Promise.allSettled([
+        refetch(),
+        fetchDirectQueue(),
+        utils.verification.invalidate(),
+        utils.verifications.invalidate(),
+        utils.admin.invalidate(),
+      ]);
+    } catch (err: any) {
+      console.error('handleReject error:', err);
+      toast.error(err?.message || 'Failed to reject document');
+    } finally {
+      setIsActionProcessing(null);
+    }
+  };
+
+  const handleVerifyUser = async (userId: string) => {
+    setIsActionProcessing(`user-${userId}`);
+    try {
+      const supabase = createClient();
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({ is_verified: true, verification_status: 'approved' })
+          .eq('id', userId);
+      } catch (e) {}
+
+      try {
+        await userVerifyMutation.mutateAsync({ userId, isVerified: true });
+      } catch (e) {}
+
+      toast.success('User verified successfully');
+      await Promise.allSettled([
+        refetch(),
+        fetchDirectQueue(),
+        utils.admin.getUsers.invalidate(),
+        utils.verification.invalidate(),
+        utils.verifications.invalidate(),
+      ]);
+    } finally {
+      setIsActionProcessing(null);
+    }
+  };
+
+  const handleUnverifyUser = async (userId: string) => {
+    setIsActionProcessing(`user-${userId}`);
+    try {
+      const supabase = createClient();
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({ is_verified: false, verification_status: 'pending' })
+          .eq('id', userId);
+      } catch (e) {}
+
+      try {
+        await userUnverifyMutation.mutateAsync({ userId });
+      } catch (e) {}
+
+      toast.success('User unverified successfully');
+      await Promise.allSettled([
+        refetch(),
+        fetchDirectQueue(),
+        utils.admin.getUsers.invalidate(),
+        utils.verification.invalidate(),
+        utils.verifications.invalidate(),
+      ]);
+    } finally {
+      setIsActionProcessing(null);
+    }
+  };
+
   // Apply optimistic status updates immediately across all users and documents
   const usersData: UserWithVerifications[] = useMemo(() => {
     return rawUsersData.map((user) => {
@@ -711,114 +995,17 @@ export default function AdminVerificationsPage() {
     });
   }, [usersData, searchQuery, userTypeFilter, statusFilter]);
 
-  const toggleUserExpansion = (userId: string) => {
-    const newExpanded = new Set(expandedUsers);
-    if (newExpanded.has(userId)) {
-      newExpanded.delete(userId);
-    } else {
-      newExpanded.add(userId);
-    }
-    setExpandedUsers(newExpanded);
-  };
-
-  const getDocumentTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      ID_FRONT: 'ID Front',
-      ID_BACK: 'ID Back',
-      SELFIE: 'Selfie with ID',
-      BUSINESS_REGISTRATION: 'Business Registration',
-      PROOF_OF_ADDRESS: 'Proof of Address',
-      TAX_DOCUMENT: 'Tax Document',
-      BUSINESS_LICENSE: 'Business License',
-    };
-    return labels[type] || type;
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch ((status || '').toUpperCase()) {
-      case 'PENDING':
-        return (
-          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-            <Clock className="h-3 w-3 mr-1" />
-            Pending
-          </Badge>
-        );
-      case 'APPROVED':
-        return (
-          <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Approved
-          </Badge>
-        );
-      case 'REJECTED':
-        return (
-          <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
-            <XCircle className="h-3 w-3 mr-1" />
-            Rejected
-          </Badge>
-        );
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
-
-  const DocumentThumbnail = ({ url, type, fileName, onOpenNewTab }: { url: string; type: string; fileName?: string | null; onOpenNewTab: () => void }) => {
-    const [imageError, setImageError] = useState(false);
-
-    // Check if URL is an image by trying to detect common patterns
-    const urlLower = url?.toLowerCase() || '';
-    const isPdf = urlLower.includes('.pdf') || urlLower.includes('application/pdf');
-
-    // For Supabase storage URLs or any URL that's not explicitly PDF, try to render as image
-    // The onError handler will catch if it's not actually an image
-    const shouldTryImage = !isPdf;
-
-    return (
-      <div className="relative w-full h-48 rounded border border-white/10 overflow-hidden bg-black/20 flex items-center justify-center group/thumbnail">
-        {shouldTryImage && !imageError ? (
-          <img
-            src={url}
-            alt={type}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            crossOrigin="anonymous"
-            onError={(e) => {
-              setImageError(true);
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        ) : isPdf ? (
-          <div className="flex flex-col items-center justify-center p-4">
-            <FileText className="h-16 w-16 text-slate-400 mb-2" />
-            <p className="text-xs text-slate-400 mb-1">PDF Document</p>
-            {fileName && <p className="text-xs text-slate-300 break-all text-center px-2">{fileName}</p>}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center p-4">
-            <FileCheck className="h-16 w-16 text-slate-400 mb-2" />
-            <p className="text-xs text-slate-400 mb-1">Document</p>
-            {fileName && <p className="text-xs text-slate-300 break-all text-center px-2">{fileName}</p>}
-          </div>
-        )}
-
-        {/* Hover overlay with action buttons */}
-        <div className="absolute inset-0 bg-black/70 opacity-0 group-hover/thumbnail:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-          <Button
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenNewTab();
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
-          >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            Open in New Tab
-          </Button>
-          <p className="text-white text-xs">or click anywhere to preview</p>
-        </div>
-      </div>
-    );
-  };
+  const toggleUserExpansion = useCallback((userId: string) => {
+    setExpandedUsers((prev) => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(userId)) {
+        newExpanded.delete(userId);
+      } else {
+        newExpanded.add(userId);
+      }
+      return newExpanded;
+    });
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -943,10 +1130,6 @@ export default function AdminVerificationsPage() {
           ) : (
             <div className="divide-y divide-slate-800">
               {filteredUsers.map((item) => {
-                // Console log item before rendering to confirm full_name and email properties are present
-                console.log('Verification item before rendering:', item);
-                console.log('item:', item);
-
                 const user = item;
                 const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
                 const userObj = (user as any).user;
@@ -1075,9 +1258,9 @@ export default function AdminVerificationsPage() {
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation();
-                              userUnverifyMutation.mutate({ userId: user.id });
+                              handleUnverifyUser(user.id);
                             }}
-                            disabled={userVerifyMutation.isPending || userUnverifyMutation.isPending}
+                            disabled={isActionProcessing === `user-${user.id}` || userVerifyMutation.isPending || userUnverifyMutation.isPending}
                             title="1-click manual unverify toggle"
                             className="h-7 px-2.5 text-xs font-medium transition-all border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300"
                           >
@@ -1090,9 +1273,9 @@ export default function AdminVerificationsPage() {
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation();
-                              userVerifyMutation.mutate({ userId: user.id, isVerified: true });
+                              handleVerifyUser(user.id);
                             }}
-                            disabled={userVerifyMutation.isPending || userUnverifyMutation.isPending}
+                            disabled={isActionProcessing === `user-${user.id}` || userVerifyMutation.isPending || userUnverifyMutation.isPending}
                             title="1-click manual verification toggle"
                             className="h-7 px-2.5 text-xs font-medium transition-all border-slate-700 bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300"
                           >
@@ -1196,18 +1379,9 @@ export default function AdminVerificationsPage() {
                                         <div className="flex gap-2">
                                           <Button
                                             size="sm"
-                                            onClick={() => {
-                                              if (rejectionReason.trim()) {
-                                                rejectMutation.mutate({
-                                                  verificationId: doc.id,
-                                                  reason: rejectionReason.trim(),
-                                                });
-                                              } else {
-                                                toast.error('Please provide a rejection reason');
-                                              }
-                                            }}
+                                            onClick={() => handleReject(doc.id, user.id, rejectionReason)}
                                             className="bg-red-600 hover:bg-red-700 text-xs flex-1"
-                                            disabled={rejectMutation.isPending}
+                                            disabled={isActionProcessing === doc.id || rejectMutation.isPending}
                                           >
                                             Confirm
                                           </Button>
@@ -1219,6 +1393,7 @@ export default function AdminVerificationsPage() {
                                               setRejectionReason('');
                                             }}
                                             className="border-white/10 text-xs flex-1"
+                                            disabled={isActionProcessing === doc.id}
                                           >
                                             Cancel
                                           </Button>
@@ -1228,11 +1403,9 @@ export default function AdminVerificationsPage() {
                                       <div className="flex gap-2">
                                         <Button
                                           size="sm"
-                                          onClick={() =>
-                                            approveMutation.mutate({ verificationId: doc.id })
-                                          }
+                                          onClick={() => handleApprove(doc.id, user.id)}
                                           className="bg-green-600 hover:bg-green-700 text-xs flex-1"
-                                          disabled={approveMutation.isPending}
+                                          disabled={isActionProcessing === doc.id || approveMutation.isPending}
                                         >
                                           <CheckCircle className="h-3 w-3 mr-1" />
                                           Approve
@@ -1242,7 +1415,7 @@ export default function AdminVerificationsPage() {
                                           variant="outline"
                                           onClick={() => setRejectingDoc(doc.id)}
                                           className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs flex-1"
-                                          disabled={rejectMutation.isPending}
+                                          disabled={isActionProcessing === doc.id || rejectMutation.isPending}
                                         >
                                           <XCircle className="h-3 w-3 mr-1" />
                                           Reject
