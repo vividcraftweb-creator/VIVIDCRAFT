@@ -26,7 +26,6 @@ import {
   Building2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { PlanBadge } from '@/components/shared/FeaturedBadge';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
 export default function ProfileView() {
@@ -40,11 +39,6 @@ export default function ProfileView() {
 
   const { data: verification } = trpc.verifications.getVerificationStatus.useQuery(undefined, {
     enabled: status === 'authenticated' && !!session?.session?.user,
-    retry: false,
-  });
-  const { data: planSummary } = trpc.user.getPlanFeatures.useQuery(undefined, {
-    enabled: status === 'authenticated' && !!session?.session?.user,
-    refetchOnWindowFocus: false,
     retry: false,
   });
 
@@ -282,10 +276,7 @@ export default function ProfileView() {
 
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mt-4" style={{ minHeight: '28px' }}>
-                {planSummary?.plan && (
-                  <PlanBadge plan={planSummary.plan as any} />
-                )}
-                {verification?.status === 'APPROVED' && (
+                {sessionUser?.role !== 'CLIENT' && verification?.status === 'APPROVED' && (
                   <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Verified

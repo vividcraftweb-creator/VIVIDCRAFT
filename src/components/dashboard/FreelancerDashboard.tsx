@@ -68,7 +68,6 @@ import { createClient } from '@/lib/supabase/client';
 // Dynamically import components to avoid SSR issues
 const ProfileView = dynamic(() => import('./ProfileView'), { ssr: false });
 const ArtistVerificationView = dynamic(() => import('../verification/ArtistVerificationView'), { ssr: false });
-const ClientVerificationWizard = dynamic(() => import('../verification/ClientVerificationWizard'), { ssr: false });
 const SubscriptionView = dynamic(() => import('./SubscriptionView'), { ssr: false });
 const GalleryView = dynamic(() => import('./GalleryView'), { ssr: false });
 
@@ -195,6 +194,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       retry: false,
       refetchInterval: 5000, // Auto-refetch every 5 seconds
       refetchOnWindowFocus: true,
+      staleTime: 0,
       refetchOnReconnect: false,
     });
 
@@ -686,21 +686,26 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                     <AlertTriangle className="h-6 w-6 text-red-400" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-red-300 mb-2">Verification Needs Attention</h3>
+                    <h3 className="text-lg font-bold text-red-400 mb-2">Verification Rejected</h3>
                     <p className="text-slate-300 mb-4">
-                      We couldn&apos;t approve the documents provided. Please review the guidelines and resubmit clear photos of your ID.
+                      We couldn&apos;t approve the documents provided. Please review the admin feedback below and resubmit clear photos of your ID.
                     </p>
-                    {Array.isArray(verificationStatus?.rejectedDocs) && verificationStatus.rejectedDocs.length > 0 && (
-                      <div className="mb-3 text-sm text-red-200/90">
-                        <p className="font-semibold mb-1">Rejected documents:</p>
+                    {Array.isArray(verificationStatus?.rejectedDocs) && verificationStatus.rejectedDocs.length > 0 ? (
+                      <div className="mb-4 text-sm text-red-200/90 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                        <p className="font-semibold mb-1 text-red-300">Admin Rejection Reason:</p>
                         {verificationStatus.rejectedDocs.map((doc, idx) => (
-                          <div key={idx}>
-                            • {doc.type.replace(/_/g, ' ')}: {doc.reason}
+                          <div key={idx} className="mt-1">
+                            • <span className="font-medium text-white">{doc.type.replace(/_/g, ' ')}:</span> {doc.reason || 'Document was rejected'}
                           </div>
                         ))}
                       </div>
-                    )}
-                    <Button asChild className="bg-red-500/20 border border-red-500/30 text-red-200 hover:bg-red-500/30">
+                    ) : verificationStatus?.message && verificationStatus.message !== 'Identity verification approved' ? (
+                      <div className="mb-4 text-sm text-red-200/90 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                        <p className="font-semibold mb-1 text-red-300">Admin Rejection Reason:</p>
+                        <p>{verificationStatus.message}</p>
+                      </div>
+                    ) : null}
+                    <Button asChild className="bg-red-600 hover:bg-red-700 text-white font-medium">
                       <Link href="/dashboard?tab=verification">
                         Resubmit Verification
                         <ArrowRight className="h-4 w-4 ml-2" />

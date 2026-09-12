@@ -15,8 +15,6 @@ import {
   ArrowRight,
   Eye,
 } from 'lucide-react';
-import VerificationCard from './VerificationCard';
-import ClientVerificationForm from './ClientVerificationForm';
 import TeamCollaboration from '../collaboration/TeamCollaboration';
 import EnhancedProjectManagement from '../project/EnhancedProjectManagement';
 import PrioritySupport from '../support/PrioritySupport';
@@ -28,8 +26,6 @@ import ApiKeysView from './ApiKeysView';
 import ProfileEditView from './ProfileEditView';
 import ProfileView from './ProfileView';
 import SettingsView from './SettingsView';
-import ClientVerificationWizard from '../verification/ClientVerificationWizard';
-import VerificationBanner from './VerificationBanner';
 import RecommendationsSection from './RecommendationsSection';
 import AnalyticsView from './AnalyticsView';
 import dynamic from 'next/dynamic';
@@ -245,9 +241,6 @@ export default function ClientDashboard() {
 
     return (
       <>
-        {/* Verification Banner - Shows status-based alerts */}
-        <VerificationBanner />
-
         {/* Stats Overview */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-blue-500/40 transition-all duration-300 group shadow-sm">
@@ -644,11 +637,6 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {activeTab === 'verification' && (
-        <div className="space-y-8">
-          <ClientVerificationWizard />
-        </div>
-      )}
 
       {activeTab === 'analytics' && (
         <div className="space-y-8">

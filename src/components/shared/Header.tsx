@@ -382,13 +382,6 @@ const Header = () => {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
-                              onClick={() => router.push('/dashboard?tab=subscription')}
-                            >
-                              <CreditCard className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                              <span>Subscription</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
                               onClick={() => router.push('/profile')}
                             >
                               <UserIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />

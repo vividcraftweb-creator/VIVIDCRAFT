@@ -41,9 +41,6 @@ import type { AppSession } from '@/types/session';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
 import ArtistDashboard from '@/components/dashboard/ArtistDashboard';
-const SubscriptionStatusBanner = dynamic(() => import('@/components/dashboard/SubscriptionStatusBanner'), {
-  ssr: false,
-});
 const GalleryView = dynamic(() => import('@/components/dashboard/GalleryView'), {
   loading: () => <div className="text-white p-8 animate-pulse">Loading gallery...</div>,
   ssr: false,
@@ -56,7 +53,6 @@ type DashboardView =
   | 'profile'
   | 'verification'
   | 'settings'
-  | 'subscription'
   | 'gallery';
 
 const DASHBOARD_VIEW_SET = new Set<DashboardView>([
@@ -66,7 +62,6 @@ const DASHBOARD_VIEW_SET = new Set<DashboardView>([
   'profile',
   'verification',
   'settings',
-  'subscription',
   'gallery',
 ]);
 
@@ -178,7 +173,6 @@ export default function Dashboard({ session }: { session: AppSession }) {
       { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages', view: 'messages' },
       { name: 'Browse Commissions', icon: Palette, href: '/jobs' },
       { name: 'My Commissions & Proposals', icon: FileText, href: '/dashboard?tab=proposals', view: 'proposals' },
-      { name: 'Subscription', icon: CreditCard, href: '/dashboard?tab=subscription', view: 'subscription' },
       { name: 'Profile', icon: User, href: '/dashboard?tab=profile', view: 'profile' },
       { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification', view: 'verification' },
       { name: 'Settings', icon: Settings, href: '/dashboard?tab=settings', view: 'settings' },
@@ -363,9 +357,6 @@ export default function Dashboard({ session }: { session: AppSession }) {
                       <item.icon className="h-5 w-5" />
                       <span>{item.name}</span>
                     </div>
-                    {isPremium ? (
-                      <Crown className="h-3 w-3 text-yellow-500" />
-                    ) : null}
                   </Link>
                 );
               }
@@ -451,7 +442,6 @@ export default function Dashboard({ session }: { session: AppSession }) {
             
             {/* Dashboard content */}
             <div className="max-w-7xl mx-auto">
-              <SubscriptionStatusBanner />
               {renderDashboardContent()}
             </div>
           </div>

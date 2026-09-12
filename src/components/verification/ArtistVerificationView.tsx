@@ -144,11 +144,13 @@ export default function ArtistVerificationView() {
   const { data: userDocs, refetch: refetchDocs } = trpc.verifications.getUserDocuments.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: myProfile, refetch: refetchProfile } = trpc.profiles.getMyProfile.useQuery({}, {
     retry: false,
     refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const uploadDocMutation = trpc.verifications.uploadDocument.useMutation({
@@ -413,22 +415,28 @@ export default function ArtistVerificationView() {
   }, [submittedRecord]);
 
   // Derived verification status
-  const isApproved = Boolean(
-    profileData?.is_verified ||
-    (myProfile as any)?.is_verified ||
-    submittedRecord?.status?.toLowerCase() === 'approved' ||
-    allDocuments.some((d) => d.status === 'APPROVED')
-  );
-
-  const isPending = Boolean(
-    !isApproved && !isResetMode && (
-      isPendingSubmitted ||
-      submittedRecord?.status?.toLowerCase() === 'pending'
-    )
-  );
-
   const rejectedDocs = allDocuments.filter((d) => d.status === 'REJECTED');
-  const isRejected = !isApproved && !isPending && (rejectedDocs.length > 0 || submittedRecord?.status?.toLowerCase() === 'rejected');
+  const hasRejectedDoc = rejectedDocs.length > 0 || submittedRecord?.status?.toLowerCase() === 'rejected';
+
+  const pendingDocs = allDocuments.filter((d) => d.status === 'PENDING');
+  const approvedDocs = allDocuments.filter((d) => d.status === 'APPROVED');
+  const hasPendingDoc = pendingDocs.length > 0 || isPendingSubmitted || submittedRecord?.status?.toLowerCase() === 'pending';
+
+  // Overall Status logic:
+  // If ANY doc is rejected -> Show Badge: Rejected (Red).
+  // If ALL required docs are approved -> Show Badge: Verified (Green).
+  // Otherwise -> Show Badge: Pending (Yellow).
+  // DO NOT display Verified green badge if any submitted document status is rejected or pending.
+  const isRejected = !isResetMode && hasRejectedDoc;
+
+  const isApproved = !isResetMode && !isRejected && !hasPendingDoc && (
+    (approvedDocs.length > 0 && allDocuments.length > 0 && allDocuments.every((d) => d.status === 'APPROVED')) ||
+    (Boolean(profileData?.is_verified || (myProfile as any)?.is_verified) && allDocuments.length === 0)
+  );
+
+  const isPending = !isResetMode && !isRejected && !isApproved && (
+    hasPendingDoc || allDocuments.length > 0
+  );
 
   const currentConfig = DOC_CONFIGS[selectedDocType];
 
@@ -968,16 +976,33 @@ export default function ArtistVerificationView() {
               <ShieldAlert className="h-6 w-6 text-red-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold text-red-300 mb-1">Previous Verification Request Not Approved</h3>
+              <h3 className="text-base font-bold text-red-400 mb-1">Verification Rejected</h3>
               <p className="text-slate-300 text-xs mb-3">
-                Your previous documents could not be verified. Please review the feedback below, upload clearer photos, and resubmit.
+                Your previous documents could not be verified. Please review the admin feedback below, upload clearer photos, and resubmit.
               </p>
-              {rejectedDocs.map((doc) => (
-                <div key={doc.id} className="text-xs text-red-200 bg-red-950/30 border border-red-900/40 p-2 rounded-lg mb-2">
-                  <span className="font-semibold">{doc.verificationType.replace(/_/g, ' ')}:</span>{' '}
-                  {doc.rejectionReason || 'Document was blurry, illegible, or expired.'}
+              {rejectedDocs.length > 0 ? (
+                <div className="space-y-2 mb-4">
+                  {rejectedDocs.map((doc) => (
+                    <div key={doc.id} className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3 rounded-lg">
+                      <p className="font-semibold text-red-300">Admin Rejection Reason ({doc.verificationType.replace(/_/g, ' ')}):</p>
+                      <p className="mt-0.5">{doc.rejectionReason || 'Document was blurry, illegible, or expired.'}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (submittedRecord as any)?.rejection_reason || (submittedRecord as any)?.rejectionReason ? (
+                <div className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3 rounded-lg mb-4">
+                  <p className="font-semibold text-red-300">Admin Rejection Reason:</p>
+                  <p className="mt-0.5">{(submittedRecord as any)?.rejection_reason || (submittedRecord as any)?.rejectionReason}</p>
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                onClick={handleResetPendingRecord}
+                disabled={isResetting}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-lg"
+              >
+                {isResetting ? 'Resetting...' : 'Resubmit Verification'}
+              </Button>
             </div>
           </div>
         </div>

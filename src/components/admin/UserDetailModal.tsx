@@ -128,22 +128,21 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
           <TabsContent value="details" className="space-y-4 mt-3">
             {/* Quick Info Bar */}
             <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-white/10">
-              {user.isVerified ? (
-                <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Verified
-                </Badge>
-              ) : (
-                <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  Unverified
-                </Badge>
+              {user.role !== 'CLIENT' && (
+                user.isVerified ? (
+                  <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Verified
+                  </Badge>
+                ) : (
+                  <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Unverified
+                  </Badge>
+                )
               )}
               <Badge className={getRoleBadge(user.role)}>
                 {formatRole(user.role)}
-              </Badge>
-              <Badge className={getPlanBadge(user.subscriptionPlan ?? 'FREE')}>
-                {user.subscriptionPlan?.replace('FREELANCER_', '').replace('ARTIST_', '').replace('CLIENT_', '') || 'FREE'}
               </Badge>
               {stats && (
                 <>
@@ -361,21 +360,23 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
                   </Select>
                 </div>
 
-                <div>
-                  <Label className="text-white text-sm">Verification Status</Label>
-                  <Select
-                    defaultValue={user.isVerified ? 'true' : 'false'}
-                    onValueChange={(value) => setEditData({ ...editData, isVerified: value === 'true' })}
-                  >
-                    <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-white/10">
-                      <SelectItem value="true">Verified</SelectItem>
-                      <SelectItem value="false">Unverified</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {user.role !== 'CLIENT' && (
+                  <div>
+                    <Label className="text-white text-sm">Verification Status</Label>
+                    <Select
+                      defaultValue={user.isVerified ? 'true' : 'false'}
+                      onValueChange={(value) => setEditData({ ...editData, isVerified: value === 'true' })}
+                    >
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-white/10">
+                        <SelectItem value="true">Verified</SelectItem>
+                        <SelectItem value="false">Unverified</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-white/10">

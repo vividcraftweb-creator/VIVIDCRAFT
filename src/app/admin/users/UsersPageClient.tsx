@@ -21,6 +21,7 @@ import {
   MoreVertical,
   CheckCircle,
   XCircle,
+  Clock,
   Shield,
   Trash2,
   Eye,
@@ -53,7 +54,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useDebounce } from '@/hooks/useDebounce';
-import { SubscriptionPlan } from '@/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import { formatRole, getRoleBadgeClass } from '@/lib/utils';
 
@@ -69,16 +69,16 @@ type AdminUser = {
   Profile?: Array<{ firstName?: string | null; lastName?: string | null }> | { firstName?: string | null; lastName?: string | null } | null;
 };
 
-type VerificationFilter = 'ALL' | 'verified' | 'unverified';
+type VerificationFilter = 'ALL' | 'verified' | 'unverified' | 'rejected';
 
 export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: AdminUser[] }) {
   const [isMounted, setIsMounted] = useState(false);
   const [directUsers, setDirectUsers] = useState<AdminUser[]>(initialUsers);
+  const [userVerificationsMap, setUserVerificationsMap] = useState<Record<string, { hasRejected: boolean; allApproved: boolean; docsCount: number }>>({});
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search);
   const [role, setRole] = useState<'ALL' | 'FREELANCER' | 'CLIENT' | 'ADMIN'>('ALL');
   const [verificationStatus, setVerificationStatus] = useState<VerificationFilter>('ALL');
-  const [planFilter, setPlanFilter] = useState<'ALL' | SubscriptionPlan>('ALL');
   const [emailStatus, setEmailStatus] = useState<'ALL' | 'VERIFIED' | 'UNVERIFIED'>('ALL');
   const [sortBy, setSortBy] = useState<'createdAt' | 'email' | 'lastLoginAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -156,6 +156,35 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
         console.warn('API get-users fetch notice:', err);
       }
 
+      // 3. Fetch verifications documents to calculate strict overall verification status
+      try {
+        const supabase = createClient();
+        const { data: vData } = await (supabase as any).from('verifications').select('user_id, status');
+        if (vData && Array.isArray(vData)) {
+          const vMap: Record<string, any[]> = {};
+          vData.forEach((v: any) => {
+            const uid = v.user_id;
+            if (!uid) return;
+            if (!vMap[uid]) vMap[uid] = [];
+            vMap[uid].push(v);
+          });
+
+          const resultMap: Record<string, { hasRejected: boolean; allApproved: boolean; docsCount: number }> = {};
+          for (const [uid, docs] of Object.entries(vMap)) {
+            const hasRejected = docs.some((d: any) => (d.status || '').toUpperCase() === 'REJECTED');
+            const allApproved = docs.length > 0 && docs.every((d: any) => (d.status || '').toUpperCase() === 'APPROVED');
+            resultMap[uid] = {
+              hasRejected,
+              allApproved,
+              docsCount: docs.length,
+            };
+          }
+          setUserVerificationsMap(resultMap);
+        }
+      } catch (vErr) {
+        console.warn('Direct verifications fetch notice in users page:', vErr);
+      }
+
       if (combined.length > 0) {
         setDirectUsers(combined);
       }
@@ -170,8 +199,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
   const { data, isLoading, refetch } = trpc.admin.users.getUsers.useQuery({
     search: debouncedSearch || undefined,
     role: role,
-    verificationStatus: verificationStatus,
-    subscriptionPlan: planFilter === 'ALL' ? undefined : planFilter,
+    verificationStatus: verificationStatus === 'rejected' ? undefined : verificationStatus,
     emailVerified: emailStatus === 'ALL' ? undefined : emailStatus === 'VERIFIED',
     limit: pageSize,
     offset: page * pageSize,
@@ -189,7 +217,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, role, verificationStatus, planFilter, emailStatus, sortBy, sortOrder, pageSize]);
+  }, [debouncedSearch, role, verificationStatus, emailStatus, sortBy, sortOrder, pageSize]);
 
   const verifyMutation = trpc.admin.users.verifyUser.useMutation({
     onMutate: async ({ userId }) => {
@@ -328,13 +356,25 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
     }
 
     if (verificationStatus === 'verified') {
-      list = list.filter((u) => u.isVerified === true);
+      list = list.filter((u) => {
+        const uRole = (u.role || '').toUpperCase();
+        if (uRole === 'CLIENT') return false;
+        const v = userVerificationsMap[u.id];
+        return (v?.allApproved || (!v && u.isVerified)) && !v?.hasRejected;
+      });
+    } else if (verificationStatus === 'rejected') {
+      list = list.filter((u) => {
+        const v = userVerificationsMap[u.id];
+        return Boolean(v?.hasRejected);
+      });
     } else if (verificationStatus === 'unverified') {
-      list = list.filter((u) => u.isVerified === false);
-    }
-
-    if (planFilter !== 'ALL') {
-      list = list.filter((u) => (u.subscriptionPlan || 'FREE') === planFilter);
+      list = list.filter((u) => {
+        const uRole = (u.role || '').toUpperCase();
+        if (uRole === 'CLIENT') return false;
+        const v = userVerificationsMap[u.id];
+        const isVer = (v?.allApproved || (!v && u.isVerified)) && !v?.hasRejected;
+        return !isVer;
+      });
     }
 
     if (emailStatus === 'VERIFIED') {
@@ -344,7 +384,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
     }
 
     return list;
-  }, [data, directUsers, initialUsers, optimisticUserVerified, debouncedSearch, role, verificationStatus, planFilter, emailStatus]);
+  }, [data, directUsers, initialUsers, optimisticUserVerified, debouncedSearch, role, verificationStatus, emailStatus, userVerificationsMap]);
 
   const users = useMemo(() => {
     // If backend pagination exists via tRPC, use that; otherwise page on client
@@ -371,16 +411,6 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
 
   const getRoleBadge = (userRole: string) => {
     return getRoleBadgeClass(userRole);
-  };
-
-  const getPlanBadge = (plan: string) => {
-    if (plan?.includes('ELITE') || plan?.includes('ENTERPRISE')) {
-      return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
-    }
-    if (plan?.includes('PRO') || plan?.includes('BUSINESS')) {
-      return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-    }
-    return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
   };
 
   const handleToggleVerify = async (user: AdminUser) => {
@@ -429,24 +459,6 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
       suspendMutation.mutate({ userId: user.id, suspend: false });
     }
   };
-
-  const availablePlans = useMemo<SubscriptionPlan[]>(() => {
-    const plans = new Set<SubscriptionPlan>();
-    users.forEach((user) => {
-      if (user.subscriptionPlan && !user.subscriptionPlan.toUpperCase().includes('FREE') && !user.subscriptionPlan.toUpperCase().includes('STARTER')) {
-        plans.add(user.subscriptionPlan as SubscriptionPlan);
-      }
-    });
-    if (plans.size === 0) {
-      plans.add(SubscriptionPlan.FREELANCER_PRO);
-      plans.add(SubscriptionPlan.FREELANCER_ELITE);
-      plans.add(SubscriptionPlan.CLIENT_BUSINESS);
-      plans.add(SubscriptionPlan.CLIENT_ENTERPRISE);
-    }
-    return Array.from(plans)
-      .filter((p) => !p.toUpperCase().includes('FREE') && !p.toUpperCase().includes('STARTER'))
-      .sort();
-  }, [users]);
 
   useEffect(() => {
     if (page > 0 && users.length === 0 && total > 0) {
@@ -625,24 +637,10 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 <SelectValue placeholder="Verification" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10">
-                <SelectItem value="ALL">All</SelectItem>
+                <SelectItem value="ALL">All Statuses</SelectItem>
                 <SelectItem value="verified">Verified</SelectItem>
-                <SelectItem value="unverified">Unverified</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Subscription Plan */}
-            <Select value={planFilter} onValueChange={(value) => setPlanFilter(value as 'ALL' | SubscriptionPlan)}>
-              <SelectTrigger className="bg-white/5 border-white/10 text-white h-8 text-xs">
-                <SelectValue placeholder="Subscription" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
-                <SelectItem value="ALL">All Plans</SelectItem>
-                {availablePlans.map((plan) => (
-                  <SelectItem key={plan} value={plan}>
-                    {plan.replace('FREELANCER_', '').replace('CLIENT_', '')}
-                  </SelectItem>
-                ))}
+                <SelectItem value="unverified">Pending / Unverified</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
 
@@ -700,19 +698,17 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
               <colgroup>
-                <col style={{ width: '27%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '14%' }} />
-                <col style={{ width: '16%' }} />
+                <col style={{ width: '32%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '17%' }} />
                 <col style={{ width: '18%' }} />
               </colgroup>
               <thead className="border-b border-slate-800 bg-slate-950/60">
                 <tr>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">User</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Plan</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Verification</th>
                   <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Joined</th>
                   <th className="text-center py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -720,7 +716,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
               <tbody>
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-slate-400 py-8 text-sm">
+                    <td colSpan={5} className="text-center text-slate-400 py-8 text-sm">
                       No users found
                     </td>
                   </tr>
@@ -731,6 +727,26 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                     const firstName = profile?.firstName || (profile as any)?.first_name || '';
                     const lastName = profile?.lastName || (profile as any)?.last_name || '';
                     const fullName = `${firstName} ${lastName}`.trim() || user.email?.split('@')[0] || null;
+
+                    const isClient = (user.role || '').toUpperCase() === 'CLIENT';
+                    const userV = userVerificationsMap[user.id];
+                    const isUserVerified = optimisticUserVerified[user.id] !== undefined
+                      ? optimisticUserVerified[user.id]
+                      : Boolean(user.isVerified);
+
+                    // Overall Status logic:
+                    // If ANY doc is rejected -> Show Badge: Rejected (Red).
+                    // If ALL required docs are approved -> Show Badge: Verified (Green).
+                    // Otherwise -> Show Badge: Pending (Yellow).
+                    // DO NOT display Verified green badge if any submitted document status is rejected or pending.
+                    let userOverallStatus: 'REJECTED' | 'VERIFIED' | 'PENDING' = 'PENDING';
+                    if (userV?.hasRejected) {
+                      userOverallStatus = 'REJECTED';
+                    } else if (userV ? userV.allApproved : isUserVerified) {
+                      userOverallStatus = 'VERIFIED';
+                    } else {
+                      userOverallStatus = 'PENDING';
+                    }
 
                     return (
                       <tr
@@ -754,23 +770,23 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                           <Badge variant="outline" className={`text-xs font-semibold ${getRoleBadge(user.role)}`}>{formatRole(user.role)}</Badge>
                         </td>
                         <td className="py-2.5 px-4 align-top">
-                          <Badge variant="outline" className={`text-xs ${getPlanBadge(user.subscriptionPlan ?? '')}`}>
-                            {user.subscriptionPlan && !user.subscriptionPlan.toUpperCase().includes('FREE') && !user.subscriptionPlan.toUpperCase().includes('STARTER')
-                              ? user.subscriptionPlan.replace('FREELANCER_', '').replace('CLIENT_', '')
-                              : 'PRO'}
-                          </Badge>
-                        </td>
-                        <td className="py-2.5 px-4 align-top">
-                          {user.isVerified ? (
-                            <div className="flex items-center gap-1.5">
-                              <CheckCircle className="h-3.5 w-3.5 text-green-400 flex-shrink-0" />
-                              <span className="text-xs text-green-400">Verified</span>
-                            </div>
+                          {isClient ? (
+                            <span className="text-xs text-slate-500">-</span>
+                          ) : userOverallStatus === 'REJECTED' ? (
+                            <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-xs font-medium">
+                              <XCircle className="h-3 w-3 mr-1 text-red-400" />
+                              Rejected
+                            </Badge>
+                          ) : userOverallStatus === 'VERIFIED' ? (
+                            <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs font-medium">
+                              <CheckCircle className="h-3 w-3 mr-1 text-green-400" />
+                              Verified
+                            </Badge>
                           ) : (
-                            <div className="flex items-center gap-1.5">
-                              <XCircle className="h-3.5 w-3.5 text-yellow-400 flex-shrink-0" />
-                              <span className="text-xs text-yellow-400">Unverified</span>
-                            </div>
+                            <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs font-medium">
+                              <Clock className="h-3 w-3 mr-1 text-yellow-400" />
+                              Pending
+                            </Badge>
                           )}
                         </td>
                         <td className="py-2.5 px-4 align-top">
@@ -780,31 +796,33 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                         </td>
                         <td className="py-2.5 px-4 align-top">
                           <div className="flex items-center justify-center gap-1.5">
-                            {/* Direct 1-Click Manual Verify / Unverify Toggle Button */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleVerify(user)}
-                              disabled={verifyMutation.isPending || unverifyMutation.isPending}
-                              title={user.isVerified ? 'Click to unverify user' : 'Click to verify user'}
-                              className={`h-7 px-2 text-[11px] font-medium transition-all ${
-                                user.isVerified
-                                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300'
-                                  : 'border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300'
-                              }`}
-                            >
-                              {user.isVerified ? (
-                                <>
-                                  <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
-                                  Verified
-                                </>
-                              ) : (
-                                <>
-                                  <Shield className="h-3 w-3 mr-1 text-slate-400" />
-                                  Verify
-                                </>
-                              )}
-                            </Button>
+                            {/* Direct 1-Click Manual Verify / Unverify Toggle Button (Artists only) */}
+                            {!isClient && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleVerify(user)}
+                                disabled={verifyMutation.isPending || unverifyMutation.isPending}
+                                title={userOverallStatus === 'VERIFIED' ? 'Click to unverify user' : 'Click to verify user'}
+                                className={`h-7 px-2 text-[11px] font-medium transition-all ${
+                                  userOverallStatus === 'VERIFIED'
+                                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300'
+                                    : 'border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300'
+                                }`}
+                              >
+                                {userOverallStatus === 'VERIFIED' ? (
+                                  <>
+                                    <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
+                                    Verified
+                                  </>
+                                ) : (
+                                  <>
+                                    <Shield className="h-3 w-3 mr-1 text-slate-400" />
+                                    Verify
+                                  </>
+                                )}
+                              </Button>
+                            )}
 
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -822,22 +840,24 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                                   <Eye className="h-3.5 w-3.5 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                {user.isVerified ? (
-                                  <DropdownMenuItem
-                                    onClick={() => handleToggleVerify(user)}
-                                    className="text-yellow-400 cursor-pointer hover:bg-white/5 text-xs"
-                                  >
-                                    <XCircle className="h-3.5 w-3.5 mr-2" />
-                                    Unverify User
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem
-                                    onClick={() => handleToggleVerify(user)}
-                                    className="text-green-400 cursor-pointer hover:bg-white/5 text-xs"
-                                  >
-                                    <CheckCircle className="h-3.5 w-3.5 mr-2" />
-                                    Verify User
-                                  </DropdownMenuItem>
+                                {!isClient && (
+                                  userOverallStatus === 'VERIFIED' ? (
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleVerify(user)}
+                                      className="text-yellow-400 cursor-pointer hover:bg-white/5 text-xs"
+                                    >
+                                      <XCircle className="h-3.5 w-3.5 mr-2" />
+                                      Unverify User
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleVerify(user)}
+                                      className="text-green-400 cursor-pointer hover:bg-white/5 text-xs"
+                                    >
+                                      <CheckCircle className="h-3.5 w-3.5 mr-2" />
+                                      Verify User
+                                    </DropdownMenuItem>
+                                  )
                                 )}
                                 <DropdownMenuItem
                                   onClick={() => handleSuspendUser(user)}

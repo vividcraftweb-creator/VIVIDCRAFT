@@ -486,9 +486,15 @@ export default function AdminVerificationsPage() {
         u.Verification?.some((d) => d.id === verificationId)
       );
       if (targetUser) {
+        const allApproved = (targetUser.Verification || []).every(
+          (d) => d.id === verificationId || (optimisticDocStatus[d.id]?.status || d.status)?.toUpperCase() === 'APPROVED'
+        );
+        const hasRejected = (targetUser.Verification || []).some(
+          (d) => d.id !== verificationId && (optimisticDocStatus[d.id]?.status || d.status)?.toUpperCase() === 'REJECTED'
+        );
         setOptimisticUserVerified((prev) => ({
           ...prev,
-          [targetUser.id]: true,
+          [targetUser.id]: allApproved && !hasRejected,
         }));
       }
     },
@@ -527,6 +533,15 @@ export default function AdminVerificationsPage() {
         ...prev,
         [verificationId]: { status: 'REJECTED', rejectionReason: reason },
       }));
+      const targetUser = rawUsersData.find((u) =>
+        u.Verification?.some((d) => d.id === verificationId)
+      );
+      if (targetUser) {
+        setOptimisticUserVerified((prev) => ({
+          ...prev,
+          [targetUser.id]: false,
+        }));
+      }
       setRejectingDoc(null);
       setRejectionReason('');
     },
@@ -688,13 +703,17 @@ export default function AdminVerificationsPage() {
         (userTypeFilter === 'INDIVIDUAL' && user.clientType === 'INDIVIDUAL') ||
         (userTypeFilter === 'BUSINESS' && user.clientType === 'BUSINESS');
 
-      // Status filter
+      // Status filter based on overall verification status
       const userDocs = user.Verification || [];
+      const hasRejected = userDocs.some((doc) => (doc.status || '').toUpperCase() === 'REJECTED');
+      const allApproved = userDocs.length > 0 && userDocs.every((doc) => (doc.status || '').toUpperCase() === 'APPROVED');
+      const overall = hasRejected ? 'REJECTED' : allApproved ? 'APPROVED' : 'PENDING';
+
       const matchesStatus =
         statusFilter === 'ALL' ||
-        (statusFilter === 'PENDING' && userDocs.some((doc) => (doc.status || '').toUpperCase() === 'PENDING')) ||
-        (statusFilter === 'APPROVED' && userDocs.some((doc) => (doc.status || '').toUpperCase() === 'APPROVED')) ||
-        (statusFilter === 'REJECTED' && userDocs.some((doc) => (doc.status || '').toUpperCase() === 'REJECTED'));
+        (statusFilter === 'PENDING' && overall === 'PENDING') ||
+        (statusFilter === 'APPROVED' && overall === 'APPROVED') ||
+        (statusFilter === 'REJECTED' && overall === 'REJECTED');
 
       return matchesSearch && matchesUserType && matchesStatus;
     });
@@ -951,10 +970,30 @@ export default function AdminVerificationsPage() {
                   : (item.clientType || user.clientType || profilesObj?.client_type || 'CLIENT');
 
                 const userDocs = user.Verification || [];
+                const effectiveDocs = userDocs.map((doc) => {
+                  const opt = optimisticDocStatus[doc.id];
+                  return opt ? { ...doc, status: opt.status, rejectionReason: opt.rejectionReason ?? doc.rejectionReason } : doc;
+                });
                 const isExpanded = expandedUsers.has(user.id);
-                const pendingCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'PENDING').length;
-                const approvedCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'APPROVED').length;
-                const rejectedCount = userDocs.filter((doc) => (doc.status || '').toUpperCase() === 'REJECTED').length;
+                const pendingCount = effectiveDocs.filter((doc) => (doc.status || '').toUpperCase() === 'PENDING').length;
+                const approvedCount = effectiveDocs.filter((doc) => (doc.status || '').toUpperCase() === 'APPROVED').length;
+                const rejectedCount = effectiveDocs.filter((doc) => (doc.status || '').toUpperCase() === 'REJECTED').length;
+
+                // Overall Status logic:
+                // If ANY doc is rejected -> Show Badge: Rejected (Red).
+                // If ALL required docs are approved -> Show Badge: Verified (Green).
+                // Otherwise -> Show Badge: Pending (Yellow).
+                const hasRejected = rejectedCount > 0;
+                const allApproved = effectiveDocs.length > 0 && effectiveDocs.every((doc) => (doc.status || '').toUpperCase() === 'APPROVED');
+
+                let overallStatus: 'REJECTED' | 'VERIFIED' | 'PENDING' = 'PENDING';
+                if (hasRejected) {
+                  overallStatus = 'REJECTED';
+                } else if (allApproved) {
+                  overallStatus = 'VERIFIED';
+                } else {
+                  overallStatus = 'PENDING';
+                }
 
                 const initials = displayName && displayName !== 'Artist' && displayName !== 'Individual Client' && displayName !== 'Business Client'
                   ? displayName
@@ -1014,56 +1053,61 @@ export default function AdminVerificationsPage() {
                         <p className="text-sm text-slate-400 truncate">{item.email}</p>
                       </div>
                       <div className="flex-shrink-0 flex items-center gap-2 text-sm">
-                        {pendingCount > 0 && (
-                          <Badge className="bg-yellow-500/20 text-yellow-300">
-                            {pendingCount} pending
+                        {/* Overall Verification Status Badge */}
+                        {overallStatus === 'REJECTED' && (
+                          <Badge className="bg-red-500/20 text-red-300 border-red-500/30 font-medium">
+                            <XCircle className="h-3 w-3 mr-1 text-red-400" />
+                            Rejected
                           </Badge>
                         )}
-                        {approvedCount > 0 && (
-                          <Badge className="bg-green-500/20 text-green-300">
-                            {approvedCount} approved
+                        {overallStatus === 'VERIFIED' && (
+                          <Badge className="bg-green-500/20 text-green-300 border-green-500/30 font-medium">
+                            <CheckCircle className="h-3 w-3 mr-1 text-green-400" />
+                            Verified
                           </Badge>
                         )}
-                        {rejectedCount > 0 && (
-                          <Badge className="bg-red-500/20 text-red-300">
-                            {rejectedCount} rejected
+                        {overallStatus === 'PENDING' && (
+                          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 font-medium">
+                            <Clock className="h-3 w-3 mr-1 text-yellow-400" />
+                            Pending
                           </Badge>
                         )}
-                        <span className="text-slate-500 ml-1 mr-2">{userDocs.length} docs</span>
+
+                        <span className="text-slate-500 ml-1 mr-2">{effectiveDocs.length} docs</span>
 
                         {/* Direct 1-Click Manual Verify / Unverify Toggle */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const isUserVerified = Boolean(user.isVerified);
-                            if (isUserVerified) {
+                        {/* DO NOT display Verified green badge/button if any submitted document status is rejected or pending */}
+                        {overallStatus === 'VERIFIED' ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               userUnverifyMutation.mutate({ userId: user.id });
-                            } else {
+                            }}
+                            disabled={userVerifyMutation.isPending || userUnverifyMutation.isPending}
+                            title="1-click manual unverify toggle"
+                            className="h-7 px-2.5 text-xs font-medium transition-all border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300"
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
+                            Verified
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               userVerifyMutation.mutate({ userId: user.id, isVerified: true });
-                            }
-                          }}
-                          disabled={userVerifyMutation.isPending || userUnverifyMutation.isPending}
-                          title="1-click manual verification toggle"
-                          className={`h-7 px-2.5 text-xs font-medium transition-all ${
-                            user.isVerified
-                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300'
-                              : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300'
-                          }`}
-                        >
-                          {user.isVerified ? (
-                            <>
-                              <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
-                              Verified
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="h-3 w-3 mr-1 text-slate-400" />
-                              Verify User
-                            </>
-                          )}
-                        </Button>
+                            }}
+                            disabled={userVerifyMutation.isPending || userUnverifyMutation.isPending}
+                            title="1-click manual verification toggle"
+                            className="h-7 px-2.5 text-xs font-medium transition-all border-slate-700 bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300"
+                          >
+                            <Shield className="h-3 w-3 mr-1 text-slate-400" />
+                            Verify User
+                          </Button>
+                        )}
                       </div>
                       <div className="flex-shrink-0 text-xs text-slate-500">
                         {new Date(user.createdAt).toLocaleDateString()}
@@ -1074,7 +1118,7 @@ export default function AdminVerificationsPage() {
                     {isExpanded && (
                       <div className="px-4 pb-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {userDocs.map((doc) => {
+                          {effectiveDocs.map((doc) => {
                             // Handle both old schema (files) and new schema (documentUrl)
                             const rawUrl = doc.documentUrl || (doc.files?.split(',')[0]?.trim());
                             const docUrl = getFullDocumentUrl(rawUrl);

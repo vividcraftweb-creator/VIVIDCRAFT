@@ -60,12 +60,13 @@ export async function checkUserVerification(
     } catch {}
   }
 
-  // Only skip verification check if requireClientRole is true AND user is not a CLIENT
-  if (requireClientRole && (!user || user.role !== 'CLIENT')) {
+  // Verification is strictly for role === 'ARTIST' / 'FREELANCER'. CLIENTs are completely exempt.
+  const userRole = (user?.role || '').toUpperCase();
+  if (userRole === 'CLIENT' || userRole === 'BUYER' || userRole === 'CUSTOMER') {
     return {
       isVerified: true,
       status: 'approved',
-      message: 'Verification complete',
+      message: 'Client accounts do not require verification',
       requiredDocs: [],
       uploadedDocs: [],
       missingDocs: [],
@@ -75,30 +76,59 @@ export async function checkUserVerification(
 
   const clientType = user?.clientType || 'INDIVIDUAL';
 
-  // Get user's verification documents safely
+  // Get user's verification documents safely from verifications or Verification table
   let documents: any[] = [];
   try {
-    const { data, error } = await supabase
-      .from('Verification')
+    const { data, error } = await (supabase as any)
+      .from('verifications')
       .select('*')
-      .eq('userId', userId);
-    if (!error && data) documents = data;
+      .eq('user_id', userId);
+    if (!error && Array.isArray(data) && data.length > 0) {
+      documents = data.map((d: any) => ({
+        verificationType: d.document_type || d.verification_type || 'ID_FRONT',
+        status: (d.status || '').toUpperCase(),
+        rejectionReason: d.rejection_reason || d.rejectionReason,
+      }));
+    }
   } catch {}
+
+  if (documents.length === 0) {
+    try {
+      const { data, error } = await supabase
+        .from('Verification')
+        .select('*')
+        .eq('userId', userId);
+      if (!error && data) documents = data;
+    } catch {}
+  }
 
   const docs = documents || [];
   const uploadedTypes = docs.map(d => d.verificationType).filter(Boolean);
 
-  // Determine required documents based on client type
-  const requiredDocs = clientType === 'BUSINESS'
-    ? ['ID_FRONT', 'ID_BACK', 'SELFIE', 'BUSINESS_REGISTRATION', 'PROOF_OF_ADDRESS']
-    : ['ID_FRONT', 'ID_BACK', 'SELFIE'];
-
+  const requiredDocs = ['ID_FRONT', 'ID_BACK', 'SELFIE'];
   const missingDocs = requiredDocs.filter(type => !uploadedTypes.includes(type));
   const rejectedDocs = docs
-    .filter(d => d.status === 'REJECTED')
+    .filter(d => (d.status || '').toUpperCase() === 'REJECTED')
     .map(d => ({ type: d.verificationType, reason: d.rejectionReason || 'Document could not be verified' }));
 
-  // Check verification status
+  // Strict Overall Status logic:
+  // If ANY doc is rejected -> Show Badge: Rejected (Red).
+  // If ALL required docs are approved -> Show Badge: Verified (Green).
+  // Otherwise -> Show Badge: Pending (Yellow).
+  // DO NOT display Verified green badge if any submitted document status is rejected or pending.
+
+  if (rejectedDocs.length > 0 || docs.some(d => (d.status || '').toUpperCase() === 'REJECTED')) {
+    return {
+      isVerified: false,
+      status: 'rejected',
+      message: 'Some documents were rejected. Please review the feedback and re-upload them.',
+      requiredDocs,
+      uploadedDocs: uploadedTypes,
+      missingDocs,
+      rejectedDocs,
+    };
+  }
+
   if (docs.length === 0) {
     return {
       isVerified: Boolean(user?.isVerified),
@@ -113,23 +143,10 @@ export async function checkUserVerification(
     };
   }
 
-  if (rejectedDocs.length > 0) {
-    return {
-      isVerified: false,
-      status: 'rejected',
-      message: 'Some documents were rejected. Please re-upload them.',
-      requiredDocs,
-      uploadedDocs: uploadedTypes,
-      missingDocs,
-      rejectedDocs,
-    };
-  }
+  const hasPendingSubmission = docs.some(d => (d.status || '').toUpperCase() === 'PENDING');
+  const allApproved = docs.length > 0 && docs.every(d => (d.status || '').toUpperCase() === 'APPROVED');
 
-  // Check if any submission is pending or approved
-  const hasPendingSubmission = docs.some(d => d.status === 'PENDING');
-  const hasApprovedSubmission = docs.some(d => d.status === 'APPROVED');
-
-  if (hasApprovedSubmission || user?.isVerified) {
+  if (allApproved && (user?.isVerified ?? true)) {
     return {
       isVerified: true,
       status: 'approved',
@@ -141,27 +158,15 @@ export async function checkUserVerification(
     };
   }
 
-  if (hasPendingSubmission) {
+  if (hasPendingSubmission || missingDocs.length > 0) {
     return {
       isVerified: false,
       status: 'pending',
-      message: 'Your verification is under review. Our team will review your ID within 24 hours.',
-      requiredDocs,
-      uploadedDocs: uploadedTypes,
-      missingDocs: [],
-      rejectedDocs: [],
-    };
-  }
-
-  if (missingDocs.length > 0) {
-    return {
-      isVerified: false,
-      status: 'incomplete',
-      message: `Please upload the remaining required documents: ${missingDocs.join(', ')}`,
+      message: 'Your verification is under review. Our team will review your ID shortly.',
       requiredDocs,
       uploadedDocs: uploadedTypes,
       missingDocs,
-      rejectedDocs,
+      rejectedDocs: [],
     };
   }
 
