@@ -619,8 +619,8 @@ export default function AdminDashboard() {
                   {pendingVerificationRecords.slice(0, 5).map((record) => {
                     const normalizedUser =
                       normalizeUserRelation(record.user) ?? normalizeUserRelation(record.User);
-                    const email = normalizedUser?.email ?? 'No email on file';
-                    const fullName = [normalizedUser?.firstName, normalizedUser?.lastName]
+                    const email = (record as any).email || normalizedUser?.email || 'No email on file';
+                    const fullName = (record as any).full_name || (record as any).fullName || [normalizedUser?.firstName, normalizedUser?.lastName]
                       .filter(Boolean)
                       .join(' ');
                     const recordDate = record.createdAt ? new Date(record.createdAt) : null;

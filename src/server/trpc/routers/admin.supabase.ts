@@ -574,31 +574,57 @@ export const adminRouter = router({
       const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
       if (!supabase) return [];
 
-      // 1. Fetch strictly from public.verifications table with user profile joins (profiles(full_name, email, role))
-      // By default, no status filter is applied so ALL verifications (pending, approved, rejected) are fetched
+      // 1. Fetch directly from admin_verification_queue view if available
       let directVerifications: any[] = [];
       const profilesMap = new Map<string, any>();
+      let fromQueue = false;
 
       try {
-        const { data: vList, error: vError } = await (supabase as any)
-          .from('verifications')
-          .select(`
-            *,
-            profiles (
-              id,
-              full_name,
-              first_name,
-              last_name,
-              email,
-              avatar_url,
-              profile_picture,
-              role,
-              client_type,
-              is_verified,
-              company_name
-            )
-          `)
-          .order('created_at', { ascending: false });
+        const { data: queueList, error: qError } = await (supabase as any)
+          .from('admin_verification_queue')
+          .select('*');
+
+        if (!qError && Array.isArray(queueList) && queueList.length > 0) {
+          directVerifications = queueList;
+          fromQueue = true;
+          for (const item of queueList) {
+            const uid = item.user_id || item.userId;
+            if (uid && (item.full_name || item.email)) {
+              profilesMap.set(uid, {
+                id: uid,
+                full_name: item.full_name,
+                email: item.email,
+                avatar_url: item.avatar_url,
+                role: item.role,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('admin_verification_queue notice in getUsersWithVerifications:', err);
+      }
+
+      if (!fromQueue) {
+        try {
+          const { data: vList, error: vError } = await (supabase as any)
+            .from('verifications')
+            .select(`
+              *,
+              profiles (
+                id,
+                full_name,
+                first_name,
+                last_name,
+                email,
+                avatar_url,
+                profile_picture,
+                role,
+                client_type,
+                is_verified,
+                company_name
+              )
+            `)
+            .order('created_at', { ascending: false });
 
         if (!vError && Array.isArray(vList)) {
           directVerifications = vList;
@@ -635,6 +661,7 @@ export const adminRouter = router({
           console.error('Fallback query to verifications table failed:', fallbackErr);
         }
       }
+    }
 
       // 2. Fetch from legacy Verification table (PascalCase) for backwards compatibility
       let legacyVerifications: any[] = [];

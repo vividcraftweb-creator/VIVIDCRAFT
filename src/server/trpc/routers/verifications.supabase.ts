@@ -305,70 +305,90 @@ export async function fetchAllVerificationsList(supabase: any) {
       return [];
     }
 
-    console.log('[Admin getVerifications Router] Fetching verifications from public.verifications...');
+    console.log('[Admin getVerifications Router] Fetching verifications directly from admin_verification_queue...');
 
-    // 1. Fetch strictly from public.verifications (with profiles join if available)
+    // 1. Fetch directly from admin_verification_queue view
     let vList: any[] = [];
     const profilesMap = new Map<string, any>();
+    let fromQueue = false;
 
     try {
-      const { data, error } = await (supabase as any)
-        .from('verifications')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            full_name,
-            first_name,
-            last_name,
-            email,
-            avatar_url,
-            role,
-            client_type,
-            is_verified,
-            company_name
-          )
-        `)
-        .order('created_at', { ascending: false });
+      const { data: queueData, error: queueError } = await (supabase as any)
+        .from('admin_verification_queue')
+        .select('*');
 
-      if (!error && Array.isArray(data)) {
-        vList = data;
-        for (const item of data) {
-          const uid = item.user_id || item.userId;
-          if (uid && item.profiles) {
-            const p = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
-            if (p) profilesMap.set(uid, p);
-          }
-        }
-      } else if (error) {
-        console.warn('[Admin getVerifications Router] public.verifications joined query notice, trying plain query:', error.message);
-        const { data: plainData } = await (supabase as any)
-          .from('verifications')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (Array.isArray(plainData)) {
-          vList = plainData;
-        }
+      if (!queueError && Array.isArray(queueData)) {
+        console.log(`[Admin getVerifications Router] Retrieved ${queueData.length} records directly from admin_verification_queue`);
+        vList = queueData;
+        fromQueue = true;
+      } else if (queueError) {
+        console.warn('[Admin getVerifications Router] admin_verification_queue query notice, falling back to verifications table:', queueError.message);
       }
     } catch (e) {
-      console.warn('[Admin getVerifications Router] Exception querying public.verifications:', e);
+      console.warn('[Admin getVerifications Router] Exception querying admin_verification_queue:', e);
     }
 
-    // Fallback with user client if admin client returned empty
-    if (vList.length === 0) {
+    // Fallback to verifications table if admin_verification_queue was empty or errored
+    if (!fromQueue || vList.length === 0) {
       try {
-        const userSupabase = await createClient();
-        const { data: fallbackData } = await (userSupabase as any)
+        const { data, error } = await (supabase as any)
           .from('verifications')
-          .select('*')
+          .select(`
+            *,
+            profiles:user_id (
+              id,
+              full_name,
+              first_name,
+              last_name,
+              email,
+              avatar_url,
+              role,
+              client_type,
+              is_verified,
+              company_name
+            )
+          `)
           .order('created_at', { ascending: false });
-        if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-          vList = fallbackData;
+
+        if (!error && Array.isArray(data)) {
+          vList = data;
+          for (const item of data) {
+            const uid = item.user_id || item.userId;
+            if (uid && item.profiles) {
+              const p = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
+              if (p) profilesMap.set(uid, p);
+            }
+          }
+        } else if (error) {
+          console.warn('[Admin getVerifications Router] public.verifications joined query notice, trying plain query:', error.message);
+          const { data: plainData } = await (supabase as any)
+            .from('verifications')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (Array.isArray(plainData)) {
+            vList = plainData;
+          }
         }
-      } catch {}
+      } catch (e) {
+        console.warn('[Admin getVerifications Router] Exception querying public.verifications:', e);
+      }
+
+      // Fallback with user client if admin client returned empty
+      if (vList.length === 0) {
+        try {
+          const userSupabase = await createClient();
+          const { data: fallbackData } = await (userSupabase as any)
+            .from('verifications')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (Array.isArray(fallbackData) && fallbackData.length > 0) {
+            vList = fallbackData;
+          }
+        } catch {}
+      }
     }
 
-    console.log(`[Admin getVerifications Router] Retrieved ${vList.length} records from public.verifications`);
+    console.log(`[Admin getVerifications Router] Retrieved ${vList.length} records for queue`);
 
     // 2. Fetch profiles for all user_ids to guarantee name, email, avatar_url
     const userIds = Array.from(new Set(vList.map((v) => v.user_id || v.userId).filter(Boolean)));
@@ -413,10 +433,12 @@ export async function fetchAllVerificationsList(supabase: any) {
       const prof = profilesMap.get(uid) || (v.profiles && (Array.isArray(v.profiles) ? v.profiles[0] : v.profiles)) || {};
       const authUser = authUsersMap.get(uid);
 
-      const email = prof?.email || authUser?.email || v.email || 'User';
-      const rawRole = (prof?.role || authUser?.user_metadata?.role || v.role || 'ARTIST').toUpperCase();
+      const email = v.email || prof?.email || authUser?.email || 'User';
+      const rawRole = (v.role || prof?.role || authUser?.user_metadata?.role || 'ARTIST').toUpperCase();
       const role = rawRole === 'FREELANCER' || rawRole === 'ARTIST' ? 'ARTIST' : rawRole;
       const fullName =
+        v.full_name ||
+        v.name ||
         prof?.full_name ||
         prof?.name ||
         `${prof?.first_name || authUser?.user_metadata?.firstName || authUser?.user_metadata?.first_name || ''} ${prof?.last_name || authUser?.user_metadata?.lastName || authUser?.user_metadata?.last_name || ''}`.trim() ||
@@ -428,6 +450,9 @@ export async function fetchAllVerificationsList(supabase: any) {
       const lastName = prof?.last_name || authUser?.user_metadata?.lastName || fullName.split(' ').slice(1).join(' ') || '';
 
       const avatarUrl =
+        v.avatar_url ||
+        v.avatarUrl ||
+        v.avatar ||
         prof?.avatar_url ||
         prof?.avatar ||
         prof?.profile_picture ||
@@ -444,6 +469,7 @@ export async function fetchAllVerificationsList(supabase: any) {
       const statusUpper = statusLower.toUpperCase();
 
       return {
+        ...v,
         id: v.id,
         user_id: uid,
         userId: uid,

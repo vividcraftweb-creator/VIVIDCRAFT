@@ -32,10 +32,11 @@ import {
   UserCheck,
   Shield,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { DocumentViewerModal } from '@/components/admin/DocumentViewerModal';
 import { formatRole } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 type Document = {
   id: string;
@@ -139,6 +140,36 @@ export default function AdminVerificationsPage() {
     refetchInterval: 5000,
   } as any);
 
+  // Direct fetch from supabase.from('admin_verification_queue').select('*')
+  const [directQueueData, setDirectQueueData] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchDirectQueue() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await (supabase as any).from('admin_verification_queue').select('*');
+        if (!error && Array.isArray(data) && isMounted) {
+          console.log('[Admin Verification Queue] Fetched directly from admin_verification_queue:', data);
+          setDirectQueueData(data);
+        }
+      } catch (err) {
+        console.warn('Direct query to admin_verification_queue notice:', err);
+      }
+    }
+    fetchDirectQueue();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const effectiveUsers = useMemo(() => {
+    if (Array.isArray(directQueueData) && directQueueData.length > 0) {
+      return directQueueData;
+    }
+    return users;
+  }, [directQueueData, users]);
+
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [rejectingDoc, setRejectingDoc] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -189,15 +220,15 @@ export default function AdminVerificationsPage() {
 
   // Dynamically normalize either flat verifications records or grouped user records
   const rawUsersData: UserWithVerifications[] = useMemo(() => {
-    if (!Array.isArray(users)) return [];
+    if (!Array.isArray(effectiveUsers)) return [];
 
-    if (users.length > 0 && Array.isArray((users[0] as any).Verification)) {
-      return (users as any[]).map((u) => {
+    if (effectiveUsers.length > 0 && Array.isArray((effectiveUsers[0] as any).Verification)) {
+      return (effectiveUsers as any[]).map((u) => {
         const prof = u.profiles || u.user?.Profile?.[0] || u.Profile?.[0] || u.user || {};
         const userObj = u.user || {};
         const avatarUrl =
-          u.avatarUrl ||
           u.avatar_url ||
+          u.avatarUrl ||
           u.avatar ||
           prof.avatar_url ||
           prof.avatar ||
@@ -208,15 +239,15 @@ export default function AdminVerificationsPage() {
           userObj.image ||
           null;
         const fullName =
+          u.full_name ||
+          u.name ||
           userObj.full_name ||
           userObj.name ||
           prof.full_name ||
           prof.name ||
-          u.full_name ||
-          u.name ||
           `${prof.first_name || userObj.firstName || ''} ${prof.last_name || userObj.lastName || ''}`.trim() ||
-          userObj.email ||
           u.email ||
+          userObj.email ||
           'Artist';
         return {
           ...u,
@@ -225,11 +256,12 @@ export default function AdminVerificationsPage() {
           avatar: avatarUrl,
           full_name: fullName,
           name: fullName,
+          email: u.email || userObj.email || prof.email || 'User',
           userId: u.userId || u.user_id || u.id,
           user_id: u.user_id || u.userId || u.id,
           user: {
             id: u.id,
-            email: u.email,
+            email: u.email || userObj.email || prof.email || 'User',
             role: u.role,
             full_name: fullName,
             fullName,
@@ -242,7 +274,7 @@ export default function AdminVerificationsPage() {
           },
           profiles: {
             id: u.id,
-            email: u.email,
+            email: u.email || userObj.email || prof.email || 'User',
             role: u.role,
             full_name: fullName,
             name: fullName,
@@ -257,28 +289,28 @@ export default function AdminVerificationsPage() {
 
     const userMap = new Map<string, UserWithVerifications>();
 
-    for (const v of users as any[]) {
+    for (const v of effectiveUsers as any[]) {
       const uid = v.user_id || v.userId || v.id;
       if (!uid) continue;
 
       const prof = v.profiles || v.user?.Profile?.[0] || v.Profile?.[0] || v.user || {};
       const userObj = v.user || {};
       const fullName =
+        v.full_name ||
+        v.name ||
         userObj.full_name ||
         userObj.name ||
         prof.full_name ||
         prof.name ||
-        v.full_name ||
-        v.name ||
         `${prof.first_name || userObj.firstName || ''} ${prof.last_name || userObj.lastName || ''}`.trim() ||
-        userObj.email ||
         v.email ||
+        userObj.email ||
         'Artist';
-      const email = userObj.email || prof.email || v.email || 'User';
-      const rawRole = (prof.role || userObj.role || v.role || 'ARTIST').toUpperCase();
+      const email = v.email || userObj.email || prof.email || 'User';
+      const rawRole = (v.role || prof.role || userObj.role || 'ARTIST').toUpperCase();
       const role = rawRole === 'FREELANCER' || rawRole === 'ARTIST' ? 'ARTIST' : rawRole;
-      const clientType = prof.client_type || v.clientType || null;
-      const isVerified = Boolean(prof.is_verified ?? v.isVerified ?? false);
+      const clientType = v.client_type || prof.client_type || v.clientType || null;
+      const isVerified = Boolean(v.is_verified ?? prof.is_verified ?? v.isVerified ?? false);
       const avatarUrl =
         v.avatar_url ||
         v.avatarUrl ||
@@ -358,10 +390,17 @@ export default function AdminVerificationsPage() {
       const existing = userMap.get(uid);
       if (existing) {
         existing.Verification = [...(existing.Verification || []), ...docs];
-        if (!existing.avatarUrl && avatarUrl) {
+        if (!existing.avatar_url && avatarUrl) {
           existing.avatarUrl = avatarUrl;
           existing.avatar_url = avatarUrl;
           existing.avatar = avatarUrl;
+        }
+        if ((!existing.full_name || existing.full_name === 'Artist') && fullName && fullName !== 'Artist') {
+          existing.full_name = fullName;
+          existing.name = fullName;
+        }
+        if ((!existing.email || existing.email === 'User') && email && email !== 'User') {
+          existing.email = email;
         }
       } else {
         userMap.set(uid, {
@@ -892,60 +931,24 @@ export default function AdminVerificationsPage() {
             </div>
           ) : (
             <div className="divide-y divide-slate-800">
-              {filteredUsers.map((user) => {
+              {filteredUsers.map((item) => {
+                // Console log item before rendering to confirm full_name and email properties are present
+                console.log('Verification item before rendering:', item);
+                console.log('item:', item);
+
+                const user = item;
                 const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
                 const userObj = (user as any).user;
                 const profilesObj = (user as any).profiles;
 
-                // Exact prompt requirement:
-                // Display Name: verification.user?.full_name || verification.user?.name || verification.profiles?.full_name || verification.user?.email || 'Artist'
-                const displayName =
-                  userObj?.full_name ||
-                  userObj?.name ||
-                  profilesObj?.full_name ||
-                  profilesObj?.name ||
-                  (user as any).full_name ||
-                  (user as any).name ||
-                  (profile as any)?.full_name ||
-                  `${(profile as any)?.first_name || profile?.firstName || ''} ${(profile as any)?.last_name || profile?.lastName || ''}`.trim() ||
-                  userObj?.email ||
-                  user.email ||
-                  profilesObj?.email ||
-                  'Artist';
+                const displayName = item.full_name || item.email || 'Artist';
+                const avatarUrl = item.avatar_url || null;
 
-                // Exact prompt requirement:
-                // Display Subtext/Email: verification.user?.email || verification.profiles?.email || verification.userId
-                const displaySubtext =
-                  userObj?.email ||
-                  profilesObj?.email ||
-                  user.email ||
-                  (user as any).userId ||
-                  (user as any).user_id ||
-                  user.id;
-
-                // Exact prompt requirement:
-                // Avatar: Display user avatar if available, otherwise show initials or standard profile icon.
-                const avatarUrl =
-                  user.avatarUrl ||
-                  user.avatar_url ||
-                  user.avatar ||
-                  userObj?.avatar_url ||
-                  userObj?.avatarUrl ||
-                  userObj?.avatar ||
-                  profilesObj?.avatar_url ||
-                  profilesObj?.avatar ||
-                  profilesObj?.avatarUrl ||
-                  (profile as any)?.avatar_url ||
-                  (profile as any)?.avatarUrl ||
-                  null;
-
-                // Exact prompt requirement:
-                // Verify Role Badge: Ensure the badge dynamically reads the user's role (ARTIST).
-                const rawRole = (user.role || userObj?.role || profilesObj?.role || 'ARTIST').toUpperCase();
+                const rawRole = (item.role || user.role || userObj?.role || profilesObj?.role || 'ARTIST').toUpperCase();
                 const isClient = rawRole === 'CLIENT';
                 const roleBadgeText = !isClient
                   ? (rawRole === 'ADMIN' ? 'ADMIN' : 'ARTIST')
-                  : (user.clientType || profilesObj?.client_type || 'CLIENT');
+                  : (item.clientType || user.clientType || profilesObj?.client_type || 'CLIENT');
 
                 const userDocs = user.Verification || [];
                 const isExpanded = expandedUsers.has(user.id);
@@ -979,10 +982,10 @@ export default function AdminVerificationsPage() {
                       </div>
                       <div className="flex-shrink-0">
                         <Avatar className="h-10 w-10 border border-white/10 shadow-sm">
-                          {avatarUrl ? (
+                          {item.avatar_url ? (
                             <AvatarImage
-                              src={avatarUrl}
-                              alt={displayName}
+                              src={item.avatar_url}
+                              alt={item.full_name || item.email || 'Artist'}
                               className="object-cover"
                             />
                           ) : null}
@@ -999,7 +1002,7 @@ export default function AdminVerificationsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-white font-medium truncate">{displayName}</h3>
+                          <h3 className="text-white font-medium truncate">{item.full_name || item.email || 'Artist'}</h3>
                           <Badge variant="outline" className={`text-xs font-semibold ${
                             !isClient
                               ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
@@ -1008,7 +1011,7 @@ export default function AdminVerificationsPage() {
                             {roleBadgeText}
                           </Badge>
                         </div>
-                        <p className="text-sm text-slate-400 truncate">{displaySubtext}</p>
+                        <p className="text-sm text-slate-400 truncate">{item.email}</p>
                       </div>
                       <div className="flex-shrink-0 flex items-center gap-2 text-sm">
                         {pendingCount > 0 && (
