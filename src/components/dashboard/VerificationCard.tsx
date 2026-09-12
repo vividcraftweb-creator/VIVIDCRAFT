@@ -54,8 +54,10 @@ export default function VerificationCard({ user, verificationStatus }: Verificat
     );
   }
 
+  const statusUpper = (verificationStatus?.status || '').toUpperCase();
+
   // Verification submitted and pending review
-  if (verificationStatus?.status === 'PENDING') {
+  if (statusUpper === 'PENDING') {
     return (
       <div className="bg-slate-900/90 p-6 rounded-3xl border border-yellow-500/30 shadow-sm">
         <div className="flex items-center justify-between">
@@ -83,7 +85,7 @@ export default function VerificationCard({ user, verificationStatus }: Verificat
   }
 
   // Verification rejected
-  if (verificationStatus?.status === 'REJECTED') {
+  if (statusUpper === 'REJECTED') {
     return (
       <div className="bg-slate-900/90 p-6 rounded-3xl border border-red-500/30 shadow-sm">
         <div className="flex items-center justify-between">

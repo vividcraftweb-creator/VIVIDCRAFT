@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -166,6 +166,7 @@ export default function ProposalDetailModal({
             <FileText className="h-6 w-6 text-blue-400" />
             Proposal Details
           </DialogTitle>
+          <DialogDescription className="sr-only">Proposal Details</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">

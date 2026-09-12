@@ -69,6 +69,7 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
         <DialogContent className="max-w-4xl bg-slate-900 border-white/10 text-white">
           <DialogHeader>
             <DialogTitle>Loading...</DialogTitle>
+            <DialogDescription className="sr-only">Loading user details</DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />

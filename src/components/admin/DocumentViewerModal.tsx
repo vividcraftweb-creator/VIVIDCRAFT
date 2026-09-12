@@ -57,7 +57,7 @@ export function DocumentViewerModal({
               <DialogTitle className="text-white text-xl">
                 {getDocumentTypeLabel(documentType)}
               </DialogTitle>
-              <DialogDescription className="sr-only">Verification Details</DialogDescription>
+              <DialogDescription className="sr-only">Document Preview</DialogDescription>
               <p className="text-sm text-slate-400 mt-1">{userName}</p>
             </div>
             <div className="flex items-center gap-2">

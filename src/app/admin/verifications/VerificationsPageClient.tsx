@@ -273,31 +273,8 @@ export default function AdminVerificationsPage() {
     refetchOnWindowFocus: true,
   });
 
-  // Direct fetch from supabase.from('admin_verification_queue').select('*')
-  const [directQueueData, setDirectQueueData] = useState<any[] | null>(null);
-
-  const fetchDirectQueue = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await (supabase as any).from('admin_verification_queue').select('*');
-      if (!error && Array.isArray(data)) {
-        setDirectQueueData(data);
-      }
-    } catch (err) {
-      console.warn('Direct query to admin_verification_queue notice:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDirectQueue();
-  }, [fetchDirectQueue]);
-
-  const effectiveUsers = useMemo(() => {
-    if (Array.isArray(directQueueData) && directQueueData.length > 0) {
-      return directQueueData;
-    }
-    return users;
-  }, [directQueueData, users]);
+  // Rely solely on react-query / tRPC data without forcing local state updates
+  const effectiveUsers = users;
 
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [rejectingDoc, setRejectingDoc] = useState<string | null>(null);
@@ -743,14 +720,29 @@ export default function AdminVerificationsPage() {
           .or(`id.eq.${cleanDocId},userId.eq.${userId}`);
       } catch (e) {}
 
-      // Direct DB Update for User Profile Status
+      // Check if all docs are approved for this user
+      let allApproved = true;
       try {
-        await (supabase as any)
-          .from('profiles')
-          .update({ is_verified: true, verification_status: 'approved' })
-          .eq('id', userId);
-      } catch (e) {
-        console.warn('Direct profiles update notice:', e);
+        const { data: userVerifs } = await (supabase as any)
+          .from('verifications')
+          .select('status')
+          .eq('user_id', userId);
+
+        if (Array.isArray(userVerifs) && userVerifs.length > 0) {
+          allApproved = userVerifs.every((v: any) => (v.status || '').toLowerCase() === 'approved');
+        }
+      } catch (e) {}
+
+      // Direct DB Update for User Profile Status: if all docs approved, set is_verified = true
+      if (allApproved) {
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({ is_verified: true, verification_status: 'approved' })
+            .eq('id', userId);
+        } catch (e) {
+          console.warn('Direct profiles update notice:', e);
+        }
       }
 
       // tRPC mutation execution
@@ -762,10 +754,9 @@ export default function AdminVerificationsPage() {
 
       toast.success('Document approved');
 
-      // Force refetch queues
+      // Force refetch queues and invalidate caches
       await Promise.allSettled([
         refetch(),
-        fetchDirectQueue(),
         utils.verification.invalidate(),
         utils.verifications.invalidate(),
         utils.admin.invalidate(),
@@ -807,7 +798,7 @@ export default function AdminVerificationsPage() {
           .or(`id.eq.${cleanDocId},userId.eq.${userId}`);
       } catch (e) {}
 
-      // Direct DB Update for User Profile Status
+      // Direct DB Update for User Profile Status: set is_verified = false, verification_status = 'rejected'
       try {
         await (supabase as any)
           .from('profiles')
@@ -831,10 +822,9 @@ export default function AdminVerificationsPage() {
       setRejectionReason('');
       toast.success('Document rejected');
 
-      // Force refetch queues
+      // Force refetch queues and invalidate caches
       await Promise.allSettled([
         refetch(),
-        fetchDirectQueue(),
         utils.verification.invalidate(),
         utils.verifications.invalidate(),
         utils.admin.invalidate(),
@@ -865,7 +855,6 @@ export default function AdminVerificationsPage() {
       toast.success('User verified successfully');
       await Promise.allSettled([
         refetch(),
-        fetchDirectQueue(),
         utils.admin.getUsers.invalidate(),
         utils.verification.invalidate(),
         utils.verifications.invalidate(),
@@ -893,7 +882,6 @@ export default function AdminVerificationsPage() {
       toast.success('User unverified successfully');
       await Promise.allSettled([
         refetch(),
-        fetchDirectQueue(),
         utils.admin.getUsers.invalidate(),
         utils.verification.invalidate(),
         utils.verifications.invalidate(),
