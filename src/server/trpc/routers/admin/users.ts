@@ -580,8 +580,17 @@ export const adminUsersRouter = router({
         console.warn('User table verification update notice:', userErr);
       }
 
-      // 2. Also update profiles table strictly using is_verified
+      // 2. Also update profiles table
       try {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            is_verified: isVerified,
+            verification_status: isVerified ? 'approved' : 'rejected',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', input.userId);
+      } catch (profileError) {
         await (supabase as any)
           .from('profiles')
           .update({
@@ -589,8 +598,6 @@ export const adminUsersRouter = router({
             updated_at: new Date().toISOString(),
           })
           .eq('id', input.userId);
-      } catch (profileError) {
-        console.warn('Profile table verification update notice:', profileError);
       }
 
       // 3. Also update verifications table if any records exist
@@ -599,6 +606,7 @@ export const adminUsersRouter = router({
           .from('verifications')
           .update({
             status: isVerified ? 'approved' : 'rejected',
+            rejection_reason: isVerified ? null : 'Unverified by Admin',
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', input.userId);
@@ -622,6 +630,8 @@ export const adminUsersRouter = router({
         });
       } catch {}
 
+      console.log('[AdminUsers verifyUser] Updated user verification status:', { userId: input.userId, isVerified });
+
       return {
         success: true,
         message: isVerified ? 'User verified successfully' : 'User unverified successfully',
@@ -642,8 +652,17 @@ export const adminUsersRouter = router({
           .eq('id', input.userId);
       } catch {}
 
-      // 2. Update profiles table strictly using is_verified
+      // 2. Update profiles table
       try {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            is_verified: false,
+            verification_status: 'rejected',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', input.userId);
+      } catch {
         await (supabase as any)
           .from('profiles')
           .update({
@@ -651,7 +670,7 @@ export const adminUsersRouter = router({
             updated_at: new Date().toISOString(),
           })
           .eq('id', input.userId);
-      } catch {}
+      }
 
       // 3. Update verifications table
       try {
@@ -659,6 +678,7 @@ export const adminUsersRouter = router({
           .from('verifications')
           .update({
             status: 'rejected',
+            rejection_reason: 'Unverified by Admin',
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', input.userId);
@@ -674,6 +694,8 @@ export const adminUsersRouter = router({
           })
           .eq('userId', input.userId);
       } catch {}
+
+      console.log('[AdminUsers unverifyUser] Unverified user:', input.userId);
 
       // 4. Update auth metadata
       try {

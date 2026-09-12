@@ -613,29 +613,118 @@ export const verificationsRouter = router({
   getVerificationStatus: protectedProcedure
     .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx }) => {
-      if (!ctx.session?.user?.id) {
+      const userId = ctx.session?.user?.id;
+      if (!userId) {
         return null;
       }
 
+      console.log('[Artist getVerificationStatus] Querying status for user:', userId);
+
       try {
-        const supabase = await createClient();
+        const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
 
-        // Only get the overall verification submission (where verificationType is NULL)
-        // Not individual document uploads (which have verificationType set)
-        const { data: verification, error } = await supabase
-          .from('Verification')
-          .select('*')
-          .eq('userId', ctx.session.user.id)
-          .is('verificationType', null)
-          .limit(1)
-          .maybeSingle();
+        // 1. Fetch user profile
+        let profile: any = null;
+        try {
+          const { data: prof } = await (supabase as any)
+            .from('profiles')
+            .select('id, is_verified, verification_status')
+            .eq('id', userId)
+            .maybeSingle();
+          profile = prof;
+        } catch {}
 
-        if (error) {
-          return null;
+        // 2. Query public.verifications filtering by user_id = ctx.session.user.id
+        let vRecords: any[] = [];
+        try {
+          const { data, error } = await (supabase as any)
+            .from('verifications')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+          if (!error && Array.isArray(data)) {
+            vRecords = data;
+          }
+        } catch (err) {
+          console.warn('[Artist getVerificationStatus] Error querying verifications:', err);
         }
 
-        return verification || null;
+        // 3. Fallback: Query legacy Verification table
+        let legacyRecords: any[] = [];
+        try {
+          const { data: leg } = await supabase
+            .from('Verification')
+            .select('*')
+            .eq('userId', userId)
+            .order('createdAt', { ascending: false });
+          if (Array.isArray(leg)) legacyRecords = leg;
+        } catch {}
+
+        // Calculate overall status based on document statuses
+        const allStatuses = [
+          ...vRecords.map((v) => (v.status || '').toLowerCase()),
+          ...legacyRecords.map((l) => (l.status || '').toLowerCase()),
+        ];
+
+        const hasRejected = allStatuses.some((s) => s === 'rejected') || (profile?.verification_status || '').toLowerCase() === 'rejected';
+        const hasApproved = allStatuses.some((s) => s === 'approved');
+        const allApproved = (allStatuses.length > 0 && allStatuses.every((s) => s === 'approved')) || Boolean(profile?.is_verified);
+        const hasPending = allStatuses.some((s) => s === 'pending') || allStatuses.length > 0;
+
+        let overallStatus: 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_started';
+        if (hasRejected) {
+          overallStatus = 'rejected';
+        } else if (allApproved) {
+          overallStatus = 'approved';
+        } else if (hasPending) {
+          overallStatus = 'pending';
+        } else if (Boolean(profile?.is_verified)) {
+          overallStatus = 'approved';
+        }
+
+        const isVerified = overallStatus === 'approved';
+        const latestRecord = vRecords[0] || legacyRecords[0] || null;
+        const rejectionReason = vRecords.find((v) => v.rejection_reason)?.rejection_reason ||
+          legacyRecords.find((l) => l.rejectionReason || l.details)?.rejectionReason ||
+          legacyRecords.find((l) => l.rejectionReason || l.details)?.details ||
+          null;
+
+        const statusVal = (overallStatus === 'approved' ? 'APPROVED' : overallStatus === 'rejected' ? 'REJECTED' : overallStatus === 'pending' ? 'PENDING' : 'NOT_STARTED') as 'APPROVED' | 'REJECTED' | 'PENDING' | 'NOT_STARTED' | 'approved' | 'rejected' | 'pending' | 'not_started';
+
+        const result = {
+          id: latestRecord?.id || `v-${userId}`,
+          userId,
+          user_id: userId,
+          status: statusVal,
+          statusUpper: overallStatus.toUpperCase(),
+          statusLower: overallStatus.toLowerCase(),
+          isVerified,
+          is_verified: isVerified,
+          verification_status: overallStatus,
+          rejectionReason,
+          rejection_reason: rejectionReason,
+          documentType: latestRecord?.document_type || latestRecord?.documentType || 'ID Document',
+          document_type: latestRecord?.document_type || latestRecord?.documentType || 'ID Document',
+          id_front_url: latestRecord?.id_front_url || latestRecord?.documentUrl || latestRecord?.files || null,
+          id_back_url: latestRecord?.id_back_url || null,
+          selfie_url: latestRecord?.selfie_url || null,
+          files: latestRecord?.files || latestRecord?.id_front_url || null,
+          createdAt: latestRecord?.created_at || latestRecord?.createdAt || new Date().toISOString(),
+          created_at: latestRecord?.created_at || latestRecord?.createdAt || new Date().toISOString(),
+          updatedAt: latestRecord?.updated_at || latestRecord?.updatedAt || new Date().toISOString(),
+          updated_at: latestRecord?.updated_at || latestRecord?.updatedAt || new Date().toISOString(),
+        };
+
+        console.log('[Artist getVerificationStatus] Returning overall status for user:', userId, {
+          overallStatus,
+          isVerified,
+          rejectionReason,
+          recordsCount: vRecords.length,
+        });
+
+        return result;
       } catch (err) {
+        console.error('[Artist getVerificationStatus] Exception:', err);
         return null;
       }
     }),
@@ -643,8 +732,10 @@ export const verificationsRouter = router({
   getStatus: protectedProcedure
     .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
     .query(async ({ ctx }) => {
-      const supabase = await createClient();
+      const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
       const userId = ctx.session.user.id;
+
+      console.log('[Artist getStatus] Fetching detailed verification status for user:', userId);
 
       // 1. Fetch user profile
       const { data: profile } = await (supabase as any)
@@ -762,9 +853,9 @@ export const verificationsRouter = router({
       const approvedDocs = documents.filter((d) => d.status === 'APPROVED');
       const pendingDocs = documents.filter((d) => d.status === 'PENDING');
 
-      const hasRejected = rejectedDocs.length > 0;
+      const hasRejected = rejectedDocs.length > 0 || (vRecords && vRecords.some((v: any) => (v.status || '').toLowerCase() === 'rejected')) || (profile?.verification_status || '').toLowerCase() === 'rejected';
       const allApproved = documents.length > 0 && documents.every((d) => d.status === 'APPROVED');
-      const isProfileVerified = Boolean(profile?.is_verified || profile?.verified);
+      const isProfileVerified = Boolean(profile?.is_verified || profile?.verified || (profile?.verification_status || '').toLowerCase() === 'approved');
 
       let status: 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_started';
       let message = 'Upload a government-issued ID to fully activate your account and apply for jobs.';
@@ -782,7 +873,7 @@ export const verificationsRouter = router({
       const latestRecord = vRecords?.[0] || null;
       const rejectionReason = rejectedDocs[0]?.rejectionReason || latestRecord?.rejection_reason || null;
 
-      return {
+      const responsePayload = {
         status,
         isVerified: status === 'approved',
         message,
@@ -798,6 +889,17 @@ export const verificationsRouter = router({
         hasRejected,
         allApproved,
       };
+
+      console.log('[Artist getStatus] Returning status for user:', userId, {
+        status,
+        isVerified: status === 'approved',
+        hasRejected,
+        allApproved,
+        rejectionReason,
+        totalDocs: documents.length,
+      });
+
+      return responsePayload;
     }),
 
   getPendingVerifications: adminProcedure.query(async ({ ctx }) => {
@@ -1014,33 +1116,58 @@ export const verificationsRouter = router({
       z.object({
         verificationId: z.string(),
         status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+        reason: z.string().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
       const supabase = requireAdminSupabase(ctx);
       const cleanId = input.verificationId.replace(/-(front|back|selfie)$/, '');
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+      console.log('[Admin updateVerificationStatus] Input payload:', input);
 
       let targetUserId: string | null = null;
+      let specificRowId: string | null = null;
 
-      // 1. Check verifications (lowercase)
-      try {
-        const { data: vRow } = await (supabase as any)
-          .from('verifications')
-          .select('user_id')
-          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
-          .maybeSingle();
-        if (vRow) targetUserId = vRow.user_id;
-      } catch {}
+      // 1. Check verifications table
+      if (isUuid) {
+        try {
+          const { data: byId } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('id', cleanId)
+            .limit(1);
+          if (byId && byId.length > 0) {
+            specificRowId = byId[0].id;
+            targetUserId = byId[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        try {
+          const { data: byUser } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('user_id', cleanId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (byUser && byUser.length > 0) {
+            specificRowId = byUser[0].id;
+            targetUserId = byUser[0].user_id;
+          }
+        } catch {}
+      }
 
       // 2. Check Verification (PascalCase)
       if (!targetUserId) {
         try {
-          const { data: verification } = await supabase
+          const { data: verifs } = await supabase
             .from('Verification')
             .select('userId')
             .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
-            .maybeSingle();
-          if (verification) targetUserId = verification.userId;
+            .limit(1);
+          if (verifs && verifs.length > 0) targetUserId = verifs[0].userId;
         } catch {}
       }
 
@@ -1061,50 +1188,141 @@ export const verificationsRouter = router({
       }
 
       const isApproved = input.status === 'APPROVED';
+      const isRejected = input.status === 'REJECTED';
+      const dbStatus = isApproved ? 'approved' : isRejected ? 'rejected' : 'pending';
 
-      // Update verifications table status
+      // Update verifications table status for both specificRowId and targetUserId
       try {
-        await (supabase as any)
-          .from('verifications')
-          .update({
-            status: isApproved ? 'approved' : input.status === 'REJECTED' ? 'rejected' : 'pending',
-            updated_at: new Date().toISOString(),
-          })
-          .or(`id.eq.${cleanId},user_id.eq.${targetUserId}`);
-      } catch {}
+        if (specificRowId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: dbStatus,
+              rejection_reason: isRejected ? (input.reason || null) : null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', specificRowId);
+        }
+
+        if (targetUserId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: dbStatus,
+              rejection_reason: isRejected ? (input.reason || null) : null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', targetUserId);
+        }
+        console.log('[Admin updateVerificationStatus] Updated public.verifications:', { specificRowId, targetUserId, status: dbStatus });
+      } catch (err) {
+        console.warn('[Admin updateVerificationStatus] Error updating verifications table:', err);
+      }
 
       // Update Verification table status
       try {
-        await supabase
-          .from('Verification')
-          .update({
-            status: input.status,
-            updatedAt: new Date().toISOString(),
-          })
-          .or(`id.eq.${cleanId},userId.eq.${targetUserId}`);
+        if (isUuid) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: input.status,
+              rejectionReason: isRejected ? (input.reason || null) : null,
+              details: isRejected ? (input.reason || null) : null,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', cleanId);
+        }
+        if (targetUserId) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: input.status,
+              rejectionReason: isRejected ? (input.reason || null) : null,
+              details: isRejected ? (input.reason || null) : null,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('userId', targetUserId);
+        }
       } catch {}
 
-      // Update user's profile is_verified (strictly select/update is_verified)
-      try {
-        await (supabase as any)
-          .from('profiles')
-          .update({
-            is_verified: isApproved,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', targetUserId);
-      } catch {}
+      // Update profiles and User tables
+      if (isApproved) {
+        // Check if ALL documents in verifications are approved
+        let allApproved = true;
+        try {
+          const { data: allDocs } = await (supabase as any)
+            .from('verifications')
+            .select('status')
+            .eq('user_id', targetUserId);
+          if (allDocs && allDocs.length > 0) {
+            allApproved = allDocs.every((d: any) => (d.status || '').toLowerCase() === 'approved');
+          }
+        } catch {}
 
-      // Update User table isVerified
-      try {
-        await supabase
-          .from('User')
-          .update({
-            isVerified: isApproved,
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('id', targetUserId);
-      } catch {}
+        if (allApproved) {
+          try {
+            await (supabase as any)
+              .from('profiles')
+              .update({
+                is_verified: true,
+                verification_status: 'approved',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', targetUserId);
+          } catch {
+            await (supabase as any)
+              .from('profiles')
+              .update({
+                is_verified: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', targetUserId);
+          }
+
+          try {
+            await supabase
+              .from('User')
+              .update({
+                isVerified: true,
+                updatedAt: new Date().toISOString(),
+              })
+              .eq('id', targetUserId);
+          } catch {}
+
+          console.log('[Admin updateVerificationStatus] Set profiles.is_verified = true, verification_status = approved for user:', targetUserId);
+        }
+      } else if (isRejected) {
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: false,
+              verification_status: 'rejected',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        } catch {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        }
+
+        try {
+          await supabase
+            .from('User')
+            .update({
+              isVerified: false,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        } catch {}
+
+        console.log('[Admin updateVerificationStatus] Set profiles.is_verified = false, verification_status = rejected for user:', targetUserId);
+      }
 
       return true;
     }),
@@ -1124,73 +1342,70 @@ export const verificationsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const supabase = requireAdminSupabase(ctx);
       const cleanId = input.verificationId.replace(/-(front|back|selfie)$/, '');
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+      console.log('[Admin approveVerification] Processing approval for verificationId:', input.verificationId, 'cleanId:', cleanId);
 
       let targetUserId: string | null = null;
+      let specificRowId: string | null = null;
       let userEmail: string | null = null;
       let firstName: string | null = null;
 
       // 1. Check `verifications` table (lowercase)
-      try {
-        const { data: vRow } = await (supabase as any)
-          .from('verifications')
-          .select('*')
-          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (vRow) {
-          targetUserId = vRow.user_id;
-
-          await (supabase as any)
+      if (isUuid) {
+        try {
+          const { data: byId } = await (supabase as any)
             .from('verifications')
-            .update({
-              status: 'approved',
-              rejection_reason: null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', vRow.id);
-        } else {
-          await (supabase as any)
-            .from('verifications')
-            .update({
-              status: 'approved',
-              rejection_reason: null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', cleanId);
+            .select('id, user_id')
+            .eq('id', cleanId)
+            .limit(1);
+          if (byId && byId.length > 0) {
+            specificRowId = byId[0].id;
+            targetUserId = byId[0].user_id;
+          }
+        } catch (vErr) {
+          console.warn('[Admin approveVerification] verifications by id lookup notice:', vErr);
         }
-      } catch (vErr) {
-        console.warn('verifications table lookup notice in approveVerification:', vErr);
+      }
+
+      if (!targetUserId) {
+        try {
+          const { data: byUser } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('user_id', cleanId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (byUser && byUser.length > 0) {
+            specificRowId = byUser[0].id;
+            targetUserId = byUser[0].user_id;
+          }
+        } catch (vErr) {
+          console.warn('[Admin approveVerification] verifications by user lookup notice:', vErr);
+        }
       }
 
       // 2. Check `Verification` table (PascalCase)
-      try {
-        const { data: verification } = await supabase
-          .from('Verification')
-          .select('id, userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
-          .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
-          .order('createdAt', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (verification) {
-          targetUserId = targetUserId || verification.userId;
-          const userObj = verification.user as any;
-          userEmail = Array.isArray(userObj) ? userObj[0]?.email : userObj?.email;
-          const profile = Array.isArray(userObj) ? userObj[0]?.Profile : userObj?.Profile;
-          firstName = Array.isArray(profile) ? profile[0]?.firstName : profile?.firstName;
-
-          await supabase
+      if (!targetUserId) {
+        try {
+          const { data: verifs } = await supabase
             .from('Verification')
-            .update({
-              status: 'APPROVED',
-              updatedAt: new Date().toISOString(),
-            })
-            .eq('id', verification.id);
+            .select('id, userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
+            .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
+            .order('createdAt', { ascending: false })
+            .limit(1);
+
+          if (verifs && verifs.length > 0) {
+            const verification = verifs[0];
+            targetUserId = verification.userId;
+            const userObj = verification.user as any;
+            userEmail = Array.isArray(userObj) ? userObj[0]?.email : userObj?.email;
+            const profile = Array.isArray(userObj) ? userObj[0]?.Profile : userObj?.Profile;
+            firstName = Array.isArray(profile) ? profile[0]?.firstName : profile?.firstName;
+          }
+        } catch (verErr) {
+          console.warn('[Admin approveVerification] Verification table lookup notice:', verErr);
         }
-      } catch (verErr) {
-        console.warn('Verification table lookup notice in approveVerification:', verErr);
       }
 
       // 3. Fallback: cleanId might be a userId directly in User table
@@ -1239,14 +1454,63 @@ export const verificationsRouter = router({
       }
 
       if (!targetUserId) {
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
-          targetUserId = cleanId;
-        } else {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Verification record or user not found' });
-        }
+        targetUserId = cleanId;
       }
 
-      // 4. Check if ALL documents in verifications table for this user are now approved
+      // 4. Update public.verifications table status to 'approved'
+      try {
+        if (specificRowId) {
+          const { error: err1 } = await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'approved',
+              rejection_reason: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', specificRowId);
+          console.log('[Admin approveVerification] Updated public.verifications by row id:', specificRowId, { error: err1 });
+        }
+
+        if (targetUserId) {
+          const { error: err2 } = await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'approved',
+              rejection_reason: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', targetUserId);
+          console.log('[Admin approveVerification] Updated public.verifications by user_id:', targetUserId, { error: err2 });
+        }
+      } catch (vErr) {
+        console.warn('[Admin approveVerification] public.verifications update exception:', vErr);
+      }
+
+      // 5. Update legacy Verification table status to 'APPROVED'
+      try {
+        if (isUuid) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'APPROVED',
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', cleanId);
+        }
+        if (targetUserId) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'APPROVED',
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('userId', targetUserId);
+        }
+      } catch (verErr) {
+        console.warn('[Admin approveVerification] Verification table update notice:', verErr);
+      }
+
+      // 6. Check if ALL documents in verifications table for this user are now approved
       let allUserDocsApproved = true;
       try {
         const { data: allUserDocs } = await (supabase as any)
@@ -1257,22 +1521,33 @@ export const verificationsRouter = router({
           allUserDocsApproved = allUserDocs.every((d: any) => (d.status || '').toLowerCase() === 'approved');
         }
       } catch (vUpdateErr) {
-        console.warn('verifications check notice in approveVerification:', vUpdateErr);
+        console.warn('[Admin approveVerification] verifications check notice:', vUpdateErr);
       }
 
-      // 5. Update user's profile only if all documents are approved
+      // 7. Update user's profile: set is_verified = true, verification_status = 'approved' if all documents are approved
       if (allUserDocsApproved) {
         try {
-          await (supabase as any)
+          const { error: pErr } = await (supabase as any)
             .from('profiles')
             .update({
               is_verified: true,
+              verification_status: 'approved',
               updated_at: new Date().toISOString(),
             })
             .eq('id', targetUserId);
-          console.log('[Admin approveVerification] Set profiles.is_verified = true for user:', targetUserId);
+
+          if (pErr) {
+            await (supabase as any)
+              .from('profiles')
+              .update({
+                is_verified: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', targetUserId);
+          }
+          console.log('[Admin approveVerification] Set profiles.is_verified = true, verification_status = approved for user:', targetUserId);
         } catch (profErr) {
-          console.warn('Profile update notice in approveVerification:', profErr);
+          console.warn('[Admin approveVerification] Profile update notice:', profErr);
         }
 
         try {
@@ -1329,75 +1604,70 @@ export const verificationsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const supabase = requireAdminSupabase(ctx);
       const cleanId = input.verificationId.replace(/-(front|back|selfie)$/, '');
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+      console.log('[Admin rejectVerification] Processing rejection for verificationId:', input.verificationId, 'cleanId:', cleanId, 'reason:', input.reason);
 
       let targetUserId: string | null = null;
+      let specificRowId: string | null = null;
       let userEmail: string | null = null;
       let firstName: string | null = null;
 
       // 1. Check `verifications` table (lowercase)
-      try {
-        const { data: vRow } = await (supabase as any)
-          .from('verifications')
-          .select('*')
-          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (vRow) {
-          targetUserId = vRow.user_id;
-
-          await (supabase as any)
+      if (isUuid) {
+        try {
+          const { data: byId } = await (supabase as any)
             .from('verifications')
-            .update({
-              status: 'rejected',
-              rejection_reason: input.reason,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', vRow.id);
-        } else {
-          await (supabase as any)
-            .from('verifications')
-            .update({
-              status: 'rejected',
-              rejection_reason: input.reason,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', cleanId);
+            .select('id, user_id')
+            .eq('id', cleanId)
+            .limit(1);
+          if (byId && byId.length > 0) {
+            specificRowId = byId[0].id;
+            targetUserId = byId[0].user_id;
+          }
+        } catch (vErr) {
+          console.warn('[Admin rejectVerification] verifications by id lookup notice:', vErr);
         }
-      } catch (vErr) {
-        console.warn('verifications table lookup notice in reject:', vErr);
+      }
+
+      if (!targetUserId) {
+        try {
+          const { data: byUser } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('user_id', cleanId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (byUser && byUser.length > 0) {
+            specificRowId = byUser[0].id;
+            targetUserId = byUser[0].user_id;
+          }
+        } catch (vErr) {
+          console.warn('[Admin rejectVerification] verifications by user lookup notice:', vErr);
+        }
       }
 
       // 2. Check `Verification` table (PascalCase)
-      try {
-        const { data: verification } = await supabase
-          .from('Verification')
-          .select('id, userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
-          .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
-          .order('createdAt', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (verification) {
-          targetUserId = targetUserId || verification.userId;
-          const userObj = verification.user as any;
-          userEmail = Array.isArray(userObj) ? userObj[0]?.email : userObj?.email;
-          const profile = Array.isArray(userObj) ? userObj[0]?.Profile : userObj?.Profile;
-          firstName = Array.isArray(profile) ? profile[0]?.firstName : profile?.firstName;
-
-          await supabase
+      if (!targetUserId) {
+        try {
+          const { data: verifs } = await supabase
             .from('Verification')
-            .update({
-              status: 'REJECTED',
-              details: input.reason,
-              rejectionReason: input.reason,
-              updatedAt: new Date().toISOString(),
-            })
-            .eq('id', verification.id);
+            .select('id, userId, user:User!Verification_userId_fkey(email, Profile(firstName, lastName))')
+            .or(`id.eq.${cleanId},userId.eq.${cleanId}`)
+            .order('createdAt', { ascending: false })
+            .limit(1);
+
+          if (verifs && verifs.length > 0) {
+            const verification = verifs[0];
+            targetUserId = verification.userId;
+            const userObj = verification.user as any;
+            userEmail = Array.isArray(userObj) ? userObj[0]?.email : userObj?.email;
+            const profile = Array.isArray(userObj) ? userObj[0]?.Profile : userObj?.Profile;
+            firstName = Array.isArray(profile) ? profile[0]?.firstName : profile?.firstName;
+          }
+        } catch (verErr) {
+          console.warn('[Admin rejectVerification] Verification table lookup notice:', verErr);
         }
-      } catch (verErr) {
-        console.warn('Verification table lookup notice in reject:', verErr);
       }
 
       // 3. Fallback: cleanId might be a userId directly in User table
@@ -1446,28 +1716,92 @@ export const verificationsRouter = router({
       }
 
       if (!targetUserId) {
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
-          targetUserId = cleanId;
-        } else {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Verification record or user not found' });
-        }
+        targetUserId = cleanId;
       }
 
-      // 4. Ensure user's profile in profiles table is is_verified = false
+      // 4. Update public.verifications table status to 'rejected' with rejection_reason
       try {
-        await (supabase as any)
+        if (specificRowId) {
+          const { error: err1 } = await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'rejected',
+              rejection_reason: input.reason,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', specificRowId);
+          console.log('[Admin rejectVerification] Updated public.verifications by row id:', specificRowId, { error: err1 });
+        }
+
+        if (targetUserId) {
+          const { error: err2 } = await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'rejected',
+              rejection_reason: input.reason,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', targetUserId);
+          console.log('[Admin rejectVerification] Updated public.verifications by user_id:', targetUserId, { error: err2 });
+        }
+      } catch (vErr) {
+        console.warn('[Admin rejectVerification] public.verifications update exception:', vErr);
+      }
+
+      // 5. Update legacy Verification table status to 'REJECTED'
+      try {
+        if (isUuid) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'REJECTED',
+              details: input.reason,
+              rejectionReason: input.reason,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', cleanId);
+        }
+        if (targetUserId) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'REJECTED',
+              details: input.reason,
+              rejectionReason: input.reason,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('userId', targetUserId);
+        }
+      } catch (verErr) {
+        console.warn('[Admin rejectVerification] Verification table update notice:', verErr);
+      }
+
+      // 6. Ensure user's profile in profiles table is is_verified = false, verification_status = 'rejected'
+      try {
+        const { error: pErr } = await (supabase as any)
           .from('profiles')
           .update({
             is_verified: false,
+            verification_status: 'rejected',
             updated_at: new Date().toISOString(),
           })
           .eq('id', targetUserId);
-        console.log('[Admin rejectVerification] Set profiles.is_verified = false for user:', targetUserId);
+
+        if (pErr) {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        }
+        console.log('[Admin rejectVerification] Set profiles.is_verified = false, verification_status = rejected for user:', targetUserId);
       } catch (profErr) {
-        console.warn('Profile update notice in rejectVerification:', profErr);
+        console.warn('[Admin rejectVerification] Profile update notice in rejectVerification:', profErr);
       }
 
-      // 5. Update User table isVerified = false
+      // 7. Update User table isVerified = false
       try {
         await supabase
           .from('User')
@@ -1939,23 +2273,139 @@ export const verificationsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const supabase = requireAdminSupabase(ctx);
       const adminUserId = ctx.session.user.id;
+      const cleanId = input.verificationId.replace(/-(front|back|selfie)$/, '');
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-      const { error } = await supabase
-        .from('Verification')
-        .update({
-          status: 'APPROVED',
-          reviewedBy: adminUserId,
-          reviewedAt: new Date().toISOString(),
-          adminNotes: input.adminNotes || null,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('id', input.verificationId);
+      console.log('[Admin approveDocument] Input verificationId:', input.verificationId, 'cleanId:', cleanId);
 
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to approve document',
-        });
+      let targetUserId: string | null = null;
+      let specificRowId: string | null = null;
+
+      // 1. Update Verification table
+      try {
+        const { data: vDoc } = await supabase
+          .from('Verification')
+          .update({
+            status: 'APPROVED',
+            reviewedBy: adminUserId,
+            reviewedAt: new Date().toISOString(),
+            adminNotes: input.adminNotes || null,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', input.verificationId)
+          .select('userId')
+          .maybeSingle();
+
+        if (vDoc?.userId) targetUserId = vDoc.userId;
+      } catch (err) {
+        console.warn('[Admin approveDocument] Verification table update notice:', err);
+      }
+
+      // 2. Check verifications table
+      if (isUuid) {
+        try {
+          const { data: byId } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('id', cleanId)
+            .limit(1);
+          if (byId && byId.length > 0) {
+            specificRowId = byId[0].id;
+            targetUserId = targetUserId || byId[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        try {
+          const { data: byUser } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('user_id', cleanId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (byUser && byUser.length > 0) {
+            specificRowId = byUser[0].id;
+            targetUserId = byUser[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        targetUserId = cleanId;
+      }
+
+      // 3. Update verifications table status to approved
+      try {
+        if (specificRowId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'approved',
+              rejection_reason: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', specificRowId);
+        }
+
+        if (targetUserId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'approved',
+              rejection_reason: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', targetUserId);
+        }
+        console.log('[Admin approveDocument] Updated public.verifications:', { specificRowId, targetUserId, status: 'approved' });
+      } catch (vErr) {
+        console.warn('[Admin approveDocument] public.verifications update error:', vErr);
+      }
+
+      // 4. Check if all documents for targetUserId are approved
+      let allApproved = true;
+      try {
+        const { data: allDocs } = await (supabase as any)
+          .from('verifications')
+          .select('status')
+          .eq('user_id', targetUserId);
+        if (allDocs && allDocs.length > 0) {
+          allApproved = allDocs.every((d: any) => (d.status || '').toLowerCase() === 'approved');
+        }
+      } catch {}
+
+      if (allApproved) {
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: true,
+              verification_status: 'approved',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        } catch {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        }
+
+        try {
+          await supabase
+            .from('User')
+            .update({
+              isVerified: true,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        } catch {}
+
+        console.log('[Admin approveDocument] Set profiles.is_verified = true, verification_status = approved for user:', targetUserId);
       }
 
       return true;
@@ -1973,25 +2423,129 @@ export const verificationsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const supabase = requireAdminSupabase(ctx);
       const adminUserId = ctx.session.user.id;
+      const cleanId = input.verificationId.replace(/-(front|back|selfie)$/, '');
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-      const { error } = await supabase
-        .from('Verification')
-        .update({
-          status: 'REJECTED',
-          rejectionReason: input.rejectionReason,
-          reviewedBy: adminUserId,
-          reviewedAt: new Date().toISOString(),
-          adminNotes: input.adminNotes || null,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('id', input.verificationId);
+      console.log('[Admin rejectDocument] Input verificationId:', input.verificationId, 'cleanId:', cleanId, 'reason:', input.rejectionReason);
 
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to reject document',
-        });
+      let targetUserId: string | null = null;
+      let specificRowId: string | null = null;
+
+      // 1. Update Verification table
+      try {
+        const { data: vDoc } = await supabase
+          .from('Verification')
+          .update({
+            status: 'REJECTED',
+            rejectionReason: input.rejectionReason,
+            details: input.rejectionReason,
+            reviewedBy: adminUserId,
+            reviewedAt: new Date().toISOString(),
+            adminNotes: input.adminNotes || null,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', input.verificationId)
+          .select('userId')
+          .maybeSingle();
+
+        if (vDoc?.userId) targetUserId = vDoc.userId;
+      } catch (err) {
+        console.warn('[Admin rejectDocument] Verification table update notice:', err);
       }
+
+      // 2. Check verifications table
+      if (isUuid) {
+        try {
+          const { data: byId } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('id', cleanId)
+            .limit(1);
+          if (byId && byId.length > 0) {
+            specificRowId = byId[0].id;
+            targetUserId = targetUserId || byId[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        try {
+          const { data: byUser } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('user_id', cleanId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (byUser && byUser.length > 0) {
+            specificRowId = byUser[0].id;
+            targetUserId = byUser[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        targetUserId = cleanId;
+      }
+
+      // 3. Update verifications table status to rejected
+      try {
+        if (specificRowId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'rejected',
+              rejection_reason: input.rejectionReason,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', specificRowId);
+        }
+
+        if (targetUserId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'rejected',
+              rejection_reason: input.rejectionReason,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', targetUserId);
+        }
+        console.log('[Admin rejectDocument] Updated public.verifications:', { specificRowId, targetUserId, status: 'rejected' });
+      } catch (vErr) {
+        console.warn('[Admin rejectDocument] public.verifications update error:', vErr);
+      }
+
+      // 4. Update profiles table: is_verified = false, verification_status = rejected
+      try {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            is_verified: false,
+            verification_status: 'rejected',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
+      } catch {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            is_verified: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
+      }
+
+      try {
+        await supabase
+          .from('User')
+          .update({
+            isVerified: false,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
+      } catch {}
+
+      console.log('[Admin rejectDocument] Set profiles.is_verified = false, verification_status = rejected for user:', targetUserId);
 
       return true;
     }),

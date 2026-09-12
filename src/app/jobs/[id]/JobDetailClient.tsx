@@ -311,7 +311,7 @@ function JobDetailClient() {
   const isOwner = session?.session?.user?.id === job.clientId;
   const hasApplied = job.hasApplied ?? false;
   const isVerificationLoading = verificationLoading || verificationFetching;
-  const isVerified = verification?.status === 'APPROVED';
+  const isVerified = (verification as any)?.status === 'APPROVED' || (verification as any)?.status === 'approved' || (verification as any)?.isVerified === true;
   const canApply =
     isArtist && !isOwner && !isVerificationLoading && isVerified && !hasApplied;
 

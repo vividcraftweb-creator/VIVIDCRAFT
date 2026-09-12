@@ -225,7 +225,7 @@ export default function ProfileView() {
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-2 -right-2 w-10 h-10">
-                {verification?.status === 'APPROVED' && (
+                {((verification as any)?.status === 'APPROVED' || (verification as any)?.status === 'approved' || (verification as any)?.isVerified === true) && (
                   <div className="bg-green-500 rounded-full p-2 border-4 border-gray-950 shadow-lg w-full h-full flex items-center justify-center">
                     <CheckCircle className="h-6 w-6 text-white" />
                   </div>
@@ -276,7 +276,7 @@ export default function ProfileView() {
 
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mt-4" style={{ minHeight: '28px' }}>
-                {sessionUser?.role !== 'CLIENT' && verification?.status === 'APPROVED' && (
+                {sessionUser?.role !== 'CLIENT' && ((verification as any)?.status === 'APPROVED' || (verification as any)?.status === 'approved' || (verification as any)?.isVerified === true) && (
                   <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Verified

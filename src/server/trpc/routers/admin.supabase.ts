@@ -971,32 +971,94 @@ export const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       const cleanId = input.verificationId.replace(/-(front|back|selfie)$/, '');
       const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-      console.log('[AdminRouter approveVerification] Approving verificationId:', input.verificationId);
+      console.log('[AdminRouter approveVerification] Approving verificationId:', input.verificationId, 'cleanId:', cleanId);
 
-      let targetUserId = cleanId;
-      let specificRowId = cleanId;
-      try {
-        const { data: vRow } = await (supabase as any)
-          .from('verifications')
-          .select('id, user_id')
-          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
-          .limit(1)
-          .maybeSingle();
-        if (vRow?.user_id) targetUserId = vRow.user_id;
-        if (vRow?.id) specificRowId = vRow.id;
-      } catch {}
+      let targetUserId: string | null = null;
+      let specificRowId: string | null = null;
+
+      if (isUuid) {
+        try {
+          const { data: byId } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('id', cleanId)
+            .limit(1);
+          if (byId && byId.length > 0) {
+            specificRowId = byId[0].id;
+            targetUserId = byId[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        try {
+          const { data: byUser } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('user_id', cleanId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (byUser && byUser.length > 0) {
+            specificRowId = byUser[0].id;
+            targetUserId = byUser[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        targetUserId = cleanId;
+      }
 
       // Update specific record in public.verifications
       try {
-        await (supabase as any)
-          .from('verifications')
-          .update({
-            status: 'approved',
-            rejection_reason: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', specificRowId);
+        if (specificRowId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'approved',
+              rejection_reason: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', specificRowId);
+        }
+
+        if (targetUserId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'approved',
+              rejection_reason: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', targetUserId);
+        }
+        console.log('[AdminRouter approveVerification] Updated public.verifications:', { specificRowId, targetUserId, status: 'approved' });
+      } catch (err) {
+        console.warn('[AdminRouter approveVerification] verifications update notice:', err);
+      }
+
+      // Update legacy Verification table
+      try {
+        if (isUuid) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'APPROVED',
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', cleanId);
+        }
+        if (targetUserId) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'APPROVED',
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('userId', targetUserId);
+        }
       } catch {}
 
       // Check if ALL documents in verifications are approved for targetUserId
@@ -1017,11 +1079,31 @@ export const adminRouter = router({
             .from('profiles')
             .update({
               is_verified: true,
+              verification_status: 'approved',
               updated_at: new Date().toISOString(),
             })
             .eq('id', targetUserId);
-          console.log('[AdminRouter approveVerification] Set profiles.is_verified = true for user:', targetUserId);
+        } catch {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        }
+
+        try {
+          await supabase
+            .from('User')
+            .update({
+              isVerified: true,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
         } catch {}
+
+        console.log('[AdminRouter approveVerification] Set profiles.is_verified = true, verification_status = approved for user:', targetUserId);
       }
 
       return true;
@@ -1032,35 +1114,111 @@ export const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       const cleanId = input.verificationId.replace(/-(front|back|selfie)$/, '');
       const supabase = ctx.adminSupabase || createAdminClient() || (await createClient());
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-      console.log('[AdminRouter rejectVerification] Rejecting verificationId:', input.verificationId, 'reason:', input.reason);
+      console.log('[AdminRouter rejectVerification] Rejecting verificationId:', input.verificationId, 'cleanId:', cleanId, 'reason:', input.reason);
 
-      let targetUserId = cleanId;
-      let specificRowId = cleanId;
-      try {
-        const { data: vRow } = await (supabase as any)
-          .from('verifications')
-          .select('id, user_id')
-          .or(`id.eq.${cleanId},user_id.eq.${cleanId}`)
-          .limit(1)
-          .maybeSingle();
-        if (vRow?.user_id) targetUserId = vRow.user_id;
-        if (vRow?.id) specificRowId = vRow.id;
-      } catch {}
+      let targetUserId: string | null = null;
+      let specificRowId: string | null = null;
+
+      if (isUuid) {
+        try {
+          const { data: byId } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('id', cleanId)
+            .limit(1);
+          if (byId && byId.length > 0) {
+            specificRowId = byId[0].id;
+            targetUserId = byId[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        try {
+          const { data: byUser } = await (supabase as any)
+            .from('verifications')
+            .select('id, user_id')
+            .eq('user_id', cleanId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (byUser && byUser.length > 0) {
+            specificRowId = byUser[0].id;
+            targetUserId = byUser[0].user_id;
+          }
+        } catch {}
+      }
+
+      if (!targetUserId) {
+        targetUserId = cleanId;
+      }
 
       // Update specific record in public.verifications
       try {
-        await (supabase as any)
-          .from('verifications')
-          .update({
-            status: 'rejected',
-            rejection_reason: input.reason,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', specificRowId);
+        if (specificRowId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'rejected',
+              rejection_reason: input.reason,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', specificRowId);
+        }
+
+        if (targetUserId) {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'rejected',
+              rejection_reason: input.reason,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', targetUserId);
+        }
+        console.log('[AdminRouter rejectVerification] Updated public.verifications:', { specificRowId, targetUserId, status: 'rejected' });
+      } catch (err) {
+        console.warn('[AdminRouter rejectVerification] verifications update notice:', err);
+      }
+
+      // Update legacy Verification table
+      try {
+        if (isUuid) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'REJECTED',
+              details: input.reason,
+              rejectionReason: input.reason,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', cleanId);
+        }
+        if (targetUserId) {
+          await supabase
+            .from('Verification')
+            .update({
+              status: 'REJECTED',
+              details: input.reason,
+              rejectionReason: input.reason,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('userId', targetUserId);
+        }
       } catch {}
 
+      // Update profiles table: is_verified = false, verification_status = 'rejected'
       try {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            is_verified: false,
+            verification_status: 'rejected',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
+      } catch {
         await (supabase as any)
           .from('profiles')
           .update({
@@ -1068,8 +1226,19 @@ export const adminRouter = router({
             updated_at: new Date().toISOString(),
           })
           .eq('id', targetUserId);
-        console.log('[AdminRouter rejectVerification] Set profiles.is_verified = false for user:', targetUserId);
+      }
+
+      try {
+        await supabase
+          .from('User')
+          .update({
+            isVerified: false,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
       } catch {}
+
+      console.log('[AdminRouter rejectVerification] Set profiles.is_verified = false, verification_status = rejected for user:', targetUserId);
 
       return true;
     }),
