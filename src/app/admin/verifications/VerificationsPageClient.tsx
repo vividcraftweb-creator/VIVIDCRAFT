@@ -503,13 +503,9 @@ export default function AdminVerificationsPage() {
       // Cache Invalidation on Action
       try {
         await Promise.all([
-          utils.verification.getAllPending.invalidate(),
-          utils.verifications.getAllPending.invalidate(),
-          utils.admin.getUsers.invalidate(),
-          utils.admin.getUsersWithVerifications.invalidate(),
-          utils.admin.users.getUsers.invalidate(),
-          utils.admin.users.getOverview.invalidate(),
-          utils.verifications.getUserDocuments.invalidate(),
+          utils.verification.invalidate(),
+          utils.verifications.invalidate(),
+          utils.admin.invalidate(),
         ]);
       } catch (err) {
         console.warn('Cache invalidation notice:', err);
@@ -550,13 +546,9 @@ export default function AdminVerificationsPage() {
       // Cache Invalidation on Action
       try {
         await Promise.all([
-          utils.verification.getAllPending.invalidate(),
-          utils.verifications.getAllPending.invalidate(),
-          utils.admin.getUsers.invalidate(),
-          utils.admin.getUsersWithVerifications.invalidate(),
-          utils.admin.users.getUsers.invalidate(),
-          utils.admin.users.getOverview.invalidate(),
-          utils.verifications.getUserDocuments.invalidate(),
+          utils.verification.invalidate(),
+          utils.verifications.invalidate(),
+          utils.admin.invalidate(),
         ]);
       } catch (err) {
         console.warn('Cache invalidation notice:', err);

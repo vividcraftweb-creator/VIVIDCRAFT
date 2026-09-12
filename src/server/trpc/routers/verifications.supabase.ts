@@ -640,6 +640,166 @@ export const verificationsRouter = router({
       }
     }),
 
+  getStatus: protectedProcedure
+    .input(z.union([z.object({}).passthrough(), z.string(), z.undefined(), z.null()]).optional().nullable())
+    .query(async ({ ctx }) => {
+      const supabase = await createClient();
+      const userId = ctx.session.user.id;
+
+      // 1. Fetch user profile
+      const { data: profile } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      // 2. Fetch all records from public.verifications table
+      const { data: vRecords } = await (supabase as any)
+        .from('verifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      // 3. Fetch from legacy Verification table
+      let legacyRecords: any[] = [];
+      try {
+        const { data: leg } = await supabase
+          .from('Verification')
+          .select('*')
+          .eq('userId', userId)
+          .order('createdAt', { ascending: false });
+        if (leg) legacyRecords = leg;
+      } catch {}
+
+      // Synthesize documents
+      const documents: Array<{
+        id: string;
+        verificationType: string;
+        documentType: string;
+        url: string | null;
+        status: 'PENDING' | 'APPROVED' | 'REJECTED';
+        rejectionReason: string | null;
+        createdAt: string;
+      }> = [];
+
+      if (vRecords && vRecords.length > 0) {
+        for (const v of vRecords) {
+          const docType = v.document_type || 'ID Document';
+          const status = (v.status || 'pending').toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED';
+          const reason = v.rejection_reason || null;
+          const createdAt = v.created_at || new Date().toISOString();
+
+          if (v.id_front_url) {
+            documents.push({
+              id: `${v.id}-front`,
+              verificationType: 'ID_FRONT',
+              documentType: `${docType} (Front)`,
+              url: v.id_front_url,
+              status,
+              rejectionReason: reason,
+              createdAt,
+            });
+          }
+          if (v.id_back_url) {
+            documents.push({
+              id: `${v.id}-back`,
+              verificationType: 'ID_BACK',
+              documentType: `${docType} (Back)`,
+              url: v.id_back_url,
+              status,
+              rejectionReason: reason,
+              createdAt,
+            });
+          }
+          if (v.selfie_url) {
+            documents.push({
+              id: `${v.id}-selfie`,
+              verificationType: 'SELFIE',
+              documentType: `Selfie with ${docType}`,
+              url: v.selfie_url,
+              status,
+              rejectionReason: reason,
+              createdAt,
+            });
+          }
+          if (!v.id_front_url && !v.id_back_url && !v.selfie_url) {
+            documents.push({
+              id: v.id,
+              verificationType: 'ID_FRONT',
+              documentType: docType,
+              url: null,
+              status,
+              rejectionReason: reason,
+              createdAt,
+            });
+          }
+        }
+      } else if (legacyRecords.length > 0) {
+        for (const leg of legacyRecords) {
+          documents.push({
+            id: leg.id,
+            verificationType: leg.verificationType || 'ID_FRONT',
+            documentType: leg.documentType || 'ID Document',
+            url: leg.documentUrl || leg.files || null,
+            status: (leg.status || 'PENDING').toUpperCase() as any,
+            rejectionReason: leg.rejectionReason || leg.details || null,
+            createdAt: leg.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+
+      const requiredDocs = ['ID_FRONT', 'ID_BACK', 'SELFIE'];
+      const uploadedTypes = documents.map((d) => d.verificationType).filter(Boolean);
+      const missingDocs = requiredDocs.filter((type) => !uploadedTypes.includes(type));
+
+      const rejectedDocs = documents
+        .filter((d) => d.status === 'REJECTED')
+        .map((d) => ({
+          ...d,
+          type: d.verificationType,
+          reason: d.rejectionReason || 'Document was rejected',
+        }));
+      const approvedDocs = documents.filter((d) => d.status === 'APPROVED');
+      const pendingDocs = documents.filter((d) => d.status === 'PENDING');
+
+      const hasRejected = rejectedDocs.length > 0;
+      const allApproved = documents.length > 0 && documents.every((d) => d.status === 'APPROVED');
+      const isProfileVerified = Boolean(profile?.is_verified || profile?.verified);
+
+      let status: 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_started';
+      let message = 'Upload a government-issued ID to fully activate your account and apply for jobs.';
+      if (hasRejected) {
+        status = 'rejected';
+        message = 'Some documents were rejected. Please review the feedback and re-upload them.';
+      } else if (allApproved || (documents.length === 0 && isProfileVerified)) {
+        status = 'approved';
+        message = 'Identity verification approved';
+      } else if (documents.length > 0 || pendingDocs.length > 0) {
+        status = 'pending';
+        message = 'Your ID is under review';
+      }
+
+      const latestRecord = vRecords?.[0] || null;
+      const rejectionReason = rejectedDocs[0]?.rejectionReason || latestRecord?.rejection_reason || null;
+
+      return {
+        status,
+        isVerified: status === 'approved',
+        message,
+        requiredDocs,
+        uploadedDocs: uploadedTypes,
+        missingDocs,
+        documents,
+        rejectedDocs,
+        approvedDocs,
+        pendingDocs,
+        rejectionReason,
+        latestRecord,
+        hasRejected,
+        allApproved,
+      };
+    }),
+
   getPendingVerifications: adminProcedure.query(async ({ ctx }) => {
     try {
       const supabase = ctx.adminSupabase || createAdminClient();
@@ -986,9 +1146,19 @@ export const verificationsRouter = router({
             .from('verifications')
             .update({
               status: 'approved',
+              rejection_reason: null,
               updated_at: new Date().toISOString(),
             })
-            .or(`id.eq.${cleanId},user_id.eq.${vRow.user_id}`);
+            .eq('id', vRow.id);
+        } else {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'approved',
+              rejection_reason: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', cleanId);
         }
       } catch (vErr) {
         console.warn('verifications table lookup notice in approveVerification:', vErr);
@@ -1017,7 +1187,7 @@ export const verificationsRouter = router({
               status: 'APPROVED',
               updatedAt: new Date().toISOString(),
             })
-            .or(`id.eq.${cleanId},userId.eq.${verification.userId}`);
+            .eq('id', verification.id);
         }
       } catch (verErr) {
         console.warn('Verification table lookup notice in approveVerification:', verErr);
@@ -1076,54 +1246,45 @@ export const verificationsRouter = router({
         }
       }
 
-      // 4. Update status in verifications table for this user
+      // 4. Check if ALL documents in verifications table for this user are now approved
+      let allUserDocsApproved = true;
       try {
-        await (supabase as any)
+        const { data: allUserDocs } = await (supabase as any)
           .from('verifications')
-          .update({
-            status: 'approved',
-            updated_at: new Date().toISOString(),
-          })
+          .select('status')
           .eq('user_id', targetUserId);
+        if (allUserDocs && allUserDocs.length > 0) {
+          allUserDocsApproved = allUserDocs.every((d: any) => (d.status || '').toLowerCase() === 'approved');
+        }
       } catch (vUpdateErr) {
-        console.warn('verifications update notice in approveVerification:', vUpdateErr);
+        console.warn('verifications check notice in approveVerification:', vUpdateErr);
       }
 
-      // 5. Update status in Verification table for this user
-      try {
-        await supabase
-          .from('Verification')
-          .update({
-            status: 'APPROVED',
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('userId', targetUserId);
-      } catch {}
+      // 5. Update user's profile only if all documents are approved
+      if (allUserDocsApproved) {
+        try {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+          console.log('[Admin approveVerification] Set profiles.is_verified = true for user:', targetUserId);
+        } catch (profErr) {
+          console.warn('Profile update notice in approveVerification:', profErr);
+        }
 
-      // 6. Update user's profile in profiles table setting is_verified = true (strictly using is_verified)
-      try {
-        await (supabase as any)
-          .from('profiles')
-          .update({
-            is_verified: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', targetUserId);
-        console.log('[Admin approveVerification] Set verifications.status = approved and profiles.is_verified = true for user:', targetUserId);
-      } catch (profErr) {
-        console.warn('Profile update notice in approveVerification:', profErr);
+        try {
+          await supabase
+            .from('User')
+            .update({
+              isVerified: true,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        } catch {}
       }
-
-      // 7. Update User table isVerified status
-      try {
-        await supabase
-          .from('User')
-          .update({
-            isVerified: true,
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('id', targetUserId);
-      } catch {}
 
       // 8. Update Supabase auth user_metadata if possible
       try {
@@ -1193,7 +1354,16 @@ export const verificationsRouter = router({
               rejection_reason: input.reason,
               updated_at: new Date().toISOString(),
             })
-            .or(`id.eq.${cleanId},user_id.eq.${vRow.user_id}`);
+            .eq('id', vRow.id);
+        } else {
+          await (supabase as any)
+            .from('verifications')
+            .update({
+              status: 'rejected',
+              rejection_reason: input.reason,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', cleanId);
         }
       } catch (vErr) {
         console.warn('verifications table lookup notice in reject:', vErr);
@@ -1224,7 +1394,7 @@ export const verificationsRouter = router({
               rejectionReason: input.reason,
               updatedAt: new Date().toISOString(),
             })
-            .or(`id.eq.${cleanId},userId.eq.${verification.userId}`);
+            .eq('id', verification.id);
         }
       } catch (verErr) {
         console.warn('Verification table lookup notice in reject:', verErr);
@@ -1283,34 +1453,7 @@ export const verificationsRouter = router({
         }
       }
 
-      // 4. Update status in verifications table for this user
-      try {
-        await (supabase as any)
-          .from('verifications')
-          .update({
-            status: 'rejected',
-            rejection_reason: input.reason,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', targetUserId);
-      } catch (vUpdateErr) {
-        console.warn('verifications update notice in reject:', vUpdateErr);
-      }
-
-      // 5. Update status in Verification table for this user
-      try {
-        await supabase
-          .from('Verification')
-          .update({
-            status: 'REJECTED',
-            details: input.reason,
-            rejectionReason: input.reason,
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('userId', targetUserId);
-      } catch {}
-
-      // 6. Ensure user's profile in profiles table remains is_verified = false
+      // 4. Ensure user's profile in profiles table is is_verified = false
       try {
         await (supabase as any)
           .from('profiles')
@@ -1319,12 +1462,12 @@ export const verificationsRouter = router({
             updated_at: new Date().toISOString(),
           })
           .eq('id', targetUserId);
-        console.log('[Admin rejectVerification] Set verifications.status = rejected and profiles.is_verified = false for user:', targetUserId);
+        console.log('[Admin rejectVerification] Set profiles.is_verified = false for user:', targetUserId);
       } catch (profErr) {
         console.warn('Profile update notice in rejectVerification:', profErr);
       }
 
-      // 7. Update User table isVerified = false
+      // 5. Update User table isVerified = false
       try {
         await supabase
           .from('User')

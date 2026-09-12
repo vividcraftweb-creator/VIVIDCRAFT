@@ -189,7 +189,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       refetchOnReconnect: false,
     });
   const { data: rawVerificationStatus, isLoading: verificationLoading } =
-    trpc.verifications.checkVerificationStatus.useQuery(undefined, {
+    trpc.verification.getStatus.useQuery(undefined, {
       enabled: isAuthenticated && (view === 'dashboard' || view === 'verification'),
       retry: false,
       refetchInterval: 5000, // Auto-refetch every 5 seconds
@@ -198,7 +198,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       refetchOnReconnect: false,
     });
 
-  const verificationStatus = (rawVerificationStatus && rawVerificationStatus.message !== 'User not found')
+  const verificationStatus = (rawVerificationStatus && (rawVerificationStatus as any).message !== 'User not found')
     ? rawVerificationStatus
     : {
         isVerified: directVerification?.isVerified ?? false,
@@ -726,7 +726,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                 <CheckCircle className="h-6 w-6 text-green-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-green-300 mb-2">Verification Successful</h3>
+                <h3 className="text-lg font-bold text-green-300 mb-2">Account Verified</h3>
                 <p className="text-slate-300">
                   Your account has been verified! You now have full access to all platform features.
                 </p>

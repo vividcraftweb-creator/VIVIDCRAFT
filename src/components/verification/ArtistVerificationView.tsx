@@ -27,6 +27,7 @@ import {
   ExternalLink,
   RotateCcw,
   AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -141,6 +142,12 @@ export default function ArtistVerificationView() {
   const utils = trpc.useUtils();
 
   // Queries for live synchronization
+  const { data: verificationData, refetch, isFetching } = trpc.verification.getStatus.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+
   const { data: userDocs, refetch: refetchDocs } = trpc.verifications.getUserDocuments.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: true,
@@ -379,7 +386,26 @@ export default function ArtistVerificationView() {
       }
     }
 
-    // 2. Merge in userDocs from tRPC if available
+    // 2. Merge in verificationData documents from trpc.verification.getStatus
+    if (verificationData?.documents && Array.isArray(verificationData.documents)) {
+      for (const d of verificationData.documents) {
+        const vType = d.verificationType || 'ID_FRONT';
+        if (!seenSlots.has(vType) && d.url) {
+          list.push({
+            id: d.id,
+            verificationType: vType,
+            status: d.status,
+            documentUrl: d.url,
+            fileName: d.documentType,
+            rejectionReason: d.rejectionReason,
+            createdAt: d.createdAt,
+          });
+          seenSlots.add(vType);
+        }
+      }
+    }
+
+    // 3. Merge in userDocs from tRPC if available
     if (userDocs && Array.isArray(userDocs)) {
       for (const d of userDocs) {
         const vType = d.verificationType || 'ID_FRONT';
@@ -399,7 +425,7 @@ export default function ArtistVerificationView() {
     }
 
     return list;
-  }, [userDocs, directDocs]);
+  }, [userDocs, directDocs, verificationData]);
 
   // Detect if previous DB submission is incomplete (e.g. from premature upload)
   const isIncompletePending = useMemo(() => {
@@ -416,26 +442,36 @@ export default function ArtistVerificationView() {
 
   // Derived verification status
   const rejectedDocs = allDocuments.filter((d) => d.status === 'REJECTED');
-  const hasRejectedDoc = rejectedDocs.length > 0 || submittedRecord?.status?.toLowerCase() === 'rejected';
+  const hasRejectedDoc =
+    rejectedDocs.length > 0 ||
+    submittedRecord?.status?.toLowerCase() === 'rejected' ||
+    verificationData?.status === 'rejected' ||
+    Boolean(verificationData?.hasRejected);
 
   const pendingDocs = allDocuments.filter((d) => d.status === 'PENDING');
   const approvedDocs = allDocuments.filter((d) => d.status === 'APPROVED');
-  const hasPendingDoc = pendingDocs.length > 0 || isPendingSubmitted || submittedRecord?.status?.toLowerCase() === 'pending';
+  const hasPendingDoc =
+    pendingDocs.length > 0 ||
+    isPendingSubmitted ||
+    submittedRecord?.status?.toLowerCase() === 'pending' ||
+    verificationData?.status === 'pending';
 
   // Overall Status logic:
   // If ANY doc is rejected -> Show Badge: Rejected (Red).
   // If ALL required docs are approved -> Show Badge: Verified (Green).
   // Otherwise -> Show Badge: Pending (Yellow).
   // DO NOT display Verified green badge if any submitted document status is rejected or pending.
-  const isRejected = !isResetMode && hasRejectedDoc;
+  const isRejected = !isResetMode && Boolean(hasRejectedDoc);
 
   const isApproved = !isResetMode && !isRejected && !hasPendingDoc && (
+    verificationData?.status === 'approved' ||
+    Boolean(verificationData?.allApproved) ||
     (approvedDocs.length > 0 && allDocuments.length > 0 && allDocuments.every((d) => d.status === 'APPROVED')) ||
     (Boolean(profileData?.is_verified || (myProfile as any)?.is_verified) && allDocuments.length === 0)
   );
 
   const isPending = !isResetMode && !isRejected && !isApproved && (
-    hasPendingDoc || allDocuments.length > 0
+    hasPendingDoc || allDocuments.length > 0 || verificationData?.status === 'pending'
   );
 
   const currentConfig = DOC_CONFIGS[selectedDocType];
@@ -776,7 +812,7 @@ export default function ArtistVerificationView() {
             </div>
             <div className="flex-1 text-center sm:text-left">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mb-2">
-                <h2 className="text-2xl font-bold text-white">You Are a Verified Artist</h2>
+                <h2 className="text-2xl font-bold text-white">Account Verified</h2>
                 <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                   Verified
@@ -803,6 +839,23 @@ export default function ArtistVerificationView() {
                   <FileCheck2 className="h-5 w-5 text-purple-400 flex-shrink-0" />
                   <span className="text-xs text-slate-200 font-medium">Instant Trust with Private Collectors & Buyers</span>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    refetch();
+                    refetchDocs();
+                    refetchProfile();
+                  }}
+                  disabled={isFetching}
+                  className="bg-slate-950 border-slate-800 text-white hover:bg-slate-800 text-xs cursor-pointer"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin text-primary' : ''}`} />
+                  {isFetching ? 'Refreshing...' : 'Refresh Status'}
+                </Button>
               </div>
             </div>
           </div>
@@ -929,13 +982,15 @@ export default function ArtistVerificationView() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    refetch();
                     refetchProfile();
                     refetchDocs();
                   }}
-                  className="bg-slate-950 border-slate-800 text-white hover:bg-slate-800 text-xs"
+                  disabled={isFetching}
+                  className="bg-slate-950 border-slate-800 text-white hover:bg-slate-800 text-xs cursor-pointer"
                 >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  Refresh Status
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin text-primary' : ''}`} />
+                  {isFetching ? 'Refreshing...' : 'Refresh Status'}
                 </Button>
 
                 <Button
@@ -970,38 +1025,89 @@ export default function ArtistVerificationView() {
     <div className="space-y-6">
       {/* Rejection Alert if applicable */}
       {isRejected && (
-        <div className="bg-slate-900/90 border border-red-500/30 rounded-2xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-slate-900/90 border border-red-500/30 rounded-3xl p-6 sm:p-8 shadow-sm">
           <div className="flex items-start gap-4">
-            <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-xl flex-shrink-0">
-              <ShieldAlert className="h-6 w-6 text-red-400" />
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex-shrink-0">
+              <ShieldAlert className="h-7 w-7 text-red-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold text-red-400 mb-1">Verification Rejected</h3>
-              <p className="text-slate-300 text-xs mb-3">
-                Your previous documents could not be verified. Please review the admin feedback below, upload clearer photos, and resubmit.
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-2xl font-bold text-red-400">Verification Rejected</h2>
+                  <Badge className="bg-red-500/20 text-red-300 border-red-500/30 font-semibold text-xs">
+                    <XCircle className="h-3.5 w-3.5 mr-1 text-red-400" />
+                    Rejected
+                  </Badge>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => {
+                    refetch();
+                    refetchDocs();
+                    refetchProfile();
+                  }}
+                  disabled={isFetching}
+                  className="bg-slate-950 border-slate-800 text-white hover:bg-slate-800 text-xs cursor-pointer"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin text-primary' : ''}`} />
+                  {isFetching ? 'Refreshing...' : 'Refresh Status'}
+                </Button>
+              </div>
+              <p className="text-slate-300 text-sm mb-4 leading-relaxed">
+                Your previous verification documents could not be approved. Please review the admin feedback below, upload clearer photos, and resubmit.
               </p>
               {rejectedDocs.length > 0 ? (
-                <div className="space-y-2 mb-4">
+                <div className="space-y-2.5 mb-5">
                   {rejectedDocs.map((doc) => (
-                    <div key={doc.id} className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3 rounded-lg">
-                      <p className="font-semibold text-red-300">Admin Rejection Reason ({doc.verificationType.replace(/_/g, ' ')}):</p>
-                      <p className="mt-0.5">{doc.rejectionReason || 'Document was blurry, illegible, or expired.'}</p>
+                    <div key={doc.id} className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3.5 rounded-xl">
+                      <p className="font-semibold text-red-300 flex items-center gap-1.5">
+                        <AlertCircle className="h-3.5 w-3.5 text-red-400" />
+                        Admin Rejection Reason ({doc.fileName || doc.verificationType.replace(/_/g, ' ')}):
+                      </p>
+                      <p className="mt-1 pl-5 text-slate-200">{doc.rejectionReason || 'Document was blurry, illegible, or expired.'}</p>
                     </div>
                   ))}
                 </div>
-              ) : (submittedRecord as any)?.rejection_reason || (submittedRecord as any)?.rejectionReason ? (
-                <div className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3 rounded-lg mb-4">
-                  <p className="font-semibold text-red-300">Admin Rejection Reason:</p>
-                  <p className="mt-0.5">{(submittedRecord as any)?.rejection_reason || (submittedRecord as any)?.rejectionReason}</p>
+              ) : verificationData?.rejectedDocs && verificationData.rejectedDocs.length > 0 ? (
+                <div className="space-y-2.5 mb-5">
+                  {verificationData.rejectedDocs.map((doc: any, idx: number) => (
+                    <div key={idx} className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3.5 rounded-xl">
+                      <p className="font-semibold text-red-300 flex items-center gap-1.5">
+                        <AlertCircle className="h-3.5 w-3.5 text-red-400" />
+                        Admin Rejection Reason ({doc.type?.replace(/_/g, ' ') || 'Document'}):
+                      </p>
+                      <p className="mt-1 pl-5 text-slate-200">{doc.reason || 'Document was blurry, illegible, or expired.'}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (submittedRecord as any)?.rejection_reason || (submittedRecord as any)?.rejectionReason || verificationData?.rejectionReason ? (
+                <div className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3.5 rounded-xl mb-5">
+                  <p className="font-semibold text-red-300 flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 text-red-400" />
+                    Admin Rejection Reason:
+                  </p>
+                  <p className="mt-1 pl-5 text-slate-200">{verificationData?.rejectionReason || (submittedRecord as any)?.rejection_reason || (submittedRecord as any)?.rejectionReason}</p>
                 </div>
               ) : null}
               <Button
                 type="button"
                 onClick={handleResetPendingRecord}
                 disabled={isResetting}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-lg"
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl cursor-pointer shadow-md"
               >
-                {isResetting ? 'Resetting...' : 'Resubmit Verification'}
+                {isResetting ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Resetting...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Resubmit Verification
+                  </>
+                )}
               </Button>
             </div>
           </div>
