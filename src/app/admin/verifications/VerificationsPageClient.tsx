@@ -1078,113 +1078,115 @@ export default function AdminVerificationsPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Verification Queue</h1>
-        <p className="text-slate-400 mt-1">
+    <div className="w-full max-w-full space-y-6 min-w-0 overflow-x-auto">
+      <div className="min-w-0">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Verification Queue</h1>
+        <p className="text-slate-400 mt-1 text-sm sm:text-base">
           Review and approve user identity verification documents
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
+      {/* Stats - Responsive Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full min-w-0">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm min-w-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-yellow-400 font-medium">Pending Review</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-xs text-yellow-400 font-medium truncate">Pending Review</div>
                 <div className="text-2xl font-bold text-white mt-1">{pendingDocs.length}</div>
-                <div className="text-xs text-slate-400 mt-1">
+                <div className="text-xs text-slate-400 mt-1 truncate">
                   {usersData.filter((u) => u.Verification?.some((d) => (d.status || '').toUpperCase() === 'PENDING')).length} users
                 </div>
               </div>
-              <Clock className="h-6 w-6 text-yellow-400" />
+              <Clock className="h-6 w-6 text-yellow-400 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm min-w-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-green-400 font-medium">Approved</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-xs text-green-400 font-medium truncate">Approved</div>
                 <div className="text-2xl font-bold text-white mt-1">{approvedDocs.length}</div>
-                <div className="text-xs text-slate-400 mt-1">docs</div>
+                <div className="text-xs text-slate-400 mt-1 truncate">docs</div>
               </div>
-              <CheckCircle className="h-6 w-6 text-green-400" />
+              <CheckCircle className="h-6 w-6 text-green-400 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm min-w-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-red-400 font-medium">Rejected</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-xs text-red-400 font-medium truncate">Rejected</div>
                 <div className="text-2xl font-bold text-white mt-1">{rejectedDocs.length}</div>
-                <div className="text-xs text-slate-400 mt-1">docs</div>
+                <div className="text-xs text-slate-400 mt-1 truncate">docs</div>
               </div>
-              <XCircle className="h-6 w-6 text-red-400" />
+              <XCircle className="h-6 w-6 text-red-400 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
+        <Card className="bg-slate-900/80 border-slate-800 shadow-sm min-w-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-blue-400 font-medium">Total Users</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-xs text-blue-400 font-medium truncate">Total Users</div>
                 <div className="text-2xl font-bold text-white mt-1">{usersData.length}</div>
-                <div className="text-xs text-slate-400 mt-1">{allDocs.length} docs</div>
+                <div className="text-xs text-slate-400 mt-1 truncate">{allDocs.length} docs</div>
               </div>
-              <User className="h-6 w-6 text-blue-400" />
+              <User className="h-6 w-6 text-blue-400 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
+      {/* Filters - Responsive Wrap */}
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm w-full min-w-0">
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full min-w-0">
+            <div className="flex-1 min-w-[220px] relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-slate-950 border-slate-800 text-white placeholder:text-slate-400"
+                className="pl-10 bg-slate-950 border-slate-800 text-white placeholder:text-slate-400 w-full"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px] bg-slate-950 border-slate-800 text-white">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-              <SelectTrigger className="w-full md:w-[180px] bg-slate-950 border-slate-800 text-white">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="User Type" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                <SelectItem value="ALL">All Types</SelectItem>
-                <SelectItem value="CLIENT">Clients</SelectItem>
-                <SelectItem value="FREELANCER">Artists</SelectItem>
-                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                <SelectItem value="BUSINESS">Business</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[160px] min-w-[140px] bg-slate-950 border-slate-800 text-white">
+                  <Filter className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
+                <SelectTrigger className="w-full sm:w-[160px] min-w-[140px] bg-slate-950 border-slate-800 text-white">
+                  <Filter className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <SelectValue placeholder="User Type" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                  <SelectItem value="ALL">All Types</SelectItem>
+                  <SelectItem value="CLIENT">Clients</SelectItem>
+                  <SelectItem value="FREELANCER">Artists</SelectItem>
+                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                  <SelectItem value="BUSINESS">Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Verifications List */}
-      <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
-        <CardContent className="p-0">
+      <Card className="bg-slate-900/80 border-slate-800 shadow-sm w-full min-w-0 overflow-hidden">
+        <CardContent className="p-0 w-full min-w-0 overflow-x-auto">
           {isLoading ? (
             <div className="p-8 text-center text-slate-400">Loading verifications...</div>
           ) : filteredUsers.length === 0 ? (
@@ -1254,50 +1256,52 @@ export default function AdminVerificationsPage() {
                   <div key={user.id} className="hover:bg-white/5 transition-colors">
                     {/* User Row */}
                     <div
-                      className="p-4 cursor-pointer flex items-center gap-4"
+                      className="p-4 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 w-full min-w-0 hover:bg-white/5 transition-colors"
                       onClick={() => toggleUserExpansion(user.id)}
                     >
-                      <div className="flex-shrink-0">
-                        {isExpanded ? (
-                          <ChevronDown className="h-5 w-5 text-slate-400" />
-                        ) : (
-                          <ChevronRight className="h-5 w-5 text-slate-400" />
-                        )}
-                      </div>
-                      <div className="flex-shrink-0">
-                        <Avatar className="h-10 w-10 border border-white/10 shadow-sm">
-                          {item.avatar_url ? (
-                            <AvatarImage
-                              src={item.avatar_url}
-                              alt={item.full_name || item.email || 'Artist'}
-                              className="object-cover"
-                            />
-                          ) : null}
-                          <AvatarFallback className={
-                            !isClient
-                              ? 'bg-purple-500/20 text-purple-300 font-semibold text-xs'
-                              : 'bg-emerald-500/20 text-emerald-300 font-semibold text-xs'
-                          }>
-                            {initials || (
-                              <User className={`h-5 w-5 ${!isClient ? 'text-purple-400' : 'text-emerald-400'}`} />
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-white font-medium truncate">{item.full_name || item.email || 'Artist'}</h3>
-                          <Badge variant="outline" className={`text-xs font-semibold ${
-                            !isClient
-                              ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                          }`}>
-                            {roleBadgeText}
-                          </Badge>
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div className="flex-shrink-0">
+                          {isExpanded ? (
+                            <ChevronDown className="h-5 w-5 text-slate-400" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-slate-400" />
+                          )}
                         </div>
-                        <p className="text-sm text-slate-400 truncate">{item.email}</p>
+                        <div className="flex-shrink-0">
+                          <Avatar className="h-10 w-10 border border-white/10 shadow-sm">
+                            {item.avatar_url ? (
+                              <AvatarImage
+                                src={item.avatar_url}
+                                alt={item.full_name || item.email || 'Artist'}
+                                className="object-cover"
+                              />
+                            ) : null}
+                            <AvatarFallback className={
+                              !isClient
+                                ? 'bg-purple-500/20 text-purple-300 font-semibold text-xs'
+                                : 'bg-emerald-500/20 text-emerald-300 font-semibold text-xs'
+                            }>
+                              {initials || (
+                                <User className={`h-5 w-5 ${!isClient ? 'text-purple-400' : 'text-emerald-400'}`} />
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="text-white font-medium truncate">{item.full_name || item.email || 'Artist'}</h3>
+                            <Badge variant="outline" className={`text-xs font-semibold ${
+                              !isClient
+                                ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            }`}>
+                              {roleBadgeText}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-slate-400 truncate">{item.email}</p>
+                        </div>
                       </div>
-                      <div className="flex-shrink-0 flex items-center gap-2 text-sm">
+                      <div className="flex flex-wrap items-center gap-2 text-sm justify-start md:justify-end flex-shrink-0">
                         {/* Overall Verification Status Badge */}
                         {overallStatus === 'REJECTED' && (
                           <Badge className="bg-red-500/20 text-red-300 border-red-500/30 font-medium">
@@ -1321,7 +1325,6 @@ export default function AdminVerificationsPage() {
                         <span className="text-slate-500 ml-1 mr-2">{effectiveDocs.length} docs</span>
 
                         {/* Direct 1-Click Manual Verify / Unverify Toggle */}
-                        {/* DO NOT display Verified green badge/button if any submitted document status is rejected or pending */}
                         {overallStatus === 'VERIFIED' ? (
                           <Button
                             size="sm"
@@ -1332,7 +1335,7 @@ export default function AdminVerificationsPage() {
                             }}
                             disabled={isActionProcessing === `user-${user.id}` || userVerifyMutation.isPending || userUnverifyMutation.isPending}
                             title="1-click manual unverify toggle"
-                            className="h-7 px-2.5 text-xs font-medium transition-all border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300"
+                            className="h-7 px-2.5 text-xs font-medium transition-all border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-300 cursor-pointer"
                           >
                             <CheckCircle className="h-3 w-3 mr-1 text-emerald-400" />
                             Verified
@@ -1347,29 +1350,29 @@ export default function AdminVerificationsPage() {
                             }}
                             disabled={isActionProcessing === `user-${user.id}` || userVerifyMutation.isPending || userUnverifyMutation.isPending}
                             title="1-click manual verification toggle"
-                            className="h-7 px-2.5 text-xs font-medium transition-all border-slate-700 bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300"
+                            className="h-7 px-2.5 text-xs font-medium transition-all border-slate-700 bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300 cursor-pointer"
                           >
                             <Shield className="h-3 w-3 mr-1 text-slate-400" />
                             Verify User
                           </Button>
                         )}
-                      </div>
-                      <div className="flex-shrink-0 text-xs text-slate-500">
-                        {user.createdAt && !isNaN(new Date(user.createdAt).getTime())
-                          ? new Date(user.createdAt).toLocaleDateString()
-                          : 'N/A'}
+                        <div className="text-xs text-slate-500 pl-1">
+                          {user.createdAt && !isNaN(new Date(user.createdAt).getTime())
+                            ? new Date(user.createdAt).toLocaleDateString()
+                            : 'N/A'}
+                        </div>
                       </div>
                     </div>
 
                     {/* Expanded Documents - Grid Layout */}
                     {isExpanded && (
-                      <div className="px-4 pb-4">
+                      <div className="px-4 pb-4 w-full min-w-0">
                         {effectiveDocs.length === 0 ? (
                           <div className="p-6 rounded-2xl bg-slate-950/40 border border-slate-800/60 text-center text-sm text-slate-400">
                             No verification documents uploaded for this user.
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
                           {effectiveDocs.map((doc) => {
                             // Handle both old schema (files) and new schema (documentUrl)
                             const rawUrl = doc.documentUrl || (doc.files?.split(',')[0]?.trim());
@@ -1448,18 +1451,18 @@ export default function AdminVerificationsPage() {
                                 {doc.status === 'PENDING' && (
                                   <>
                                     {rejectingDoc === doc.id ? (
-                                      <div className="space-y-2">
+                                      <div className="space-y-2 w-full min-w-0">
                                         <Textarea
                                           placeholder="Rejection reason..."
                                           value={rejectionReason}
                                           onChange={(e) => setRejectionReason(e.target.value)}
-                                          className="min-h-[60px] text-sm bg-black/20 border-white/10 text-white"
+                                          className="min-h-[60px] text-sm bg-black/20 border-white/10 text-white w-full"
                                         />
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap sm:flex-nowrap gap-2">
                                           <Button
                                             size="sm"
                                             onClick={() => handleReject(doc.id, user.id, rejectionReason)}
-                                            className="bg-red-600 hover:bg-red-700 text-xs flex-1"
+                                            className="bg-red-600 hover:bg-red-700 text-xs flex-1 cursor-pointer"
                                             disabled={isActionProcessing === doc.id || rejectMutation.isPending}
                                           >
                                             Confirm
@@ -1471,7 +1474,7 @@ export default function AdminVerificationsPage() {
                                               setRejectingDoc(null);
                                               setRejectionReason('');
                                             }}
-                                            className="border-white/10 text-xs flex-1"
+                                            className="border-white/10 text-xs flex-1 cursor-pointer"
                                             disabled={isActionProcessing === doc.id}
                                           >
                                             Cancel
@@ -1479,11 +1482,11 @@ export default function AdminVerificationsPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="flex gap-2">
+                                      <div className="flex flex-wrap sm:flex-nowrap gap-2">
                                         <Button
                                           size="sm"
                                           onClick={() => handleApprove(doc.id, user.id)}
-                                          className="bg-green-600 hover:bg-green-700 text-xs flex-1"
+                                          className="bg-green-600 hover:bg-green-700 text-xs flex-1 cursor-pointer"
                                           disabled={isActionProcessing === doc.id || approveMutation.isPending}
                                         >
                                           <CheckCircle className="h-3 w-3 mr-1" />
@@ -1493,7 +1496,7 @@ export default function AdminVerificationsPage() {
                                           size="sm"
                                           variant="outline"
                                           onClick={() => setRejectingDoc(doc.id)}
-                                          className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs flex-1"
+                                          className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs flex-1 cursor-pointer"
                                           disabled={isActionProcessing === doc.id || rejectMutation.isPending}
                                         >
                                           <XCircle className="h-3 w-3 mr-1" />

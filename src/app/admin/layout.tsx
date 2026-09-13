@@ -45,9 +45,9 @@ export default async function AdminLayout({
       <AdminSidebar />
 
       {/* Main Content Area */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-64 flex flex-col min-w-0 max-w-full">
         {/* Page Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6 w-full min-w-0 max-w-full overflow-x-auto">
           {children}
         </main>
       </div>
