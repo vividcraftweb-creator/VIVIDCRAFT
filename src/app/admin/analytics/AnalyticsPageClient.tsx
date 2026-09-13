@@ -24,6 +24,23 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 
+const formatDate = (dateStr?: string | Date | null) => {
+  if (!dateStr) return 'N/A';
+  try {
+    const parsed = new Date(dateStr);
+    if (isNaN(parsed.getTime())) return 'N/A';
+    return parsed.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'N/A';
+  }
+};
+
 export default function AdminAnalyticsPage() {
   const { data: stats, isLoading: statsLoading } = trpc.admin.getSystemStats.useQuery();
   const { data: growth, isLoading: growthLoading } = trpc.admin.getGrowthAnalytics.useQuery();
@@ -366,15 +383,7 @@ export default function AdminAnalyticsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-white truncate font-medium">{activity.description}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {((activity as any).created_at || activity.timestamp)
-                          ? new Date((activity as any).created_at || activity.timestamp).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : 'Recent'}
+                        {formatDate((activity as any)?.created_at || activity?.timestamp)}
                       </p>
                     </div>
                   </div>

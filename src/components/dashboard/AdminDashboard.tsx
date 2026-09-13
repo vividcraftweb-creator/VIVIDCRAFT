@@ -78,13 +78,13 @@ const formatIdType = (idType?: string | null) => {
     .join(' ');
 };
 
-// Helper function to format activity timestamp
-function formatActivityDateTime(createdAt?: string | Date | null): string {
-  if (!createdAt) return 'Recent';
+// Helper function to safely format activity timestamp
+const formatDate = (dateStr?: string | Date | null) => {
+  if (!dateStr) return 'N/A';
   try {
-    const d = new Date(createdAt);
-    if (isNaN(d.getTime())) return 'Recent';
-    return d.toLocaleString('en-US', {
+    const parsed = new Date(dateStr);
+    if (isNaN(parsed.getTime())) return 'N/A';
+    return parsed.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -92,9 +92,9 @@ function formatActivityDateTime(createdAt?: string | Date | null): string {
       minute: '2-digit',
     });
   } catch {
-    return 'Recent';
+    return 'N/A';
   }
-}
+};
 
 export default function AdminDashboard() {
   const [directProfiles, setDirectProfiles] = useState<any[]>([]);
@@ -664,31 +664,15 @@ export default function AdminDashboard() {
 
                 const { icon: Icon, color } = getActivityIcon();
                 const user = activity as any;
-                const formattedDate = user.created_at
-                  ? new Date(user.created_at).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : (user.timestamp
-                    ? new Date(user.timestamp).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : 'Recent');
+                const formattedDate = formatDate(user?.created_at || user?.timestamp);
 
                 return (
-                  <div key={activity.id} className="flex items-center space-x-2 p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg">
+                  <div key={activity?.id || Math.random()} className="flex items-center space-x-2 p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg">
                     <div className={`p-1 bg-${color}-500/20 rounded`}>
                       <Icon className={`h-3 w-3 text-${color}-400`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs truncate font-medium">{activity.description}</p>
+                      <p className="text-white text-xs truncate font-medium">{activity?.description || 'User activity'}</p>
                       <p className="text-slate-400 text-xs">{formattedDate}</p>
                     </div>
                   </div>
