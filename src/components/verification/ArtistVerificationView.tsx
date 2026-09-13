@@ -75,13 +75,15 @@ const DOC_CONFIGS: Record<SupportedDocType, DocTypeConfig> = {
   passport: {
     id: 'passport',
     label: 'Passport',
-    sublabel: 'Main Data Page & Selfie (Back not required)',
+    sublabel: 'Photo Page, Cover/Back & Selfie required',
     icon: <FileText className="h-5 w-5 text-indigo-400" />,
-    requiresBack: false,
-    frontTitle: 'Passport (Main Data Page)',
+    requiresBack: true,
+    frontTitle: 'Passport (Main Photo Page)',
     frontDesc: 'Clear photo of your passport page showing photo, MRZ code, and identity details',
+    backTitle: 'Passport (Cover / Secondary Page)',
+    backDesc: 'Clear photo of your passport cover or secondary signature / endorsements page',
     selfieTitle: 'Selfie with Passport',
-    selfieDesc: 'Photo of yourself holding your open passport next to your face',
+    selfieDesc: 'Photo of yourself holding your open passport clearly next to your face',
   },
   driving_license: {
     id: 'driving_license',
@@ -203,6 +205,20 @@ export default function ArtistVerificationView() {
     },
   });
 
+  // Dedicated storage public URLs state: frontUrl, backUrl, selfieUrl
+  const [frontUrl, setFrontUrl] = useState<string | null>(null);
+  const [backUrl, setBackUrl] = useState<string | null>(null);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
+
+  // File metadata states for direct visual feedback
+  const [frontFileName, setFrontFileName] = useState<string | null>(null);
+  const [backFileName, setBackFileName] = useState<string | null>(null);
+  const [selfieFileName, setSelfieFileName] = useState<string | null>(null);
+
+  const [frontPreview, setFrontPreview] = useState<string | null>(null);
+  const [backPreview, setBackPreview] = useState<string | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+
   // Staged files uploaded to storage during current session (NOT submitted to DB yet)
   const [stagedDocs, setStagedDocs] = useState<{
     ID_FRONT?: { url: string; fileName: string; file?: File } | null;
@@ -259,6 +275,15 @@ export default function ArtistVerificationView() {
       setIsResetMode(true);
       setDirectDocs([]);
       setStagedDocs({});
+      setFrontUrl(null);
+      setBackUrl(null);
+      setSelfieUrl(null);
+      setFrontFileName(null);
+      setBackFileName(null);
+      setSelfieFileName(null);
+      setFrontPreview(null);
+      setBackPreview(null);
+      setSelfiePreview(null);
       utils.verifications.getUserDocuments.invalidate();
       refetchDocs();
     } catch (err: any) {
@@ -524,7 +549,38 @@ export default function ArtistVerificationView() {
 
   // Helper to get uploaded document for a specific slot
   const getSlotDoc = (slot: VerificationSlot) => {
-    // 1. Local staged docs in current session take priority
+    // 1. Direct state has highest priority
+    if (slot === 'ID_FRONT' && frontUrl) {
+      return {
+        id: 'state-ID_FRONT',
+        verificationType: 'ID_FRONT',
+        status: 'PENDING' as const,
+        documentUrl: frontUrl,
+        fileName: frontFileName || 'Front Document',
+        createdAt: new Date().toISOString(),
+      };
+    }
+    if (slot === 'ID_BACK' && backUrl) {
+      return {
+        id: 'state-ID_BACK',
+        verificationType: 'ID_BACK',
+        status: 'PENDING' as const,
+        documentUrl: backUrl,
+        fileName: backFileName || 'Back Document',
+        createdAt: new Date().toISOString(),
+      };
+    }
+    if (slot === 'SELFIE' && selfieUrl) {
+      return {
+        id: 'state-SELFIE',
+        verificationType: 'SELFIE',
+        status: 'PENDING' as const,
+        documentUrl: selfieUrl,
+        fileName: selfieFileName || 'Selfie with ID',
+        createdAt: new Date().toISOString(),
+      };
+    }
+    // 2. Local staged docs in current session
     if (stagedDocs[slot]?.url) {
       return {
         id: `staged-${slot}`,
@@ -535,39 +591,57 @@ export default function ArtistVerificationView() {
         createdAt: new Date().toISOString(),
       };
     }
-    // 2. Fall back to allDocuments only if not in reset mode
+    // 3. Fall back to allDocuments only if not in reset mode
     if (!isResetMode) {
       return allDocuments.find((d) => d.verificationType === slot && Boolean(d.documentUrl));
     }
     return undefined;
   };
 
-  // Strict dynamic validation:
-  // - National ID / Driving License requires Front, Back, and Selfie
-  // - Passport requires Front and Selfie (Back is hidden/optional)
-  const hasFront = Boolean(getSlotDoc('ID_FRONT')?.documentUrl);
-  const hasBack = Boolean(getSlotDoc('ID_BACK')?.documentUrl);
-  const hasSelfie = Boolean(getSlotDoc('SELFIE')?.documentUrl);
+  // Sync any initial documents from database into state when not in reset mode
+  useEffect(() => {
+    if (!isResetMode) {
+      const existingFront = allDocuments.find((d) => d.verificationType === 'ID_FRONT' && Boolean(d.documentUrl));
+      const existingBack = allDocuments.find((d) => d.verificationType === 'ID_BACK' && Boolean(d.documentUrl));
+      const existingSelfie = allDocuments.find((d) => d.verificationType === 'SELFIE' && Boolean(d.documentUrl));
+
+      if (existingFront?.documentUrl && !frontUrl) {
+        setFrontUrl(existingFront.documentUrl);
+        setFrontFileName(existingFront.fileName || 'ID Front on file');
+      }
+      if (existingBack?.documentUrl && !backUrl) {
+        setBackUrl(existingBack.documentUrl);
+        setBackFileName(existingBack.fileName || 'ID Back on file');
+      }
+      if (existingSelfie?.documentUrl && !selfieUrl) {
+        setSelfieUrl(existingSelfie.documentUrl);
+        setSelfieFileName(existingSelfie.fileName || 'Selfie on file');
+      }
+    }
+  }, [allDocuments, isResetMode]);
+
+  // Strict dynamic validation: All 3 required files (ID Front, ID Back, Selfie)
+  const hasFront = Boolean((frontUrl && frontUrl.trim().length > 0) || getSlotDoc('ID_FRONT')?.documentUrl);
+  const hasBack = Boolean((backUrl && backUrl.trim().length > 0) || getSlotDoc('ID_BACK')?.documentUrl);
+  const hasSelfie = Boolean((selfieUrl && selfieUrl.trim().length > 0) || getSlotDoc('SELFIE')?.documentUrl);
 
   const isFormValid = useMemo(() => {
-    if (!hasFront || !hasSelfie) return false;
-    if (currentConfig.requiresBack && !hasBack) return false;
-    return true;
-  }, [hasFront, hasBack, hasSelfie, currentConfig.requiresBack]);
+    return Boolean(hasFront && hasBack && hasSelfie);
+  }, [hasFront, hasBack, hasSelfie]);
 
-  // Upload file to verifications bucket: ONLY updates local state, NEVER triggers DB submit
+  // Upload file to verifications storage bucket: updates local state, does not trigger DB submit
   const handleFileUpload = async (slot: VerificationSlot, file: File) => {
     if (!file) return;
 
-    // Validate size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be under 5MB');
+    // Validate size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be under 10MB');
       return;
     }
 
     // Validate format
-    const validMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!validMimes.includes(file.type)) {
+    const validMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/pdf'];
+    if (!validMimes.includes(file.type.toLowerCase())) {
       toast.error('Please upload a valid image (JPG, PNG, WebP) or PDF document');
       return;
     }
@@ -578,69 +652,139 @@ export default function ArtistVerificationView() {
     try {
       const supabase = createClient();
       const fileExt = file.name.split('.').pop() || 'jpg';
-      const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const cleanFileName = `${Date.now()}-${slot.toLowerCase()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
       const filePath = `verification-documents/${sessionUserId || 'user'}/${cleanFileName}`;
 
-      setUploadProgress((prev) => ({ ...prev, [slot]: 50 }));
+      setUploadProgress((prev) => ({ ...prev, [slot]: 40 }));
 
-      // Strictly upload to 'verifications' bucket
-      console.log("Uploading to bucket 'verifications'...", file);
+      let publicUrl: string | null = null;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('verifications')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+      // Attempt 1: Direct Supabase client upload to 'verifications' bucket
+      try {
+        console.log("Attempting direct upload to bucket 'verifications'...", file.name);
+        const { error: uploadError } = await supabase.storage
+          .from('verifications')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
 
-      if (uploadError) {
-        console.error("Storage upload error for bucket 'verifications':", uploadError);
-        const userMsg = uploadError.message?.includes('Bucket not found')
-          ? "Storage bucket 'verifications' was not found. Please ensure the bucket exists in Supabase."
-          : uploadError.message?.includes('row-level security') || uploadError.message?.includes('RLS')
-          ? "Permission error: Storage RLS policy prevented upload to 'verifications'. Please check bucket policies."
-          : uploadError.message || "Failed to upload file to 'verifications' bucket.";
-        throw new Error(userMsg);
+        if (uploadError) {
+          console.warn("Direct storage upload notice, trying server upload endpoint:", uploadError);
+        } else {
+          setUploadProgress((prev) => ({ ...prev, [slot]: 75 }));
+          const { data: { publicUrl: directUrl } } = supabase.storage
+            .from('verifications')
+            .getPublicUrl(filePath);
+          if (directUrl) {
+            publicUrl = directUrl;
+          }
+        }
+      } catch (directErr) {
+        console.warn("Direct storage exception, trying fallback route:", directErr);
       }
 
-      setUploadProgress((prev) => ({ ...prev, [slot]: 85 }));
+      // Attempt 2: Server-side API endpoint fallback (/api/verification/upload)
+      if (!publicUrl) {
+        setUploadProgress((prev) => ({ ...prev, [slot]: 60 }));
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('slot', slot);
+        if (sessionUserId) formData.append('userId', sessionUserId);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('verifications')
-        .getPublicUrl(filePath);
+        const response = await fetch('/api/verification/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || `Upload failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.publicUrl) {
+          throw new Error('Upload succeeded but no public URL was returned');
+        }
+        publicUrl = data.publicUrl;
+      }
 
       if (!publicUrl) {
         throw new Error('Unable to retrieve public URL for uploaded file.');
       }
 
-      // Stop Automatic Submission: ONLY update local React state with the uploaded storage URL.
-      // DO NOT call any tRPC or Supabase database submit mutation here!
+      setUploadProgress((prev) => ({ ...prev, [slot]: 95 }));
+
+      // Create preview URL if image
+      let previewUrl: string | null = null;
+      if (file.type.startsWith('image/')) {
+        previewUrl = URL.createObjectURL(file);
+      }
+
+      // Explicitly store uploaded storage public URLs into state
+      if (slot === 'ID_FRONT') {
+        setFrontUrl(publicUrl);
+        setFrontFileName(file.name);
+        if (previewUrl) setFrontPreview(previewUrl);
+      } else if (slot === 'ID_BACK') {
+        setBackUrl(publicUrl);
+        setBackFileName(file.name);
+        if (previewUrl) setBackPreview(previewUrl);
+      } else if (slot === 'SELFIE') {
+        setSelfieUrl(publicUrl);
+        setSelfieFileName(file.name);
+        if (previewUrl) setSelfiePreview(previewUrl);
+      }
+
+      setStagedDocs((prev) => ({
+        ...prev,
+        [slot]: { url: publicUrl!, fileName: file.name, file },
+      }));
+
+      setUploadProgress((prev) => ({ ...prev, [slot]: 100 }));
+
       const slotLabel =
         slot === 'ID_FRONT'
           ? currentConfig.frontTitle
           : slot === 'ID_BACK'
-          ? currentConfig.backTitle || 'Back of Document'
+          ? (currentConfig.backTitle || 'Back of Document')
           : currentConfig.selfieTitle;
 
-      setStagedDocs((prev) => ({
-        ...prev,
-        [slot]: { url: publicUrl, fileName: file.name, file },
-      }));
-
-      setUploadProgress((prev) => ({ ...prev, [slot]: 100 }));
-      toast.success(`${slotLabel} uploaded! Click Submit when all documents are ready.`);
+      toast.success(`${slotLabel} uploaded! Click Submit Documents once all 3 are ready.`);
     } catch (err: any) {
       console.error("Storage upload error in handleFileUpload:", err);
-      toast.error(err?.message || 'File upload failed. Please try again.');
+      const errorMessage = err?.message || 'File upload failed. Please try again.';
+      toast.error(`Storage Upload Failed: ${errorMessage}`);
+      
+      // Explicitly clear slot URL on failure so partial or null data is not passed
+      if (slot === 'ID_FRONT') setFrontUrl(null);
+      if (slot === 'ID_BACK') setBackUrl(null);
+      if (slot === 'SELFIE') setSelfieUrl(null);
+
       setUploadProgress((prev) => ({ ...prev, [slot]: 0 }));
     } finally {
       setUploadingSlot(null);
     }
   };
 
-  // Remove uploaded document: cleans up local stagedDocs
+  // Remove uploaded document: cleans up state
   const handleRemoveDoc = async (slot: VerificationSlot) => {
-    // 1. Remove from local staged state
+    // 1. Clear dedicated state
+    if (slot === 'ID_FRONT') {
+      setFrontUrl(null);
+      setFrontFileName(null);
+      setFrontPreview(null);
+    } else if (slot === 'ID_BACK') {
+      setBackUrl(null);
+      setBackFileName(null);
+      setBackPreview(null);
+    } else if (slot === 'SELFIE') {
+      setSelfieUrl(null);
+      setSelfieFileName(null);
+      setSelfiePreview(null);
+    }
+
+    // 2. Remove from local staged state
     setStagedDocs((prev) => {
       const copy = { ...prev };
       delete copy[slot];
@@ -649,7 +793,7 @@ export default function ArtistVerificationView() {
 
     setUploadProgress((prev) => ({ ...prev, [slot]: 0 }));
 
-    // 2. Remove from directDocs if present
+    // 3. Remove from directDocs if present
     const doc = allDocuments.find((d) => d.verificationType === slot);
     if (doc) {
       try {
@@ -671,28 +815,17 @@ export default function ArtistVerificationView() {
 
   // Submit all uploaded documents for verification
   const handleSubmitVerification = async () => {
-    const idFrontDoc = getSlotDoc('ID_FRONT');
-    const idBackDoc = getSlotDoc('ID_BACK');
-    const selfieDoc = getSlotDoc('SELFIE');
+    const finalFrontUrl = frontUrl || getSlotDoc('ID_FRONT')?.documentUrl;
+    const finalBackUrl = backUrl || getSlotDoc('ID_BACK')?.documentUrl;
+    const finalSelfieUrl = selfieUrl || getSlotDoc('SELFIE')?.documentUrl;
 
-    // Strict upload validation: verify files exist before proceeding
-    if (!hasFront || !idFrontDoc?.documentUrl) {
-      toast.error(`Please upload the ${currentConfig.frontTitle}`);
-      return;
-    }
-
-    if (currentConfig.requiresBack && (!hasBack || !idBackDoc?.documentUrl)) {
-      toast.error(`Please upload the ${currentConfig.backTitle || 'Back Image'}`);
-      return;
-    }
-
-    if (!hasSelfie || !selfieDoc?.documentUrl) {
-      toast.error(`Please upload your ${currentConfig.selfieTitle}`);
-      return;
-    }
-
-    if (!isFormValid) {
-      toast.error('Please upload all required documents before submitting.');
+    // Strict validation: ensure all 3 required files are uploaded and in state
+    if (!finalFrontUrl || !finalBackUrl || !finalSelfieUrl) {
+      const missing: string[] = [];
+      if (!finalFrontUrl) missing.push(currentConfig.frontTitle);
+      if (!finalBackUrl) missing.push(currentConfig.backTitle || 'Back Image');
+      if (!finalSelfieUrl) missing.push(currentConfig.selfieTitle);
+      toast.error(`Please upload all required documents: ${missing.join(', ')}`);
       return;
     }
 
@@ -707,14 +840,13 @@ export default function ArtistVerificationView() {
         throw new Error('User session not found. Please log in again.');
       }
 
-      // 1. Insert/upsert record into `verifications` table (lowercase)
-      // Payload: { user_id, document_type, id_front_url, id_back_url, selfie_url, status: 'pending', rejection_reason: null }
+      // 1. Exact payload keys expected by router and database: id_front_url, id_back_url, selfie_url
       const verificationsPayload = {
         user_id: targetUserId,
         document_type: currentConfig.label,
-        id_front_url: idFrontDoc.documentUrl || null,
-        id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
-        selfie_url: selfieDoc.documentUrl || null,
+        id_front_url: finalFrontUrl,
+        id_back_url: finalBackUrl,
+        selfie_url: finalSelfieUrl,
         status: 'pending',
         rejection_reason: null,
       };
@@ -735,16 +867,16 @@ export default function ArtistVerificationView() {
         console.warn('Direct client write notice, proceeding to server mutation:', clientWriteErr);
       }
 
-      // 2. Sync record via server tRPC uploadDocMutation (uses admin client with service privileges)
+      // 2. Sync record via server tRPC uploadDocMutation passing exact payload keys
       await uploadDocMutation.mutateAsync({
         documentType: currentConfig.label,
-        id_front_url: idFrontDoc.documentUrl || null,
-        id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
-        selfie_url: selfieDoc.documentUrl || null,
+        id_front_url: finalFrontUrl,
+        id_back_url: finalBackUrl,
+        selfie_url: finalSelfieUrl,
         status: 'pending',
       });
 
-      // 3. Call tRPC submitForReview mutation to register overall verification
+      // 3. Register overall verification submission
       try {
         await submitForReviewMutation.mutateAsync({
           documentType: currentConfig.label,
@@ -791,9 +923,9 @@ export default function ArtistVerificationView() {
       // 6. Update local state and redirect to pending status view
       setSubmittedRecord({
         document_type: currentConfig.label,
-        id_front_url: idFrontDoc.documentUrl,
-        id_back_url: currentConfig.requiresBack ? idBackDoc?.documentUrl : null,
-        selfie_url: selfieDoc.documentUrl,
+        id_front_url: finalFrontUrl,
+        id_back_url: finalBackUrl,
+        selfie_url: finalSelfieUrl,
         status: 'pending',
         created_at: new Date().toISOString(),
       });
@@ -809,13 +941,17 @@ export default function ArtistVerificationView() {
       setIsPendingSubmitted(true);
       toast.success('Verification submitted! Your documents are now pending review.');
 
-      // Invalidate queries so admin queues pick up the new submission immediately
+      // 7. Refetch queries immediately upon submission success
       try {
         await Promise.all([
+          refetch(),
+          refetchProfile(),
+          refetchDocs(),
+          utils.verification.getStatus.invalidate(),
+          utils.profiles.getMyProfile.invalidate(),
+          utils.verifications.getUserDocuments.invalidate(),
           utils.verification.getAllPending.invalidate(),
           utils.verifications.getAllPending.invalidate(),
-          utils.verification.getVerificationStatus.invalidate(),
-          utils.verifications.getUserDocuments.invalidate(),
           utils.admin.getUsersWithVerifications.invalidate(),
           utils.admin.getUsers.invalidate(),
           utils.admin.users.getUsers.invalidate(),
@@ -1264,25 +1400,49 @@ export default function ArtistVerificationView() {
           <div className="space-y-4 mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-white font-semibold text-sm">2. Upload Required Images</Label>
+                <Label className="text-white font-semibold text-sm">2. Upload Required Documents</Label>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Files must be clear, uncropped, and legible. Accepted formats: JPG, PNG, WebP, PDF (max 5MB).
+                  All 3 documents (Front, Back, and Selfie) are required. Accepted formats: JPG, PNG, WebP, PDF (max 10MB).
                 </p>
               </div>
             </div>
 
-            {/* Passport Callout Banner */}
-            {!currentConfig.requiresBack && (
-              <div className="bg-blue-950/30 border border-blue-900/40 rounded-xl p-3 flex items-center gap-2.5 text-xs text-blue-200">
-                <Info className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                <span>
-                  For <strong>Passport</strong> verification, only the <strong>Main Data Page</strong> and <strong>Selfie</strong> are required. Back image is not required.
+            {/* 3-Step Upload Status Checklist */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-900/60 border border-slate-800 rounded-2xl">
+              <div className="flex items-center gap-2 text-xs">
+                {hasFront ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">1</div>
+                )}
+                <span className={hasFront ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                  1. Front: {hasFront ? 'Uploaded & Ready' : 'Required'}
                 </span>
               </div>
-            )}
+              <div className="flex items-center gap-2 text-xs">
+                {hasBack ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">2</div>
+                )}
+                <span className={hasBack ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                  2. Back: {hasBack ? 'Uploaded & Ready' : 'Required'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {hasSelfie ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">3</div>
+                )}
+                <span className={hasSelfie ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                  3. Selfie: {hasSelfie ? 'Uploaded & Ready' : 'Required'}
+                </span>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Field 1: Front Image / Main Data Page (Required for all) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Field 1: Front Image / Main Data Page */}
               <DocumentDropCard
                 title={currentConfig.frontTitle}
                 description={currentConfig.frontDesc}
@@ -1290,29 +1450,29 @@ export default function ArtistVerificationView() {
                 slot="ID_FRONT"
                 required={true}
                 uploadedDoc={getSlotDoc('ID_FRONT')}
+                previewUrl={frontPreview}
                 isUploading={uploadingSlot === 'ID_FRONT'}
                 progress={uploadProgress.ID_FRONT || 0}
                 onFileSelect={(file) => handleFileUpload('ID_FRONT', file)}
                 onRemove={() => handleRemoveDoc('ID_FRONT')}
               />
 
-              {/* Field 2: Back Image (Required for National ID and Driving License, hidden for Passport) */}
-              {currentConfig.requiresBack && (
-                <DocumentDropCard
-                  title={currentConfig.backTitle || 'Back Image'}
-                  description={currentConfig.backDesc || 'Upload back side showing barcode, signature, or authority'}
-                  icon={<FileText className="h-5 w-5 text-cyan-400" />}
-                  slot="ID_BACK"
-                  required={true}
-                  uploadedDoc={getSlotDoc('ID_BACK')}
-                  isUploading={uploadingSlot === 'ID_BACK'}
-                  progress={uploadProgress.ID_BACK || 0}
-                  onFileSelect={(file) => handleFileUpload('ID_BACK', file)}
-                  onRemove={() => handleRemoveDoc('ID_BACK')}
-                />
-              )}
+              {/* Field 2: Back Image / Cover */}
+              <DocumentDropCard
+                title={currentConfig.backTitle || 'Back Image'}
+                description={currentConfig.backDesc || 'Upload back side showing barcode, signature, or authority'}
+                icon={<FileText className="h-5 w-5 text-cyan-400" />}
+                slot="ID_BACK"
+                required={true}
+                uploadedDoc={getSlotDoc('ID_BACK')}
+                previewUrl={backPreview}
+                isUploading={uploadingSlot === 'ID_BACK'}
+                progress={uploadProgress.ID_BACK || 0}
+                onFileSelect={(file) => handleFileUpload('ID_BACK', file)}
+                onRemove={() => handleRemoveDoc('ID_BACK')}
+              />
 
-              {/* Field 3: Selfie with Document (Required for all) */}
+              {/* Field 3: Selfie with Document */}
               <DocumentDropCard
                 title={currentConfig.selfieTitle}
                 description={currentConfig.selfieDesc}
@@ -1320,6 +1480,7 @@ export default function ArtistVerificationView() {
                 slot="SELFIE"
                 required={true}
                 uploadedDoc={getSlotDoc('SELFIE')}
+                previewUrl={selfiePreview}
                 isUploading={uploadingSlot === 'SELFIE'}
                 progress={uploadProgress.SELFIE || 0}
                 onFileSelect={(file) => handleFileUpload('SELFIE', file)}
@@ -1328,18 +1489,27 @@ export default function ArtistVerificationView() {
             </div>
           </div>
 
-          {/* Step 3: Submit Button with live validation & redirect */}
+          {/* Step 3: Submit Button with live validation & feedback */}
           <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-col gap-1 text-xs text-slate-400">
               <div>
                 Your identity documents are securely uploaded to the <code className="text-primary">verifications</code> bucket and encrypted.
               </div>
-              {!isFormValid && (
+              {!isFormValid ? (
                 <div className="flex items-center gap-1.5 text-amber-400 font-medium mt-1">
                   <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
                   <span>
-                    Upload {!hasFront ? currentConfig.frontTitle : currentConfig.requiresBack && !hasBack ? (currentConfig.backTitle || 'Back Image') : currentConfig.selfieTitle} to enable submission
+                    Upload all 3 required files ({[
+                      !hasFront && currentConfig.frontTitle,
+                      !hasBack && (currentConfig.backTitle || 'Back Image'),
+                      !hasSelfie && currentConfig.selfieTitle,
+                    ].filter(Boolean).join(', ')}) to enable submission
                   </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-emerald-400 font-medium mt-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>All 3 required documents uploaded successfully. Ready to submit!</span>
                 </div>
               )}
             </div>
@@ -1372,7 +1542,7 @@ export default function ArtistVerificationView() {
   );
 }
 
-// Subcomponent: Dropzone card for document upload with clear progress indicator
+// Subcomponent: Dropzone card for document upload with clear progress indicator and visual verification
 interface DocumentDropCardProps {
   title: string;
   description: string;
@@ -1380,6 +1550,7 @@ interface DocumentDropCardProps {
   slot: VerificationSlot;
   required?: boolean;
   uploadedDoc?: UploadedDocItem;
+  previewUrl?: string | null;
   isUploading: boolean;
   progress: number;
   onFileSelect: (file: File) => void;
@@ -1392,6 +1563,7 @@ function DocumentDropCard({
   icon,
   required,
   uploadedDoc,
+  previewUrl,
   isUploading,
   progress,
   onFileSelect,
@@ -1407,19 +1579,30 @@ function DocumentDropCard({
     }
   };
 
+  const isUploaded = Boolean(uploadedDoc?.documentUrl);
+  const displayPreview = previewUrl || (uploadedDoc?.documentUrl?.match(/\.(jpg|jpeg|png|webp)($|\?)/i) ? uploadedDoc.documentUrl : null);
+
   return (
-    <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between transition-all hover:border-slate-700">
+    <div className={`rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 ${
+      isUploaded
+        ? 'bg-emerald-950/20 border-2 border-emerald-500/50 shadow-sm ring-1 ring-emerald-500/30'
+        : 'bg-slate-950/60 border border-slate-800 hover:border-slate-700'
+    }`}>
       <div>
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl flex-shrink-0">
+            <div className={`p-2 rounded-xl flex-shrink-0 ${
+              isUploaded ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-400' : 'bg-slate-900 border border-slate-800 text-slate-400'
+            }`}>
               {icon}
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <h4 className="text-white text-sm font-semibold">{title}</h4>
                 {required && (
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded">
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                    isUploaded ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'
+                  }`}>
                     Required
                   </span>
                 )}
@@ -1427,10 +1610,10 @@ function DocumentDropCard({
               <p className="text-slate-400 text-xs mt-0.5 leading-snug">{description}</p>
             </div>
           </div>
-          {uploadedDoc && (
-            <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] flex-shrink-0">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Uploaded
+          {isUploaded && (
+            <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold px-2 py-0.5 flex-shrink-0 flex items-center gap-1 shadow-sm">
+              <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+              Uploaded &amp; Ready
             </Badge>
           )}
         </div>
@@ -1461,31 +1644,52 @@ function DocumentDropCard({
               />
             </div>
           </div>
-        ) : uploadedDoc ? (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-slate-300 truncate">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
-              <span className="truncate">{uploadedDoc.fileName || 'Document on file'}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="h-7 px-2 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800"
-              >
-                Replace
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onRemove}
-                className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+        ) : isUploaded ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs text-slate-300 truncate">
+                {displayPreview ? (
+                  <img
+                    src={displayPreview}
+                    alt={uploadedDoc?.fileName || title}
+                    className="h-8 w-8 rounded-lg object-cover border border-emerald-500/30 flex-shrink-0 bg-slate-900"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                )}
+                <div className="truncate">
+                  <div className="font-medium text-emerald-200 truncate flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                    <span className="truncate">{uploadedDoc?.fileName || 'File on file'}</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-400/80 truncate">
+                    Storage URL verified
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-7 px-2 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer"
+                >
+                  Replace
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRemove}
+                  className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+                  title="Remove document"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
@@ -1494,7 +1698,7 @@ function DocumentDropCard({
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 hover:text-white text-xs h-9"
+            className="w-full bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800 hover:text-white text-xs h-9 cursor-pointer"
           >
             <Upload className="h-3.5 w-3.5 mr-1.5 text-primary" />
             Select File to Upload

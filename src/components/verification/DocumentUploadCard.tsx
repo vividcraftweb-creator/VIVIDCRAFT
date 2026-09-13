@@ -198,33 +198,52 @@ export default function DocumentUploadCard({
 
       setUploadProgress(30);
 
-      console.log("Uploading to bucket 'verifications'...", fileToUpload);
+      let publicUrl: string | null = null;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('verifications')
-        .upload(filePath, fileToUpload, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+      // 1. Attempt direct storage upload
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('verifications')
+          .upload(filePath, fileToUpload, {
+            cacheControl: '3600',
+            upsert: true,
+          });
 
-      if (uploadError) {
-        console.error("Storage upload error for bucket 'verifications':", uploadError);
-        const userMsg = uploadError.message?.includes('Bucket not found')
-          ? "Storage bucket 'verifications' was not found. Please ensure the bucket exists in Supabase."
-          : uploadError.message?.includes('row-level security') || uploadError.message?.includes('RLS')
-          ? "Permission error: Storage RLS policy prevented upload to 'verifications'."
-          : uploadError.message || "Failed to upload file to 'verifications' bucket.";
-        throw new Error(userMsg);
+        if (!uploadError) {
+          const { data: pubData } = supabase.storage.from('verifications').getPublicUrl(filePath);
+          if (pubData?.publicUrl) {
+            publicUrl = pubData.publicUrl;
+          }
+        } else {
+          console.warn("Direct storage upload error in DocumentUploadCard, trying endpoint:", uploadError);
+        }
+      } catch (directErr) {
+        console.warn("Direct storage exception in DocumentUploadCard, trying endpoint:", directErr);
       }
 
       setUploadProgress(60);
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('verifications').getPublicUrl(filePath);
+      // 2. Fallback to /api/verification/upload endpoint if direct upload did not succeed
+      if (!publicUrl) {
+        const formData = new FormData();
+        formData.append('file', fileToUpload);
+        formData.append('slot', verificationType);
+
+        const response = await fetch('/api/verification/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.publicUrl) {
+            publicUrl = resData.publicUrl;
+          }
+        }
+      }
 
       if (!publicUrl) {
-        throw new Error('Unable to retrieve public URL for uploaded file.');
+        throw new Error("Failed to upload file to storage. Please ensure storage bucket policies allow upload.");
       }
 
       setUploadProgress(80);
