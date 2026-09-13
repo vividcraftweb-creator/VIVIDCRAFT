@@ -844,62 +844,58 @@ export const verificationsRouter = router({
               createdAt,
             });
           }
-          if (!v.id_front_url && !v.id_back_url && !v.selfie_url) {
-            documents.push({
-              id: v.id,
-              verificationType: 'ID_FRONT',
-              documentType: docType,
-              url: null,
-              status,
-              rejectionReason: reason,
-              createdAt,
-            });
-          }
         }
       } else if (legacyRecords.length > 0) {
         for (const leg of legacyRecords) {
-          documents.push({
-            id: leg.id,
-            verificationType: leg.verificationType || 'ID_FRONT',
-            documentType: leg.documentType || 'ID Document',
-            url: leg.documentUrl || leg.files || null,
-            status: (leg.status || 'PENDING').toUpperCase() as any,
-            rejectionReason: leg.rejectionReason || leg.details || null,
-            createdAt: leg.createdAt || new Date().toISOString(),
-          });
+          const legUrl = leg.documentUrl || leg.files || null;
+          if (legUrl) {
+            documents.push({
+              id: leg.id,
+              verificationType: leg.verificationType || 'ID_FRONT',
+              documentType: leg.documentType || 'ID Document',
+              url: legUrl,
+              status: (leg.status || 'PENDING').toUpperCase() as any,
+              rejectionReason: leg.rejectionReason || leg.details || null,
+              createdAt: leg.createdAt || new Date().toISOString(),
+            });
+          }
         }
       }
 
+      const validDocs = documents.filter((d) => Boolean(d.url));
       const requiredDocs = ['ID_FRONT', 'ID_BACK', 'SELFIE'];
-      const uploadedTypes = documents.map((d) => d.verificationType).filter(Boolean);
+      const uploadedTypes = validDocs.map((d) => d.verificationType).filter(Boolean);
       const missingDocs = requiredDocs.filter((type) => !uploadedTypes.includes(type));
 
-      const rejectedDocs = documents
+      const rejectedDocs = validDocs
         .filter((d) => d.status === 'REJECTED')
         .map((d) => ({
           ...d,
           type: d.verificationType,
           reason: d.rejectionReason || 'Document was rejected',
         }));
-      const approvedDocs = documents.filter((d) => d.status === 'APPROVED');
-      const pendingDocs = documents.filter((d) => d.status === 'PENDING');
+      const approvedDocs = validDocs.filter((d) => d.status === 'APPROVED');
+      const pendingDocs = validDocs.filter((d) => d.status === 'PENDING');
 
       const profileStatus = (profile?.verification_status || '').toLowerCase();
       const hasRejected = rejectedDocs.length > 0 || (vRecords && vRecords.some((v: any) => (v.status || '').toLowerCase() === 'rejected')) || profileStatus === 'rejected';
-      const allApproved = documents.length > 0 && documents.every((d) => d.status === 'APPROVED');
+      const allApproved = validDocs.length > 0 && validDocs.every((d) => d.status === 'APPROVED');
       const isProfileVerified = Boolean(profile?.is_verified || profile?.verified || profileStatus === 'approved');
 
-      let status: 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_started';
+      let status: 'not_submitted' | 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_submitted';
       let message = 'Upload a government-issued ID to fully activate your account and apply for jobs.';
       if (hasRejected) {
         status = 'rejected';
         message = 'Some documents were rejected. Please review the feedback and re-upload them.';
-      } else if (allApproved || (documents.length === 0 && isProfileVerified)) {
+      } else if (allApproved || (validDocs.length === 0 && isProfileVerified)) {
         status = 'approved';
         message = 'Identity verification approved';
-      } else if (documents.length > 0 || pendingDocs.length > 0 || profileStatus === 'pending') {
+      } else if (validDocs.length > 0 && (pendingDocs.length > 0 || profileStatus === 'pending')) {
         status = 'pending';
         message = 'Your ID is under review';
+      } else {
+        status = 'not_submitted';
+        message = 'Upload a government-issued ID to fully activate your account and apply for jobs.';
       }
 
       const latestRecord = vRecords?.[0] || null;

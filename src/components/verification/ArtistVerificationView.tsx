@@ -370,8 +370,8 @@ export default function ArtistVerificationView() {
             });
             setDirectDocs(mappedDocs);
 
-            // Infer selected doc type from latest record
-            const latestV = docs[0];
+            // Infer selected doc type from latest record only if it has uploaded document files
+            const latestV = docs.find((d: any) => d.id_front_url || d.selfie_url || d.id_back_url) || null;
             if (latestV) {
               setSubmittedRecord(latestV);
               const docTypeStr = (latestV.document_type || '').toLowerCase();
@@ -382,6 +382,8 @@ export default function ArtistVerificationView() {
               } else {
                 setSelectedDocType('national_id');
               }
+            } else {
+              setSubmittedRecord(null);
             }
           }
         }
@@ -469,41 +471,54 @@ export default function ArtistVerificationView() {
     return false;
   }, [submittedRecord]);
 
-  // Derived verification status
-  const rejectedDocs = allDocuments.filter((d) => d.status === 'REJECTED');
+  // Derived verification status - only consider valid documents with actual URLs
+  const validDocs = allDocuments.filter((d) => Boolean(d.documentUrl));
+  const rejectedDocs = validDocs.filter((d) => d.status === 'REJECTED');
+  const pendingDocs = validDocs.filter((d) => d.status === 'PENDING');
+  const approvedDocs = validDocs.filter((d) => d.status === 'APPROVED');
+
+  const backendStatus = (verificationData?.status || '').toLowerCase();
+  const isBackendUnsubmitted =
+    !backendStatus ||
+    backendStatus === 'not_submitted' ||
+    backendStatus === 'not_started' ||
+    backendStatus === 'none';
+
+  // If the backend returns null, empty array [], or status not_submitted for the logged-in user:
+  // DO NOT render the hardcoded 'Verification In Review' UI card.
+  // Render the Verification Document Upload Form directly.
+  const hasValidSubmittedRecord = Boolean(
+    submittedRecord &&
+    submittedRecord.status?.toLowerCase() === 'pending' &&
+    (submittedRecord.id_front_url || submittedRecord.selfie_url || directDocs.length > 0)
+  );
+
   const hasRejectedDoc =
-    rejectedDocs.length > 0 ||
-    submittedRecord?.status?.toLowerCase() === 'rejected' ||
-    verificationData?.status === 'rejected' ||
-    Boolean(verificationData?.hasRejected) ||
-    (myProfile as any)?.verification_status === 'rejected' ||
-    (profileData as any)?.verification_status === 'rejected';
+    !isResetMode &&
+    (rejectedDocs.length > 0 ||
+      (submittedRecord?.status?.toLowerCase() === 'rejected' && (submittedRecord.id_front_url || submittedRecord.selfie_url)) ||
+      backendStatus === 'rejected' ||
+      Boolean(verificationData?.hasRejected) ||
+      (myProfile as any)?.verification_status === 'rejected' ||
+      (profileData as any)?.verification_status === 'rejected');
 
-  const pendingDocs = allDocuments.filter((d) => d.status === 'PENDING');
-  const approvedDocs = allDocuments.filter((d) => d.status === 'APPROVED');
   const hasPendingDoc =
-    pendingDocs.length > 0 ||
-    isPendingSubmitted ||
-    submittedRecord?.status?.toLowerCase() === 'pending' ||
-    verificationData?.status === 'pending';
+    !isResetMode &&
+    !isBackendUnsubmitted &&
+    (isPendingSubmitted ||
+      hasValidSubmittedRecord ||
+      (backendStatus === 'pending' && (hasValidSubmittedRecord || validDocs.length > 0)));
 
-  // Overall Status logic:
-  // If ANY doc is rejected -> Show Badge: Rejected (Red).
-  // If ALL required docs are approved -> Show Badge: Verified (Green).
-  // Otherwise -> Show Badge: Pending (Yellow).
-  // DO NOT display Verified green badge if any submitted document status is rejected or pending.
   const isRejected = !isResetMode && Boolean(hasRejectedDoc);
 
   const isApproved = !isResetMode && !isRejected && !hasPendingDoc && (
-    verificationData?.status === 'approved' ||
+    backendStatus === 'approved' ||
     Boolean(verificationData?.allApproved) ||
-    (approvedDocs.length > 0 && allDocuments.length > 0 && allDocuments.every((d) => d.status === 'APPROVED')) ||
-    (Boolean(profileData?.is_verified || (myProfile as any)?.is_verified) && allDocuments.length === 0 && (myProfile as any)?.verification_status !== 'rejected')
+    (approvedDocs.length > 0 && validDocs.length > 0 && validDocs.every((d) => d.status === 'APPROVED')) ||
+    (Boolean(profileData?.is_verified || (myProfile as any)?.is_verified) && (myProfile as any)?.verification_status !== 'rejected' && (profileData as any)?.verification_status !== 'rejected')
   );
 
-  const isPending = !isResetMode && !isRejected && !isApproved && (
-    hasPendingDoc || allDocuments.length > 0 || verificationData?.status === 'pending'
-  );
+  const isPending = !isResetMode && !isRejected && !isApproved && Boolean(hasPendingDoc);
 
   const currentConfig = DOC_CONFIGS[selectedDocType];
 
@@ -705,26 +720,16 @@ export default function ArtistVerificationView() {
       };
 
       try {
-        const { data: existingV } = await (supabase as any)
+        // Direct fresh insert to `verifications` table
+        const { error: insertErr } = await (supabase as any)
           .from('verifications')
-          .select('id')
-          .eq('user_id', targetUserId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .insert(verificationsPayload);
 
-        if (existingV?.id) {
+        if (insertErr) {
+          console.warn('Direct insert returned notice, falling back to upsert:', insertErr);
           await (supabase as any)
             .from('verifications')
-            .update({
-              ...verificationsPayload,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existingV.id);
-        } else {
-          await (supabase as any)
-            .from('verifications')
-            .insert(verificationsPayload);
+            .upsert(verificationsPayload, { onConflict: 'user_id' });
         }
       } catch (clientWriteErr) {
         console.warn('Direct client write notice, proceeding to server mutation:', clientWriteErr);
@@ -1355,7 +1360,7 @@ export default function ArtistVerificationView() {
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Submit for Verification
+                  Submit Documents
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}

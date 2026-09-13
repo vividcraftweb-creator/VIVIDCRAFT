@@ -68,7 +68,6 @@ import { createClient } from '@/lib/supabase/client';
 // Dynamically import components to avoid SSR issues
 const ProfileView = dynamic(() => import('./ProfileView'), { ssr: false });
 const ArtistVerificationView = dynamic(() => import('../verification/ArtistVerificationView'), { ssr: false });
-const SubscriptionView = dynamic(() => import('./SubscriptionView'), { ssr: false });
 const GalleryView = dynamic(() => import('./GalleryView'), { ssr: false });
 
 // Define types for our table data, including relations
@@ -98,7 +97,7 @@ import { toast } from 'sonner';
 type ContactListItem = inferRouterOutputs<AppRouter>['profiles']['getContacts'][number];
 
 interface FreelancerDashboardProps {
-  view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'verification' | 'settings' | 'subscription' | 'gallery';
+  view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'verification' | 'settings' | 'gallery';
 }
 
 export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardProps) {
@@ -1422,9 +1421,6 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
       case 'verification':
         return <ArtistVerificationView />;
-
-      case 'subscription':
-        return <SubscriptionView />;
 
       case 'settings':
         return (
