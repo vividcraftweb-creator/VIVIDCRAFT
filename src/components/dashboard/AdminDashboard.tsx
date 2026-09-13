@@ -78,19 +78,16 @@ const formatIdType = (idType?: string | null) => {
     .join(' ');
 };
 
-// Helper function to calculate time ago
-function getTimeAgo(timestamp: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - new Date(timestamp).getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  return 'Just now';
+// Helper function to format activity date & time
+function formatActivityDateTime(createdAt?: string | Date | null): string {
+  if (!createdAt) return 'N/A';
+  try {
+    const d = new Date(createdAt);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return 'N/A';
+  }
 }
 
 export default function AdminDashboard() {
@@ -101,7 +98,10 @@ export default function AdminDashboard() {
     async function fetchCounts() {
       try {
         const supabase = createClient();
-        const { data, count, error } = await supabase.from('profiles').select('*', { count: 'exact' });
+        const { data, count, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, first_name, last_name, email, created_at, role', { count: 'exact' })
+          .order('created_at', { ascending: false });
         if (!error && data) {
           setDirectProfiles(data);
           setDirectProfileCount(typeof count === 'number' ? count : data.length);
@@ -143,13 +143,14 @@ export default function AdminDashboard() {
 
   const displayActivities = (recentActivity && recentActivity.length > 0)
     ? recentActivity
-    : directProfiles.slice(0, 5).map((p) => {
-        const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email?.split('@')[0] || 'User';
+    : directProfiles.slice(0, 10).map((p) => {
+        const name = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email?.split('@')[0] || 'User';
         return {
-          id: p.id,
+          id: p.id || p.email,
           type: 'user_registered' as const,
           description: `New user registered: ${name} (${p.email || 'N/A'})`,
-          timestamp: p.created_at ? new Date(p.created_at) : new Date(),
+          timestamp: p.created_at ? new Date(p.created_at) : null,
+          created_at: p.created_at || null,
           metadata: { role: p.role || 'client' },
         };
       });
@@ -641,7 +642,7 @@ export default function AdminDashboard() {
             </div>
           ) : displayActivities && displayActivities.length > 0 ? (
             <div className="space-y-2">
-              {displayActivities.slice(0, 4).map((activity) => {
+              {displayActivities.slice(0, 5).map((activity) => {
                 const getActivityIcon = () => {
                   switch (activity.type) {
                     case 'user_registered':
@@ -656,7 +657,8 @@ export default function AdminDashboard() {
                 };
 
                 const { icon: Icon, color } = getActivityIcon();
-                const timeAgo = getTimeAgo(activity.timestamp);
+                const activityCreatedAt = (activity as any).created_at || activity.timestamp;
+                const formattedDate = formatActivityDateTime(activityCreatedAt);
 
                 return (
                   <div key={activity.id} className="flex items-center space-x-2 p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg">
@@ -665,7 +667,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-xs truncate font-medium">{activity.description}</p>
-                      <p className="text-slate-400 text-xs">{timeAgo}</p>
+                      <p className="text-slate-400 text-xs">{formattedDate}</p>
                     </div>
                   </div>
                 );

@@ -291,53 +291,45 @@ export const adminRouter = router({
       const supabase = ctx.adminSupabase || createAdminClient();
       if (!supabase) return [];
 
-      // Get recent user registrations
-      const { data: recentUsers } = await supabase
-        .from('User')
-        .select('id, email, createdAt')
-        .order('createdAt', { ascending: false })
-        .limit(5);
+      // Ensure the query fetches users directly from profiles ordered by creation date
+      let { data: recentUsers, error: usersError } = await (supabase as any)
+        .from('profiles')
+        .select('full_name, email, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-      // Get recent verifications
-      const { data: recentVerifications } = await supabase
-        .from('Verification')
-        .select('id, userId, status, updatedAt, User!Verification_userId_fkey(email)')
-        .order('updatedAt', { ascending: false })
-        .limit(5);
+      if (usersError) {
+        console.warn('getRecentActivity select profiles warning, trying fallback select:', usersError);
+        const fallback = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+        recentUsers = fallback.data;
+      }
 
-      // Combine and sort activities
       const activities: Array<{
         id: string;
-        type: 'user_registered' | 'verification_approved' | 'verification_pending';
+        type: 'user_registered';
         description: string;
         timestamp: Date;
+        created_at: string | null;
       }> = [];
 
-      recentUsers?.forEach(user => {
+      recentUsers?.forEach((user: any, index: number) => {
+        const name = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email?.split('@')[0] || 'User';
+        const createdAt = user.created_at || null;
+
         activities.push({
-          id: `user-${user.id}`,
+          id: `user-${user.id || user.email || index}`,
           type: 'user_registered',
-          description: `New user registered: ${user.email}`,
-          timestamp: new Date(user.createdAt),
+          description: `New user registered: ${name} (${user.email || 'N/A'})`,
+          timestamp: createdAt ? new Date(createdAt) : new Date(0),
+          created_at: createdAt,
         });
       });
 
-      recentVerifications?.forEach(verification => {
-        const user = Array.isArray(verification.User) ? verification.User[0] : verification.User;
-        activities.push({
-          id: `verification-${verification.id}`,
-          type: verification.status === 'APPROVED' ? 'verification_approved' : 'verification_pending',
-          description: verification.status === 'APPROVED'
-            ? `Verification approved for ${user?.email || 'user'}`
-            : `Verification pending for ${user?.email || 'user'}`,
-          timestamp: new Date(verification.updatedAt),
-        });
-      });
-
-      // Sort by timestamp descending
-      activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-      return activities.slice(0, 10);
+      return activities;
     } catch (err) {
       console.error('getRecentActivity exception:', err);
       return [];

@@ -366,7 +366,9 @@ export default function AdminAnalyticsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-white truncate font-medium">{activity.description}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {new Date(activity.timestamp).toLocaleTimeString()} • {new Date(activity.timestamp).toLocaleDateString()}
+                        {((activity as any).created_at || activity.timestamp)
+                          ? new Date((activity as any).created_at || activity.timestamp).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+                          : 'N/A'}
                       </p>
                     </div>
                   </div>
