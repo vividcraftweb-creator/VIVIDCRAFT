@@ -589,6 +589,189 @@ export default function ArtistVerificationView() {
 
   const currentConfig = DOC_CONFIGS[selectedDocType];
 
+  // Helper to determine per-document status and specific rejection reason
+  const getSlotStatusInfo = (slot: VerificationSlot) => {
+    // 1. If freshly staged in current session, it's newly uploaded / ready
+    if (stagedDocs[slot]?.url) {
+      return {
+        status: 'PENDING' as const,
+        isRejected: false,
+        isApproved: false,
+        isUploaded: true,
+        rejectionReason: null,
+      };
+    }
+
+    // 2. Check tRPC verificationData.rejectedDocs
+    const vDataRejected = verificationData?.rejectedDocs?.find((r: any) => {
+      const t = (r.verificationType || r.type || '').toUpperCase();
+      if (t === slot) return true;
+      if (slot === 'SELFIE' && t.includes('SELFIE')) return true;
+      if (slot === 'ID_FRONT' && (t.includes('FRONT') || t === 'ID')) return true;
+      if (slot === 'ID_BACK' && t.includes('BACK')) return true;
+      return false;
+    });
+
+    // 3. Check tRPC verificationData.approvedDocs
+    const vDataApproved = verificationData?.approvedDocs?.find((a: any) => {
+      const t = (a.verificationType || a.type || '').toUpperCase();
+      if (t === slot) return true;
+      if (slot === 'SELFIE' && t.includes('SELFIE')) return true;
+      if (slot === 'ID_FRONT' && (t.includes('FRONT') || t === 'ID')) return true;
+      if (slot === 'ID_BACK' && t.includes('BACK')) return true;
+      return false;
+    });
+
+    // 4. Check userDocs from tRPC (which has per-document status from Verification table)
+    const userDocItem = userDocs?.find((d: any) => {
+      const t = (d.verificationType || d.type || '').toUpperCase();
+      return t === slot;
+    });
+
+    // 5. Check allDocuments
+    const allDocItem = allDocuments.find((d) => d.verificationType === slot && Boolean(d.documentUrl));
+
+    // Check if slot has a file uploaded
+    const stateUrl = slot === 'ID_FRONT' ? frontUrl : slot === 'ID_BACK' ? backUrl : selfieUrl;
+    const hasFile = Boolean(stateUrl || allDocItem?.documentUrl || userDocItem?.documentUrl || userDocItem?.files);
+
+    if (!hasFile) {
+      return {
+        status: 'NOT_UPLOADED' as const,
+        isRejected: false,
+        isApproved: false,
+        isUploaded: false,
+        rejectionReason: null,
+      };
+    }
+
+    // Check if specifically rejected:
+    if (vDataRejected) {
+      return {
+        status: 'REJECTED' as const,
+        isRejected: true,
+        isApproved: false,
+        isUploaded: true,
+        rejectionReason: vDataRejected.reason || vDataRejected.rejectionReason || 'Document was rejected',
+      };
+    }
+
+    if (userDocItem && (userDocItem.status === 'REJECTED' || userDocItem.status === 'rejected')) {
+      return {
+        status: 'REJECTED' as const,
+        isRejected: true,
+        isApproved: false,
+        isUploaded: true,
+        rejectionReason: userDocItem.rejectionReason || userDocItem.details || 'Document was rejected',
+      };
+    }
+
+    // Check if specifically approved:
+    if (vDataApproved) {
+      return {
+        status: 'APPROVED' as const,
+        isRejected: false,
+        isApproved: true,
+        isUploaded: true,
+        rejectionReason: null,
+      };
+    }
+
+    if (userDocItem && (userDocItem.status === 'APPROVED' || userDocItem.status === 'approved')) {
+      return {
+        status: 'APPROVED' as const,
+        isRejected: false,
+        isApproved: true,
+        isUploaded: true,
+        rejectionReason: null,
+      };
+    }
+
+    // If global rejection exists, check if this slot was targeted
+    if (isRejected) {
+      // Check if any other slot is specifically rejected
+      const otherSlotsRejected = ['ID_FRONT', 'ID_BACK', 'SELFIE'].filter(s => s !== slot).some(otherSlot => {
+        return Boolean(
+          verificationData?.rejectedDocs?.some((r: any) => {
+            const t = (r.verificationType || r.type || '').toUpperCase();
+            return t === otherSlot || (otherSlot === 'SELFIE' && t.includes('SELFIE')) || (otherSlot === 'ID_BACK' && t.includes('BACK'));
+          }) ||
+          userDocs?.some((d: any) => d.verificationType === otherSlot && (d.status === 'REJECTED' || d.status === 'rejected'))
+        );
+      });
+
+      // If another slot is specifically rejected, this slot is NOT rejected!
+      if (otherSlotsRejected) {
+        return {
+          status: (allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved') ? ('APPROVED' as const) : ('PENDING' as const),
+          isRejected: false,
+          isApproved: allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved',
+          isUploaded: true,
+          rejectionReason: null,
+        };
+      }
+
+      // Check if rejection reason text specifically mentions another slot (e.g. mentions "selfie" but this is "ID_FRONT")
+      const reasonLower = (adminRejectionReason || '').toLowerCase();
+      if (slot === 'ID_FRONT' && (reasonLower.includes('selfie') || reasonLower.includes('back')) && !reasonLower.includes('front') && !reasonLower.includes('id')) {
+        return {
+          status: (allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved') ? ('APPROVED' as const) : ('PENDING' as const),
+          isRejected: false,
+          isApproved: allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved',
+          isUploaded: true,
+          rejectionReason: null,
+        };
+      }
+      if (slot === 'ID_BACK' && (reasonLower.includes('selfie') || reasonLower.includes('front')) && !reasonLower.includes('back')) {
+        return {
+          status: (allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved') ? ('APPROVED' as const) : ('PENDING' as const),
+          isRejected: false,
+          isApproved: allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved',
+          isUploaded: true,
+          rejectionReason: null,
+        };
+      }
+      if (slot === 'SELFIE' && (reasonLower.includes('front') || reasonLower.includes('back') || reasonLower.includes('barcode')) && !reasonLower.includes('selfie') && !reasonLower.includes('photo') && !reasonLower.includes('face')) {
+        return {
+          status: (allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved') ? ('APPROVED' as const) : ('PENDING' as const),
+          isRejected: false,
+          isApproved: allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved',
+          isUploaded: true,
+          rejectionReason: null,
+        };
+      }
+
+      // If allDocuments item for this slot had status REJECTED
+      if (allDocItem && (allDocItem.status === 'REJECTED' || allDocItem.status === 'rejected')) {
+        return {
+          status: 'REJECTED' as const,
+          isRejected: true,
+          isApproved: false,
+          isUploaded: true,
+          rejectionReason: allDocItem.rejectionReason || adminRejectionReason || 'Document was rejected',
+        };
+      }
+    }
+
+    if (allDocItem?.status === 'APPROVED' || allDocItem?.status === 'approved') {
+      return {
+        status: 'APPROVED' as const,
+        isRejected: false,
+        isApproved: true,
+        isUploaded: true,
+        rejectionReason: null,
+      };
+    }
+
+    return {
+      status: 'PENDING' as const,
+      isRejected: false,
+      isApproved: false,
+      isUploaded: true,
+      rejectionReason: null,
+    };
+  };
+
   // Helper to get uploaded document for a specific slot
   const getSlotDoc = (slot: VerificationSlot) => {
     // 1. Local staged docs in current session (user just selected and uploaded a replacement file)
@@ -603,6 +786,8 @@ export default function ArtistVerificationView() {
       };
     }
 
+    const info = getSlotStatusInfo(slot);
+
     // 2. Lookup existing doc from allDocuments (from verifications table / tRPC)
     const existingDoc = !isResetMode
       ? allDocuments.find((d) => d.verificationType === slot && Boolean(d.documentUrl))
@@ -613,21 +798,25 @@ export default function ArtistVerificationView() {
     const stateFileName = slot === 'ID_FRONT' ? frontFileName : slot === 'ID_BACK' ? backFileName : selfieFileName;
 
     if (stateUrl) {
-      const isCardRejected = isRejected || existingDoc?.status === 'REJECTED';
+      const docStatus = info.isRejected ? ('REJECTED' as const) : info.isApproved ? ('APPROVED' as const) : ('PENDING' as const);
       return {
         id: `state-${slot}`,
         verificationType: slot,
-        status: isCardRejected ? ('REJECTED' as const) : ('PENDING' as const),
+        status: docStatus,
         documentUrl: stateUrl,
         fileName: stateFileName || existingDoc?.fileName || `${slot} Document`,
-        rejectionReason: existingDoc?.rejectionReason || adminRejectionReason || null,
+        rejectionReason: info.rejectionReason || null,
         createdAt: existingDoc?.createdAt || new Date().toISOString(),
       };
     }
 
     // 4. Fall back to existingDoc
     if (existingDoc && !isResetMode) {
-      return existingDoc;
+      return {
+        ...existingDoc,
+        status: info.isRejected ? ('REJECTED' as const) : info.isApproved ? ('APPROVED' as const) : existingDoc.status,
+        rejectionReason: info.rejectionReason || existingDoc.rejectionReason || null,
+      };
     }
     return undefined;
   };
@@ -1449,145 +1638,179 @@ export default function ArtistVerificationView() {
             </div>
 
             {/* 3-Step Upload Status Checklist */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-900/60 border border-slate-800 rounded-2xl">
-              <div className="flex items-center gap-2 text-xs">
-                {isRejected && !stagedDocs['ID_FRONT'] ? (
-                  <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-                ) : hasFront ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                ) : (
-                  <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">1</div>
-                )}
-                <span className={isRejected && !stagedDocs['ID_FRONT'] ? 'text-red-300 font-medium' : hasFront ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
-                  1. Front: {isRejected && !stagedDocs['ID_FRONT'] ? 'Rejected / Action Required' : hasFront ? 'Uploaded & Ready' : 'Required'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {isRejected && !stagedDocs['ID_BACK'] ? (
-                  <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-                ) : hasBack ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                ) : (
-                  <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">2</div>
-                )}
-                <span className={isRejected && !stagedDocs['ID_BACK'] ? 'text-red-300 font-medium' : hasBack ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
-                  2. Back: {isRejected && !stagedDocs['ID_BACK'] ? 'Rejected / Action Required' : hasBack ? 'Uploaded & Ready' : 'Required'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {isRejected && !stagedDocs['SELFIE'] ? (
-                  <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-                ) : hasSelfie ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                ) : (
-                  <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">3</div>
-                )}
-                <span className={isRejected && !stagedDocs['SELFIE'] ? 'text-red-300 font-medium' : hasSelfie ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
-                  3. Selfie: {isRejected && !stagedDocs['SELFIE'] ? 'Rejected / Action Required' : hasSelfie ? 'Uploaded & Ready' : 'Required'}
-                </span>
-              </div>
-            </div>
+            {(() => {
+              const frontInfo = getSlotStatusInfo('ID_FRONT');
+              const backInfo = getSlotStatusInfo('ID_BACK');
+              const selfieInfo = getSlotStatusInfo('SELFIE');
+              const hasAnyRejected = Boolean(frontInfo.isRejected || backInfo.isRejected || selfieInfo.isRejected);
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Field 1: Front Image / Main Data Page */}
-              <DocumentDropCard
-                title={currentConfig.frontTitle}
-                description={currentConfig.frontDesc}
-                icon={<FileText className="h-5 w-5 text-blue-400" />}
-                slot="ID_FRONT"
-                required={true}
-                uploadedDoc={getSlotDoc('ID_FRONT')}
-                previewUrl={frontPreview}
-                isUploading={uploadingSlot === 'ID_FRONT'}
-                progress={uploadProgress.ID_FRONT || 0}
-                onFileSelect={(file) => handleFileUpload('ID_FRONT', file)}
-                onRemove={() => handleRemoveDoc('ID_FRONT')}
-                isRejected={isRejected}
-                isFreshlyUploaded={Boolean(stagedDocs['ID_FRONT']?.url)}
-              />
-
-              {/* Field 2: Back Image / Cover */}
-              <DocumentDropCard
-                title={currentConfig.backTitle || 'Back Image'}
-                description={currentConfig.backDesc || 'Upload back side showing barcode, signature, or authority'}
-                icon={<FileText className="h-5 w-5 text-cyan-400" />}
-                slot="ID_BACK"
-                required={true}
-                uploadedDoc={getSlotDoc('ID_BACK')}
-                previewUrl={backPreview}
-                isUploading={uploadingSlot === 'ID_BACK'}
-                progress={uploadProgress.ID_BACK || 0}
-                onFileSelect={(file) => handleFileUpload('ID_BACK', file)}
-                onRemove={() => handleRemoveDoc('ID_BACK')}
-                isRejected={isRejected}
-                isFreshlyUploaded={Boolean(stagedDocs['ID_BACK']?.url)}
-              />
-
-              {/* Field 3: Selfie with Document */}
-              <DocumentDropCard
-                title={currentConfig.selfieTitle}
-                description={currentConfig.selfieDesc}
-                icon={<Camera className="h-5 w-5 text-purple-400" />}
-                slot="SELFIE"
-                required={true}
-                uploadedDoc={getSlotDoc('SELFIE')}
-                previewUrl={selfiePreview}
-                isUploading={uploadingSlot === 'SELFIE'}
-                progress={uploadProgress.SELFIE || 0}
-                onFileSelect={(file) => handleFileUpload('SELFIE', file)}
-                onRemove={() => handleRemoveDoc('SELFIE')}
-                isRejected={isRejected}
-                isFreshlyUploaded={Boolean(stagedDocs['SELFIE']?.url)}
-              />
-            </div>
-          </div>
-
-          {/* Step 3: Submit Button with live validation & feedback */}
-          <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex flex-col gap-1 text-xs text-slate-400">
-              <div>
-                Your identity documents are securely uploaded to the <code className="text-primary">verifications</code> bucket and encrypted.
-              </div>
-              {!isFormValid ? (
-                <div className="flex items-center gap-1.5 text-amber-400 font-medium mt-1">
-                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>
-                    Upload all 3 required files ({[
-                      !hasFront && currentConfig.frontTitle,
-                      !hasBack && (currentConfig.backTitle || 'Back Image'),
-                      !hasSelfie && currentConfig.selfieTitle,
-                    ].filter(Boolean).join(', ')}) to enable submission
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-emerald-400 font-medium mt-1">
-                  <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>All 3 required documents uploaded successfully. Ready to submit!</span>
-                </div>
-              )}
-            </div>
-            <Button
-              onClick={handleSubmitVerification}
-              disabled={!isFormValid || isSubmitting || !!uploadingSlot}
-              className={`w-full sm:w-auto font-semibold px-6 h-11 text-sm shadow-md transition-all ${
-                isFormValid && !isSubmitting && !uploadingSlot
-                  ? 'bg-primary hover:bg-primary/90 text-white cursor-pointer'
-                  : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60'
-              }`}
-            >
-              {isSubmitting ? (
+              return (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting Documents...
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                    <div className="flex items-center gap-2 text-xs">
+                      {frontInfo.isRejected ? (
+                        <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      ) : frontInfo.isApproved ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                      ) : hasFront ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">1</div>
+                      )}
+                      <span className={frontInfo.isRejected ? 'text-red-300 font-medium' : frontInfo.isApproved ? 'text-emerald-300 font-medium' : hasFront ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                        1. Front: {frontInfo.isRejected ? 'Rejected / Action Required' : frontInfo.isApproved ? 'Approved' : hasFront ? 'Uploaded & Ready' : 'Required'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {backInfo.isRejected ? (
+                        <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      ) : backInfo.isApproved ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                      ) : hasBack ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">2</div>
+                      )}
+                      <span className={backInfo.isRejected ? 'text-red-300 font-medium' : backInfo.isApproved ? 'text-emerald-300 font-medium' : hasBack ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                        2. Back: {backInfo.isRejected ? 'Rejected / Action Required' : backInfo.isApproved ? 'Approved' : hasBack ? 'Uploaded & Ready' : 'Required'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {selfieInfo.isRejected ? (
+                        <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      ) : selfieInfo.isApproved ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                      ) : hasSelfie ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-semibold flex-shrink-0">3</div>
+                      )}
+                      <span className={selfieInfo.isRejected ? 'text-red-300 font-medium' : selfieInfo.isApproved ? 'text-emerald-300 font-medium' : hasSelfie ? 'text-emerald-300 font-medium' : 'text-slate-400'}>
+                        3. Selfie: {selfieInfo.isRejected ? 'Rejected / Action Required' : selfieInfo.isApproved ? 'Approved' : hasSelfie ? 'Uploaded & Ready' : 'Required'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Field 1: Front Image / Main Data Page */}
+                    <DocumentDropCard
+                      title={currentConfig.frontTitle}
+                      description={currentConfig.frontDesc}
+                      icon={<FileText className="h-5 w-5 text-blue-400" />}
+                      slot="ID_FRONT"
+                      required={true}
+                      uploadedDoc={getSlotDoc('ID_FRONT')}
+                      previewUrl={frontPreview}
+                      isUploading={uploadingSlot === 'ID_FRONT'}
+                      progress={uploadProgress.ID_FRONT || 0}
+                      onFileSelect={(file) => handleFileUpload('ID_FRONT', file)}
+                      onRemove={() => handleRemoveDoc('ID_FRONT')}
+                      isRejected={frontInfo.isRejected}
+                      isApproved={frontInfo.isApproved}
+                      rejectionReason={frontInfo.rejectionReason}
+                      isFreshlyUploaded={Boolean(stagedDocs['ID_FRONT']?.url)}
+                    />
+
+                    {/* Field 2: Back Image / Cover */}
+                    <DocumentDropCard
+                      title={currentConfig.backTitle || 'Back Image'}
+                      description={currentConfig.backDesc || 'Upload back side showing barcode, signature, or authority'}
+                      icon={<FileText className="h-5 w-5 text-cyan-400" />}
+                      slot="ID_BACK"
+                      required={true}
+                      uploadedDoc={getSlotDoc('ID_BACK')}
+                      previewUrl={backPreview}
+                      isUploading={uploadingSlot === 'ID_BACK'}
+                      progress={uploadProgress.ID_BACK || 0}
+                      onFileSelect={(file) => handleFileUpload('ID_BACK', file)}
+                      onRemove={() => handleRemoveDoc('ID_BACK')}
+                      isRejected={backInfo.isRejected}
+                      isApproved={backInfo.isApproved}
+                      rejectionReason={backInfo.rejectionReason}
+                      isFreshlyUploaded={Boolean(stagedDocs['ID_BACK']?.url)}
+                    />
+
+                    {/* Field 3: Selfie with Document */}
+                    <DocumentDropCard
+                      title={currentConfig.selfieTitle}
+                      description={currentConfig.selfieDesc}
+                      icon={<Camera className="h-5 w-5 text-purple-400" />}
+                      slot="SELFIE"
+                      required={true}
+                      uploadedDoc={getSlotDoc('SELFIE')}
+                      previewUrl={selfiePreview}
+                      isUploading={uploadingSlot === 'SELFIE'}
+                      progress={uploadProgress.SELFIE || 0}
+                      onFileSelect={(file) => handleFileUpload('SELFIE', file)}
+                      onRemove={() => handleRemoveDoc('SELFIE')}
+                      isRejected={selfieInfo.isRejected}
+                      isApproved={selfieInfo.isApproved}
+                      rejectionReason={selfieInfo.rejectionReason}
+                      isFreshlyUploaded={Boolean(stagedDocs['SELFIE']?.url)}
+                    />
+                  </div>
+
+                  {/* Step 3: Submit Button with live validation & feedback */}
+                  <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex flex-col gap-1 text-xs text-slate-400">
+                      <div>
+                        Your identity documents are securely uploaded to the <code className="text-primary">verifications</code> bucket and encrypted.
+                      </div>
+                      {!isFormValid ? (
+                        <div className="flex items-center gap-1.5 text-amber-400 font-medium mt-1">
+                          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span>
+                            Upload all 3 required files ({[
+                              !hasFront && currentConfig.frontTitle,
+                              !hasBack && (currentConfig.backTitle || 'Back Image'),
+                              !hasSelfie && currentConfig.selfieTitle,
+                            ].filter(Boolean).join(', ')}) to enable submission
+                          </span>
+                        </div>
+                      ) : hasAnyRejected ? (
+                        <div className="flex items-center gap-1.5 text-amber-400 font-medium mt-1">
+                          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span>
+                            Action required: Please re-upload replacement file for {[
+                              frontInfo.isRejected && currentConfig.frontTitle,
+                              backInfo.isRejected && (currentConfig.backTitle || 'Back Image'),
+                              selfieInfo.isRejected && currentConfig.selfieTitle,
+                            ].filter(Boolean).join(', ')} to resubmit.
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-medium mt-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span>All required documents are ready. Ready to submit verification!</span>
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      onClick={handleSubmitVerification}
+                      disabled={!isFormValid || hasAnyRejected || isSubmitting || !!uploadingSlot}
+                      className={`w-full sm:w-auto font-semibold px-6 h-11 text-sm shadow-md transition-all ${
+                        isFormValid && !hasAnyRejected && !isSubmitting && !uploadingSlot
+                          ? 'bg-primary hover:bg-primary/90 text-white cursor-pointer'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Submitting Documents...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Submit Documents
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Submit Documents
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Button>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -1609,6 +1832,8 @@ interface DocumentDropCardProps {
   onFileSelect: (file: File) => void;
   onRemove: () => void;
   isRejected?: boolean;
+  isApproved?: boolean;
+  rejectionReason?: string | null;
   isFreshlyUploaded?: boolean;
 }
 
@@ -1625,6 +1850,8 @@ function DocumentDropCard({
   onFileSelect,
   onRemove,
   isRejected,
+  isApproved,
+  rejectionReason,
   isFreshlyUploaded,
 }: DocumentDropCardProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1641,36 +1868,44 @@ function DocumentDropCard({
   const isDocRejected = Boolean(
     (isRejected || uploadedDoc?.status === 'REJECTED') && !isFreshlyUploaded && isUploaded
   );
+  const isDocApproved = Boolean(
+    (isApproved || uploadedDoc?.status === 'APPROVED') && !isDocRejected && isUploaded
+  );
+  const effectiveRejectionReason = rejectionReason || uploadedDoc?.rejectionReason;
   const displayPreview = previewUrl || (uploadedDoc?.documentUrl?.match(/\.(jpg|jpeg|png|webp)($|\?)/i) ? uploadedDoc.documentUrl : null);
 
   return (
     <div className={`rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 ${
       isDocRejected
         ? 'bg-red-950/20 border-2 border-red-500/50 shadow-sm ring-1 ring-red-500/30'
+        : isDocApproved
+        ? 'bg-emerald-950/20 border-2 border-emerald-500/50 shadow-sm ring-1 ring-emerald-500/30'
         : isUploaded
         ? 'bg-emerald-950/20 border-2 border-emerald-500/50 shadow-sm ring-1 ring-emerald-500/30'
         : 'bg-slate-950/60 border border-slate-800 hover:border-slate-700'
     }`}>
       <div>
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-start justify-between gap-3 mb-2 w-full min-w-0 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className={`p-2 rounded-xl flex-shrink-0 ${
               isDocRejected
                 ? 'bg-red-950/80 border border-red-500/40 text-red-400'
+                : isDocApproved
+                ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-400'
                 : isUploaded
                 ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-400'
                 : 'bg-slate-900 border border-slate-800 text-slate-400'
             }`}>
               {icon}
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h4 className="text-white text-sm font-semibold">{title}</h4>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h4 className="text-white text-sm font-semibold truncate">{title}</h4>
                 {required && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
                     isDocRejected
                       ? 'bg-red-500/20 text-red-300'
-                      : isUploaded
+                      : isDocApproved || isUploaded
                       ? 'bg-emerald-500/20 text-emerald-300'
                       : 'bg-slate-800 text-slate-400'
                   }`}>
@@ -1678,20 +1913,27 @@ function DocumentDropCard({
                   </span>
                 )}
               </div>
-              <p className="text-slate-400 text-xs mt-0.5 leading-snug">{description}</p>
+              <p className="text-slate-400 text-xs mt-0.5 leading-snug line-clamp-2">{description}</p>
             </div>
           </div>
-          {isDocRejected ? (
-            <Badge className="bg-red-500/20 text-red-300 border border-red-500/40 text-[10px] font-semibold px-2 py-0.5 flex-shrink-0 flex items-center gap-1 shadow-sm">
-              <AlertCircle className="h-3 w-3 text-red-400" />
-              Rejected / Action Required
-            </Badge>
-          ) : isUploaded ? (
-            <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold px-2 py-0.5 flex-shrink-0 flex items-center gap-1 shadow-sm">
-              <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-              Uploaded &amp; Ready
-            </Badge>
-          ) : null}
+          <div className="flex-shrink-0">
+            {isDocRejected ? (
+              <Badge className="bg-red-500/20 text-red-300 border border-red-500/40 text-[10px] font-semibold px-2 py-0.5 flex items-center gap-1 shadow-sm max-w-full overflow-hidden truncate">
+                <AlertCircle className="h-3 w-3 text-red-400 flex-shrink-0" />
+                <span className="truncate">Rejected</span>
+              </Badge>
+            ) : isDocApproved ? (
+              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold px-2 py-0.5 flex items-center gap-1 shadow-sm max-w-full overflow-hidden truncate">
+                <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                <span className="truncate">Approved</span>
+              </Badge>
+            ) : isUploaded ? (
+              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold px-2 py-0.5 flex items-center gap-1 shadow-sm max-w-full overflow-hidden truncate">
+                <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                <span className="truncate">Uploaded &amp; Ready</span>
+              </Badge>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -1723,64 +1965,102 @@ function DocumentDropCard({
         ) : isUploaded ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs text-slate-300 truncate">
+              <div className="flex items-center gap-2 text-xs text-slate-300 truncate min-w-0 flex-1">
                 {displayPreview ? (
                   <img
                     src={displayPreview}
                     alt={uploadedDoc?.fileName || title}
                     className={`h-8 w-8 rounded-lg object-cover flex-shrink-0 bg-slate-900 ${
-                      isDocRejected ? 'border border-red-500/40' : 'border border-emerald-500/30'
+                      isDocRejected
+                        ? 'border border-red-500/40'
+                        : isDocApproved
+                        ? 'border border-emerald-500/40'
+                        : 'border border-emerald-500/30'
                     }`}
                   />
                 ) : (
                   <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                     isDocRejected
                       ? 'bg-red-950/60 border border-red-500/40 text-red-400'
+                      : isDocApproved
+                      ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-400'
                       : 'bg-emerald-950/60 border border-emerald-500/30 text-emerald-400'
                   }`}>
-                    {isDocRejected ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {isDocRejected ? (
+                      <AlertCircle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
                   </div>
                 )}
-                <div className="truncate">
-                  <div className={`font-medium truncate flex items-center gap-1 ${isDocRejected ? 'text-red-200' : 'text-emerald-200'}`}>
-                    {isDocRejected ? <AlertCircle className="h-3 w-3 text-red-400 flex-shrink-0" /> : <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />}
+                <div className="truncate min-w-0 flex-1">
+                  <div className={`font-medium truncate flex items-center gap-1 ${
+                    isDocRejected ? 'text-red-200' : isDocApproved ? 'text-emerald-200' : 'text-emerald-200'
+                  }`}>
+                    {isDocRejected ? (
+                      <AlertCircle className="h-3 w-3 text-red-400 flex-shrink-0" />
+                    ) : (
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                    )}
                     <span className="truncate">{uploadedDoc?.fileName || 'File on file'}</span>
                   </div>
-                  <div className={`text-[10px] truncate ${isDocRejected ? 'text-red-400/90 font-medium' : 'text-emerald-400/80'}`}>
-                    {isDocRejected ? 'Rejected - Replacement needed' : 'Storage URL verified'}
+                  <div className={`text-[10px] truncate ${
+                    isDocRejected
+                      ? 'text-red-400/90 font-medium'
+                      : isDocApproved
+                      ? 'text-emerald-400 font-medium'
+                      : 'text-emerald-400/80'
+                  }`}>
+                    {isDocRejected
+                      ? 'Rejected - Replacement needed'
+                      : isDocApproved
+                      ? 'Document Approved'
+                      : 'Storage URL verified'}
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Button
-                  type="button"
-                  variant={isDocRejected ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`h-7 px-2 text-[11px] cursor-pointer ${
-                    isDocRejected
-                      ? 'bg-red-500/20 text-red-200 hover:bg-red-500/30 border border-red-500/40 font-medium'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  {isDocRejected ? 'Upload New' : 'Replace'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onRemove}
-                  className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
-                  title="Remove document"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {isDocApproved ? (
+                  <span className="text-[10px] text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2 py-1 rounded font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Approved &amp; Intact
+                  </span>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant={isDocRejected ? 'secondary' : 'ghost'}
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`h-7 px-2 text-[11px] cursor-pointer ${
+                        isDocRejected
+                          ? 'bg-red-500/20 text-red-200 hover:bg-red-500/30 border border-red-500/40 font-medium'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      {isDocRejected ? 'Upload New' : 'Replace'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={onRemove}
+                      className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+                      title="Remove document"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
-            {isDocRejected && uploadedDoc?.rejectionReason && (
-              <div className="text-[11px] text-red-300 bg-red-950/40 border border-red-900/40 rounded-lg p-2 flex items-start gap-1.5">
+            {isDocRejected && effectiveRejectionReason && (
+              <div className="text-[11px] text-red-300 bg-red-950/40 border border-red-900/40 rounded-lg p-2 flex items-start gap-1.5 mt-2">
                 <AlertCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-                <span className="leading-tight"><span className="font-semibold text-red-200">Rejection note:</span> {uploadedDoc.rejectionReason}</span>
+                <span className="leading-tight break-words min-w-0">
+                  <span className="font-semibold text-red-200">Rejection note: </span>
+                  {effectiveRejectionReason}
+                </span>
               </div>
             )}
           </div>
