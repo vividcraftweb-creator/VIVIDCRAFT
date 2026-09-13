@@ -663,8 +663,24 @@ export default function AdminDashboard() {
                 };
 
                 const { icon: Icon, color } = getActivityIcon();
-                const activityCreatedAt = (activity as any).created_at || activity.timestamp;
-                const formattedDate = formatActivityDateTime(activityCreatedAt);
+                const user = activity as any;
+                const formattedDate = user.created_at
+                  ? new Date(user.created_at).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : (user.timestamp
+                    ? new Date(user.timestamp).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'Recent');
 
                 return (
                   <div key={activity.id} className="flex items-center space-x-2 p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg">

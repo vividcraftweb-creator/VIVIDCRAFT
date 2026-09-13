@@ -303,26 +303,53 @@ export const adminRouter = router({
         return [];
       }
 
+      // Fetch auth users to sync real auth registration timestamps if profile created_at is missing
+      const authUserMap = new Map<string, string>();
+      try {
+        const { data: authData } = await supabase.auth.admin.listUsers({ page: 1, perPage: 100 });
+        if (authData?.users) {
+          for (const au of authData.users) {
+            if (au.id && au.created_at) authUserMap.set(au.id, au.created_at);
+            if (au.email && au.created_at) authUserMap.set(au.email.toLowerCase(), au.created_at);
+          }
+        }
+      } catch (authErr) {
+        console.warn('Auth admin listUsers notice:', authErr);
+      }
+
       const activities: Array<{
         id: string;
         type: 'user_registered';
         description: string;
-        timestamp: Date;
+        timestamp: Date | null;
         created_at: string | null;
       }> = [];
 
-      recentUsers?.forEach((user: any, index: number) => {
+      for (const user of (recentUsers || [])) {
         const name = user.full_name || user.email?.split('@')[0] || 'User';
-        const createdAt = user.created_at || null;
+        let createdAt = user.created_at || null;
+
+        // If profile is missing created_at, sync real auth registration timestamp
+        if (!createdAt) {
+          const authCreatedAt = (user.id ? authUserMap.get(user.id) : null) || (user.email ? authUserMap.get(user.email.toLowerCase()) : null);
+          if (authCreatedAt) {
+            createdAt = authCreatedAt;
+            try {
+              await (supabase as any).from('profiles').update({ created_at: authCreatedAt }).eq('id', user.id);
+            } catch (syncErr) {
+              console.warn('Failed to sync auth created_at to profile:', syncErr);
+            }
+          }
+        }
 
         activities.push({
-          id: `user-${user.id || user.email || index}`,
+          id: `user-${user.id || user.email}`,
           type: 'user_registered',
           description: `New user registered: ${name} (${user.email || 'N/A'})`,
-          timestamp: createdAt ? new Date(createdAt) : new Date(),
+          timestamp: createdAt ? new Date(createdAt) : null,
           created_at: createdAt,
         });
-      });
+      }
 
       return activities;
     } catch (err) {
