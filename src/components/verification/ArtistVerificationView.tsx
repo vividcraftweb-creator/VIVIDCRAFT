@@ -310,12 +310,12 @@ export default function ArtistVerificationView() {
         if (user && isMounted) {
           setSessionUserId(user.id);
 
-          // 1. Fetch Profile (query is_verified and verification_status safely)
+          // 1. Fetch Profile using select('*')
           let prof: any = null;
           try {
             const res = await (supabase as any)
               .from('profiles')
-              .select('id, is_verified, verification_status')
+              .select('*')
               .eq('id', user.id)
               .limit(1)
               .maybeSingle();
@@ -529,10 +529,14 @@ export default function ArtistVerificationView() {
 
   const hasPendingDoc =
     !isResetMode &&
-    !isBackendUnsubmitted &&
     (isPendingSubmitted ||
-      hasValidSubmittedRecord ||
-      (backendStatus === 'pending' && (hasValidSubmittedRecord || validDocs.length > 0)));
+      Boolean(submittedRecord && submittedRecord.status?.toLowerCase() === 'pending') ||
+      (profileData as any)?.verification_status === 'pending' ||
+      (myProfile as any)?.verification_status === 'pending' ||
+      (!isBackendUnsubmitted && (
+        hasValidSubmittedRecord ||
+        (backendStatus === 'pending' && (hasValidSubmittedRecord || validDocs.length > 0))
+      )));
 
   const isRejected = !isResetMode && Boolean(hasRejectedDoc);
 
@@ -840,15 +844,18 @@ export default function ArtistVerificationView() {
         throw new Error('User session not found. Please log in again.');
       }
 
-      // 1. Exact payload keys expected by router and database: id_front_url, id_back_url, selfie_url
+      // 1. Schema Mapping on Insert:
+      // Pass both standard key variations into the insert object so Supabase receives valid columns:
+      const docType = selectedDocType || 'national_id';
       const verificationsPayload = {
-        user_id: targetUserId,
-        document_type: currentConfig.label,
+        user_id: user?.id || targetUserId,
+        document_type: docType || 'national_id',
         id_front_url: finalFrontUrl,
         id_back_url: finalBackUrl,
+        front_url: finalFrontUrl,
+        back_url: finalBackUrl,
         selfie_url: finalSelfieUrl,
         status: 'pending',
-        rejection_reason: null,
       };
 
       try {
@@ -858,10 +865,18 @@ export default function ArtistVerificationView() {
           .insert(verificationsPayload);
 
         if (insertErr) {
-          console.warn('Direct insert returned notice, falling back to upsert:', insertErr);
+          console.warn('Direct insert returned notice, trying standard columns fallback:', insertErr);
+          const fallbackPayload = {
+            user_id: user?.id || targetUserId,
+            document_type: docType || 'national_id',
+            id_front_url: finalFrontUrl,
+            id_back_url: finalBackUrl,
+            selfie_url: finalSelfieUrl,
+            status: 'pending',
+          };
           await (supabase as any)
             .from('verifications')
-            .upsert(verificationsPayload, { onConflict: 'user_id' });
+            .upsert(fallbackPayload, { onConflict: 'user_id' });
         }
       } catch (clientWriteErr) {
         console.warn('Direct client write notice, proceeding to server mutation:', clientWriteErr);
@@ -872,6 +887,8 @@ export default function ArtistVerificationView() {
         documentType: currentConfig.label,
         id_front_url: finalFrontUrl,
         id_back_url: finalBackUrl,
+        front_url: finalFrontUrl,
+        back_url: finalBackUrl,
         selfie_url: finalSelfieUrl,
         status: 'pending',
       });
@@ -885,7 +902,7 @@ export default function ArtistVerificationView() {
         console.warn('submitForReview mutation notice:', mutationErr);
       }
 
-      // 4. Update profiles table verification_status to 'pending' and is_verified to false
+      // 4. Update profiles table verification_status to 'pending' immediately
       try {
         const { error: pErr } = await (supabase as any)
           .from('profiles')
@@ -909,22 +926,26 @@ export default function ArtistVerificationView() {
         console.warn('Profile update notice:', profileUpdateErr);
       }
 
-      // 5. Update User table verificationSubmittedAt
+      // 5. Query profiles using select('*') to ensure profile state is synchronized (replaces 'User' query to remove 404)
       try {
-        await supabase
-          .from('User')
-          .update({
-            verificationSubmittedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('id', targetUserId);
+        const { data: updatedProfile } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .eq('id', targetUserId)
+          .maybeSingle();
+
+        if (updatedProfile) {
+          setProfileData(updatedProfile);
+        }
       } catch {}
 
-      // 6. Update local state and redirect to pending status view
+      // 6. Update local state and immediately switch UI to show "Verification In Review" banner cleanly
       setSubmittedRecord({
         document_type: currentConfig.label,
         id_front_url: finalFrontUrl,
         id_back_url: finalBackUrl,
+        front_url: finalFrontUrl,
+        back_url: finalBackUrl,
         selfie_url: finalSelfieUrl,
         status: 'pending',
         created_at: new Date().toISOString(),
@@ -939,7 +960,7 @@ export default function ArtistVerificationView() {
       setIsResetMode(false);
       setStagedDocs({});
       setIsPendingSubmitted(true);
-      toast.success('Verification submitted! Your documents are now pending review.');
+      toast.success('Verification submitted! Your documents are now in review.');
 
       // 7. Refetch queries immediately upon submission success
       try {

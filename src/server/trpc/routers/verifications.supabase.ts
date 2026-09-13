@@ -2201,15 +2201,15 @@ export const verificationsRouter = router({
       });
     }
 
-    // Mark user as having submitted for review
-    const { error: updateError } = await adminSupabase
-      .from('User')
-      .update({ verificationSubmittedAt: new Date().toISOString() })
+    // Mark user profile as having submitted for review
+    const { error: updateError } = await (adminSupabase as any)
+      .from('profiles')
+      .update({
+        verification_status: 'pending',
+        is_verified: false,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', userId);
-
-    if (updateError) {
-      // Failed to update user verification status
-    }
 
     // Create verification submission record
     const { error: verificationError } = await supabase

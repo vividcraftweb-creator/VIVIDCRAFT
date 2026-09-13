@@ -29,29 +29,19 @@ export async function checkUserVerification(
 ): Promise<VerificationCheckResult> {
   const supabase = createAdminClient();
 
-  // Read profiles table first for primary role and verification state
+  // Read profiles table for primary role and verification state
   let profile: any = null;
   try {
     const { data: profileRow } = await (supabase as any)
       .from('profiles')
-      .select('id, role, client_type, is_verified, verified, verification_status')
+      .select('*')
       .eq('id', userId)
       .limit(1)
       .maybeSingle();
     if (profileRow) profile = profileRow;
   } catch {}
 
-  // Fallback to User table if needed for legacy clientType/role
-  let user: any = null;
-  try {
-    const { data, error } = await supabase
-      .from('User')
-      .select('clientType, role, isVerified')
-      .eq('id', userId)
-      .limit(1)
-      .maybeSingle();
-    if (!error && data) user = data;
-  } catch {}
+  const user = profile;
 
   // Verification is strictly for role === 'ARTIST' / 'FREELANCER'. CLIENTs are completely exempt.
   const userRole = (profile?.role || user?.role || '').toUpperCase();
