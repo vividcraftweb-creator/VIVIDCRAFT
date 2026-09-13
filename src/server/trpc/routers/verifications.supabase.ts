@@ -329,8 +329,8 @@ export async function fetchAllVerificationsList(supabase: any) {
       console.warn('[Admin getVerifications Router] Exception querying admin_verification_queue:', e);
     }
 
-    // Fallback to verifications table if admin_verification_queue was empty or errored
-    if (!fromQueue || vList.length === 0) {
+    // Fallback to verifications table if admin_verification_queue errored
+    if (!fromQueue) {
       try {
         const { data, error } = await (supabase as any)
           .from('verifications')
@@ -346,6 +346,7 @@ export async function fetchAllVerificationsList(supabase: any) {
               role,
               client_type,
               is_verified,
+              verification_status,
               company_name
             )
           `)
@@ -391,14 +392,14 @@ export async function fetchAllVerificationsList(supabase: any) {
 
     console.log(`[Admin getVerifications Router] Retrieved ${vList.length} records for queue`);
 
-    // 2. Fetch profiles for all user_ids to guarantee name, email, avatar_url
+    // 2. Fetch profiles for all user_ids to guarantee name, email, avatar_url, verification_status
     const userIds = Array.from(new Set(vList.map((v) => v.user_id || v.userId).filter(Boolean)));
 
     if (userIds.length > 0) {
       try {
         const { data: pList, error: pErr } = await (supabase as any)
           .from('profiles')
-          .select('id, full_name, first_name, last_name, email, avatar_url, profile_picture, role, client_type, is_verified, company_name')
+          .select('id, full_name, first_name, last_name, email, avatar_url, profile_picture, role, client_type, is_verified, verification_status, company_name')
           .in('id', userIds);
 
         if (Array.isArray(pList)) {
@@ -499,6 +500,9 @@ export async function fetchAllVerificationsList(supabase: any) {
         full_name: fullName,
         name: fullName,
         role,
+        is_verified: v.is_verified ?? prof?.is_verified ?? false,
+        isVerified: v.is_verified ?? prof?.is_verified ?? false,
+        verification_status: v.verification_status || prof?.verification_status || statusLower,
         user: {
           id: uid,
           email,
@@ -512,7 +516,7 @@ export async function fetchAllVerificationsList(supabase: any) {
           avatarUrl: avatarUrl,
           avatar: avatarUrl,
           image: avatarUrl,
-          Profile: [{ firstName, lastName, full_name: fullName, companyName: prof?.company_name || null, avatar_url: avatarUrl }],
+          Profile: [{ firstName, lastName, full_name: fullName, companyName: prof?.company_name || v.company_name || null, avatar_url: avatarUrl }],
         },
         profiles: {
           id: uid,
@@ -522,12 +526,13 @@ export async function fetchAllVerificationsList(supabase: any) {
           name: fullName,
           first_name: firstName,
           last_name: lastName,
-          client_type: prof?.client_type || null,
-          is_verified: prof?.is_verified ?? false,
+          client_type: prof?.client_type || v.client_type || null,
+          is_verified: v.is_verified ?? prof?.is_verified ?? false,
+          verification_status: v.verification_status || prof?.verification_status || statusLower,
           avatar_url: avatarUrl,
           avatar: avatarUrl,
           avatarUrl: avatarUrl,
-          company_name: prof?.company_name || null,
+          company_name: prof?.company_name || v.company_name || null,
         },
         User: {
           id: uid,
@@ -667,15 +672,16 @@ export const verificationsRouter = router({
           ...legacyRecords.map((l) => (l.status || '').toLowerCase()),
         ];
 
-        const hasRejected = allStatuses.some((s) => s === 'rejected') || (profile?.verification_status || '').toLowerCase() === 'rejected';
-        const hasApproved = allStatuses.some((s) => s === 'approved');
-        const allApproved = (allStatuses.length > 0 && allStatuses.every((s) => s === 'approved')) || Boolean(profile?.is_verified);
-        const hasPending = allStatuses.some((s) => s === 'pending') || allStatuses.length > 0;
+        const profileStatus = (profile?.verification_status || '').toLowerCase();
+        const hasRejected = allStatuses.some((s) => s === 'rejected') || profileStatus === 'rejected';
+        const hasApproved = allStatuses.some((s) => s === 'approved') || profileStatus === 'approved';
+        const allApproved = (allStatuses.length > 0 && allStatuses.every((s) => s === 'approved')) || profileStatus === 'approved' || Boolean(profile?.is_verified);
+        const hasPending = allStatuses.some((s) => s === 'pending') || profileStatus === 'pending' || allStatuses.length > 0;
 
         let overallStatus: 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_started';
         if (hasRejected) {
           overallStatus = 'rejected';
-        } else if (allApproved) {
+        } else if (allApproved || profileStatus === 'approved' || Boolean(profile?.is_verified)) {
           overallStatus = 'approved';
         } else if (hasPending) {
           overallStatus = 'pending';
@@ -1511,22 +1517,8 @@ export const verificationsRouter = router({
         console.warn('[Admin approveVerification] Verification table update notice:', verErr);
       }
 
-      // 6. Check if ALL documents in verifications table for this user are now approved
-      let allUserDocsApproved = true;
-      try {
-        const { data: allUserDocs } = await (supabase as any)
-          .from('verifications')
-          .select('status')
-          .eq('user_id', targetUserId);
-        if (allUserDocs && allUserDocs.length > 0) {
-          allUserDocsApproved = allUserDocs.every((d: any) => (d.status || '').toLowerCase() === 'approved');
-        }
-      } catch (vUpdateErr) {
-        console.warn('[Admin approveVerification] verifications check notice:', vUpdateErr);
-      }
-
-      // 7. Update user's profile: set is_verified = true, verification_status = 'approved' if all documents are approved
-      if (allUserDocsApproved) {
+      // 6. Explicitly update user's profile: set is_verified = true, verification_status = 'approved'
+      if (targetUserId) {
         try {
           const { error: pErr } = await (supabase as any)
             .from('profiles')

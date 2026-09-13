@@ -123,8 +123,11 @@ export default function AdminDashboard() {
     data: verificationQueue,
     isLoading: pendingListLoading,
   } = trpc.verifications.getVerifications.useQuery(undefined, {
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
     refetchInterval: 15000,
-  });
+  } as any);
 
   const totalUsers = Math.max(stats?.totalUsers ?? 0, directProfileCount ?? 0, directProfiles.length);
   const totalJobs = stats?.totalJobs ?? 0;

@@ -269,7 +269,7 @@ export default function AdminVerificationsPage() {
   const router = useRouter();
   const utils = trpc.useUtils();
 
-  // Queries with caching disabled to guarantee live data directly from DB
+  // Queries with caching disabled ({ staleTime: 0 }) to guarantee live data directly from DB
   const { data: users, isLoading, refetch } = trpc.admin.getVerifications.useQuery(undefined, {
     cacheTime: 0,
     gcTime: 0,
@@ -278,8 +278,31 @@ export default function AdminVerificationsPage() {
     refetchOnWindowFocus: true,
   } as any);
 
-  // Rely solely on react-query / tRPC data without forcing local state updates
-  const effectiveUsers = users;
+  // Direct Supabase query to admin_verification_queue view with zero caching
+  const [directQueue, setDirectQueue] = useState<any[] | null>(null);
+
+  const fetchDirectQueue = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await (supabase as any)
+        .from('admin_verification_queue')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        setDirectQueue(data);
+      }
+    } catch (e) {
+      console.warn('[Admin Verification] Direct admin_verification_queue query notice:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDirectQueue();
+  }, [fetchDirectQueue]);
+
+  // Rely on direct queue or react-query / tRPC data without stale client caching
+  const effectiveUsers = directQueue && directQueue.length > 0 ? directQueue : users;
 
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [rejectingDoc, setRejectingDoc] = useState<string | null>(null);
@@ -701,39 +724,60 @@ export default function AdminVerificationsPage() {
     },
   });
 
-  // Direct DB Update + tRPC async mutations (unblocked DB mutations)
+  // Direct DB Update + tRPC async mutations (enforce persistence and realtime sync)
   const handleApprove = async (docId: string, userId: string) => {
     setIsActionProcessing(docId);
     try {
       const cleanDocId = docId.replace(/-(front|back|selfie)$/, '');
+      const targetUserId = userId;
       const supabase = createClient();
 
-      // Direct DB Update for Verification Document
+      // 1. Explicit Supabase update to verifications table for matching user_id
       try {
-        await (supabase as any)
+        const { error: vError } = await (supabase as any)
           .from('verifications')
-          .update({ status: 'approved', rejection_reason: null })
-          .eq('user_id', userId);
+          .update({
+            status: 'approved',
+            rejection_reason: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', targetUserId);
+        if (vError) console.warn('Direct verifications update notice:', vError);
       } catch (e) {
-        console.warn('Direct verifications update notice:', e);
+        console.warn('Direct verifications update exception:', e);
       }
 
       try {
         await (supabase as any)
           .from('Verification')
-          .update({ status: 'APPROVED' })
-          .eq('userId', userId);
+          .update({ status: 'APPROVED', updatedAt: new Date().toISOString() })
+          .eq('userId', targetUserId);
       } catch (e) {}
 
-      // Direct DB Update for User Profile Status
+      // 2. Explicit Supabase update to profiles table: set verification_status to 'approved', and is_verified boolean
       try {
-        await (supabase as any)
+        const { error: pError } = await (supabase as any)
           .from('profiles')
-          .update({ is_verified: true, verification_status: 'approved' })
-          .eq('id', userId);
+          .update({
+            is_verified: true,
+            verification_status: 'approved',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
+        if (pError) console.warn('Direct profiles update notice:', pError);
       } catch (e) {
-        console.warn('Direct profiles update notice:', e);
+        console.warn('Direct profiles update exception:', e);
       }
+
+      // Optimistic UI update
+      setOptimisticDocStatus((prev) => ({
+        ...prev,
+        [docId]: { status: 'APPROVED', rejectionReason: undefined },
+      }));
+      setOptimisticUserVerified((prev) => ({
+        ...prev,
+        [targetUserId]: true,
+      }));
 
       // tRPC mutation execution
       try {
@@ -742,7 +786,10 @@ export default function AdminVerificationsPage() {
         console.warn('tRPC approve mutation notice:', mErr);
       }
 
+      // 3. Call router.refresh() and state refetch immediately upon response
       router.refresh();
+      await fetchDirectQueue();
+      await refetch();
       toast.success('Document approved');
 
       // Force refetch queues and invalidate caches
@@ -770,34 +817,58 @@ export default function AdminVerificationsPage() {
     setIsActionProcessing(docId);
     try {
       const cleanDocId = docId.replace(/-(front|back|selfie)$/, '');
+      const targetUserId = userId;
       const supabase = createClient();
 
-      // Direct DB Update for Verification Document
+      // 1. Explicit Supabase update to verifications table for matching user_id
       try {
-        await (supabase as any)
+        const { error: vError } = await (supabase as any)
           .from('verifications')
-          .update({ status: 'rejected', rejection_reason: finalReason })
-          .eq('user_id', userId);
+          .update({
+            status: 'rejected',
+            rejection_reason: finalReason,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', targetUserId);
+        if (vError) console.warn('Direct verifications reject update notice:', vError);
       } catch (e) {
-        console.warn('Direct verifications reject update notice:', e);
+        console.warn('Direct verifications reject update exception:', e);
       }
 
       try {
         await (supabase as any)
           .from('Verification')
-          .update({ status: 'REJECTED', rejectionReason: finalReason })
-          .eq('userId', userId);
+          .update({ status: 'REJECTED', rejectionReason: finalReason, updatedAt: new Date().toISOString() })
+          .eq('userId', targetUserId);
       } catch (e) {}
 
-      // Direct DB Update for User Profile Status: set is_verified = false, verification_status = 'rejected'
+      // 2. Explicit Supabase update to profiles table: set verification_status to 'rejected', and is_verified boolean
       try {
-        await (supabase as any)
+        const { error: pError } = await (supabase as any)
           .from('profiles')
-          .update({ is_verified: false, verification_status: 'rejected' })
-          .eq('id', userId);
+          .update({
+            is_verified: false,
+            verification_status: 'rejected',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetUserId);
+        if (pError) console.warn('Direct profiles reject update notice:', pError);
       } catch (e) {
-        console.warn('Direct profiles reject update notice:', e);
+        console.warn('Direct profiles reject update exception:', e);
       }
+
+      // Optimistic UI update
+      setOptimisticDocStatus((prev) => ({
+        ...prev,
+        [docId]: { status: 'REJECTED', rejectionReason: finalReason },
+      }));
+      setOptimisticUserVerified((prev) => ({
+        ...prev,
+        [targetUserId]: false,
+      }));
+
+      setRejectingDoc(null);
+      setRejectionReason('');
 
       // tRPC mutation execution
       try {
@@ -809,9 +880,10 @@ export default function AdminVerificationsPage() {
         console.warn('tRPC reject mutation notice:', mErr);
       }
 
-      setRejectingDoc(null);
-      setRejectionReason('');
+      // 3. Call router.refresh() and state refetch immediately upon response
       router.refresh();
+      await fetchDirectQueue();
+      await refetch();
       toast.success('Document rejected');
 
       // Force refetch queues and invalidate caches
@@ -835,8 +907,15 @@ export default function AdminVerificationsPage() {
       const supabase = createClient();
       try {
         await (supabase as any)
+          .from('verifications')
+          .update({ status: 'approved', rejection_reason: null, updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+      } catch (e) {}
+
+      try {
+        await (supabase as any)
           .from('profiles')
-          .update({ is_verified: true, verification_status: 'approved' })
+          .update({ is_verified: true, verification_status: 'approved', updated_at: new Date().toISOString() })
           .eq('id', userId);
       } catch (e) {}
 
@@ -845,9 +924,10 @@ export default function AdminVerificationsPage() {
       } catch (e) {}
 
       router.refresh();
+      await fetchDirectQueue();
+      await refetch();
       toast.success('User verified successfully');
       await Promise.allSettled([
-        refetch(),
         utils.admin.getUsers.invalidate(),
         utils.verification.invalidate(),
         utils.verifications.invalidate(),
@@ -863,8 +943,15 @@ export default function AdminVerificationsPage() {
       const supabase = createClient();
       try {
         await (supabase as any)
+          .from('verifications')
+          .update({ status: 'rejected', updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+      } catch (e) {}
+
+      try {
+        await (supabase as any)
           .from('profiles')
-          .update({ is_verified: false, verification_status: 'pending' })
+          .update({ is_verified: false, verification_status: 'rejected', updated_at: new Date().toISOString() })
           .eq('id', userId);
       } catch (e) {}
 
@@ -873,9 +960,10 @@ export default function AdminVerificationsPage() {
       } catch (e) {}
 
       router.refresh();
+      await fetchDirectQueue();
+      await refetch();
       toast.success('User unverified successfully');
       await Promise.allSettled([
-        refetch(),
         utils.admin.getUsers.invalidate(),
         utils.verification.invalidate(),
         utils.verifications.invalidate(),

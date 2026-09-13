@@ -1062,19 +1062,8 @@ export const adminRouter = router({
         }
       } catch {}
 
-      // Check if ALL documents in verifications are approved for targetUserId
-      let allApproved = true;
-      try {
-        const { data: userDocs } = await (supabase as any)
-          .from('verifications')
-          .select('status')
-          .eq('user_id', targetUserId);
-        if (userDocs && userDocs.length > 0) {
-          allApproved = userDocs.every((d: any) => (d.status || '').toLowerCase() === 'approved');
-        }
-      } catch {}
-
-      if (allApproved) {
+      // Explicitly update profiles table: set verification_status to 'approved' and is_verified to true
+      if (targetUserId) {
         try {
           await (supabase as any)
             .from('profiles')
