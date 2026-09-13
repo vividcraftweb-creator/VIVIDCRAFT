@@ -14,7 +14,6 @@ import { sendWebhook } from '@/lib/webhooks/delivery';
 import { ALL_JOB_SKILLS, JOB_CATEGORIES } from '@/constants/job-taxonomy';
 import type { Proposal } from '@/types/database.types';
 import { createNotification } from '@/lib/notifications/create-notification';
-import { requireVerification } from '@/lib/verification-helpers';
 import { getSubscriptionPlanInfo } from '@/lib/subscription-plans';
 import { sortProposalsByRank } from '@/lib/proposal-ranking';
 
@@ -409,9 +408,6 @@ export const jobsRouter = router({
       }
 
       const supabase = await createClient();
-
-      // Check if user has completed verification (documents approved)
-      await requireVerification(ctx.session.user.id);
 
       // Check subscription limits for job posting
       const canPostJob = await canUserPerformAction(ctx.session.user.id, 'post_job');

@@ -67,7 +67,6 @@ import { createClient } from '@/lib/supabase/client';
 
 // Dynamically import components to avoid SSR issues
 const ProfileView = dynamic(() => import('./ProfileView'), { ssr: false });
-const ArtistVerificationView = dynamic(() => import('../verification/ArtistVerificationView'), { ssr: false });
 const GalleryView = dynamic(() => import('./GalleryView'), { ssr: false });
 
 // Define types for our table data, including relations
@@ -97,7 +96,7 @@ import { toast } from 'sonner';
 type ContactListItem = inferRouterOutputs<AppRouter>['profiles']['getContacts'][number];
 
 interface FreelancerDashboardProps {
-  view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'verification' | 'settings' | 'gallery';
+  view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'settings' | 'gallery';
 }
 
 export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardProps) {
@@ -187,43 +186,7 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     });
-  const { data: rawVerificationStatus, isLoading: verificationLoading } =
-    trpc.verification.getStatus.useQuery(undefined, {
-      enabled: isAuthenticated && (view === 'dashboard' || view === 'verification'),
-      retry: false,
-      refetchInterval: 5000, // Auto-refetch every 5 seconds
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-      refetchOnReconnect: false,
-    });
 
-  const verificationStatus = (rawVerificationStatus && (rawVerificationStatus as any).message !== 'User not found')
-    ? rawVerificationStatus
-    : {
-        isVerified: directVerification?.isVerified ?? false,
-        status: (directVerification?.status as any) ?? 'not_started',
-        message: directVerification?.isVerified
-          ? 'Identity verification approved'
-          : directVerification?.status === 'pending'
-          ? 'Your ID is under review'
-          : 'Upload a government-issued ID to fully activate your account and apply for jobs.',
-        requiredDocs: ['ID_FRONT', 'ID_BACK', 'SELFIE'],
-        uploadedDocs: [],
-        missingDocs: [],
-        rejectedDocs: [],
-      };
-
-  const hasFetchedVerification = rawVerificationStatus !== undefined || directVerification !== null;
-
-  // Load banner dismiss state from localStorage
-  useEffect(() => {
-    if (sessionUserId && hasFetchedVerification) {
-      const dismissed = localStorage.getItem(BANNER_DISMISS_KEY);
-      if (dismissed === 'true') {
-        setIsBannerDismissed(true);
-      }
-    }
-  }, [sessionUserId, hasFetchedVerification, BANNER_DISMISS_KEY]);
 
   const { data: messages, isLoading: messagesLoading } = trpc.messages.getMessages.useQuery(
     { receiverId: selectedContact?.id || '' },
@@ -619,127 +582,6 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
   const renderDashboardContent = () => (
     <>
       <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-        {/* Verification Notification Banner */}
-        {hasFetchedVerification && !verificationLoading && !verificationStatus?.isVerified && (
-          <>
-            {/* Not Started / Incomplete */}
-            {(verificationStatus?.status === 'not_started' || verificationStatus?.status === 'incomplete') && (
-              <div className="bg-slate-900/90 border border-yellow-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex-shrink-0">
-                    <AlertTriangle className="h-6 w-6 text-yellow-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-yellow-300 mb-2">Account Verification Required</h3>
-                    <p className="text-slate-300 mb-4">
-                      {verificationStatus?.message || 'Upload a government-issued ID to fully activate your account and apply for jobs. This keeps our marketplace safe for everyone.'}
-                    </p>
-                    {verificationStatus?.status === 'incomplete' && Array.isArray(verificationStatus?.missingDocs) && verificationStatus.missingDocs.length > 0 && (
-                      <div className="mb-3 text-sm text-yellow-200/90">
-                        <p className="font-semibold mb-1">Missing documents:</p>
-                        {verificationStatus.missingDocs.map((doc, idx) => (
-                          <div key={idx}>• {doc.replace(/_/g, ' ')}</div>
-                        ))}
-                      </div>
-                    )}
-                    <Button asChild className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30">
-                      <Link href="/dashboard?tab=verification">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Upload ID for Verification
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Pending Review */}
-            {verificationStatus?.status === 'pending' && (
-              <div className="bg-slate-900/90 border border-blue-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg flex-shrink-0">
-                    <Clock className="h-6 w-6 text-blue-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-blue-300 mb-2">Verification In Review</h3>
-                    <p className="text-slate-300 mb-4">
-                      Thanks for submitting your ID. Our admin typically reviews requests within 1–2 business days. You&apos;ll be notified as soon as it&apos;s approved.
-                    </p>
-                    <Button asChild className="bg-blue-500/20 border border-blue-500/30 text-blue-200 hover:bg-blue-500/30">
-                      <Link href="/dashboard?tab=verification">
-                        Check Status
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Rejected */}
-            {verificationStatus?.status === 'rejected' && (
-              <div className="bg-slate-900/90 border border-red-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex-shrink-0">
-                    <AlertTriangle className="h-6 w-6 text-red-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-red-400 mb-2">Verification Rejected</h3>
-                    <p className="text-slate-300 mb-4">
-                      We couldn&apos;t approve the documents provided. Please review the admin feedback below and resubmit clear photos of your ID.
-                    </p>
-                    {Array.isArray(verificationStatus?.rejectedDocs) && verificationStatus.rejectedDocs.length > 0 ? (
-                      <div className="mb-4 text-sm text-red-200/90 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                        <p className="font-semibold mb-1 text-red-300">Admin Rejection Reason:</p>
-                        {verificationStatus.rejectedDocs.map((doc, idx) => (
-                          <div key={idx} className="mt-1">
-                            • <span className="font-medium text-white">{doc.type.replace(/_/g, ' ')}:</span> {doc.reason || 'Document was rejected'}
-                          </div>
-                        ))}
-                      </div>
-                    ) : verificationStatus?.message && verificationStatus.message !== 'Identity verification approved' ? (
-                      <div className="mb-4 text-sm text-red-200/90 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                        <p className="font-semibold mb-1 text-red-300">Admin Rejection Reason:</p>
-                        <p>{verificationStatus.message}</p>
-                      </div>
-                    ) : null}
-                    <Button asChild className="bg-red-600 hover:bg-red-700 text-white font-medium">
-                      <Link href="/dashboard?tab=verification">
-                        Resubmit Verification
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Approved - Success Message */}
-        {hasFetchedVerification && verificationStatus?.isVerified && verificationStatus?.status === 'approved' && !isBannerDismissed && (
-          <div className="bg-slate-900/90 border border-green-500/30 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-green-500/10 border border-green-500/20 rounded-lg flex-shrink-0">
-                <CheckCircle className="h-6 w-6 text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-green-300 mb-2">Account Verified</h3>
-                <p className="text-slate-300">
-                  Your account has been verified! You now have full access to all platform features.
-                </p>
-              </div>
-              <button
-                onClick={handleDismissBanner}
-                className="p-2 hover:bg-green-500/20 rounded-lg transition-colors flex-shrink-0"
-                aria-label="Dismiss verification success message"
-              >
-                <X className="h-5 w-5 text-green-300 hover:text-green-200" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Stats Overview */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -1096,91 +938,6 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                 </div>
               </div>
             </div>
-
-            {/* Verification Status */}
-            <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-2xl lg:rounded-3xl shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white">Verification</h3>
-                <div className={`p-2 rounded-lg ${
-                  verificationStatus?.status === 'approved'
-                    ? 'bg-green-500/20'
-                    : verificationStatus?.status === 'pending'
-                    ? 'bg-blue-500/20'
-                    : verificationStatus?.status === 'rejected'
-                    ? 'bg-blue-500/20'
-                    : 'bg-yellow-500/20'
-                }`}>
-                  {verificationStatus?.status === 'approved' ? (
-                    <CheckCircle className="h-5 w-5 text-green-400" />
-                  ) : verificationStatus?.status === 'pending' ? (
-                    <Clock className="h-5 w-5 text-blue-400" />
-                  ) : verificationStatus?.status === 'rejected' ? (
-                    <AlertTriangle className="h-5 w-5 text-red-400" />
-                  ) : (
-                    <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {verificationLoading ? (
-                  <div className="space-y-2">
-                    <div className="h-4 bg-slate-800 rounded animate-pulse" />
-                    <div className="h-3 bg-slate-800/60 rounded animate-pulse" />
-                  </div>
-                ) : verificationStatus?.status === 'approved' ? (
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-500/20 rounded-lg">
-                      <Star className="h-5 w-5 text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">Identity Verified</p>
-                      <p className="text-green-400 text-sm">Account confirmed</p>
-                    </div>
-                  </div>
-                ) : verificationStatus?.status === 'pending' ? (
-                  <div className="text-center py-4">
-                    <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-white font-medium">Verification Pending</p>
-                    <p className="text-slate-400 text-sm">Your ID is under review</p>
-                  </div>
-                ) : verificationStatus?.status === 'rejected' ? (
-                  <div className="text-center py-4">
-                    <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-red-400 mx-auto mb-2" />
-                    <p className="text-white font-medium">Verification Rejected</p>
-                    <p className="text-slate-400 text-sm">Please resubmit clear documentation</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-400 mx-auto mb-2" />
-                    <p className="text-white font-medium">Not Verified</p>
-                    <p className="text-slate-400 text-sm">Upload your ID to get verified</p>
-                  </div>
-                )}
-
-                <Button asChild className={`w-full ${
-                  verificationStatus?.status === 'approved'
-                    ? 'bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30'
-                    : verificationStatus?.status === 'pending'
-                    ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300 hover:bg-blue-500/30'
-                    : verificationStatus?.status === 'rejected'
-                    ? 'bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30'
-                    : 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30'
-                }`}>
-                  <Link href="/dashboard?tab=verification">
-                    {verificationStatus?.status === 'approved'
-                      ? 'View Status'
-                      : verificationStatus?.status === 'pending'
-                      ? 'Check Status'
-                      : verificationStatus?.status === 'rejected'
-                      ? 'Resubmit Verification'
-                      : 'Upload ID for Verification'}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
@@ -1418,9 +1175,6 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
       case 'profile':
         return <ProfileView />;
-
-      case 'verification':
-        return <ArtistVerificationView />;
 
       case 'settings':
         return (

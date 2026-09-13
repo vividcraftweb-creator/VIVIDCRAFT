@@ -51,7 +51,6 @@ type DashboardView =
   | 'messages'
   | 'proposals'
   | 'profile'
-  | 'verification'
   | 'settings'
   | 'gallery';
 
@@ -60,7 +59,6 @@ const DASHBOARD_VIEW_SET = new Set<DashboardView>([
   'messages',
   'proposals',
   'profile',
-  'verification',
   'settings',
   'gallery',
 ]);
@@ -158,7 +156,6 @@ export default function Dashboard({ session }: { session: AppSession }) {
         { name: 'Admin Panel', icon: Shield, href: '/admin' },
         { name: 'User Management', icon: Users, href: '/admin/users' },
         { name: 'Job Management', icon: Briefcase, href: '/admin/jobs' },
-        { name: 'Verifications', icon: Shield, href: '/admin/verifications' },
         { name: 'Messages', icon: MessageSquare, href: '/messages' },
         { name: 'Profile', icon: User, href: '/profile/edit' },
         { name: 'Settings', icon: Settings, href: '/settings' },
@@ -174,7 +171,6 @@ export default function Dashboard({ session }: { session: AppSession }) {
       { name: 'Browse Commissions', icon: Palette, href: '/jobs' },
       { name: 'My Commissions & Proposals', icon: FileText, href: '/dashboard?tab=proposals', view: 'proposals' },
       { name: 'Profile', icon: User, href: '/dashboard?tab=profile', view: 'profile' },
-      { name: 'Verification', icon: Shield, href: '/dashboard?tab=verification', view: 'verification' },
       { name: 'Settings', icon: Settings, href: '/dashboard?tab=settings', view: 'settings' },
       { name: 'Sign Out', icon: LogOut, action: 'signout' },
     ];

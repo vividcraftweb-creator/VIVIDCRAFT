@@ -575,15 +575,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Bottom Section - Verification/Payout Queue and Recent Activity */}
+      {/* Bottom Section - Management Tabs and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Legacy Tabs Section (keeping for compatibility) */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <Tabs defaultValue="verifications" className="w-full">
+          <Tabs defaultValue="users" className="w-full">
             <TabsList className="bg-slate-950/80 border border-slate-800 h-8 flex flex-wrap mb-4">
-              <TabsTrigger value="verifications" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
-                Verifications
-              </TabsTrigger>
               <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Users
               </TabsTrigger>
@@ -597,126 +593,6 @@ export default function AdminDashboard() {
                 Payments
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="verifications" className="mt-3">
-              {pendingListLoading ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-16 rounded-lg bg-slate-950/60 border border-slate-800/80 animate-pulse" />
-                  ))}
-                </div>
-              ) : pendingVerificationCount > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-semibold text-sm">Verification Queue</h3>
-                      <p className="text-slate-400 text-xs">
-                        Showing {Math.min(pendingVerificationRecords.length, 5)} most recent
-                      </p>
-                    </div>
-                    <Badge className="bg-yellow-500/20 text-yellow-200 border border-yellow-500/30 text-xs">
-                      {pendingVerificationCount} waiting
-                    </Badge>
-                  </div>
-
-                  {pendingVerificationRecords.slice(0, 5).map((record) => {
-                    const normalizedUser =
-                      normalizeUserRelation(record.user) ?? normalizeUserRelation(record.User);
-                    const email = (record as any).email || normalizedUser?.email || 'No email on file';
-                    const fullName = (record as any).full_name || (record as any).fullName || [normalizedUser?.firstName, normalizedUser?.lastName]
-                      .filter(Boolean)
-                      .join(' ');
-                    const recordDate = record.createdAt ? new Date(record.createdAt) : null;
-                    const submittedAt = recordDate ? recordDate.toLocaleString() : 'Unknown date';
-                    const submittedRelative = recordDate ? getTimeAgo(recordDate) : null;
-                    const files =
-                      Array.isArray(record.files)
-                        ? record.files
-                        : typeof record.files === 'string'
-                          ? record.files
-                              .split(',')
-                              .map((file) => file.trim())
-                              .filter(Boolean)
-                          : [];
-                    const detailSource = record.details;
-                    const detailSnippet =
-                      typeof detailSource === 'string'
-                        ? detailSource
-                        : detailSource
-                          ? JSON.stringify(detailSource)
-                          : null;
-                    const formattedSnippet =
-                      detailSnippet && detailSnippet.length > 160
-                        ? `${detailSnippet.slice(0, 160)}…`
-                        : detailSnippet ?? '';
-                    const idTypeLabel = formatIdType(record.idType);
-
-                    return (
-                      <div
-                        key={String(record.id)}
-                        className="rounded-lg border border-slate-800 bg-slate-950/60 p-2.5 space-y-2"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-0.5">
-                            <p className="text-white font-medium leading-tight text-sm">{email}</p>
-                            {fullName && (
-                              <p className="text-xs text-slate-400 leading-tight">{fullName}</p>
-                            )}
-                            <p className="text-xs text-slate-400 flex items-center gap-1">
-                              <Clock className="h-3 w-3 text-slate-500" />
-                              {submittedRelative || submittedAt}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            {idTypeLabel && (
-                              <Badge className="bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs">
-                                {idTypeLabel}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        {formattedSnippet && (
-                          <p className="text-xs text-slate-300 bg-slate-900/60 border border-slate-800/60 rounded p-2 line-clamp-2">
-                            {formattedSnippet}
-                          </p>
-                        )}
-
-                        {files.length > 0 && (
-                          <div className="flex flex-wrap gap-1 pt-1">
-                            {files.map((fileUrl, index) => (
-                              <span
-                                key={index}
-                                className="text-[11px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
-                              >
-                                Doc {index + 1}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      asChild
-                      size="sm"
-                      className="bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 h-7 text-xs"
-                    >
-                      <Link href="/admin/verifications">
-                        Open Queue
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6 text-slate-400">
-                  <CheckCircle className="h-8 w-8 text-green-500/50 mx-auto mb-2" />
-                  <p className="text-xs">No pending verifications</p>
-                </div>
-              )}
-            </TabsContent>
 
             <TabsContent value="payments" className="mt-3">
               <div className="space-y-2 text-xs text-slate-300 bg-slate-950/60 border border-slate-800/80 rounded-lg p-3">

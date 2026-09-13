@@ -17,7 +17,6 @@ const PROTECTED_PREFIXES = [
   '/settings',
   '/jobs/create',
   '/proposals',
-  '/verification',
   '/billing',
   '/notifications',
   '/admin',

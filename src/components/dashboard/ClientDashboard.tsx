@@ -66,14 +66,14 @@ export default function ClientDashboard() {
   const { data: session, status: sessionStatus } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'subscription' | 'team' | 'projects' | 'support' | 'crm' | 'myjobs' | 'messages' | 'apikeys' | 'webhooks' | 'profile' | 'settings' | 'verification' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'subscription' | 'team' | 'projects' | 'support' | 'crm' | 'myjobs' | 'messages' | 'apikeys' | 'webhooks' | 'profile' | 'settings' | 'analytics'>('dashboard');
   const [jobFilter, setJobFilter] = useState<'all' | 'open' | 'under-review' | 'closed'>('all');
   const [isProfileEditMode, setIsProfileEditMode] = useState(false);
 
   // Sync activeTab with URL parameter from sidebar navigation
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['dashboard', 'subscription', 'team', 'projects', 'support', 'crm', 'myjobs', 'messages', 'apikeys', 'webhooks', 'profile', 'settings', 'verification', 'analytics'].includes(tabParam)) {
+    if (tabParam && ['dashboard', 'subscription', 'team', 'projects', 'support', 'crm', 'myjobs', 'messages', 'apikeys', 'webhooks', 'profile', 'settings', 'analytics'].includes(tabParam)) {
       setActiveTab(tabParam as typeof activeTab);
     } else {
       setActiveTab('dashboard');

@@ -156,7 +156,6 @@ export async function updateSession(request: NextRequest) {
       '/settings',
       '/jobs/create',
       '/proposals',
-      '/verification',
       '/billing',
       '/notifications',
       '/admin',

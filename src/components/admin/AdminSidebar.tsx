@@ -99,13 +99,6 @@ export default function AdminSidebar() {
       description: 'Review & approve jobs',
     },
     {
-      title: 'Verifications',
-      href: '/admin/verifications',
-      icon: FileCheck,
-      badge: stats?.pendingVerifications,
-      description: 'Identity verification queue',
-    },
-    {
       title: 'Proposals',
       href: '/admin/proposals',
       icon: CheckCircle2,

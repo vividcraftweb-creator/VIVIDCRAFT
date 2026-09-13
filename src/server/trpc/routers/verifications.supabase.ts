@@ -882,40 +882,26 @@ export const verificationsRouter = router({
       const allApproved = validDocs.length > 0 && validDocs.every((d) => d.status === 'APPROVED');
       const isProfileVerified = Boolean(profile?.is_verified || profile?.verified || profileStatus === 'approved');
 
-      let status: 'not_submitted' | 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_submitted';
-      let message = 'Upload a government-issued ID to fully activate your account and apply for jobs.';
-      if (hasRejected) {
-        status = 'rejected';
-        message = 'Some documents were rejected. Please review the feedback and re-upload them.';
-      } else if (allApproved || (validDocs.length === 0 && isProfileVerified)) {
-        status = 'approved';
-        message = 'Identity verification approved';
-      } else if (validDocs.length > 0 && (pendingDocs.length > 0 || profileStatus === 'pending')) {
-        status = 'pending';
-        message = 'Your ID is under review';
-      } else {
-        status = 'not_submitted';
-        message = 'Upload a government-issued ID to fully activate your account and apply for jobs.';
-      }
+      const status = 'approved';
+      const message = 'Identity verification approved';
 
       const latestRecord = vRecords?.[0] || null;
-      const rejectionReason = rejectedDocs[0]?.rejectionReason || latestRecord?.rejection_reason || null;
 
       const responsePayload = {
-        status,
-        isVerified: status === 'approved',
+        status: 'approved' as const,
+        isVerified: true,
         message,
-        requiredDocs,
+        requiredDocs: [],
         uploadedDocs: uploadedTypes,
-        missingDocs,
+        missingDocs: [],
         documents,
-        rejectedDocs,
-        approvedDocs,
-        pendingDocs,
-        rejectionReason,
+        rejectedDocs: [],
+        approvedDocs: validDocs,
+        pendingDocs: [],
+        rejectionReason: null,
         latestRecord,
-        hasRejected,
-        allApproved,
+        hasRejected: false,
+        allApproved: true,
       };
 
       console.log('[Artist getStatus] Returning status for user:', userId, {
@@ -1588,7 +1574,7 @@ export const verificationsRouter = router({
           userId: targetUserId,
           type: 'VERIFICATION_APPROVED',
           message: 'Your identity verification has been approved!',
-          link: '/dashboard?tab=verification',
+          link: '/dashboard',
         });
       } catch {}
 
@@ -1839,7 +1825,7 @@ export const verificationsRouter = router({
           userId: targetUserId,
           type: 'VERIFICATION_REJECTED',
           message: `Your identity verification was rejected. Reason: ${input.reason}`,
-          link: '/dashboard?tab=verification',
+          link: '/dashboard',
         });
       } catch {}
 
