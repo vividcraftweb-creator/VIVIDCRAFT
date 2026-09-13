@@ -96,7 +96,7 @@ import { toast } from 'sonner';
 type ContactListItem = inferRouterOutputs<AppRouter>['profiles']['getContacts'][number];
 
 interface FreelancerDashboardProps {
-  view?: 'dashboard' | 'messages' | 'proposals' | 'profile' | 'settings' | 'gallery';
+  view?: 'dashboard' | 'overview' | 'messages' | 'proposals' | 'profile' | 'settings' | 'gallery' | string;
 }
 
 export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardProps) {
@@ -442,8 +442,8 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
   const isLoading =
     !forceReady &&
-    ((view === 'dashboard' &&
-      (proposalsLoading || verificationLoading || tokensLoading || completenessLoading)) ||
+    (((view === 'dashboard' || view === 'overview') &&
+      (proposalsLoading || tokensLoading || completenessLoading)) ||
       !hasLoadedSession);
 
   const handleWithdrawConfirm = () => {
@@ -1201,6 +1201,8 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
           </div>
         );
 
+      case 'verification':
+      case 'overview':
       case 'dashboard':
       default:
         return renderDashboardContent();

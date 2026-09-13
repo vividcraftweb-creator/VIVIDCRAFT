@@ -73,12 +73,19 @@ export default function ClientDashboard() {
   // Sync activeTab with URL parameter from sidebar navigation
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['dashboard', 'subscription', 'team', 'projects', 'support', 'crm', 'myjobs', 'messages', 'apikeys', 'webhooks', 'profile', 'settings', 'analytics'].includes(tabParam)) {
+    if (tabParam === 'verification') {
+      router.replace('/dashboard?tab=overview');
+      setActiveTab('dashboard');
+      return;
+    }
+    if (tabParam === 'overview') {
+      setActiveTab('dashboard');
+    } else if (tabParam && ['dashboard', 'subscription', 'team', 'projects', 'support', 'crm', 'myjobs', 'messages', 'apikeys', 'webhooks', 'profile', 'settings', 'analytics'].includes(tabParam)) {
       setActiveTab(tabParam as typeof activeTab);
     } else {
       setActiveTab('dashboard');
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   // Sync profile edit mode with URL parameter
   useEffect(() => {

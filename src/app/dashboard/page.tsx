@@ -19,7 +19,14 @@ export default async function DashboardPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const resolvedParams = (await searchParams) || {};
-  const currentTab = resolvedParams.tab || 'overview';
+  const requestedTab = (resolvedParams.tab || '').toLowerCase().trim();
+
+  // Fallback check: If tab === 'verification' or any unknown/deleted tab is requested, fallback/redirect to default overview
+  if (requestedTab === 'verification' || (requestedTab && !['overview', 'dashboard', 'gallery', 'messages', 'proposals', 'profile', 'settings'].includes(requestedTab))) {
+    redirect('/dashboard?tab=overview');
+  }
+
+  const currentTab = requestedTab || 'overview';
 
   const cookieStore = await cookies();
   const hasAuthCookies = cookieStore.getAll().some(

@@ -48,6 +48,7 @@ const GalleryView = dynamic(() => import('@/components/dashboard/GalleryView'), 
 
 type DashboardView =
   | 'dashboard'
+  | 'overview'
   | 'messages'
   | 'proposals'
   | 'profile'
@@ -56,6 +57,7 @@ type DashboardView =
 
 const DASHBOARD_VIEW_SET = new Set<DashboardView>([
   'dashboard',
+  'overview',
   'messages',
   'proposals',
   'profile',
@@ -181,22 +183,32 @@ export default function Dashboard({ session }: { session: AppSession }) {
   useEffect(() => {
     const tabParam = searchParams.get('tab');
 
-    if (isDashboardView(tabParam)) {
+    // If tab === 'verification' or any unknown/deleted tab is requested, fallback/redirect to default overview
+    if (tabParam === 'verification' || (tabParam && !DASHBOARD_VIEW_SET.has(tabParam as DashboardView))) {
+      router.replace('/dashboard?tab=overview');
+      setCurrentView('dashboard');
+      return;
+    }
+
+    if (tabParam === 'overview') {
+      setCurrentView('dashboard');
+    } else if (isDashboardView(tabParam)) {
       setCurrentView((prev) => (prev === tabParam ? prev : tabParam));
     } else {
       setCurrentView((prev) => (prev === 'dashboard' ? prev : 'dashboard'));
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const navigateToView = (view: DashboardView) => {
-    setCurrentView((prev) => (prev === view ? prev : view));
+    const targetView = view === 'overview' ? 'dashboard' : view;
+    setCurrentView((prev) => (prev === targetView ? prev : targetView));
 
     const params = new URLSearchParams(searchParams.toString());
 
-    if (view === 'dashboard') {
+    if (targetView === 'dashboard') {
       params.delete('tab');
     } else {
-      params.set('tab', view);
+      params.set('tab', targetView);
     }
 
     const nextQuery = params.toString();
@@ -230,7 +242,13 @@ export default function Dashboard({ session }: { session: AppSession }) {
   };
 
   const renderDashboardContent = () => {
-    return <ArtistDashboard view={currentView} />;
+    try {
+      const activeView = currentView === 'overview' ? 'dashboard' : currentView;
+      return <ArtistDashboard view={activeView} />;
+    } catch (err) {
+      console.error('Error rendering dashboard content:', err);
+      return <ArtistDashboard view="dashboard" />;
+    }
   };
 
   const getRoleColor = () => {
