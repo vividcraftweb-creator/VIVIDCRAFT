@@ -294,18 +294,13 @@ export const adminRouter = router({
       // Ensure the query fetches users directly from profiles ordered by creation date
       let { data: recentUsers, error: usersError } = await (supabase as any)
         .from('profiles')
-        .select('full_name, email, created_at')
+        .select('id, full_name, email, created_at')
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (usersError) {
-        console.warn('getRecentActivity select profiles warning, trying fallback select:', usersError);
-        const fallback = await (supabase as any)
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(10);
-        recentUsers = fallback.data;
+        console.error('getRecentActivity select profiles error:', usersError);
+        return [];
       }
 
       const activities: Array<{
@@ -317,14 +312,14 @@ export const adminRouter = router({
       }> = [];
 
       recentUsers?.forEach((user: any, index: number) => {
-        const name = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email?.split('@')[0] || 'User';
+        const name = user.full_name || user.email?.split('@')[0] || 'User';
         const createdAt = user.created_at || null;
 
         activities.push({
           id: `user-${user.id || user.email || index}`,
           type: 'user_registered',
           description: `New user registered: ${name} (${user.email || 'N/A'})`,
-          timestamp: createdAt ? new Date(createdAt) : new Date(0),
+          timestamp: createdAt ? new Date(createdAt) : new Date(),
           created_at: createdAt,
         });
       });

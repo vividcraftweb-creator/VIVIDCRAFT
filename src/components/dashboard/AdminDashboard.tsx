@@ -78,15 +78,21 @@ const formatIdType = (idType?: string | null) => {
     .join(' ');
 };
 
-// Helper function to format activity date & time
+// Helper function to format activity timestamp
 function formatActivityDateTime(createdAt?: string | Date | null): string {
-  if (!createdAt) return 'N/A';
+  if (!createdAt) return 'Recent';
   try {
     const d = new Date(createdAt);
-    if (isNaN(d.getTime())) return 'N/A';
-    return d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+    if (isNaN(d.getTime())) return 'Recent';
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
-    return 'N/A';
+    return 'Recent';
   }
 }
 
@@ -100,8 +106,9 @@ export default function AdminDashboard() {
         const supabase = createClient();
         const { data, count, error } = await supabase
           .from('profiles')
-          .select('id, full_name, first_name, last_name, email, created_at, role', { count: 'exact' })
-          .order('created_at', { ascending: false });
+          .select('id, full_name, email, created_at', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .limit(10);
         if (!error && data) {
           setDirectProfiles(data);
           setDirectProfileCount(typeof count === 'number' ? count : data.length);
@@ -144,14 +151,13 @@ export default function AdminDashboard() {
   const displayActivities = (recentActivity && recentActivity.length > 0)
     ? recentActivity
     : directProfiles.slice(0, 10).map((p) => {
-        const name = p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email?.split('@')[0] || 'User';
+        const name = p.full_name || p.email?.split('@')[0] || 'User';
         return {
           id: p.id || p.email,
           type: 'user_registered' as const,
           description: `New user registered: ${name} (${p.email || 'N/A'})`,
           timestamp: p.created_at ? new Date(p.created_at) : null,
           created_at: p.created_at || null,
-          metadata: { role: p.role || 'client' },
         };
       });
 
