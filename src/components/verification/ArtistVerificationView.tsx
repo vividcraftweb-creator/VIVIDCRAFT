@@ -693,7 +693,7 @@ export default function ArtistVerificationView() {
       }
 
       // 1. Insert/upsert record into `verifications` table (lowercase)
-      // Payload: { user_id, document_type, id_front_url, id_back_url, selfie_url, status: 'pending' }
+      // Payload: { user_id, document_type, id_front_url, id_back_url, selfie_url, status: 'pending', rejection_reason: null }
       const verificationsPayload = {
         user_id: targetUserId,
         document_type: currentConfig.label,
@@ -701,6 +701,7 @@ export default function ArtistVerificationView() {
         id_back_url: currentConfig.requiresBack ? (idBackDoc?.documentUrl || null) : null,
         selfie_url: selfieDoc.documentUrl || null,
         status: 'pending',
+        rejection_reason: null,
       };
 
       try {
@@ -747,20 +748,31 @@ export default function ArtistVerificationView() {
         console.warn('submitForReview mutation notice:', mutationErr);
       }
 
-      // 3. Update profiles table is_verified to false (strictly select/update is_verified, no status or verified to prevent 400 Bad Request)
+      // 4. Update profiles table verification_status to 'pending' and is_verified to false
       try {
-        await (supabase as any)
+        const { error: pErr } = await (supabase as any)
           .from('profiles')
           .update({
+            verification_status: 'pending',
             is_verified: false,
             updated_at: new Date().toISOString(),
           })
           .eq('id', targetUserId);
+
+        if (pErr) {
+          await (supabase as any)
+            .from('profiles')
+            .update({
+              is_verified: false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetUserId);
+        }
       } catch (profileUpdateErr) {
         console.warn('Profile update notice:', profileUpdateErr);
       }
 
-      // 4. Update User table verificationSubmittedAt
+      // 5. Update User table verificationSubmittedAt
       try {
         await supabase
           .from('User')
@@ -771,7 +783,7 @@ export default function ArtistVerificationView() {
           .eq('id', targetUserId);
       } catch {}
 
-      // 5. Update local state and redirect to pending status view
+      // 6. Update local state and redirect to pending status view
       setSubmittedRecord({
         document_type: currentConfig.label,
         id_front_url: idFrontDoc.documentUrl,
@@ -784,6 +796,7 @@ export default function ArtistVerificationView() {
       setProfileData((prev) => ({
         ...(prev || {}),
         is_verified: false,
+        verification_status: 'pending',
       }));
 
       setIsResetMode(false);
@@ -1101,7 +1114,7 @@ export default function ArtistVerificationView() {
                     </div>
                   ))}
                 </div>
-              ) : verificationData?.rejectedDocs && verificationData.rejectedDocs.length > 0 ? (
+              ) : verificationData?.rejectedDocs && Array.isArray(verificationData.rejectedDocs) && verificationData.rejectedDocs.length > 0 ? (
                 <div className="space-y-2.5 mb-5">
                   {verificationData.rejectedDocs.map((doc: any, idx: number) => (
                     <div key={idx} className="text-xs text-red-200 bg-red-950/40 border border-red-800/40 p-3.5 rounded-xl">

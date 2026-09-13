@@ -115,11 +115,15 @@ export default async function DashboardPage({
         try {
           const { data: profileRow } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, is_verified, verification_status')
             .eq('id', authUser.id)
             .maybeSingle();
           if (profileRow?.role) {
             dbRole = profileRow.role;
+          }
+          if (profileRow) {
+            (activeSession.user as any).is_verified = Boolean(profileRow.is_verified);
+            (activeSession.user as any).verification_status = profileRow.verification_status || (profileRow.is_verified ? 'approved' : 'not_started');
           }
         } catch {}
 

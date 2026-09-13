@@ -29,6 +29,19 @@ export async function checkUserVerification(
 ): Promise<VerificationCheckResult> {
   const supabase = createAdminClient();
 
+  // Read profiles table first for primary role and verification state
+  let profile: any = null;
+  try {
+    const { data: profileRow } = await (supabase as any)
+      .from('profiles')
+      .select('id, role, client_type, is_verified, verified, verification_status')
+      .eq('id', userId)
+      .limit(1)
+      .maybeSingle();
+    if (profileRow) profile = profileRow;
+  } catch {}
+
+  // Fallback to User table if needed for legacy clientType/role
   let user: any = null;
   try {
     const { data, error } = await supabase
@@ -40,28 +53,8 @@ export async function checkUserVerification(
     if (!error && data) user = data;
   } catch {}
 
-  // Fallback to profiles table if User table doesn't have the record
-  if (!user) {
-    try {
-      const { data: profile } = await (supabase as any)
-        .from('profiles')
-        .select('role, is_verified, verified')
-        .eq('id', userId)
-        .limit(1)
-        .maybeSingle();
-
-      if (profile) {
-        user = {
-          clientType: 'INDIVIDUAL',
-          role: profile.role || 'FREELANCER',
-          isVerified: Boolean(profile.is_verified || profile.verified),
-        } as any;
-      }
-    } catch {}
-  }
-
   // Verification is strictly for role === 'ARTIST' / 'FREELANCER'. CLIENTs are completely exempt.
-  const userRole = (user?.role || '').toUpperCase();
+  const userRole = (profile?.role || user?.role || '').toUpperCase();
   if (userRole === 'CLIENT' || userRole === 'BUYER' || userRole === 'CUSTOMER') {
     return {
       isVerified: true,
@@ -111,13 +104,16 @@ export async function checkUserVerification(
     .filter(d => (d.status || '').toUpperCase() === 'REJECTED')
     .map(d => ({ type: d.verificationType, reason: d.rejectionReason || 'Document could not be verified' }));
 
+  const profileIsVerified = Boolean(profile?.is_verified ?? profile?.verified ?? user?.isVerified ?? false);
+  const profileVerificationStatus = (profile?.verification_status || '').toLowerCase();
+
   // Strict Overall Status logic:
-  // If ANY doc is rejected -> Show Badge: Rejected (Red).
-  // If ALL required docs are approved -> Show Badge: Verified (Green).
-  // Otherwise -> Show Badge: Pending (Yellow).
+  // If ANY doc is rejected or profile.verification_status is 'rejected' -> Show Badge: Rejected (Red).
+  // If ALL required docs are approved or profile.verification_status is 'approved' -> Show Badge: Verified (Green).
+  // Otherwise -> Show Badge: Pending (Yellow) or Not Started.
   // DO NOT display Verified green badge if any submitted document status is rejected or pending.
 
-  if (rejectedDocs.length > 0 || docs.some(d => (d.status || '').toUpperCase() === 'REJECTED')) {
+  if (profileVerificationStatus === 'rejected' || rejectedDocs.length > 0 || docs.some(d => (d.status || '').toUpperCase() === 'REJECTED')) {
     return {
       isVerified: false,
       status: 'rejected',
@@ -130,15 +126,27 @@ export async function checkUserVerification(
   }
 
   if (docs.length === 0) {
+    if (profileVerificationStatus === 'pending') {
+      return {
+        isVerified: false,
+        status: 'pending',
+        message: 'Your verification is under review. Our team will review your ID shortly.',
+        requiredDocs,
+        uploadedDocs: [],
+        missingDocs: requiredDocs,
+        rejectedDocs: [],
+      };
+    }
+    const isApprovedState = profileVerificationStatus === 'approved' || profileIsVerified;
     return {
-      isVerified: Boolean(user?.isVerified),
-      status: user?.isVerified ? 'approved' : 'not_started',
-      message: user?.isVerified
+      isVerified: isApprovedState,
+      status: isApprovedState ? 'approved' : 'not_started',
+      message: isApprovedState
         ? 'Account verified'
         : 'Upload a government-issued ID to fully activate your account.',
       requiredDocs,
       uploadedDocs: [],
-      missingDocs: user?.isVerified ? [] : requiredDocs,
+      missingDocs: isApprovedState ? [] : requiredDocs,
       rejectedDocs: [],
     };
   }
@@ -146,7 +154,7 @@ export async function checkUserVerification(
   const hasPendingSubmission = docs.some(d => (d.status || '').toUpperCase() === 'PENDING');
   const allApproved = docs.length > 0 && docs.every(d => (d.status || '').toUpperCase() === 'APPROVED');
 
-  if (allApproved && (user?.isVerified ?? true)) {
+  if (allApproved || profileVerificationStatus === 'approved' || (profileIsVerified && !hasPendingSubmission)) {
     return {
       isVerified: true,
       status: 'approved',
@@ -158,7 +166,7 @@ export async function checkUserVerification(
     };
   }
 
-  if (hasPendingSubmission || missingDocs.length > 0) {
+  if (hasPendingSubmission || missingDocs.length > 0 || profileVerificationStatus === 'pending') {
     return {
       isVerified: false,
       status: 'pending',

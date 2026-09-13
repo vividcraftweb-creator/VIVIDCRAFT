@@ -298,6 +298,9 @@ export const profilesRouter = router({
 
         const details = extractProfileDetails(profile);
 
+        const isVerified = Boolean(profile.is_verified ?? profile.verified ?? false);
+        const verificationStatus = profile.verification_status || (isVerified ? 'approved' : 'not_started');
+
         return {
           ...profile,
           ...details,
@@ -308,6 +311,9 @@ export const profilesRouter = router({
           slug: profile.slug ?? SecureId.encode(userId),
           isPublished: profile.is_published ?? profile.isPublished ?? true,
           is_published: profile.is_published ?? profile.isPublished ?? true,
+          is_verified: isVerified,
+          verified: isVerified,
+          verification_status: verificationStatus,
         };
       } catch (err) {
         console.error('getProfile error caught gracefully:', err);
@@ -435,6 +441,8 @@ export const profilesRouter = router({
 
         const details = extractProfileDetails(profile);
         const finalAvatar = resolvedAvatarUrl || details.avatar_url || fallbackProfile.avatar_url;
+        const isVerified = Boolean(profile.is_verified ?? profile.verified ?? false);
+        const verificationStatus = profile.verification_status || (isVerified ? 'approved' : 'not_started');
 
         return {
           ...fallbackProfile,
@@ -459,6 +467,9 @@ export const profilesRouter = router({
           last_name: details.last_name || profile.last_name || fallbackProfile.last_name,
           full_name: details.full_name || profile.full_name || fallbackProfile.full_name,
           username: details.username || profile.username || fallbackProfile.username,
+          is_verified: isVerified,
+          verified: isVerified,
+          verification_status: verificationStatus,
         };
       } catch (err) {
         console.error('profiles.getPublicProfile error caught gracefully:', err);
@@ -614,6 +625,8 @@ export const profilesRouter = router({
           companyInfo: null,
           portfolio: null,
           verified: false,
+          is_verified: false,
+          verification_status: 'not_started',
           slug: userId || 'artist',
         };
 
@@ -745,6 +758,8 @@ export const profilesRouter = router({
               ? 'artist'
               : fallbackRole || 'artist';
           const normalizedRole = resolvedRole;
+          const isVerified = Boolean(data?.is_verified ?? data?.verified ?? false);
+          const verificationStatus = data?.verification_status || (isVerified ? 'approved' : 'not_started');
 
           return {
             ...safeDefaultObject,
@@ -767,6 +782,9 @@ export const profilesRouter = router({
             avatar_url: data?.avatar_url || data?.profile_picture || data?.profilePicture || userImage || '',
             isPublished: data?.is_published ?? data?.isPublished ?? true,
             is_published: data?.is_published ?? data?.isPublished ?? true,
+            is_verified: isVerified,
+            verified: isVerified,
+            verification_status: verificationStatus,
           };
         } catch (innerErr) {
           console.warn('Database lookup/insert exception caught gracefully:', innerErr);

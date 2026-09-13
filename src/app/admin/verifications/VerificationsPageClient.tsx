@@ -1227,14 +1227,14 @@ export default function AdminVerificationsPage() {
                 // Overall Status logic:
                 // If ANY doc is rejected -> Show Badge: Rejected (Red).
                 // If ALL required docs are approved -> Show Badge: Verified (Green).
-                // Otherwise -> Show Badge: Pending (Yellow).
-                const hasRejected = rejectedCount > 0;
+                const hasRejected = rejectedCount > 0 || (item.verification_status || '').toLowerCase() === 'rejected';
                 const allApproved = effectiveDocs.length > 0 && effectiveDocs.every((doc) => (doc.status || '').toUpperCase() === 'APPROVED');
+                const isProfileApproved = item.is_verified === true || (item.verification_status || '').toLowerCase() === 'approved';
 
                 let overallStatus: 'REJECTED' | 'VERIFIED' | 'PENDING' = 'PENDING';
                 if (hasRejected) {
                   overallStatus = 'REJECTED';
-                } else if (allApproved) {
+                } else if (allApproved || (effectiveDocs.length === 0 && isProfileApproved)) {
                   overallStatus = 'VERIFIED';
                 } else {
                   overallStatus = 'PENDING';
@@ -1355,14 +1355,21 @@ export default function AdminVerificationsPage() {
                         )}
                       </div>
                       <div className="flex-shrink-0 text-xs text-slate-500">
-                        {new Date(user.createdAt).toLocaleDateString()}
+                        {user.createdAt && !isNaN(new Date(user.createdAt).getTime())
+                          ? new Date(user.createdAt).toLocaleDateString()
+                          : 'N/A'}
                       </div>
                     </div>
 
                     {/* Expanded Documents - Grid Layout */}
                     {isExpanded && (
                       <div className="px-4 pb-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {effectiveDocs.length === 0 ? (
+                          <div className="p-6 rounded-2xl bg-slate-950/40 border border-slate-800/60 text-center text-sm text-slate-400">
+                            No verification documents uploaded for this user.
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {effectiveDocs.map((doc) => {
                             // Handle both old schema (files) and new schema (documentUrl)
                             const rawUrl = doc.documentUrl || (doc.files?.split(',')[0]?.trim());
@@ -1423,7 +1430,9 @@ export default function AdminVerificationsPage() {
                                   {getStatusBadge(doc.status)}
                                 </div>
                                 <p className="text-xs text-slate-400">
-                                  {new Date(doc.createdAt).toLocaleDateString()}
+                                  {doc.createdAt && !isNaN(new Date(doc.createdAt).getTime())
+                                    ? new Date(doc.createdAt).toLocaleDateString()
+                                    : 'Recently'}
                                 </p>
 
                                 {doc.rejectionReason && (
@@ -1517,6 +1526,7 @@ export default function AdminVerificationsPage() {
                             );
                           })}
                         </div>
+                      )}
                       </div>
                     )}
                   </div>

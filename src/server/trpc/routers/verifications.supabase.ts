@@ -288,6 +288,30 @@ async function handleVerificationDocumentMutation(
     console.warn('Verification table mirror notice:', verErr);
   }
 
+  // 3. Update profiles table to verification_status: 'pending' and is_verified: false
+  try {
+    const { error: pErr } = await (adminSupabase as any)
+      .from('profiles')
+      .update({
+        verification_status: 'pending',
+        is_verified: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (pErr) {
+      await (adminSupabase as any)
+        .from('profiles')
+        .update({
+          is_verified: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+    }
+  } catch (pErr) {
+    console.warn('Profile verification_status pending update notice:', pErr);
+  }
+
   return savedRecord || {
     id: `v-${Date.now()}`,
     user_id: userId,
@@ -860,9 +884,10 @@ export const verificationsRouter = router({
       const approvedDocs = documents.filter((d) => d.status === 'APPROVED');
       const pendingDocs = documents.filter((d) => d.status === 'PENDING');
 
-      const hasRejected = rejectedDocs.length > 0 || (vRecords && vRecords.some((v: any) => (v.status || '').toLowerCase() === 'rejected')) || (profile?.verification_status || '').toLowerCase() === 'rejected';
+      const profileStatus = (profile?.verification_status || '').toLowerCase();
+      const hasRejected = rejectedDocs.length > 0 || (vRecords && vRecords.some((v: any) => (v.status || '').toLowerCase() === 'rejected')) || profileStatus === 'rejected';
       const allApproved = documents.length > 0 && documents.every((d) => d.status === 'APPROVED');
-      const isProfileVerified = Boolean(profile?.is_verified || profile?.verified || (profile?.verification_status || '').toLowerCase() === 'approved');
+      const isProfileVerified = Boolean(profile?.is_verified || profile?.verified || profileStatus === 'approved');
 
       let status: 'not_started' | 'pending' | 'approved' | 'rejected' = 'not_started';
       let message = 'Upload a government-issued ID to fully activate your account and apply for jobs.';
@@ -872,7 +897,7 @@ export const verificationsRouter = router({
       } else if (allApproved || (documents.length === 0 && isProfileVerified)) {
         status = 'approved';
         message = 'Identity verification approved';
-      } else if (documents.length > 0 || pendingDocs.length > 0) {
+      } else if (documents.length > 0 || pendingDocs.length > 0 || profileStatus === 'pending') {
         status = 'pending';
         message = 'Your ID is under review';
       }
@@ -2204,6 +2229,44 @@ export const verificationsRouter = router({
 
     if (verificationError) {
       // Failed to create verification submission
+    }
+
+    // Update public.verifications record status to pending and clear rejection_reason
+    try {
+      await (adminSupabase as any)
+        .from('verifications')
+        .update({
+          status: 'pending',
+          rejection_reason: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+    } catch (vErr) {
+      console.warn('submitForReview verifications update notice:', vErr);
+    }
+
+    // Update public.profiles record status to pending and is_verified to false
+    try {
+      const { error: pErr } = await (adminSupabase as any)
+        .from('profiles')
+        .update({
+          verification_status: 'pending',
+          is_verified: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (pErr) {
+        await (adminSupabase as any)
+          .from('profiles')
+          .update({
+            is_verified: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId);
+      }
+    } catch (pErr) {
+      console.warn('submitForReview profiles update notice:', pErr);
     }
 
     // Send email notification to user
