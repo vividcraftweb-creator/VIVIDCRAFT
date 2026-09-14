@@ -782,27 +782,45 @@ export default function GalleryPageClient() {
               return (
                 <div
                   key={artwork.id}
-                  className="group relative bg-white dark:bg-slate-900/70 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800/80 hover:border-purple-400 dark:hover:border-purple-500/40 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-purple-500/10 flex flex-col"
+                  className="group relative bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-400/80 dark:hover:border-purple-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-purple-500/10 flex flex-col hover:-translate-y-0.5"
                 >
-                  {/* Image Preview Container */}
+                  {/* Artwork Image Container with Smart Matte Framing & Blurred Backdrop */}
                   <div
                     onClick={() => setSelectedArtwork(artwork)}
-                    className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer"
+                    className="relative aspect-[4/3] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={safeImg}
-                      alt={artwork.title}
-                      className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        target.onerror = null;
-                        target.src = DEFAULT_ARTWORK_PLACEHOLDER;
-                      }}
-                    />
+                    {/* Background blurred layer using the SAME artwork image URL */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={safeImg}
+                        alt=""
+                        aria-hidden="true"
+                        className="w-full h-full object-cover blur-xl scale-125 opacity-40 dark:opacity-50 pointer-events-none transition-transform duration-700 ease-out group-hover:scale-150"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.onerror = null;
+                          target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+                        }}
+                      />
+                    </div>
 
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    {/* Exhibition Inner Matte Border Wrapping Foreground Image */}
+                    <div className="relative z-10 w-full h-full p-2.5 flex items-center justify-center">
+                      <div className="relative w-full h-full flex items-center justify-center border border-slate-900/10 dark:border-white/10 rounded-md overflow-hidden bg-black/5 dark:bg-black/20">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={safeImg}
+                          alt={artwork.title}
+                          className="object-contain w-full h-full relative z-10 p-2 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+                          }}
+                        />
+                      </div>
+                    </div>
 
                     {/* Task 2: In-situ Admin Moderation Control ("Delete Post") */}
                     {isAdmin && (
@@ -826,7 +844,7 @@ export default function GalleryPageClient() {
                         e.stopPropagation();
                         setSelectedArtwork(artwork);
                       }}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-purple-600 hover:border-purple-500 cursor-pointer"
+                      className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-purple-600 hover:border-purple-500 cursor-pointer shadow-lg"
                       title="View full screen"
                     >
                       <Maximize2 className="w-4 h-4" />
@@ -835,7 +853,7 @@ export default function GalleryPageClient() {
                     {/* Bottom hover action: Quick Rate Stars */}
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-between bg-slate-950/85 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white"
+                      className="absolute bottom-3 left-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-between bg-slate-950/85 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white shadow-lg"
                     >
                       <span className="text-[11px] text-slate-300 font-medium">Rate:</span>
                       <div className="flex items-center gap-1">
@@ -867,13 +885,13 @@ export default function GalleryPageClient() {
                     </div>
                   </div>
 
-                  {/* Artwork Card Body */}
-                  <div className="p-4 flex flex-col flex-1 justify-between gap-3">
+                  {/* Glassmorphism Card Overlay & Formal Details Panel */}
+                  <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 p-4 flex flex-col flex-1 justify-between gap-3">
                     <div>
                       {/* Title */}
                       <h3
                         onClick={() => setSelectedArtwork(artwork)}
-                        className="text-slate-900 dark:text-white font-bold text-base truncate cursor-pointer hover:text-purple-600 dark:hover:text-purple-300 transition-colors"
+                        className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                         title={artwork.title}
                       >
                         {artwork.title}
@@ -898,7 +916,7 @@ export default function GalleryPageClient() {
                           <Link
                             href={`/freelancers/${artwork.artist_id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-white truncate block group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors"
+                            className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-300 truncate block transition-colors"
                           >
                             {artwork.artist.name}
                           </Link>
@@ -909,38 +927,41 @@ export default function GalleryPageClient() {
                       </div>
                     </div>
 
-                    {/* Stats & Actions Footer */}
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                    {/* Stats & Actions Footer (Rounded Pill Containers) */}
+                    <div className="pt-3 border-t border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between text-xs">
                       {/* Interactive Like Button */}
                       <button
                         type="button"
                         onClick={(e) => handleLike(artwork.id, e)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
                           artwork.isLiked
-                            ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400 font-semibold'
-                            : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-300 dark:hover:border-rose-500/30'
+                            ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 shadow-sm'
+                            : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/40'
                         }`}
                         title={artwork.isLiked ? 'Unlike artwork' : 'Like artwork'}
                       >
                         <Heart
                           className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
-                            artwork.isLiked ? 'fill-rose-500 text-rose-500' : ''
+                            artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500'
                           }`}
                         />
                         <span>{artwork.likesCount}</span>
+                        <span className="sr-only">likes</span>
                       </button>
 
                       {/* Average Rating Display */}
                       <div
-                        className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300 font-medium px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-500/25 shadow-sm"
                         title={`Average rating: ${artwork.averageRating} from ${artwork.ratingsCount} review(s)`}
                       >
-                        <Star className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400" />
+                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                         <span className="font-semibold text-slate-900 dark:text-white">
                           {artwork.averageRating > 0 ? artwork.averageRating.toFixed(1) : '—'}
                         </span>
                         {artwork.ratingsCount > 0 && (
-                          <span className="text-slate-500 text-[10px]">({artwork.ratingsCount})</span>
+                          <span className="text-amber-600/75 dark:text-amber-400/75 text-[10px] font-normal">
+                            ({artwork.ratingsCount})
+                          </span>
                         )}
                       </div>
                     </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Heart, ZoomIn, X, Loader2 } from 'lucide-react';
+import { Heart, ZoomIn, Star, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -81,80 +81,132 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
     toggleLikeMutation.mutate({ artworkId: artwork.id });
   };
 
+  const safeImg = getSafeArtworkUrl(artwork.image_url);
+
   return (
     <>
-      <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-purple-400 dark:hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl hover:shadow-purple-500/5 flex flex-col">
+      <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-400/80 dark:hover:border-purple-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-purple-500/10 flex flex-col">
         {/* Artwork Image Container */}
         <div
-          className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-900 cursor-pointer"
+          className="relative aspect-[4/3] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer"
           onClick={() => setIsZoomOpen(true)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={getSafeArtworkUrl(artwork.image_url)}
-            alt={artwork.title || 'Artwork'}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.onerror = null;
-              target.src = DEFAULT_ARTWORK_PLACEHOLDER;
-            }}
-          />
-
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-
-          {/* Quick Zoom Preview Icon on Hover */}
-          <div className="absolute top-3 right-3 p-2 rounded-xl bg-black/50 backdrop-blur-md text-white/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 hover:text-white">
-            <ZoomIn className="h-4 w-4" />
+          {/* Blurred Backdrop Layer */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={safeImg}
+              alt=""
+              aria-hidden="true"
+              className="w-full h-full object-cover blur-xl scale-125 opacity-40 dark:opacity-50 transition-transform duration-700 ease-out group-hover:scale-150 pointer-events-none"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+              }}
+            />
           </div>
 
-          {/* Title and Artist pill inside image bottom */}
-          <div className="absolute bottom-3 left-3 right-3">
-            <h3 className="text-white font-bold text-base sm:text-lg drop-shadow-md truncate">
-              {artwork.title}
-            </h3>
-            {artistName && (
-              <p className="text-xs text-white/75 drop-shadow truncate mt-0.5">
-                by {artistName}
-              </p>
-            )}
+          {/* Exhibition Inner Matte Border & Foreground Artwork Image */}
+          <div className="relative z-10 w-full h-full p-2.5 flex items-center justify-center">
+            <div className="relative w-full h-full flex items-center justify-center border border-slate-900/10 dark:border-white/10 rounded-md overflow-hidden bg-black/5 dark:bg-black/20">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={safeImg}
+                alt={artwork.title || 'Artwork'}
+                className="object-contain w-full h-full relative z-10 p-2 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.onerror = null;
+                  target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Quick Zoom Preview Icon on Hover */}
+          <div className="absolute top-3 right-3 z-30 p-2 rounded-xl bg-black/50 backdrop-blur-md text-white/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 hover:text-white shadow-lg">
+            <ZoomIn className="h-4 w-4" />
           </div>
         </div>
 
-        {/* Interactive Action Bar below image */}
-        <div className="p-4 flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
-          {/* Like Button */}
-          <button
-            type="button"
-            onClick={handleLikeClick}
-            disabled={toggleLikeMutation.isPending}
-            aria-label={isLiked ? 'Unlike artwork' : 'Like artwork'}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 interactive-scale ${
-              isLiked
-                ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 hover:bg-rose-100 dark:hover:bg-rose-500/30'
-                : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/30'
-            }`}
-          >
-            <Heart
-              className={`h-4 w-4 transition-transform duration-200 ${
-                isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-current'
-              }`}
-            />
-            <span>{likesCount}</span>
-            <span className="sr-only">likes</span>
-          </button>
+        {/* Glassmorphism Card Overlay & Formal Details Panel */}
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 p-4 flex flex-col flex-1 justify-between gap-3">
+          <div>
+            {/* Title */}
+            <h3
+              onClick={() => setIsZoomOpen(true)}
+              className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+              title={artwork.title}
+            >
+              {artwork.title}
+            </h3>
 
-          {/* Expand / Comments CTA */}
-          <button
-            type="button"
-            onClick={() => setIsZoomOpen(true)}
-            aria-label="View artwork details and comments"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 transition-all duration-200"
-          >
-            <ZoomIn className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-            <span>Feedback</span>
-          </button>
+            {/* Artist Badge */}
+            {artistName && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 truncate max-w-full">
+                  <User className="w-3 h-3 text-purple-500 shrink-0" />
+                  <span className="truncate">{artistName}</span>
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Stats & Actions: Like button, Rating badge, Expand */}
+          <div className="pt-3 border-t border-slate-200/50 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              {/* Like Button */}
+              <button
+                type="button"
+                onClick={handleLikeClick}
+                disabled={toggleLikeMutation.isPending}
+                aria-label={isLiked ? 'Unlike artwork' : 'Like artwork'}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                  isLiked
+                    ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 shadow-sm'
+                    : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/40'
+                }`}
+              >
+                <Heart
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                    isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-slate-400 dark:text-slate-500'
+                  }`}
+                />
+                <span>{likesCount}</span>
+                <span className="sr-only">likes</span>
+              </button>
+
+              {/* Rating Badge */}
+              {(artwork.averageRating > 0 || (artwork.ratingsCount ?? 0) > 0) && (
+                <div
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-500/25 shadow-sm"
+                  title={`Average rating: ${artwork.averageRating} from ${artwork.ratingsCount} review(s)`}
+                >
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {artwork.averageRating > 0 ? artwork.averageRating.toFixed(1) : '—'}
+                  </span>
+                  {artwork.ratingsCount > 0 && (
+                    <span className="text-amber-600/75 dark:text-amber-400/75 text-[10px] font-normal">
+                      ({artwork.ratingsCount})
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Expand / Details CTA */}
+            <button
+              type="button"
+              onClick={() => setIsZoomOpen(true)}
+              aria-label="View artwork details and comments"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-300 bg-white/80 dark:bg-slate-800/80 hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 cursor-pointer"
+            >
+              <ZoomIn className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+              <span>Details</span>
+            </button>
+          </div>
         </div>
       </div>
 
