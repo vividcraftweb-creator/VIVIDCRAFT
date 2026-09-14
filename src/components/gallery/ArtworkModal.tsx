@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { X, Heart, Send, Loader2, MessageSquare, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
@@ -68,7 +69,7 @@ export function ArtworkModal({
     },
   });
 
-  // Lock body scroll when modal is open
+  // Lock body scroll when modal is open and handle ESC key
   useEffect(() => {
     if (!isOpen) return;
     const originalOverflow = document.body.style.overflow;
@@ -124,26 +125,26 @@ export function ArtworkModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/60 dark:bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative max-w-5xl w-full max-h-[92vh] flex flex-col lg:flex-row rounded-3xl overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-2xl"
+        className="relative max-w-5xl w-full rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 my-auto border border-slate-200 dark:border-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button Mobile/Desktop */}
+        {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-black/70 dark:hover:bg-black/90 text-zinc-700 hover:text-zinc-900 dark:text-white/80 dark:hover:text-white border border-zinc-200 dark:border-white/10 transition-colors focus:outline-none"
+          className="absolute top-4 right-4 z-30 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/20 transition-colors focus:outline-none cursor-pointer"
           aria-label="Close artwork dialog"
         >
           <X className="h-5 w-5" />
         </button>
 
-        {/* LEFT COLUMN: High-Resolution Artwork Image */}
-        <div className="relative lg:w-[58%] w-full h-[320px] sm:h-[400px] lg:h-auto min-h-[300px] bg-zinc-950 flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-          {/* Background Ambient Glow */}
+        {/* LEFT COLUMN: Modern Framed Artwork Preview with Matte Background */}
+        <div className="relative bg-zinc-950 flex items-center justify-center p-6 md:p-8 overflow-hidden min-h-[340px] md:min-h-[580px] h-full">
+          {/* Subtle Ambient Glow */}
           <div
             className="absolute inset-0 opacity-20 blur-3xl scale-125 pointer-events-none"
             style={{
@@ -153,134 +154,132 @@ export function ArtworkModal({
             }}
           />
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={getSafeArtworkUrl(artwork.image_url)}
-            alt={artwork.title || 'Artwork'}
-            className="relative max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-300"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.onerror = null;
-              target.src = DEFAULT_ARTWORK_PLACEHOLDER;
-            }}
-          />
+          {/* Framed Image */}
+          <div className="relative z-10 max-h-full max-w-full flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getSafeArtworkUrl(artwork.image_url)}
+              alt={artwork.title || 'Artwork'}
+              className="max-h-[480px] w-auto max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-300"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+              }}
+            />
+          </div>
 
-          {/* Artwork Watermark / Info Badge */}
-          <div className="absolute bottom-4 left-4 pointer-events-none">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-black/60 backdrop-blur-md text-white/90 border border-white/10">
+          {/* Original Artwork Badge */}
+          <div className="absolute bottom-4 left-4 z-20 pointer-events-none">
+            <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-black/70 backdrop-blur-md text-white/90 border border-white/15 shadow-lg">
               Original Artwork
             </span>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Details, Stats, and Comments System */}
-        <div className="flex-1 flex flex-col h-full max-h-[58vh] lg:max-h-[85vh] border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900">
-          {/* Header & Stats */}
-          <div className="p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 space-y-4">
-              <div className="flex items-center gap-2">
+        {/* RIGHT COLUMN: Details, Metadata, Comments & WhatsApp Action Button */}
+        <div className="flex flex-col h-full max-h-[580px] md:max-h-[640px] bg-white dark:bg-slate-900 overflow-hidden">
+          {/* Header Section: Status, Title, Artist, Ref ID, Date, Likes */}
+          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
+            {/* Status Badges & Likes Counter Row */}
+            <div className="flex items-center justify-between gap-2 pr-10">
+              <div className="flex items-center gap-2 flex-wrap">
                 {artwork.selling_mode === 'FIXED_PRICE' && (
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
                     For Sale
                   </span>
                 )}
                 {artwork.selling_mode === 'BIDDING' && (
-                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
                     Open Bidding
                   </span>
                 )}
                 {artwork.selling_mode === 'NOT_FOR_SALE' && (
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
                     Not For Sale
                   </span>
                 )}
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                {artwork.title}
-              </h2>
-
-              {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
-                <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                  Price: LKR {Number(artwork.price).toLocaleString()}
-                </p>
-              )}
-              {artwork.selling_mode === 'BIDDING' && artwork.starting_bid && (
-                <p className="text-base font-bold text-amber-600 dark:text-amber-400">
-                  Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
-                </p>
-              )}
-
-              {artistName && (
-                <p className="text-sm text-purple-600 dark:text-purple-300">
-                  Created by <span className="font-semibold text-zinc-900 dark:text-zinc-100">{artistName}</span>
-                </p>
-              )}
-
-              {/* Lower Metadata Section: Ref ID & Date */}
-              <div className="flex items-center gap-3 pt-1 text-xs text-zinc-500 dark:text-zinc-400 flex-wrap">
-                <span>Ref ID: <span className="font-mono font-medium text-zinc-700 dark:text-zinc-300">{artwork.art_code || '#ART-101'}</span></span>
-                {artwork.created_at && (
-                  <>
-                    <span>•</span>
-                    <span>{new Date(artwork.created_at).toLocaleDateString()}</span>
-                  </>
-                )}
-              </div>
-
-            {/* Like & WhatsApp Inquiry Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              {/* Like Button */}
+              {/* Likes Counter */}
               <button
                 type="button"
                 onClick={onToggleLike}
-                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
                   isLiked
-                    ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 hover:bg-rose-100 dark:hover:bg-rose-500/30'
-                    : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/30'
+                    ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:text-rose-600 dark:hover:text-rose-400'
                 }`}
               >
                 <Heart
-                  className={`h-4 w-4 ${
+                  className={`h-3.5 w-3.5 ${
                     isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-current'
                   } transition-transform`}
                 />
                 <span>{likesCount} Likes</span>
               </button>
+            </div>
 
-              {/* WhatsApp Action Button */}
-              {(artwork.selling_mode === 'FIXED_PRICE' || artwork.selling_mode === 'BIDDING') && (
-                <a
-                  href={`https://wa.me/94783813833?text=${encodeURIComponent(
-                    artwork.selling_mode === 'BIDDING'
-                      ? `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Listed Status: Starting Bid LKR ${Number(artwork.starting_bid || 0).toLocaleString()}.`
-                      : `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Price: LKR ${Number(artwork.price || 0).toLocaleString()}.`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer"
-                >
-                  <span>{artwork.selling_mode === 'BIDDING' ? 'Ask About Price / Place Bid' : 'Inquire via WhatsApp'}</span>
-                </a>
+            {/* Title */}
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {artwork.title}
+            </h2>
+
+            {/* Price / Starting Bid Display */}
+            {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
+              <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                Price: LKR {Number(artwork.price).toLocaleString()}
+              </p>
+            )}
+            {artwork.selling_mode === 'BIDDING' && artwork.starting_bid && (
+              <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
+                Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+              </p>
+            )}
+
+            {/* Artist Link, Ref ID: #ART-XXX, and Date */}
+            <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap pt-0.5">
+              {artistName && (
+                <span>
+                  By{' '}
+                  <Link
+                    href={`/freelancers/${artwork.artist_id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+                  >
+                    {artistName}
+                  </Link>
+                </span>
+              )}
+              <span className="text-slate-400 dark:text-slate-500">•</span>
+              <span className="font-mono text-slate-500 dark:text-slate-400">
+                Ref ID: <span className="font-semibold text-slate-700 dark:text-slate-200">{artwork.art_code || '#ART-101'}</span>
+              </span>
+              {artwork.created_at && (
+                <>
+                  <span className="text-slate-400 dark:text-slate-500">•</span>
+                  <span className="text-slate-500 dark:text-slate-400">{new Date(artwork.created_at).toLocaleDateString()}</span>
+                </>
               )}
             </div>
           </div>
 
-          {/* COMMENTS LIST (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+          {/* Comments Section (Scrollable) */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 min-h-[140px]">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <MessageSquare className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                 Comments &amp; Feedback ({comments?.length || 0})
               </h3>
             </div>
 
             {isLoadingComments ? (
-              <div className="flex flex-col items-center justify-center py-12 text-zinc-500 dark:text-zinc-400">
+              <div className="flex flex-col items-center justify-center py-10 text-slate-500 dark:text-slate-400">
                 <Loader2 className="h-6 w-6 animate-spin text-purple-600 dark:text-purple-400 mb-2" />
                 <p className="text-xs">Loading comments...</p>
               </div>
             ) : comments && comments.length > 0 ? (
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 {comments.map((c: any) => {
                   const isCurrentUser = currentUserId && c.userId === currentUserId;
                   const initial = (c.userName || 'A').charAt(0).toUpperCase();
@@ -288,7 +287,7 @@ export function ArtworkModal({
                   return (
                     <div
                       key={c.id}
-                      className="p-3.5 rounded-2xl bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 space-y-1.5 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors shadow-sm"
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-1 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -298,7 +297,7 @@ export function ArtworkModal({
                               <img
                                 src={c.userAvatar}
                                 alt={c.userName}
-                                className="h-full w-full rounded-full object-cover border border-zinc-200 dark:border-zinc-700"
+                                className="h-full w-full rounded-full object-cover border border-slate-200 dark:border-slate-700"
                                 onError={(e) => {
                                   const target = e.currentTarget;
                                   target.onerror = null;
@@ -315,7 +314,7 @@ export function ArtworkModal({
                               {initial}
                             </div>
                           </div>
-                          <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                          <span className="text-xs font-semibold text-slate-900 dark:text-white">
                             {c.userName}
                             {isCurrentUser && (
                               <span className="ml-1.5 text-[10px] text-purple-600 dark:text-purple-300 font-normal">
@@ -324,11 +323,11 @@ export function ArtworkModal({
                             )}
                           </span>
                         </div>
-                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400" suppressHydrationWarning>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400" suppressHydrationWarning>
                           {formatCommentDate(c.createdAt)}
                         </span>
                       </div>
-                      <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed pl-8 break-words whitespace-pre-line">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pl-8 break-words whitespace-pre-line">
                         {c.comment}
                       </p>
                     </div>
@@ -337,18 +336,35 @@ export function ArtworkModal({
                 <div ref={commentsEndRef} />
               </div>
             ) : (
-              <div className="text-center py-10 px-4 rounded-2xl bg-zinc-100/60 dark:bg-zinc-800/20 border border-dashed border-zinc-200 dark:border-zinc-800">
-                <MessageSquare className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto mb-2" />
-                <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">No comments yet</p>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+              <div className="text-center py-8 px-4 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-800">
+                <MessageSquare className="h-7 w-7 text-slate-400 dark:text-slate-600 mx-auto mb-1.5" />
+                <p className="text-xs font-medium text-slate-800 dark:text-slate-200">No comments yet</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                   Be the first to share your thoughts on this artwork!
                 </p>
               </div>
             )}
           </div>
 
-          {/* COMMENT SUBMISSION FOOTER */}
-          <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+          {/* Bottom Area: WhatsApp Inquiry / Action Button & Comment Input */}
+          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 space-y-3 shrink-0">
+            {/* WhatsApp Action Button */}
+            {(artwork.selling_mode === 'FIXED_PRICE' || artwork.selling_mode === 'BIDDING') && (
+              <a
+                href={`https://wa.me/94783813833?text=${encodeURIComponent(
+                  artwork.selling_mode === 'BIDDING'
+                    ? `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Listed Status: Starting Bid LKR ${Number(artwork.starting_bid || 0).toLocaleString()}.`
+                    : `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Price: LKR ${Number(artwork.price || 0).toLocaleString()}.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all cursor-pointer"
+              >
+                <span>{artwork.selling_mode === 'BIDDING' ? 'Ask About Price / Place Bid (WhatsApp)' : 'Inquire via WhatsApp'}</span>
+              </a>
+            )}
+
+            {/* Comment Submission Form */}
             {isAuthenticated ? (
               <form onSubmit={handleCommentSubmit} className="flex items-center gap-2">
                 <input
@@ -358,12 +374,12 @@ export function ArtworkModal({
                   placeholder="Leave a comment on this piece..."
                   maxLength={1000}
                   disabled={addCommentMutation.isPending}
-                  className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-purple-500/60 transition-colors"
+                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-purple-500/60 transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={addCommentMutation.isPending || !commentText.trim()}
-                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20"
+                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 cursor-pointer shrink-0"
                 >
                   {addCommentMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -376,8 +392,8 @@ export function ArtworkModal({
                 </button>
               </form>
             ) : (
-              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-500/20">
-                <p className="text-xs text-zinc-700 dark:text-zinc-300">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-500/20">
+                <p className="text-xs text-slate-700 dark:text-slate-300">
                   Sign in to leave a comment on this artwork
                 </p>
                 <button
@@ -389,7 +405,7 @@ export function ArtworkModal({
                       )}`
                     );
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-colors"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-colors cursor-pointer"
                 >
                   <LogIn className="h-3.5 w-3.5" />
                   <span>Sign In</span>
@@ -402,3 +418,4 @@ export function ArtworkModal({
     </div>
   );
 }
+

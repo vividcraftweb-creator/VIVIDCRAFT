@@ -149,6 +149,23 @@ export default function GalleryPageClient() {
     }
   }, []);
 
+  // Prevent background page scrolling when modal is open
+  useEffect(() => {
+    if (!selectedArtwork) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedArtwork(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedArtwork]);
+
   // Fetch via tRPC procedure
   const { data: remoteArtworks, isLoading, refetch } = trpc.artworks.getAllArtworks.useQuery(
     { sort: activeSort, search: searchQuery, mode: 'GALLERY' },
@@ -1087,7 +1104,7 @@ export default function GalleryPageClient() {
         {/* Lightbox / Modal View */}
         {selectedArtwork && (
           <div
-            className="fixed inset-0 z-50 bg-black/80 dark:bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+            className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
             onClick={() => setSelectedArtwork(null)}
           >
             <div
