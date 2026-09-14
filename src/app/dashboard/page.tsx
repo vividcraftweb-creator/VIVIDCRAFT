@@ -135,9 +135,11 @@ export default async function DashboardPage({
 
           // Block artist dashboard access if WhatsApp verification not completed
           const whatsappStatus = profileRow?.whatsapp_verification_status;
+          const verificationStatus = profileRow?.verification_status;
           const profileRole = (profileRow?.role || '').toLowerCase();
           if (profileRole === 'artist') {
-            if (!whatsappStatus || whatsappStatus === 'pending_whatsapp') {
+            const isVerifiedArtist = whatsappStatus === 'verified' || verificationStatus === 'verified';
+            if (!isVerifiedArtist) {
               redirect('/verify-whatsapp');
             }
           }

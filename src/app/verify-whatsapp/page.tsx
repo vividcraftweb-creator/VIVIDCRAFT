@@ -46,7 +46,7 @@ export default function VerifyWhatsAppPage() {
 
         const { data: profileRow } = await supabase
           .from('profiles')
-          .select('first_name, last_name, email, whatsapp_verification_status, role')
+          .select('first_name, last_name, email, whatsapp_verification_status, verification_status, role')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -57,8 +57,11 @@ export default function VerifyWhatsAppPage() {
         }
 
         // If already verified, go to dashboard immediately
-        if (profileRow?.whatsapp_verification_status === 'verified') {
-          router.replace('/dashboard');
+        if (
+          profileRow?.whatsapp_verification_status === 'verified' ||
+          profileRow?.verification_status === 'verified'
+        ) {
+          window.location.href = '/dashboard';
           return;
         }
 
@@ -90,17 +93,16 @@ export default function VerifyWhatsAppPage() {
               filter: `id=eq.${user.id}`,
             },
             (payload) => {
-              const newStatus = (payload.new as any)?.whatsapp_verification_status;
-              if (newStatus === 'verified') {
+              const newWhatsappStatus = (payload.new as any)?.whatsapp_verification_status;
+              const newVerificationStatus = (payload.new as any)?.verification_status;
+              if (newWhatsappStatus === 'verified' || newVerificationStatus === 'verified') {
                 toast.success('🎉 Account Approved!', {
                   description: 'Your account has been verified. Redirecting to dashboard...',
                   duration: 3000,
                 });
-                setTimeout(() => {
-                  router.replace('/dashboard');
-                }, 1500);
-              } else if (newStatus) {
-                setStatus(newStatus);
+                window.location.href = '/dashboard';
+              } else if (newWhatsappStatus) {
+                setStatus(newWhatsappStatus);
               }
             }
           )
@@ -130,23 +132,28 @@ export default function VerifyWhatsAppPage() {
     if (!profile) return;
     setChecking(true);
     try {
-      const { data: profileRow } = await supabase
+      const { data: profileRow, error } = await supabase
         .from('profiles')
-        .select('whatsapp_verification_status')
+        .select('whatsapp_verification_status, verification_status')
         .eq('id', profile.id)
         .maybeSingle();
 
-      const latestStatus = profileRow?.whatsapp_verification_status || null;
+      if (error) {
+        throw error;
+      }
 
-      if (latestStatus === 'verified') {
+      const isVerified =
+        profileRow?.whatsapp_verification_status === 'verified' ||
+        profileRow?.verification_status === 'verified';
+
+      if (isVerified) {
         toast.success('🎉 Account Approved!', {
           description: 'Your account has been verified. Redirecting to dashboard...',
           duration: 3000,
         });
-        setTimeout(() => {
-          router.replace('/dashboard');
-        }, 1500);
-      } else if (latestStatus === 'pending_whatsapp') {
+        window.location.href = '/dashboard';
+        return;
+      } else if (profileRow?.whatsapp_verification_status === 'pending_whatsapp') {
         toast.info('Still Pending', {
           description: 'Your account is still awaiting admin approval.',
           duration: 3000,
@@ -156,7 +163,7 @@ export default function VerifyWhatsAppPage() {
         toast.info('Not yet sent', {
           description: 'Please send your WhatsApp verification message first.',
         });
-        setStatus(latestStatus);
+        setStatus(profileRow?.whatsapp_verification_status || null);
       }
     } catch (err) {
       console.error('Error checking status:', err);

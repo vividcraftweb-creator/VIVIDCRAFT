@@ -14,7 +14,11 @@ export async function POST(request: NextRequest) {
 
     const { error } = await adminClient
       .from('profiles')
-      .update({ whatsapp_verification_status: 'verified' })
+      .update({
+        whatsapp_verification_status: 'verified',
+        verification_status: 'verified',
+        is_verified: true,
+      })
       .eq('id', userId);
 
     if (error) {
