@@ -91,106 +91,109 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [optimisticUserVerified, setOptimisticUserVerified] = useState<Record<string, boolean>>({});
+  const [refreshingDirectData, setRefreshingDirectData] = useState(false);
+
+  const loadAllUsers = async (setLoading?: (v: boolean) => void) => {
+    setLoading?.(true);
+    let combined: AdminUser[] = [];
+
+    // 1. Direct fetch from Supabase profiles table
+    try {
+      const supabase = createClient();
+      const { data: pData, error: pErr } = await supabase.from('profiles').select('*');
+      if (!pErr && pData && Array.isArray(pData)) {
+        pData.forEach((p: any) => {
+          const role = (p.role || 'CLIENT').toUpperCase();
+          combined.push({
+            id: p.id,
+            email: p.email || 'N/A',
+            role,
+            subscriptionPlan: p.subscriptionPlan || (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
+            isVerified: Boolean(p.is_verified || p.verified || false),
+            createdAt: p.created_at || new Date().toISOString(),
+            Profile: {
+              firstName: p.first_name || p.firstName || '',
+              lastName: p.last_name || p.lastName || '',
+            },
+          });
+        });
+      }
+    } catch (err) {
+      console.warn('Direct profiles fetch notice:', err);
+    }
+
+    // 2. Fetch from /api/admin/get-users
+    try {
+      const res = await fetch('/api/admin/get-users');
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.users && Array.isArray(json.users)) {
+          json.users.forEach((u: any) => {
+            const idx = combined.findIndex((item) => item.id === u.id);
+            const role = (u.role || 'CLIENT').toUpperCase();
+            const mapped: AdminUser = {
+              id: u.id,
+              email: u.email || 'N/A',
+              role,
+              subscriptionPlan: u.subscriptionPlan && !u.subscriptionPlan.toUpperCase().includes('FREE') && !u.subscriptionPlan.toUpperCase().includes('STARTER') ? u.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
+              isVerified: Boolean(u.isVerified ?? (u.status === 'Verified')),
+              createdAt: u.created_at || u.createdAt || new Date().toISOString(),
+              Profile: {
+                firstName: u.first_name || u.firstName || u.Profile?.firstName || u.Profile?.first_name || '',
+                lastName: u.last_name || u.lastName || u.Profile?.lastName || u.Profile?.last_name || '',
+              },
+            };
+            if (idx >= 0) {
+              combined[idx] = { ...combined[idx], ...mapped };
+            } else {
+              combined.push(mapped);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('API get-users fetch notice:', err);
+    }
+
+    // 3. Fetch verifications documents to calculate strict overall verification status
+    try {
+      const supabase = createClient();
+      const { data: vData } = await (supabase as any).from('verifications').select('user_id, status');
+      if (vData && Array.isArray(vData)) {
+        const vMap: Record<string, any[]> = {};
+        vData.forEach((v: any) => {
+          const uid = v.user_id;
+          if (!uid) return;
+          if (!vMap[uid]) vMap[uid] = [];
+          vMap[uid].push(v);
+        });
+
+        const resultMap: Record<string, { hasRejected: boolean; allApproved: boolean; docsCount: number }> = {};
+        for (const [uid, docs] of Object.entries(vMap)) {
+          const hasRejected = docs.some((d: any) => (d.status || '').toUpperCase() === 'REJECTED');
+          const allApproved = docs.length > 0 && docs.every((d: any) => (d.status || '').toUpperCase() === 'APPROVED');
+          resultMap[uid] = {
+            hasRejected,
+            allApproved,
+            docsCount: docs.length,
+          };
+        }
+        setUserVerificationsMap(resultMap);
+      }
+    } catch (vErr) {
+      console.warn('Direct verifications fetch notice in users page:', vErr);
+    }
+
+    if (combined.length > 0) {
+      setDirectUsers(combined);
+    }
+    setLoading?.(false);
+  };
 
   useEffect(() => {
     setIsMounted(true);
-
-    async function loadAllUsers() {
-      let combined: AdminUser[] = [];
-
-      // 1. Direct fetch from Supabase profiles table
-      try {
-        const supabase = createClient();
-        const { data: pData, error: pErr } = await supabase.from('profiles').select('*');
-        if (!pErr && pData && Array.isArray(pData)) {
-          pData.forEach((p: any) => {
-            const role = (p.role || 'CLIENT').toUpperCase();
-            combined.push({
-              id: p.id,
-              email: p.email || 'N/A',
-              role,
-              subscriptionPlan: p.subscriptionPlan || (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-              isVerified: Boolean(p.is_verified || p.verified || false),
-              createdAt: p.created_at || new Date().toISOString(),
-              Profile: {
-                firstName: p.first_name || p.firstName || '',
-                lastName: p.last_name || p.lastName || '',
-              },
-            });
-          });
-        }
-      } catch (err) {
-        console.warn('Direct profiles fetch notice:', err);
-      }
-
-      // 2. Fetch from /api/admin/get-users
-      try {
-        const res = await fetch('/api/admin/get-users');
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.users && Array.isArray(json.users)) {
-            json.users.forEach((u: any) => {
-              const idx = combined.findIndex((item) => item.id === u.id);
-              const role = (u.role || 'CLIENT').toUpperCase();
-              const mapped: AdminUser = {
-                id: u.id,
-                email: u.email || 'N/A',
-                role,
-                subscriptionPlan: u.subscriptionPlan && !u.subscriptionPlan.toUpperCase().includes('FREE') && !u.subscriptionPlan.toUpperCase().includes('STARTER') ? u.subscriptionPlan : (role === 'CLIENT' ? 'CLIENT_BUSINESS' : 'FREELANCER_PRO'),
-                isVerified: Boolean(u.isVerified ?? (u.status === 'Verified')),
-                createdAt: u.created_at || u.createdAt || new Date().toISOString(),
-                Profile: {
-                  firstName: u.first_name || u.firstName || u.Profile?.firstName || u.Profile?.first_name || '',
-                  lastName: u.last_name || u.lastName || u.Profile?.lastName || u.Profile?.last_name || '',
-                },
-              };
-              if (idx >= 0) {
-                combined[idx] = { ...combined[idx], ...mapped };
-              } else {
-                combined.push(mapped);
-              }
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('API get-users fetch notice:', err);
-      }
-
-      // 3. Fetch verifications documents to calculate strict overall verification status
-      try {
-        const supabase = createClient();
-        const { data: vData } = await (supabase as any).from('verifications').select('user_id, status');
-        if (vData && Array.isArray(vData)) {
-          const vMap: Record<string, any[]> = {};
-          vData.forEach((v: any) => {
-            const uid = v.user_id;
-            if (!uid) return;
-            if (!vMap[uid]) vMap[uid] = [];
-            vMap[uid].push(v);
-          });
-
-          const resultMap: Record<string, { hasRejected: boolean; allApproved: boolean; docsCount: number }> = {};
-          for (const [uid, docs] of Object.entries(vMap)) {
-            const hasRejected = docs.some((d: any) => (d.status || '').toUpperCase() === 'REJECTED');
-            const allApproved = docs.length > 0 && docs.every((d: any) => (d.status || '').toUpperCase() === 'APPROVED');
-            resultMap[uid] = {
-              hasRejected,
-              allApproved,
-              docsCount: docs.length,
-            };
-          }
-          setUserVerificationsMap(resultMap);
-        }
-      } catch (vErr) {
-        console.warn('Direct verifications fetch notice in users page:', vErr);
-      }
-
-      if (combined.length > 0) {
-        setDirectUsers(combined);
-      }
-    }
-
     loadAllUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const utils = trpc.useUtils();
@@ -567,12 +570,15 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
         <Button
           variant="outline"
           size="sm"
-          className="border-slate-800 text-white hover:bg-slate-800 h-8 px-3"
-          onClick={() => refetch()}
-          disabled={isLoading}
+          className="border-slate-700 text-white hover:bg-slate-700 h-9 px-4 gap-2 font-semibold"
+          onClick={async () => {
+            refetch();
+            await loadAllUsers(setRefreshingDirectData);
+          }}
+          disabled={isLoading || refreshingDirectData}
         >
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
+          <RefreshCw className={`h-3.5 w-3.5 ${(isLoading || refreshingDirectData) ? 'animate-spin' : ''}`} />
+          {(isLoading || refreshingDirectData) ? 'Refreshing...' : 'Refresh Data'}
         </Button>
       </div>
 

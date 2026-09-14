@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, CheckCircle, XCircle, Trash2, Clock, Info, Calendar, DollarSign, MapPin, Layers, Timer, Target, Clock4 } from 'lucide-react';
+import { Search, CheckCircle, XCircle, Trash2, Clock, Info, Calendar, DollarSign, MapPin, Layers, Timer, Target, Clock4, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -218,9 +218,21 @@ export default function AdminJobsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Job Moderation</h1>
-        <p className="text-slate-400 mt-1">Review, approve, and manage job postings</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Job Moderation</h1>
+          <p className="text-slate-400 mt-1">Review, approve, and manage job postings</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-slate-700 text-white hover:bg-slate-700 h-9 px-4 gap-2 font-semibold flex-shrink-0"
+          onClick={() => refetch()}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          {isLoading ? 'Refreshing...' : 'Refresh Data'}
+        </Button>
       </div>
 
       {/* Stats */}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { trpc } from '@/utils/trpc';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Trash2, Loader2, Search } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Loader2, Search, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
@@ -13,7 +13,7 @@ export default function ArtworksPageClient() {
   const pageSize = 20;
   
   const utils = trpc.useUtils();
-  const { data, isLoading } = trpc.admin.artworks.getArtworks.useQuery({
+  const { data, isLoading, refetch } = trpc.admin.artworks.getArtworks.useQuery({
     search: search || undefined,
     limit: pageSize,
     offset: page * pageSize,
@@ -37,11 +37,21 @@ export default function ArtworksPageClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <ImageIcon className="h-6 w-6 text-purple-400" />
           Listed Artworks
         </h1>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-slate-700 text-white hover:bg-slate-700 h-9 px-4 gap-2 font-semibold flex-shrink-0"
+          onClick={() => refetch()}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          {isLoading ? 'Refreshing...' : 'Refresh Data'}
+        </Button>
       </div>
 
       <div className="flex gap-4">

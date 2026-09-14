@@ -1,9 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { MessageCircle, CheckCircle2, Clock, User, Mail, Palette, ArrowRight, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  MessageCircle,
+  CheckCircle2,
+  Clock,
+  User,
+  Mail,
+  Palette,
+  ArrowRight,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -17,12 +28,17 @@ export default function VerifyWhatsAppPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  // ─── Load profile on mount ─────────────────────────────────────────────────
   useEffect(() => {
     async function loadProfile() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           router.replace('/auth/login');
           return;
@@ -40,7 +56,7 @@ export default function VerifyWhatsAppPage() {
           return;
         }
 
-        // If already verified, go to dashboard
+        // If already verified, go to dashboard immediately
         if (profileRow?.whatsapp_verification_status === 'verified') {
           router.replace('/dashboard');
           return;
@@ -48,16 +64,49 @@ export default function VerifyWhatsAppPage() {
 
         const firstName = profileRow?.first_name || user.user_metadata?.first_name || '';
         const lastName = profileRow?.last_name || user.user_metadata?.last_name || '';
-        const fullName = `${firstName} ${lastName}`.trim() || user.email?.split('@')[0] || 'Artist';
+        const fullName =
+          `${firstName} ${lastName}`.trim() || user.email?.split('@')[0] || 'Artist';
 
-        setProfile({
+        const userProfile: UserProfile = {
           id: user.id,
           email: profileRow?.email || user.email || '',
           fullName,
           whatsapp_verification_status: profileRow?.whatsapp_verification_status || null,
-        });
+        };
 
+        setProfile(userProfile);
         setStatus(profileRow?.whatsapp_verification_status || null);
+
+        // ─── Set up Supabase real-time subscription ──────────────────────────
+        // Subscribe to changes on this user's profile row
+        const channel = supabase
+          .channel(`whatsapp-verify-${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${user.id}`,
+            },
+            (payload) => {
+              const newStatus = (payload.new as any)?.whatsapp_verification_status;
+              if (newStatus === 'verified') {
+                toast.success('🎉 Account Approved!', {
+                  description: 'Your account has been verified. Redirecting to dashboard...',
+                  duration: 3000,
+                });
+                setTimeout(() => {
+                  router.replace('/dashboard');
+                }, 1500);
+              } else if (newStatus) {
+                setStatus(newStatus);
+              }
+            }
+          )
+          .subscribe();
+
+        channelRef.current = channel;
       } catch (err) {
         console.error('Error loading profile:', err);
       } finally {
@@ -66,18 +115,70 @@ export default function VerifyWhatsAppPage() {
     }
 
     loadProfile();
+
+    // Cleanup real-time channel on unmount
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
   }, [router]);
 
+  // ─── Manual status check (re-fetch from DB) ───────────────────────────────
+  const handleCheckStatus = async () => {
+    if (!profile) return;
+    setChecking(true);
+    try {
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('whatsapp_verification_status')
+        .eq('id', profile.id)
+        .maybeSingle();
+
+      const latestStatus = profileRow?.whatsapp_verification_status || null;
+
+      if (latestStatus === 'verified') {
+        toast.success('🎉 Account Approved!', {
+          description: 'Your account has been verified. Redirecting to dashboard...',
+          duration: 3000,
+        });
+        setTimeout(() => {
+          router.replace('/dashboard');
+        }, 1500);
+      } else if (latestStatus === 'pending_whatsapp') {
+        toast.info('Still Pending', {
+          description: 'Your account is still awaiting admin approval.',
+          duration: 3000,
+        });
+        setStatus('pending_whatsapp');
+      } else {
+        toast.info('Not yet sent', {
+          description: 'Please send your WhatsApp verification message first.',
+        });
+        setStatus(latestStatus);
+      }
+    } catch (err) {
+      console.error('Error checking status:', err);
+      toast.error('Failed to check status. Please try again.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // ─── Send / re-send WhatsApp message ──────────────────────────────────────
   const handleVerifyViaWhatsApp = async () => {
     if (!profile) return;
     setSending(true);
 
     try {
       // Update status to pending_whatsapp in DB
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ whatsapp_verification_status: 'pending_whatsapp' })
         .eq('id', profile.id);
+
+      if (error) throw error;
 
       setStatus('pending_whatsapp');
 
@@ -91,11 +192,13 @@ export default function VerifyWhatsAppPage() {
       window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Error updating verification status:', err);
+      toast.error('Failed to update status. Please try again.');
     } finally {
       setSending(false);
     }
   };
 
+  // ─── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-slate-950">
@@ -129,6 +232,16 @@ export default function VerifyWhatsAppPage() {
           <p className="text-sm text-slate-400">
             Your artist account requires manual verification by our admin team.
           </p>
+          {/* Real-time listening indicator */}
+          {isPending && (
+            <div className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              Listening for admin approval in real-time
+            </div>
+          )}
         </div>
 
         {/* Artist Details Card */}
@@ -169,7 +282,7 @@ export default function VerifyWhatsAppPage() {
         {/* Status / Action Area */}
         {isPending ? (
           /* Pending State */
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
               <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
@@ -180,15 +293,36 @@ export default function VerifyWhatsAppPage() {
               </div>
             </div>
 
+            {/* Manual "Check Approval Status" button */}
+            <button
+              type="button"
+              onClick={handleCheckStatus}
+              disabled={checking}
+              className="w-full h-11 flex items-center justify-center gap-2 text-sm font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white border border-slate-700 hover:border-slate-600 transition-all cursor-pointer"
+            >
+              {checking ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Checking Status...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Check Approval Status</span>
+                </>
+              )}
+            </button>
+
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
               <p className="text-xs text-slate-400">
-                Already sent the message?{' '}
+                Haven&apos;t sent the message yet?{' '}
                 <button
                   type="button"
                   onClick={handleVerifyViaWhatsApp}
-                  className="text-green-400 hover:text-green-300 underline font-medium transition-colors"
+                  disabled={sending}
+                  className="text-green-400 hover:text-green-300 underline font-medium transition-colors disabled:opacity-50"
                 >
-                  Send again
+                  {sending ? 'Opening...' : 'Send via WhatsApp'}
                 </button>
               </p>
             </div>
@@ -236,16 +370,17 @@ export default function VerifyWhatsAppPage() {
           </div>
         )}
 
-        {/* Already Verified? Check Status */}
+        {/* Footer */}
         <div className="pt-2 border-t border-slate-800 text-center">
           <p className="text-xs text-slate-500">
             Already approved by admin?{' '}
             <button
               type="button"
-              onClick={() => router.push('/dashboard')}
-              className="text-indigo-400 hover:text-indigo-300 underline font-medium transition-colors"
+              onClick={handleCheckStatus}
+              disabled={checking}
+              className="text-indigo-400 hover:text-indigo-300 underline font-medium transition-colors disabled:opacity-50"
             >
-              Try accessing dashboard
+              {checking ? 'Checking...' : 'Check status now'}
             </button>
           </p>
         </div>
