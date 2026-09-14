@@ -20,6 +20,8 @@ import {
   Bell,
   Shield,
   ShoppingBag,
+  UploadCloud,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -278,6 +280,18 @@ const Header = () => {
 
             {/* Right Side */}
             <div className="flex items-center gap-3">
+              {/* Admin Moderation Active Badge (Header) */}
+              {isAdmin && (
+                <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 dark:text-amber-300 text-xs font-semibold shadow-sm">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                  </span>
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Admin Moderation</span>
+                </div>
+              )}
+
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -335,11 +349,25 @@ const Header = () => {
                               <span>Admin Panel</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-purple-600 dark:text-purple-300 font-medium"
+                              onClick={() => router.push('/gallery?upload=true')}
+                            >
+                              <UploadCloud className="h-4 w-4 text-purple-500" />
+                              <span>Upload Artwork</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
                               onClick={() => router.push('/dashboard')}
                             >
                               <Briefcase className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                               <span>Dashboard</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/gallery')}
+                            >
+                              <ImageIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Gallery</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
@@ -474,6 +502,10 @@ const Header = () => {
                 <div className="space-y-4 mb-8 border-t border-white/20 pt-8">
                   {isAdmin && (
                     <>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-semibold mb-2">
+                        <Shield className="h-4 w-4 text-amber-400" />
+                        <span>Admin Moderation Active</span>
+                      </div>
                       <Link
                         href="/admin"
                         onClick={() => setIsMobileMenuOpen(false)}
@@ -481,6 +513,14 @@ const Header = () => {
                       >
                         <Shield className="h-5 w-5" />
                         <span>Admin Panel</span>
+                      </Link>
+                      <Link
+                        href="/gallery?upload=true"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 text-xl font-medium text-purple-400 hover:text-purple-300 transition-all hover:translate-x-2"
+                      >
+                        <UploadCloud className="h-5 w-5" />
+                        <span>Upload Artwork</span>
                       </Link>
                       <Link
                         href="/dashboard"
@@ -567,6 +607,18 @@ const Header = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Floating Admin Moderation Active Indicator */}
+      {isAdmin && (
+        <div className="fixed bottom-5 right-5 z-40 hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900/90 border border-amber-500/40 text-amber-300 text-xs font-semibold shadow-2xl backdrop-blur-md">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+          </span>
+          <Shield className="w-3.5 h-3.5 text-amber-400" />
+          <span>Admin Moderation Active</span>
         </div>
       )}
     </>

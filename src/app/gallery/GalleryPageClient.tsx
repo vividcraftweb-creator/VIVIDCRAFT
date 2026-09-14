@@ -19,6 +19,10 @@ import {
   TrendingUp,
   Image as ImageIcon,
   User,
+  Trash2,
+  UploadCloud,
+  AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,19 +67,75 @@ export default function GalleryPageClient() {
   const [selectedArtwork, setSelectedArtwork] = useState<RankedArtwork | null>(null);
   const [hoveredRating, setHoveredRating] = useState<{ [key: string]: number }>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Local state for instant optimistic updates
   const [localArtworks, setLocalArtworks] = useState<RankedArtwork[]>([]);
 
-  // Fetch current user
+  // Deletion Modal state (Admin In-Situ Moderation)
+  const [deletingArtwork, setDeletingArtwork] = useState<RankedArtwork | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Admin Upload Modal state
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadImageUrl, setUploadImageUrl] = useState('');
+  const [uploadArtistName, setUploadArtistName] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Fetch current user and check admin status
   useEffect(() => {
     setMounted(true);
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setCurrentUserId(user?.id || null);
+
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) {
+        // Check mock admin in localStorage
+        if (typeof window !== 'undefined') {
+          const localUserStr = localStorage.getItem('user');
+          if (localUserStr) {
+            try {
+              const parsed = JSON.parse(localUserStr);
+              if (parsed?.role === 'admin' || parsed?.email === 'vividcraftweb@gmail.com') {
+                setIsAdmin(true);
+                setCurrentUserId('admin-vividcraft-default-id');
+              }
+            } catch {}
+          }
+        }
+        return;
+      }
+
+      setCurrentUserId(user.id);
+      const metaRole = (user.user_metadata?.role || '').toString().toUpperCase();
+      if (metaRole === 'ADMIN' || user.email === 'vividcraftweb@gmail.com') {
+        setIsAdmin(true);
+        return;
+      }
+
+      // Check profiles table for admin role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profile?.role?.toString().toUpperCase() === 'ADMIN') {
+        setIsAdmin(true);
+      }
     }).catch(() => {
       setCurrentUserId(null);
     });
+
+    // Handle ?upload=true query parameter
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('upload') === 'true') {
+        setIsUploadOpen(true);
+      }
+    }
   }, []);
 
   // Fetch via tRPC procedure
@@ -86,12 +146,10 @@ export default function GalleryPageClient() {
     }
   );
 
-  // Mutations
   const utils = trpc.useUtils();
 
   const toggleLikeMutation = trpc.artworks.toggleLike.useMutation({
-    onError: (err, variables) => {
-      // Revert optimistic update
+    onError: (err) => {
       toast.error('Failed to update like: ' + err.message);
       refetch();
     },
@@ -270,7 +328,6 @@ export default function GalleryPageClient() {
         })
       );
 
-      // If selected in modal, update modal state too
       if (selectedArtwork && selectedArtwork.id === artworkId) {
         setSelectedArtwork((prev) =>
           prev
@@ -285,7 +342,6 @@ export default function GalleryPageClient() {
         );
       }
 
-      // Trigger mutation
       toggleLikeMutation.mutate({ artworkId });
     },
     [currentUserId, router, selectedArtwork, toggleLikeMutation]
@@ -319,10 +375,8 @@ export default function GalleryPageClient() {
             let newSum = art.averageRating * art.ratingsCount;
 
             if (previousRating !== null) {
-              // Update existing rating
               newSum = newSum - previousRating + rating;
             } else {
-              // New rating
               newRatingsCount += 1;
               newSum += rating;
             }
@@ -359,6 +413,156 @@ export default function GalleryPageClient() {
     [currentUserId, rateArtworkMutation, router, selectedArtwork]
   );
 
+  // Handle Admin Reasoned Deletion
+  const handleConfirmDelete = async () => {
+    if (!deletingArtwork) return;
+    setIsDeleting(true);
+
+    const reason = deleteReason.trim() || 'Content removed by administrator in violation of community guidelines.';
+
+    try {
+      const res = await fetch('/api/admin/delete-artwork', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          artworkId: deletingArtwork.id,
+          artistId: deletingArtwork.artist_id,
+          reason,
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to delete artwork');
+      }
+
+      // Optimistic UI removal without breaking page state
+      setLocalArtworks((prev) => prev.filter((a) => a.id !== deletingArtwork.id));
+      if (selectedArtwork && selectedArtwork.id === deletingArtwork.id) {
+        setSelectedArtwork(null);
+      }
+
+      toast.success('Artwork Removed by Admin', {
+        description: `"${deletingArtwork.title}" was removed. Deletion reason was dispatched to the artist.`,
+      });
+
+      setDeletingArtwork(null);
+      setDeleteReason('');
+      utils.artworks.getAllArtworks.invalidate();
+    } catch (err: any) {
+      console.error('Delete artwork error:', err);
+      toast.error('Failed to remove artwork: ' + err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle Admin Artwork Upload
+  const handleAdminUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadTitle.trim()) {
+      toast.error('Please enter an artwork title.');
+      return;
+    }
+
+    if (!uploadFile && !uploadImageUrl.trim()) {
+      toast.error('Please upload an image file or provide an image URL.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const supabase = createClient();
+      let finalImageUrl = uploadImageUrl.trim();
+
+      if (uploadFile) {
+        const fileExt = uploadFile.name.split('.').pop() || 'png';
+        const fileName = `admin_${crypto.randomUUID()}.${fileExt}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('artworks')
+          .upload(fileName, uploadFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadErr) {
+          throw uploadErr;
+        }
+
+        const { data } = supabase.storage.from('artworks').getPublicUrl(fileName);
+        finalImageUrl = data.publicUrl;
+      }
+
+      const newId = crypto.randomUUID();
+      const artistId = currentUserId || 'admin-vividcraft-default-id';
+      const now = new Date().toISOString();
+
+      const { error: insertError } = await supabase
+        .from('artworks')
+        .insert({
+          id: newId,
+          artist_id: artistId,
+          title: uploadTitle.trim(),
+          image_url: finalImageUrl,
+          created_at: now,
+          likes_count: 0,
+          average_rating: 0,
+          ratings_count: 0,
+        });
+
+      if (insertError) {
+        console.warn('Direct insert into artworks error, fallback to Artwork:', insertError);
+        try {
+          await supabase.from('Artwork').insert({
+            id: newId,
+            artistId: artistId,
+            title: uploadTitle.trim(),
+            imageUrl: finalImageUrl,
+            createdAt: now,
+            updatedAt: now,
+          });
+        } catch {}
+      }
+
+      const newArtwork: RankedArtwork = {
+        id: newId,
+        artist_id: artistId,
+        title: uploadTitle.trim(),
+        image_url: finalImageUrl,
+        created_at: now,
+        likesCount: 0,
+        ratingsCount: 0,
+        averageRating: 0,
+        userRating: null,
+        isLiked: false,
+        popularityScore: 0,
+        artist: {
+          id: artistId,
+          name: uploadArtistName.trim() || 'Vivid Art Curation',
+          avatar_url: null,
+          title: 'Curator / Admin',
+          role: 'ADMIN',
+        },
+      };
+
+      setLocalArtworks((prev) => [newArtwork, ...prev]);
+      toast.success('Artwork Published!', {
+        description: `"${uploadTitle.trim()}" is now live in the gallery.`,
+      });
+
+      // Reset form & close
+      setUploadTitle('');
+      setUploadImageUrl('');
+      setUploadArtistName('');
+      setUploadFile(null);
+      setIsUploadOpen(false);
+
+      utils.artworks.getAllArtworks.invalidate();
+    } catch (err: any) {
+      console.error('Artwork upload error:', err);
+      toast.error('Upload failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (!mounted) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -373,6 +577,47 @@ export default function GalleryPageClient() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-purple-600/15 via-indigo-600/10 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 -left-48 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/2 -right-48 w-96 h-96 bg-blue-900/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Admin Floating Banner (Active Session Indicator) */}
+      {isAdmin && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-amber-500/15 via-purple-500/10 to-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+              </span>
+              <ShieldCheck className="w-5 h-5 text-amber-400" />
+              <div>
+                <span className="text-sm font-bold text-white">Admin Moderation Active</span>
+                <span className="text-xs text-amber-300/80 ml-2 hidden sm:inline">
+                  You have full moderation rights to delete posts with reason and upload direct artwork.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setIsUploadOpen(true)}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs h-8 px-3 gap-1.5 shadow-md cursor-pointer"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>Upload Artwork</span>
+              </Button>
+              <Link href="/admin">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 text-xs h-8 px-3 cursor-pointer"
+                >
+                  Admin Console
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header Hero Section */}
@@ -390,9 +635,9 @@ export default function GalleryPageClient() {
             Discover ranked original creations from verified artists. Like your favorites, rate remarkable pieces, and commission top talent.
           </p>
 
-          {/* Search Bar */}
-          <div className="pt-2 max-w-xl mx-auto">
-            <div className="relative">
+          {/* Search Bar & Admin Quick Upload */}
+          <div className="pt-2 max-w-xl mx-auto flex items-center gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
               <Input
                 type="text"
@@ -404,12 +649,22 @@ export default function GalleryPageClient() {
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-2 py-1 rounded-md"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-2 py-1 rounded-md cursor-pointer"
                 >
                   Clear
                 </button>
               )}
             </div>
+
+            {isAdmin && (
+              <Button
+                onClick={() => setIsUploadOpen(true)}
+                className="h-12 bg-purple-600 hover:bg-purple-500 text-white font-semibold px-4 rounded-2xl gap-2 shadow-lg shadow-purple-600/25 cursor-pointer flex-shrink-0"
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span className="hidden sm:inline">Upload Art</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -465,7 +720,6 @@ export default function GalleryPageClient() {
             </button>
           </div>
 
-          {/* Counter info */}
           <div className="text-xs sm:text-sm text-slate-400 font-medium">
             Showing <span className="text-white font-semibold">{displayedArtworks.length}</span> artworks
           </div>
@@ -499,16 +753,15 @@ export default function GalleryPageClient() {
             <p className="text-sm text-slate-400">
               {searchQuery
                 ? `No artworks matched your search query "${searchQuery}". Try a different keyword.`
-                : 'No artworks have been uploaded yet. Artists can upload their pieces from the artist dashboard.'}
+                : 'No artworks have been uploaded yet. Artists or admins can upload pieces to start the gallery.'}
             </p>
-            {searchQuery && (
+            {isAdmin && (
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSearchQuery('')}
-                className="border-slate-700 text-white hover:bg-slate-800"
+                onClick={() => setIsUploadOpen(true)}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2"
               >
-                Reset Filter
+                <UploadCloud className="w-4 h-4" />
+                <span>Upload First Artwork</span>
               </Button>
             )}
           </div>
@@ -551,6 +804,22 @@ export default function GalleryPageClient() {
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
+                    {/* Task 2: In-situ Admin Moderation Control ("Delete Post") */}
+                    {isAdmin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingArtwork(artwork);
+                          setDeleteReason('');
+                        }}
+                        className="absolute top-3 left-3 z-30 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-bold shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
+                        title="Admin Moderation: Delete Post with Reason"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Post</span>
+                      </button>
+                    )}
+
                     {/* Top hover action: Maximize button */}
                     <button
                       onClick={(e) => {
@@ -568,7 +837,7 @@ export default function GalleryPageClient() {
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-between bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white"
                     >
-                      <span className="text-[11px] text-slate-300 font-medium">Rate this piece:</span>
+                      <span className="text-[11px] text-slate-300 font-medium">Rate:</span>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
@@ -717,12 +986,29 @@ export default function GalleryPageClient() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setSelectedArtwork(null)}
-                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setDeletingArtwork(selectedArtwork);
+                        setDeleteReason('');
+                      }}
+                      className="h-8 px-3 text-xs gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Post (Admin)</span>
+                    </Button>
+                  )}
+
+                  <button
+                    onClick={() => setSelectedArtwork(null)}
+                    className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Modal Image Display */}
@@ -745,7 +1031,7 @@ export default function GalleryPageClient() {
                     onClick={(e) => handleLike(selectedArtwork.id, e)}
                     className={`gap-2 border-slate-700 h-10 px-4 ${
                       selectedArtwork.isLiked
-                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
+                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 font-semibold'
                         : 'text-white hover:bg-rose-500/10 hover:border-rose-500/30'
                     }`}
                   >
@@ -774,12 +1060,258 @@ export default function GalleryPageClient() {
                   href={`/freelancers/${selectedArtwork.artist_id}`}
                   className="w-full sm:w-auto"
                 >
-                  <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 h-10 px-5">
+                  <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 h-10 px-5 cursor-pointer">
                     <span>Commission / Contact Artist</span>
                     <ExternalLink className="w-4 h-4" />
                   </Button>
                 </Link>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Task 2: Reasoned Artwork Deletion Modal (Admin Moderation) */}
+        {deletingArtwork && (
+          <div
+            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+            onClick={() => !isDeleting && setDeletingArtwork(null)}
+          >
+            <div
+              className="relative max-w-lg w-full bg-slate-900 border border-rose-500/30 rounded-3xl p-6 shadow-2xl shadow-rose-950/40 space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center flex-shrink-0 text-rose-400">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-white leading-snug">
+                    Remove Artwork from Gallery
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    This post will be permanently deleted and the target artist will receive an official notification detailing the reason.
+                  </p>
+                </div>
+              </div>
+
+              {/* Artwork Summary */}
+              <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getSafeArtworkUrl(deletingArtwork.image_url)}
+                  alt={deletingArtwork.title}
+                  className="w-12 h-12 rounded-lg object-cover bg-slate-900 flex-shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-white text-sm truncate">{deletingArtwork.title}</p>
+                  <p className="text-xs text-slate-500 truncate">Artist: {deletingArtwork.artist.name}</p>
+                </div>
+              </div>
+
+              {/* Reason Input */}
+              <div className="space-y-2">
+                <label htmlFor="deletion-reason" className="text-xs font-semibold text-slate-300 block">
+                  Reason for Deletion <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  id="deletion-reason"
+                  rows={3}
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  placeholder="Explain why this artwork is being removed (sent directly to the artist's notifications)..."
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500 rounded-xl p-3 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-rose-500 focus:outline-none resize-none"
+                />
+
+                {/* Preset quick chips */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    'Copyright infringement',
+                    'Inappropriate content',
+                    'Low quality / Spam',
+                    'Community guidelines violation',
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setDeleteReason(preset)}
+                      className="text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isDeleting}
+                  onClick={() => setDeletingArtwork(null)}
+                  className="border-slate-700 text-slate-300 hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDelete}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-semibold gap-2 cursor-pointer"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Deleting & Notifying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Confirm Deletion</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Task 3: Admin Artwork Upload Modal */}
+        {isUploadOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+            onClick={() => !isUploading && setIsUploadOpen(false)}
+          >
+            <div
+              className="relative max-w-lg w-full bg-slate-900 border border-purple-500/30 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-purple-950/40 space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <UploadCloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Admin Artwork Publisher</h3>
+                    <p className="text-xs text-slate-400">Publish curated artwork directly to the gallery</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !isUploading && setIsUploadOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAdminUpload} className="space-y-4">
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label htmlFor="art-title" className="text-xs font-semibold text-slate-300">
+                    Artwork Title <span className="text-purple-400">*</span>
+                  </label>
+                  <Input
+                    id="art-title"
+                    required
+                    placeholder="e.g. Celestial Symphony, Cyberpunk Metropolis"
+                    value={uploadTitle}
+                    onChange={(e) => setUploadTitle(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 text-sm h-11"
+                  />
+                </div>
+
+                {/* Artist Attribution */}
+                <div className="space-y-1.5">
+                  <label htmlFor="art-artist" className="text-xs font-semibold text-slate-300">
+                    Artist Attribution (Optional)
+                  </label>
+                  <Input
+                    id="art-artist"
+                    placeholder="e.g. Vivid Art Studio, Master Artist"
+                    value={uploadArtistName}
+                    onChange={(e) => setUploadArtistName(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 text-sm h-11"
+                  />
+                </div>
+
+                {/* File Upload OR URL */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-300 block">
+                    Artwork Image <span className="text-purple-400">*</span>
+                  </label>
+
+                  {/* File Selector */}
+                  <div className="p-4 border border-dashed border-slate-700 hover:border-purple-500 rounded-xl text-center bg-slate-950/60 transition-colors">
+                    <input
+                      type="file"
+                      id="art-file-input"
+                      accept="image/*"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="art-file-input"
+                      className="flex flex-col items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <ImageIcon className="w-7 h-7 text-purple-400" />
+                      <span className="text-xs font-medium text-purple-300">
+                        {uploadFile ? uploadFile.name : 'Click to select image file (PNG, JPG, WEBP)'}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {uploadFile ? `${(uploadFile.size / 1024).toFixed(0)} KB selected` : 'or paste direct URL below'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="h-px bg-slate-800 flex-1" />
+                    <span className="text-[10px] text-slate-500 uppercase">OR URL</span>
+                    <div className="h-px bg-slate-800 flex-1" />
+                  </div>
+
+                  <Input
+                    placeholder="https://example.com/artwork.jpg"
+                    value={uploadImageUrl}
+                    onChange={(e) => setUploadImageUrl(e.target.value)}
+                    disabled={!!uploadFile}
+                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 text-sm h-10 disabled:opacity-50"
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploading}
+                    onClick={() => setIsUploadOpen(false)}
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800 cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isUploading || (!uploadFile && !uploadImageUrl.trim()) || !uploadTitle.trim()}
+                    className="bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 cursor-pointer"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Publishing to Gallery...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="w-4 h-4" />
+                        <span>Publish Artwork</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </div>
           </div>
         )}
