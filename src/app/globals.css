@@ -888,3 +888,27 @@ gmp-place-autocomplete input.placeholder\:text-gray-500::placeholder {
   color: rgb(107 114 128) !important;
 }
 
+/* Google Translate styling: suppress top banner frame pushing body down and unwanted tooltips */
+.goog-te-banner-frame.skiptranslate,
+iframe.goog-te-banner-frame {
+  display: none !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+.goog-tooltip,
+.goog-tooltip:hover,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+}
+
+.goog-text-highlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+

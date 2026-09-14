@@ -1,5 +1,6 @@
 import "@/app/globals.css";
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 
 const inter = Inter({
@@ -421,6 +422,34 @@ export default async function RootLayout({
             </Provider>
           </SessionProvider>
         </LanguageProvider>
+
+        {/* Hidden Google Translate Element & Script */}
+        <div
+          id="google_translate_element"
+          className="hidden opacity-0 pointer-events-none fixed -top-96 -left-96 w-0 h-0 overflow-hidden"
+          aria-hidden="true"
+        />
+        <script
+          id="google-translate-init"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.googleTranslateElementInit = function() {
+                if (window.google && window.google.translate && window.google.translate.TranslateElement) {
+                  new window.google.translate.TranslateElement({
+                    pageLanguage: 'en',
+                    includedLanguages: 'si,en',
+                    autoDisplay: false
+                  }, 'google_translate_element');
+                }
+              };
+            `,
+          }}
+        />
+        <Script
+          id="google-translate-script"
+          strategy="afterInteractive"
+          src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
+        />
       </body>
     </html>
   );
