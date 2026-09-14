@@ -34,8 +34,9 @@ import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 
 const getNavigation = () => [
-  { name: 'Explore Art', href: '/jobs' },
-  { name: 'Discover Artists', href: '/freelancers' },
+  { name: 'Gallery', href: '/gallery' },
+  { name: 'Discover Artists', href: '/artists' },
+  { name: 'Explore Art', href: '/explore' },
   { name: 'How It Works', href: '/how-it-works' },
 ];
 

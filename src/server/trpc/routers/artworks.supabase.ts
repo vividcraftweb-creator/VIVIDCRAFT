@@ -224,6 +224,146 @@ export const artworksRouter = router({
       }
     }),
 
+  getAllArtworks: publicProcedure
+    .input(
+      z
+        .object({
+          sort: z.enum(['popular', 'highest_rated', 'most_liked', 'newest']).optional(),
+          search: z.string().optional(),
+        })
+        .optional()
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        const supabase = await getAuthenticatedClient(ctx);
+        const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
+
+        // 1. Fetch all artworks
+        let { data: artworks, error } = await supabase
+          .from('artworks')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error || !artworks || artworks.length === 0) {
+          // Fallback to Artwork table if artworks is empty
+          try {
+            const fallback = await supabase
+              .from('Artwork')
+              .select('*')
+              .order('createdAt', { ascending: false });
+            if (fallback.data && fallback.data.length > 0) {
+              artworks = fallback.data.map((a: any) => ({
+                id: a.id,
+                artist_id: a.artistId,
+                title: a.title,
+                image_url: a.imageUrl,
+                created_at: a.createdAt,
+              }));
+            }
+          } catch {}
+        }
+
+        if (!artworks || artworks.length === 0) {
+          return [];
+        }
+
+        const artworkIds = artworks.map((a: any) => a.id);
+        const artistIds = Array.from(new Set(artworks.map((a: any) => a.artist_id).filter(Boolean)));
+
+        // 2. Fetch likes, ratings, and artist profiles in parallel
+        const [likesRes, ratingsRes, profilesRes] = await Promise.all([
+          supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artworkIds),
+          supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artworkIds),
+          artistIds.length > 0
+            ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, title, location').in('id', artistIds)
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        const likes = likesRes.data || [];
+        const ratings = ratingsRes.data || [];
+        const profiles = profilesRes.data || [];
+
+        const profilesMap = new Map<string, any>();
+        profiles.forEach((p: any) => {
+          profilesMap.set(p.id, p);
+        });
+
+        let list = artworks.map((art: any) => {
+          const artLikes = likes.filter((l: any) => l.artwork_id === art.id);
+          const artRatings = ratings.filter((r: any) => r.artwork_id === art.id);
+          const isLiked = viewerId ? artLikes.some((l: any) => l.user_id === viewerId) : false;
+          const userRatingRow = viewerId ? artRatings.find((r: any) => r.user_id === viewerId) : null;
+          const userRating = userRatingRow ? Number(userRatingRow.rating) : null;
+
+          const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
+          const avgRating = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
+          const likesCount = artLikes.length;
+          const ratingsCount = artRatings.length;
+
+          // Smart Ranking score:
+          // Popularity combines likes count and average rating weighted by rating count
+          const popularityScore =
+            likesCount * 3 +
+            avgRating * Math.log2(ratingsCount + 2) * 4 +
+            (avgRating > 0 ? avgRating * 2 : 0);
+
+          const artistProfile = profilesMap.get(art.artist_id);
+          const artistName =
+            artistProfile?.full_name ||
+            [artistProfile?.first_name, artistProfile?.last_name].filter(Boolean).join(' ') ||
+            'Featured Artist';
+
+          return {
+            id: art.id,
+            artist_id: art.artist_id,
+            title: art.title || 'Untitled Artwork',
+            image_url: art.image_url,
+            created_at: art.created_at,
+            likesCount,
+            ratingsCount,
+            averageRating: avgRating,
+            userRating,
+            isLiked,
+            popularityScore,
+            artist: {
+              id: art.artist_id,
+              name: artistName,
+              avatar_url: artistProfile?.avatar_url || null,
+              title: artistProfile?.title || 'Artist / Creator',
+              role: artistProfile?.role || 'artist',
+            },
+          };
+        });
+
+        // 3. Search filtering
+        if (input?.search?.trim()) {
+          const s = input.search.trim().toLowerCase();
+          list = list.filter(
+            (item: any) =>
+              item.title.toLowerCase().includes(s) ||
+              item.artist.name.toLowerCase().includes(s)
+          );
+        }
+
+        // 4. Sorting
+        const sort = input?.sort || 'popular';
+        if (sort === 'popular') {
+          list.sort((a: any, b: any) => b.popularityScore - a.popularityScore || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        } else if (sort === 'highest_rated') {
+          list.sort((a: any, b: any) => b.averageRating - a.averageRating || b.ratingsCount - a.ratingsCount || b.likesCount - a.likesCount);
+        } else if (sort === 'most_liked') {
+          list.sort((a: any, b: any) => b.likesCount - a.likesCount || b.averageRating - a.averageRating);
+        } else if (sort === 'newest') {
+          list.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
+
+        return list;
+      } catch (err) {
+        console.warn('getAllArtworks exception caught gracefully:', err);
+        return [];
+      }
+    }),
+
   toggleLike: protectedProcedure
     .input(z.object({ artworkId: z.string() }))
     .mutation(async ({ ctx, input }) => {

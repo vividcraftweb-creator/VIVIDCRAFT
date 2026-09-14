@@ -909,7 +909,7 @@ export const verificationsRouter = router({
         isVerified: status === 'approved',
         hasRejected,
         allApproved,
-        rejectionReason,
+        rejectionReason: responsePayload.rejectionReason,
         totalDocs: documents.length,
       });
 

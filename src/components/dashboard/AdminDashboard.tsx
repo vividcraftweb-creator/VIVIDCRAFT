@@ -650,7 +650,7 @@ export default function AdminDashboard() {
             <div className="space-y-2">
               {displayActivities.slice(0, 5).map((activity) => {
                 const getActivityIcon = () => {
-                  switch (activity.type) {
+                  switch (activity.type as string) {
                     case 'user_registered':
                       return { icon: UserCheck, color: 'blue' };
                     case 'verification_approved':
