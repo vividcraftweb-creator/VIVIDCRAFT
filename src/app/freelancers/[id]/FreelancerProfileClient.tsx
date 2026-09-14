@@ -229,7 +229,7 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     { artistId },
     {
       enabled: !!artistId,
-      initialData: initialArtworks ?? undefined,
+      initialData: (initialArtworks as any) ?? undefined,
       staleTime: 30000,
     }
   );

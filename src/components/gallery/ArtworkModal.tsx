@@ -177,24 +177,57 @@ export function ArtworkModal({
         <div className="flex-1 flex flex-col h-full max-h-[58vh] lg:max-h-[85vh] border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900">
           {/* Header & Stats */}
           <div className="p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 space-y-4">
-            <div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/25">
+                  {artwork.art_code || '#ART-101'}
+                </span>
+                {artwork.selling_mode === 'FIXED_PRICE' && (
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 rounded-full">
+                    For Sale
+                  </span>
+                )}
+                {artwork.selling_mode === 'BIDDING' && (
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-1 rounded-full">
+                    Open Bidding
+                  </span>
+                )}
+                {artwork.selling_mode === 'NOT_FOR_SALE' && (
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 rounded-full">
+                    Not For Sale
+                  </span>
+                )}
+              </div>
+
               <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
                 {artwork.title}
               </h2>
+
+              {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
+                <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                  Price: LKR {Number(artwork.price).toLocaleString()}
+                </p>
+              )}
+              {artwork.selling_mode === 'BIDDING' && artwork.starting_bid && (
+                <p className="text-base font-bold text-amber-600 dark:text-amber-400">
+                  Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                </p>
+              )}
+
               {artistName && (
-                <p className="text-sm text-purple-600 dark:text-purple-300 mt-0.5">
+                <p className="text-sm text-purple-600 dark:text-purple-300">
                   Created by <span className="font-semibold text-zinc-900 dark:text-zinc-100">{artistName}</span>
                 </p>
               )}
             </div>
 
-            {/* Like & Star Rating Interaction Bar */}
+            {/* Like & WhatsApp Inquiry Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               {/* Like Button */}
               <button
                 type="button"
                 onClick={onToggleLike}
-                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
                   isLiked
                     ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 hover:bg-rose-100 dark:hover:bg-rose-500/30'
                     : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/30'
@@ -207,6 +240,22 @@ export function ArtworkModal({
                 />
                 <span>{likesCount} Likes</span>
               </button>
+
+              {/* WhatsApp Action Button */}
+              {(artwork.selling_mode === 'FIXED_PRICE' || artwork.selling_mode === 'BIDDING') && (
+                <a
+                  href={`https://wa.me/94783813833?text=${encodeURIComponent(
+                    artwork.selling_mode === 'BIDDING'
+                      ? `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Listed Status: Starting Bid LKR ${Number(artwork.starting_bid || 0).toLocaleString()}.`
+                      : `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Price: LKR ${Number(artwork.price || 0).toLocaleString()}.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer"
+                >
+                  <span>{artwork.selling_mode === 'BIDDING' ? 'Ask About Price / Place Bid' : 'Inquire via WhatsApp'}</span>
+                </a>
+              )}
             </div>
           </div>
 

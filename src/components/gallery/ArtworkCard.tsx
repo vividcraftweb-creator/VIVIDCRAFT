@@ -21,6 +21,21 @@ export interface ArtworkItem {
   ratingsCount: number;
   averageRating: number;
   userRating: number | null;
+  selling_mode?: string;
+  price?: number | null;
+  starting_bid?: number | null;
+  art_code?: string;
+  artist?: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+    title?: string;
+    role?: string;
+    bio?: string | null;
+    location?: string | null;
+    phone?: string | null;
+    whatsapp_number?: string | null;
+  };
 }
 
 interface ArtworkCardProps {
@@ -124,6 +139,13 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             </div>
           </div>
 
+          {/* Artwork ID Badge */}
+          <div className="absolute top-3 left-3 z-30 pointer-events-none">
+            <span className="font-mono text-[11px] font-bold px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md text-purple-300 border border-purple-500/30 shadow-md">
+              {artwork.art_code || '#ART-101'}
+            </span>
+          </div>
+
           {/* Quick Zoom Preview Icon on Hover */}
           <div className="absolute top-3 right-3 z-30 p-2 rounded-xl bg-black/50 backdrop-blur-md text-white/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 hover:text-white shadow-lg">
             <ZoomIn className="h-4 w-4" />
@@ -133,14 +155,45 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
         {/* Glassmorphism Card Overlay & Formal Details Panel */}
         <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 p-4 flex flex-col flex-1 justify-between gap-3">
           <div>
-            {/* Title */}
-            <h3
-              onClick={() => setIsZoomOpen(true)}
-              className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-              title={artwork.title}
-            >
-              {artwork.title}
-            </h3>
+            <div className="flex items-start justify-between gap-2">
+              {/* Title */}
+              <h3
+                onClick={() => setIsZoomOpen(true)}
+                className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex-1"
+                title={artwork.title}
+              >
+                {artwork.title}
+              </h3>
+
+              {/* Status Badges */}
+              {artwork.selling_mode === 'FIXED_PRICE' && (
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                  For Sale
+                </span>
+              )}
+              {artwork.selling_mode === 'BIDDING' && (
+                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                  Open Bidding
+                </span>
+              )}
+              {artwork.selling_mode === 'NOT_FOR_SALE' && (
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                  Not For Sale
+                </span>
+              )}
+            </div>
+
+            {/* Price / Starting Bid Line */}
+            {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                Price: LKR {Number(artwork.price).toLocaleString()}
+              </p>
+            )}
+            {artwork.selling_mode === 'BIDDING' && artwork.starting_bid && (
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
+                Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+              </p>
+            )}
 
             {/* Artist Badge */}
             {artistName && (

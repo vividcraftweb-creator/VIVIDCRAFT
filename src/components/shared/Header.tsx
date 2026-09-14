@@ -37,6 +37,7 @@ import { useScrollDirection } from '@/hooks/useScrollDirection';
 
 const getNavigation = () => [
   { name: 'Gallery', href: '/gallery' },
+  { name: 'Bidding', href: '/bidding' },
   { name: 'Discover Artists', href: '/artists' },
   { name: 'Explore Art', href: '/explore' },
   { name: 'How It Works', href: '/how-it-works' },

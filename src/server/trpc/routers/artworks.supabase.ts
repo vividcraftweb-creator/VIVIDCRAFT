@@ -45,11 +45,13 @@ export const artworksRouter = router({
         .select('artwork_id, rating')
         .in('artwork_id', artworkIds);
 
-      return artworks.map((art: any) => {
+      return artworks.map((art: any, index: number) => {
         const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
         const artRatings = (ratings || []).filter((r: any) => r.artwork_id === art.id);
         const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
         const avgRating = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
+        const rawCode = art.art_code;
+        const artCode = rawCode ? (rawCode.startsWith('#') ? rawCode : `#${rawCode}`) : `#ART-${101 + index}`;
 
         return {
           id: art.id,
@@ -60,6 +62,10 @@ export const artworksRouter = router({
           likesCount: artLikes.length,
           ratingsCount: artRatings.length,
           averageRating: avgRating,
+          selling_mode: art.selling_mode || 'NOT_FOR_SALE',
+          price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
+          starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
+          art_code: artCode,
         };
       });
     } catch (err) {
@@ -73,6 +79,9 @@ export const artworksRouter = router({
       z.object({
         title: z.string().min(1, 'Title is required'),
         imageUrl: z.string().url('A valid image URL is required'),
+        sellingMode: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).default('NOT_FOR_SALE').optional(),
+        price: z.number().nullable().optional(),
+        startingBid: z.number().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -89,7 +98,22 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
-      const { data, error } = await supabase
+      const sellingMode = input.sellingMode || 'NOT_FOR_SALE';
+      const price = sellingMode === 'FIXED_PRICE' ? (input.price ?? null) : null;
+      const startingBid = sellingMode === 'BIDDING' ? (input.startingBid ?? null) : null;
+
+      // Generate sequential Artwork ID (e.g., #ART-104)
+      let artCode = '#ART-101';
+      try {
+        const countRes = await supabase.from('artworks').select('*', { count: 'exact', head: true });
+        const count = countRes.count || 0;
+        artCode = `#ART-${101 + count}`;
+      } catch {
+        const hash = Math.abs(id.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 0)) % 900 + 100;
+        artCode = `#ART-${hash}`;
+      }
+
+      let res = await supabase
         .from('artworks')
         .insert({
           id,
@@ -97,19 +121,44 @@ export const artworksRouter = router({
           title: input.title.trim(),
           image_url: input.imageUrl,
           created_at: new Date().toISOString(),
+          selling_mode: sellingMode,
+          price,
+          starting_bid: startingBid,
+          art_code: artCode,
         })
         .select()
         .single();
 
-      if (error) {
-        console.error('createArtwork error:', error);
+      if (res.error) {
+        console.warn('createArtwork full insert error, trying basic insert fallback:', res.error);
+        res = await supabase
+          .from('artworks')
+          .insert({
+            id,
+            artist_id: artistId,
+            title: input.title.trim(),
+            image_url: input.imageUrl,
+            created_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+      }
+
+      if (res.error) {
+        console.error('createArtwork error:', res.error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: error.message || 'Failed to create artwork',
+          message: res.error.message || 'Failed to create artwork',
         });
       }
 
-      return data;
+      return {
+        ...res.data,
+        selling_mode: res.data?.selling_mode || sellingMode,
+        price: res.data?.price ?? price,
+        starting_bid: res.data?.starting_bid ?? startingBid,
+        art_code: res.data?.art_code || artCode,
+      };
     }),
 
   deleteArtwork: protectedProcedure
@@ -194,7 +243,7 @@ export const artworksRouter = router({
           .select('artwork_id, user_id, rating')
           .in('artwork_id', artworkIds);
 
-        return artworks.map((art: any) => {
+        return artworks.map((art: any, index: number) => {
           const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
           const artRatings = (ratings || []).filter((r: any) => r.artwork_id === art.id);
 
@@ -204,6 +253,8 @@ export const artworksRouter = router({
 
           const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
           const avgRating = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
+          const rawCode = art.art_code;
+          const artCode = rawCode ? (rawCode.startsWith('#') ? rawCode : `#${rawCode}`) : `#ART-${101 + index}`;
 
           return {
             id: art.id,
@@ -216,6 +267,10 @@ export const artworksRouter = router({
             ratingsCount: artRatings.length,
             averageRating: avgRating,
             userRating,
+            selling_mode: art.selling_mode || 'NOT_FOR_SALE',
+            price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
+            starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
+            art_code: artCode,
           };
         });
       } catch (err) {
@@ -228,8 +283,9 @@ export const artworksRouter = router({
     .input(
       z
         .object({
-          sort: z.enum(['popular', 'highest_rated', 'most_liked', 'newest']).optional(),
+          sort: z.enum(['popular', 'highest_rated', 'most_liked', 'newest', 'price_low', 'price_high', 'bid_low', 'bid_high']).optional(),
           search: z.string().optional(),
+          mode: z.enum(['ALL', 'GALLERY', 'BIDDING']).optional(),
         })
         .optional()
     )
@@ -258,6 +314,10 @@ export const artworksRouter = router({
                 title: a.title,
                 image_url: a.imageUrl,
                 created_at: a.createdAt,
+                selling_mode: a.selling_mode || a.sellingMode || 'NOT_FOR_SALE',
+                price: a.price ?? null,
+                starting_bid: a.starting_bid ?? a.startingBid ?? null,
+                art_code: a.art_code ?? a.artCode ?? null,
               }));
             }
           } catch {}
@@ -270,12 +330,12 @@ export const artworksRouter = router({
         const artworkIds = artworks.map((a: any) => a.id);
         const artistIds = Array.from(new Set(artworks.map((a: any) => a.artist_id).filter(Boolean)));
 
-        // 2. Fetch likes, ratings, and artist profiles in parallel
+        // 2. Fetch likes, ratings, and real artist profiles in parallel
         const [likesRes, ratingsRes, profilesRes] = await Promise.all([
           supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artworkIds),
           supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artworkIds),
           artistIds.length > 0
-            ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, title, location').in('id', artistIds)
+            ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, title, location, bio, phone, whatsapp_number, email').in('id', artistIds)
             : Promise.resolve({ data: [] }),
         ]);
 
@@ -288,7 +348,7 @@ export const artworksRouter = router({
           profilesMap.set(p.id, p);
         });
 
-        let list = artworks.map((art: any) => {
+        let list = artworks.map((art: any, index: number) => {
           const artLikes = likes.filter((l: any) => l.artwork_id === art.id);
           const artRatings = ratings.filter((r: any) => r.artwork_id === art.id);
           const isLiked = viewerId ? artLikes.some((l: any) => l.user_id === viewerId) : false;
@@ -301,17 +361,31 @@ export const artworksRouter = router({
           const ratingsCount = artRatings.length;
 
           // Smart Ranking score:
-          // Popularity combines likes count and average rating weighted by rating count
           const popularityScore =
             likesCount * 3 +
             avgRating * Math.log2(ratingsCount + 2) * 4 +
             (avgRating > 0 ? avgRating * 2 : 0);
 
+          // Real Artist Profile Details
           const artistProfile = profilesMap.get(art.artist_id);
-          const artistName =
-            artistProfile?.full_name ||
-            [artistProfile?.first_name, artistProfile?.last_name].filter(Boolean).join(' ') ||
-            'Featured Artist';
+          const profileFullName = (artistProfile?.full_name || '').trim();
+          const combinedFirstLast = [artistProfile?.first_name, artistProfile?.last_name].filter(Boolean).join(' ').trim();
+          const emailPrefix = artistProfile?.email ? artistProfile.email.split('@')[0] : '';
+          const artistName = profileFullName || combinedFirstLast || emailPrefix || 'Artist';
+
+          // Formatted Artwork ID (e.g. #ART-104)
+          const rawArtCode = art.art_code;
+          let artCode = '';
+          if (rawArtCode && typeof rawArtCode === 'string') {
+            artCode = rawArtCode.startsWith('#') ? rawArtCode : `#${rawArtCode}`;
+          } else {
+            const hash = Math.abs(art.id.split('').reduce((acc: number, c: string) => (acc * 31 + c.charCodeAt(0)) | 0, 0)) % 900 + 100;
+            artCode = `#ART-${hash}`;
+          }
+
+          const sellingMode = art.selling_mode || 'NOT_FOR_SALE';
+          const price = art.price !== undefined && art.price !== null ? Number(art.price) : null;
+          const startingBid = art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null;
 
           return {
             id: art.id,
@@ -325,27 +399,43 @@ export const artworksRouter = router({
             userRating,
             isLiked,
             popularityScore,
+            selling_mode: sellingMode,
+            price,
+            starting_bid: startingBid,
+            art_code: artCode,
             artist: {
               id: art.artist_id,
               name: artistName,
               avatar_url: artistProfile?.avatar_url || null,
               title: artistProfile?.title || 'Artist / Creator',
               role: artistProfile?.role || 'artist',
+              bio: artistProfile?.bio || null,
+              location: artistProfile?.location || null,
+              phone: artistProfile?.phone || null,
+              whatsapp_number: artistProfile?.whatsapp_number || artistProfile?.phone || null,
             },
           };
         });
 
-        // 3. Search filtering
+        // 3. Mode filtering (Gallery vs Bidding)
+        if (input?.mode === 'GALLERY') {
+          list = list.filter((item: any) => item.selling_mode !== 'BIDDING');
+        } else if (input?.mode === 'BIDDING') {
+          list = list.filter((item: any) => item.selling_mode === 'BIDDING');
+        }
+
+        // 4. Search filtering
         if (input?.search?.trim()) {
           const s = input.search.trim().toLowerCase();
           list = list.filter(
             (item: any) =>
               item.title.toLowerCase().includes(s) ||
-              item.artist.name.toLowerCase().includes(s)
+              item.artist.name.toLowerCase().includes(s) ||
+              item.art_code.toLowerCase().includes(s)
           );
         }
 
-        // 4. Sorting
+        // 5. Sorting
         const sort = input?.sort || 'popular';
         if (sort === 'popular') {
           list.sort((a: any, b: any) => b.popularityScore - a.popularityScore || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -355,6 +445,14 @@ export const artworksRouter = router({
           list.sort((a: any, b: any) => b.likesCount - a.likesCount || b.averageRating - a.averageRating);
         } else if (sort === 'newest') {
           list.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        } else if (sort === 'price_low') {
+          list.sort((a: any, b: any) => (a.price ?? 0) - (b.price ?? 0));
+        } else if (sort === 'price_high') {
+          list.sort((a: any, b: any) => (b.price ?? 0) - (a.price ?? 0));
+        } else if (sort === 'bid_low') {
+          list.sort((a: any, b: any) => (a.starting_bid ?? 0) - (b.starting_bid ?? 0));
+        } else if (sort === 'bid_high') {
+          list.sort((a: any, b: any) => (b.starting_bid ?? 0) - (a.starting_bid ?? 0));
         }
 
         return list;

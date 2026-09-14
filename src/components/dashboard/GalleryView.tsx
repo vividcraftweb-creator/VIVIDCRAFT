@@ -12,16 +12,25 @@ import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-plac
 export default function GalleryView() {
   const [isUploading, setIsUploading] = useState(false);
   const [title, setTitle] = useState('');
+  const [sellingMode, setSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('NOT_FOR_SALE');
+  const [price, setPrice] = useState('');
+  const [startingBid, setStartingBid] = useState('');
   
   const utils = trpc.useUtils();
   const { data: artworks, isLoading } = trpc.artworks.getMyArtworks.useQuery();
   const safeArtworks = Array.isArray(artworks) ? artworks : [];
 
   const createArtwork = trpc.artworks.createArtwork.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       utils.artworks.getMyArtworks.invalidate();
-      toast.success('Artwork added to portfolio successfully!');
+      const targetDestination = sellingMode === 'BIDDING' ? 'Bidding page (/bidding)' : 'Gallery (/gallery)';
+      toast.success('Artwork added successfully!', {
+        description: `Your piece is now live in the ${targetDestination}.`,
+      });
       setTitle('');
+      setPrice('');
+      setStartingBid('');
+      setSellingMode('NOT_FOR_SALE');
     },
     onError: (error) => {
       toast.error(`Failed to add artwork: ${error.message}`);
@@ -44,6 +53,16 @@ export default function GalleryView() {
 
     if (!title.trim()) {
       toast.error('Please enter a title for your artwork before uploading.');
+      return;
+    }
+
+    if (sellingMode === 'FIXED_PRICE' && (!price || Number(price) <= 0)) {
+      toast.error('Please enter a valid price amount in LKR for Fixed Price selling.');
+      return;
+    }
+
+    if (sellingMode === 'BIDDING' && (!startingBid || Number(startingBid) <= 0)) {
+      toast.error('Please enter a valid starting bid amount in LKR for Bidding.');
       return;
     }
 
@@ -72,6 +91,9 @@ export default function GalleryView() {
       await createArtwork.mutateAsync({
         title: title.trim(),
         imageUrl: publicUrl,
+        sellingMode,
+        price: sellingMode === 'FIXED_PRICE' && price ? Number(price) : null,
+        startingBid: sellingMode === 'BIDDING' && startingBid ? Number(startingBid) : null,
       });
 
     } catch (error: any) {
@@ -114,7 +136,7 @@ export default function GalleryView() {
         </div>
 
         {/* Add new image */}
-        <div className="flex flex-col gap-3 mb-8 bg-slate-950/60 p-5 rounded-2xl border border-slate-800">
+        <div className="flex flex-col gap-4 mb-8 bg-slate-950/60 p-5 rounded-2xl border border-slate-800">
           <label htmlFor="artwork-title" className="text-sm font-medium text-white/90">
             Add New Artwork to Portfolio
           </label>
@@ -126,7 +148,101 @@ export default function GalleryView() {
             onChange={(e) => setTitle(e.target.value)}
             className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-11"
           />
-          <div className="flex flex-wrap items-center gap-4 mt-1">
+
+          {/* Selling Options Configuration */}
+          <div className="space-y-3 pt-1">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+              Selling Mode & Routing
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setSellingMode('NOT_FOR_SALE')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  sellingMode === 'NOT_FOR_SALE'
+                    ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/50'
+                    : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                }`}
+              >
+                <div className="text-sm font-semibold">Not For Sale</div>
+                <div className="text-xs text-slate-400 mt-0.5">Display only in /gallery</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSellingMode('FIXED_PRICE')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  sellingMode === 'FIXED_PRICE'
+                    ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/50'
+                    : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                }`}
+              >
+                <div className="text-sm font-semibold text-emerald-400">Fixed Price</div>
+                <div className="text-xs text-slate-400 mt-0.5">Appears in /gallery</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSellingMode('BIDDING')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  sellingMode === 'BIDDING'
+                    ? 'bg-amber-600/20 border-amber-500 text-white shadow-sm ring-1 ring-amber-500/50'
+                    : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                }`}
+              >
+                <div className="text-sm font-semibold text-amber-400">Open Bidding</div>
+                <div className="text-xs text-slate-400 mt-0.5">Exclusively in /bidding</div>
+              </button>
+            </div>
+
+            {/* Conditional Input for Fixed Price */}
+            {sellingMode === 'FIXED_PRICE' && (
+              <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-1.5">
+                <label htmlFor="price-amount" className="text-xs font-semibold text-emerald-300 block">
+                  Price Amount (LKR) *
+                </label>
+                <Input
+                  id="price-amount"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 75000"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="bg-slate-950 border-emerald-500/40 text-white placeholder:text-slate-500 h-10"
+                />
+                <p className="text-[11px] text-emerald-400/80">
+                  {price && Number(price) > 0 ? `Listed Price: LKR ${Number(price).toLocaleString()}` : 'Enter the purchase price in Sri Lankan Rupees (LKR).'}
+                </p>
+              </div>
+            )}
+
+            {/* Conditional Input for Bidding */}
+            {sellingMode === 'BIDDING' && (
+              <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 space-y-1.5">
+                <label htmlFor="bid-amount" className="text-xs font-semibold text-amber-300 block">
+                  Starting Bid Amount (LKR) *
+                </label>
+                <Input
+                  id="bid-amount"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 50000"
+                  value={startingBid}
+                  onChange={(e) => setStartingBid(e.target.value)}
+                  className="bg-slate-950 border-amber-500/40 text-white placeholder:text-slate-500 h-10"
+                />
+                <p className="text-[11px] text-amber-400/80">
+                  {startingBid && Number(startingBid) > 0 ? `Starting Bid: LKR ${Number(startingBid).toLocaleString()}` : 'Enter the opening bid amount in Sri Lankan Rupees (LKR).'}
+                </p>
+              </div>
+            )}
+
+            {sellingMode === 'NOT_FOR_SALE' && (
+              <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
+                Marked as display only. Will appear in public Gallery for portfolio presentation.
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 mt-2">
             <Button
               asChild
               disabled={isUploading || createArtwork.isPending || !title.trim()}
@@ -140,7 +256,7 @@ export default function GalleryView() {
                 ) : (
                   <UploadCloud className="h-4 w-4 mr-2" />
                 )}
-                {isUploading ? 'Uploading to Storage...' : 'Upload Image File'}
+                {isUploading ? 'Uploading to Storage...' : 'Upload Image File & Publish'}
                 <input
                   id="artwork-file"
                   name="artwork-file"
@@ -153,7 +269,7 @@ export default function GalleryView() {
               </label>
             </Button>
             <p className="text-xs text-slate-400">
-              Provide an artwork title first, then select an image file (PNG, JPG, WEBP).
+              Select an image file (PNG, JPG, WEBP) to publish your artwork.
             </p>
           </div>
         </div>
@@ -163,6 +279,9 @@ export default function GalleryView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {safeArtworks.map((artwork: any) => {
               const imgUrl = artwork.image_url || artwork.imageUrl;
+              const mode = artwork.selling_mode || 'NOT_FOR_SALE';
+              const artCode = artwork.art_code || '#ART-101';
+
               return (
                 <div
                   key={artwork.id}
@@ -180,13 +299,21 @@ export default function GalleryView() {
                         target.src = DEFAULT_ARTWORK_PLACEHOLDER;
                       }}
                     />
+
+                    {/* Artwork ID Badge */}
+                    <div className="absolute top-3 left-3 z-10">
+                      <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md text-purple-300 border border-purple-500/30 shadow-md">
+                        {artCode}
+                      </span>
+                    </div>
+
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                       <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => handleRemoveImage(artwork.id)}
                         disabled={deleteArtwork.isPending}
-                        className="gap-2 self-end bg-rose-600 hover:bg-rose-700 text-white"
+                        className="gap-2 self-end bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
                       >
                         <Trash2 className="h-4 w-4" />
                         Delete
@@ -194,10 +321,43 @@ export default function GalleryView() {
                     </div>
                   </div>
                   
-                  <div className="p-4 flex flex-col flex-1 justify-between bg-slate-950/80">
-                    <h3 className="text-white font-semibold text-base truncate mb-2">
-                      {artwork.title}
-                    </h3>
+                  <div className="p-4 flex flex-col flex-1 justify-between bg-slate-950/80 gap-3">
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <h3 className="text-white font-semibold text-base truncate flex-1">
+                          {artwork.title}
+                        </h3>
+
+                        {/* Status Badges */}
+                        {mode === 'FIXED_PRICE' && (
+                          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                            For Sale
+                          </span>
+                        )}
+                        {mode === 'BIDDING' && (
+                          <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                            Open Bidding
+                          </span>
+                        )}
+                        {mode === 'NOT_FOR_SALE' && (
+                          <span className="text-[11px] font-semibold text-slate-400 bg-slate-500/15 border border-slate-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                            Not For Sale
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Pricing / Bid amount display */}
+                      {mode === 'FIXED_PRICE' && artwork.price && (
+                        <p className="text-xs font-bold text-emerald-400">
+                          Price: LKR {Number(artwork.price).toLocaleString()}
+                        </p>
+                      )}
+                      {mode === 'BIDDING' && artwork.starting_bid && (
+                        <p className="text-xs font-bold text-amber-400">
+                          Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
 
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">
                       <span className="flex items-center gap-1 text-rose-400">

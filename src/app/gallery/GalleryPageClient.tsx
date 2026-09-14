@@ -42,6 +42,10 @@ interface ArtworkArtist {
   avatar_url: string | null;
   title?: string;
   role?: string;
+  bio?: string | null;
+  location?: string | null;
+  phone?: string | null;
+  whatsapp_number?: string | null;
 }
 
 interface RankedArtwork {
@@ -56,6 +60,10 @@ interface RankedArtwork {
   userRating: number | null;
   isLiked: boolean;
   popularityScore?: number;
+  selling_mode?: string;
+  price?: number | null;
+  starting_bid?: number | null;
+  art_code?: string;
   artist: ArtworkArtist;
 }
 
@@ -83,6 +91,9 @@ export default function GalleryPageClient() {
   const [uploadImageUrl, setUploadImageUrl] = useState('');
   const [uploadArtistName, setUploadArtistName] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadSellingMode, setUploadSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('NOT_FOR_SALE');
+  const [uploadPrice, setUploadPrice] = useState('');
+  const [uploadStartingBid, setUploadStartingBid] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
   // Fetch current user and check admin status
@@ -140,7 +151,7 @@ export default function GalleryPageClient() {
 
   // Fetch via tRPC procedure
   const { data: remoteArtworks, isLoading, refetch } = trpc.artworks.getAllArtworks.useQuery(
-    { sort: activeSort, search: searchQuery },
+    { sort: activeSort, search: searchQuery, mode: 'GALLERY' },
     {
       refetchOnWindowFocus: false,
     }
@@ -197,7 +208,7 @@ export default function GalleryPageClient() {
               supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artIds),
               supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artIds),
               artistIds.length > 0
-                ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, title').in('id', artistIds)
+                ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, title, bio, location, phone, whatsapp_number, email').in('id', artistIds)
                 : Promise.resolve({ data: [] }),
             ]);
 
@@ -207,7 +218,7 @@ export default function GalleryPageClient() {
             const pMap = new Map<string, any>();
             profiles.forEach((p: any) => pMap.set(p.id, p));
 
-            const mapped: RankedArtwork[] = arts.map((art: any) => {
+            const mapped: RankedArtwork[] = arts.map((art: any, index: number) => {
               const artLikes = likes.filter((l: any) => l.artwork_id === art.id);
               const artRatings = ratings.filter((r: any) => r.artwork_id === art.id);
               const isLiked = currentUserId ? artLikes.some((l: any) => l.user_id === currentUserId) : false;
@@ -216,7 +227,21 @@ export default function GalleryPageClient() {
               const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
               const avg = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
               const prof = pMap.get(art.artist_id);
-              const artistName = prof?.full_name || [prof?.first_name, prof?.last_name].filter(Boolean).join(' ') || 'Featured Artist';
+              const profileFullName = (prof?.full_name || '').trim();
+              const combinedFirstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(' ').trim();
+              const emailPrefix = prof?.email ? prof.email.split('@')[0] : '';
+              const artistName = profileFullName || combinedFirstLast || emailPrefix || 'Artist';
+
+              const rawArtCode = art.art_code;
+              let artCode = '';
+              if (rawArtCode && typeof rawArtCode === 'string') {
+                artCode = rawArtCode.startsWith('#') ? rawArtCode : `#${rawArtCode}`;
+              } else {
+                const hash = Math.abs(art.id.split('').reduce((acc: number, c: string) => (acc * 31 + c.charCodeAt(0)) | 0, 0)) % 900 + 100;
+                artCode = `#ART-${hash}`;
+              }
+
+              const sellingMode = art.selling_mode || 'NOT_FOR_SALE';
 
               return {
                 id: art.id,
@@ -230,12 +255,20 @@ export default function GalleryPageClient() {
                 userRating: userRatingRow ? Number(userRatingRow.rating) : null,
                 isLiked,
                 popularityScore: artLikes.length * 3 + avg * Math.log2(artRatings.length + 2) * 4,
+                selling_mode: sellingMode,
+                price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
+                starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
+                art_code: artCode,
                 artist: {
                   id: art.artist_id,
                   name: artistName,
                   avatar_url: prof?.avatar_url || null,
                   title: prof?.title || 'Artist / Creator',
                   role: prof?.role || 'artist',
+                  bio: prof?.bio || null,
+                  location: prof?.location || null,
+                  phone: prof?.phone || null,
+                  whatsapp_number: prof?.whatsapp_number || prof?.phone || null,
                 },
               };
             });
@@ -251,7 +284,8 @@ export default function GalleryPageClient() {
 
   // Client-side filtering and sorting for instant responsiveness
   const displayedArtworks = useMemo(() => {
-    let list = [...localArtworks];
+    // Exclude Bidding items from main Gallery
+    let list = localArtworks.filter((art) => art.selling_mode !== 'BIDDING');
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -470,6 +504,16 @@ export default function GalleryPageClient() {
       return;
     }
 
+    if (uploadSellingMode === 'FIXED_PRICE' && (!uploadPrice || Number(uploadPrice) <= 0)) {
+      toast.error('Please enter a valid price amount in LKR.');
+      return;
+    }
+
+    if (uploadSellingMode === 'BIDDING' && (!uploadStartingBid || Number(uploadStartingBid) <= 0)) {
+      toast.error('Please enter a valid starting bid amount in LKR.');
+      return;
+    }
+
     setIsUploading(true);
     try {
       const supabase = createClient();
@@ -494,6 +538,19 @@ export default function GalleryPageClient() {
       const artistId = currentUserId || 'admin-vividcraft-default-id';
       const now = new Date().toISOString();
 
+      // Formatted Artwork ID (e.g., #ART-104)
+      let artCode = '#ART-101';
+      try {
+        const { count } = await supabase.from('artworks').select('*', { count: 'exact', head: true });
+        artCode = `#ART-${101 + (count || 0)}`;
+      } catch {
+        const hash = Math.abs(newId.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 0)) % 900 + 100;
+        artCode = `#ART-${hash}`;
+      }
+
+      const price = uploadSellingMode === 'FIXED_PRICE' && uploadPrice ? Number(uploadPrice) : null;
+      const startingBid = uploadSellingMode === 'BIDDING' && uploadStartingBid ? Number(uploadStartingBid) : null;
+
       const { error: insertError } = await supabase
         .from('artworks')
         .insert({
@@ -505,18 +562,21 @@ export default function GalleryPageClient() {
           likes_count: 0,
           average_rating: 0,
           ratings_count: 0,
+          selling_mode: uploadSellingMode,
+          price,
+          starting_bid: startingBid,
+          art_code: artCode,
         });
 
       if (insertError) {
-        console.warn('Direct insert into artworks error, fallback to Artwork:', insertError);
+        console.warn('Direct insert into artworks error, fallback to basic insert:', insertError);
         try {
-          await supabase.from('Artwork').insert({
+          await supabase.from('artworks').insert({
             id: newId,
-            artistId: artistId,
+            artist_id: artistId,
             title: uploadTitle.trim(),
-            imageUrl: finalImageUrl,
-            createdAt: now,
-            updatedAt: now,
+            image_url: finalImageUrl,
+            created_at: now,
           });
         } catch {}
       }
@@ -533,6 +593,10 @@ export default function GalleryPageClient() {
         userRating: null,
         isLiked: false,
         popularityScore: 0,
+        selling_mode: uploadSellingMode,
+        price,
+        starting_bid: startingBid,
+        art_code: artCode,
         artist: {
           id: artistId,
           name: uploadArtistName.trim() || 'Vivid Art Curation',
@@ -542,16 +606,25 @@ export default function GalleryPageClient() {
         },
       };
 
-      setLocalArtworks((prev) => [newArtwork, ...prev]);
-      toast.success('Artwork Published!', {
-        description: `"${uploadTitle.trim()}" is now live in the gallery.`,
-      });
+      if (uploadSellingMode !== 'BIDDING') {
+        setLocalArtworks((prev) => [newArtwork, ...prev]);
+        toast.success('Artwork Published to Gallery!', {
+          description: `"${uploadTitle.trim()}" (${artCode}) is now live in the gallery.`,
+        });
+      } else {
+        toast.success('Artwork Published to Bidding!', {
+          description: `"${uploadTitle.trim()}" (${artCode}) is now live in the Bidding gallery (/bidding).`,
+        });
+      }
 
       // Reset form & close
       setUploadTitle('');
       setUploadImageUrl('');
       setUploadArtistName('');
       setUploadFile(null);
+      setUploadSellingMode('NOT_FOR_SALE');
+      setUploadPrice('');
+      setUploadStartingBid('');
       setIsUploadOpen(false);
 
       utils.artworks.getAllArtworks.invalidate();
@@ -822,6 +895,13 @@ export default function GalleryPageClient() {
                       </div>
                     </div>
 
+                    {/* Formatted Artwork ID Badge */}
+                    <div className="absolute top-3 left-3 z-20 pointer-events-none">
+                      <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md text-purple-300 border border-purple-500/30 shadow-md">
+                        {artwork.art_code || '#ART-101'}
+                      </span>
+                    </div>
+
                     {/* Task 2: In-situ Admin Moderation Control ("Delete Post") */}
                     {isAdmin && (
                       <button
@@ -830,7 +910,7 @@ export default function GalleryPageClient() {
                           setDeletingArtwork(artwork);
                           setDeleteReason('');
                         }}
-                        className="absolute top-3 left-3 z-30 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-bold shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
+                        className="absolute top-11 left-3 z-30 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-bold shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
                         title="Admin Moderation: Delete Post with Reason"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -888,14 +968,34 @@ export default function GalleryPageClient() {
                   {/* Glassmorphism Card Overlay & Formal Details Panel */}
                   <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 p-4 flex flex-col flex-1 justify-between gap-3">
                     <div>
-                      {/* Title */}
-                      <h3
-                        onClick={() => setSelectedArtwork(artwork)}
-                        className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-                        title={artwork.title}
-                      >
-                        {artwork.title}
-                      </h3>
+                      {/* Title & Status Badge Row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <h3
+                          onClick={() => setSelectedArtwork(artwork)}
+                          className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex-1"
+                          title={artwork.title}
+                        >
+                          {artwork.title}
+                        </h3>
+
+                        {artwork.selling_mode === 'FIXED_PRICE' && (
+                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                            For Sale
+                          </span>
+                        )}
+                        {artwork.selling_mode === 'NOT_FOR_SALE' && (
+                          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                            Not For Sale
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Price Display for Fixed Price Artworks */}
+                      {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                          Price: LKR {Number(artwork.price).toLocaleString()}
+                        </p>
+                      )}
 
                       {/* Artist Row */}
                       <div className="flex items-center gap-2.5 mt-2">
@@ -928,42 +1028,55 @@ export default function GalleryPageClient() {
                     </div>
 
                     {/* Stats & Actions Footer (Rounded Pill Containers) */}
-                    <div className="pt-3 border-t border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between text-xs">
-                      {/* Interactive Like Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleLike(artwork.id, e)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                          artwork.isLiked
-                            ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 shadow-sm'
-                            : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/40'
-                        }`}
-                        title={artwork.isLiked ? 'Unlike artwork' : 'Like artwork'}
-                      >
-                        <Heart
-                          className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
-                            artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500'
+                    <div className="pt-3 border-t border-slate-200/50 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        {/* Interactive Like Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleLike(artwork.id, e)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                            artwork.isLiked
+                              ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 shadow-sm'
+                              : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/40'
                           }`}
-                        />
-                        <span>{artwork.likesCount}</span>
-                        <span className="sr-only">likes</span>
-                      </button>
+                          title={artwork.isLiked ? 'Unlike artwork' : 'Like artwork'}
+                        >
+                          <Heart
+                            className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
+                              artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500'
+                            }`}
+                          />
+                          <span>{artwork.likesCount}</span>
+                          <span className="sr-only">likes</span>
+                        </button>
 
-                      {/* Average Rating Display */}
-                      <div
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-500/25 shadow-sm"
-                        title={`Average rating: ${artwork.averageRating} from ${artwork.ratingsCount} review(s)`}
-                      >
-                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                        <span className="font-semibold text-slate-900 dark:text-white">
-                          {artwork.averageRating > 0 ? artwork.averageRating.toFixed(1) : '—'}
-                        </span>
-                        {artwork.ratingsCount > 0 && (
-                          <span className="text-amber-600/75 dark:text-amber-400/75 text-[10px] font-normal">
-                            ({artwork.ratingsCount})
+                        {/* Average Rating Display */}
+                        <div
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-500/25 shadow-sm"
+                          title={`Average rating: ${artwork.averageRating} from ${artwork.ratingsCount} review(s)`}
+                        >
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          <span className="font-semibold text-slate-900 dark:text-white">
+                            {artwork.averageRating > 0 ? artwork.averageRating.toFixed(1) : '—'}
                           </span>
-                        )}
+                        </div>
                       </div>
+
+                      {/* WhatsApp Inquiry Action for Fixed Price Artworks */}
+                      {artwork.selling_mode === 'FIXED_PRICE' && (
+                        <a
+                          href={`https://wa.me/${artwork.artist.whatsapp_number ? artwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
+                            `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artwork.artist.name}. Price: LKR ${Number(artwork.price || 0).toLocaleString()}.`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-colors cursor-pointer"
+                          title="Ask about price or buy on WhatsApp"
+                        >
+                          <span>Ask Price</span>
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -984,8 +1097,8 @@ export default function GalleryPageClient() {
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/50">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-9 h-9 ring-1 ring-purple-500/30">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="w-10 h-10 ring-1 ring-purple-500/30 flex-shrink-0">
                     <AvatarImage
                       src={getProfilePictureUrl(selectedArtwork.artist_id, selectedArtwork.artist.avatar_url)}
                       alt={selectedArtwork.artist.name}
@@ -994,16 +1107,38 @@ export default function GalleryPageClient() {
                       {selectedArtwork.artist.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
+                        {selectedArtwork.art_code || '#ART-101'}
+                      </span>
+                      {selectedArtwork.selling_mode === 'FIXED_PRICE' && (
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full">
+                          For Sale
+                        </span>
+                      )}
+                      {selectedArtwork.selling_mode === 'NOT_FOR_SALE' && (
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full">
+                          Not For Sale
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight truncate">
                       {selectedArtwork.title}
                     </h4>
-                    <Link
-                      href={`/freelancers/${selectedArtwork.artist_id}`}
-                      className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline"
-                    >
-                      by {selectedArtwork.artist.name}
-                    </Link>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Link
+                        href={`/freelancers/${selectedArtwork.artist_id}`}
+                        className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline"
+                      >
+                        by {selectedArtwork.artist.name}
+                      </Link>
+                      {selectedArtwork.selling_mode === 'FIXED_PRICE' && selectedArtwork.price && (
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          • Price: LKR {Number(selectedArtwork.price).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1076,16 +1211,34 @@ export default function GalleryPageClient() {
                   </div>
                 </div>
 
-                {/* Direct Action: View Profile */}
-                <Link
-                  href={`/freelancers/${selectedArtwork.artist_id}`}
-                  className="w-full sm:w-auto"
-                >
-                  <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 h-10 px-5 cursor-pointer shadow-sm">
-                    <span>Commission / Contact Artist</span>
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {/* WhatsApp Inquiry Action for Fixed Price Artworks */}
+                  {selectedArtwork.selling_mode === 'FIXED_PRICE' && (
+                    <a
+                      href={`https://wa.me/${selectedArtwork.artist.whatsapp_number ? selectedArtwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
+                        `Hello! I would like to inquire about Artwork '${selectedArtwork.title}' (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${selectedArtwork.artist.name}. Price: LKR ${Number(selectedArtwork.price || 0).toLocaleString()}.`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto"
+                    >
+                      <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 h-10 px-4 cursor-pointer shadow-sm">
+                        <span>Ask Price (WhatsApp)</span>
+                      </Button>
+                    </a>
+                  )}
+
+                  {/* Direct Action: View Profile */}
+                  <Link
+                    href={`/freelancers/${selectedArtwork.artist_id}`}
+                    className="w-full sm:w-auto"
+                  >
+                    <Button variant="outline" className="w-full border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white hover:bg-purple-50 dark:hover:bg-purple-950/30 gap-2 h-10 px-4 cursor-pointer">
+                      <span>View Artist</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -1300,6 +1453,99 @@ export default function GalleryPageClient() {
                     disabled={!!uploadFile}
                     className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-10 disabled:opacity-50"
                   />
+                </div>
+
+                {/* Selling Mode Selector & Routing Configuration */}
+                <div className="space-y-2.5 pt-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                    Selling Mode &amp; Routing
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUploadSellingMode('NOT_FOR_SALE')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        uploadSellingMode === 'NOT_FOR_SALE'
+                          ? 'bg-purple-500/15 border-purple-500 text-purple-700 dark:text-purple-300 ring-1 ring-purple-500/40'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">Not For Sale</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">In /gallery</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUploadSellingMode('FIXED_PRICE')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        uploadSellingMode === 'FIXED_PRICE'
+                          ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Fixed Price</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">In /gallery</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUploadSellingMode('BIDDING')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        uploadSellingMode === 'BIDDING'
+                          ? 'bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-amber-600 dark:text-amber-400">Open Bidding</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">In /bidding</div>
+                    </button>
+                  </div>
+
+                  {/* Conditional Price Input */}
+                  {uploadSellingMode === 'FIXED_PRICE' && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-1">
+                      <label htmlFor="admin-price-input" className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 block">
+                        Price Amount (LKR) *
+                      </label>
+                      <Input
+                        id="admin-price-input"
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 75000"
+                        value={uploadPrice}
+                        onChange={(e) => setUploadPrice(e.target.value)}
+                        className="bg-white dark:bg-slate-950 border-emerald-500/30 text-slate-900 dark:text-white h-9 text-xs"
+                      />
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                        Direct purchase item will appear in /gallery.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Conditional Starting Bid Input */}
+                  {uploadSellingMode === 'BIDDING' && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1">
+                      <label htmlFor="admin-bid-input" className="text-xs font-semibold text-amber-700 dark:text-amber-300 block">
+                        Starting Bid Amount (LKR) *
+                      </label>
+                      <Input
+                        id="admin-bid-input"
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 50000"
+                        value={uploadStartingBid}
+                        onChange={(e) => setUploadStartingBid(e.target.value)}
+                        className="bg-white dark:bg-slate-950 border-amber-500/30 text-slate-900 dark:text-white h-9 text-xs"
+                      />
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                        Item will appear exclusively on the dedicated /bidding page.
+                      </p>
+                    </div>
+                  )}
+
+                  {uploadSellingMode === 'NOT_FOR_SALE' && (
+                    <p className="text-[11px] text-slate-500">
+                      Display only in /gallery with likes, comments, and ratings enabled.
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
