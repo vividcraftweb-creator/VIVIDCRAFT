@@ -44,6 +44,22 @@ export default function VerifyWhatsAppPage() {
           return;
         }
 
+        // Fetch fresh profile row directly from Supabase to check verification status
+        const { data: freshProfile } = await supabase
+          .from('profiles')
+          .select('whatsapp_verification_status, verification_status')
+          .eq('id', user.id)
+          .single();
+
+        // If whatsapp_verification_status === 'verified' OR verification_status === 'verified', force hard redirect
+        if (
+          freshProfile?.whatsapp_verification_status === 'verified' ||
+          freshProfile?.verification_status === 'verified'
+        ) {
+          window.location.href = '/dashboard';
+          return;
+        }
+
         const { data: profileRow } = await supabase
           .from('profiles')
           .select('first_name, last_name, email, whatsapp_verification_status, verification_status, role')
@@ -53,15 +69,6 @@ export default function VerifyWhatsAppPage() {
         // Only Artists need WhatsApp verification
         if (profileRow?.role && profileRow.role !== 'artist') {
           router.replace('/dashboard');
-          return;
-        }
-
-        // If already verified, go to dashboard immediately
-        if (
-          profileRow?.whatsapp_verification_status === 'verified' ||
-          profileRow?.verification_status === 'verified'
-        ) {
-          window.location.href = '/dashboard';
           return;
         }
 
@@ -136,7 +143,7 @@ export default function VerifyWhatsAppPage() {
         .from('profiles')
         .select('whatsapp_verification_status, verification_status')
         .eq('id', profile.id)
-        .maybeSingle();
+        .single();
 
       if (error) {
         throw error;
