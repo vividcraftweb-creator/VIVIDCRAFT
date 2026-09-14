@@ -372,27 +372,6 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     ],
   };
 
-  const highlightStats = useMemo(
-    () => [
-      {
-        label: 'Client Rating',
-        value: totalReviewsCount > 0 ? `${artistAverageRating.toFixed(1)} ★ (${totalReviewsCount})` : 'New Artist',
-      },
-      {
-        label: 'Featured Artworks',
-        value: artworks.length > 0 ? artworks.length : (profile?.portfolioItems?.length ?? 0),
-      },
-      {
-        label: 'Exhibitions & Showcases',
-        value: profile?.experienceItems?.length ?? 0,
-      },
-      {
-        label: 'Credentials & Honors',
-        value: profile?.certifications?.length ?? 0,
-      },
-    ],
-    [profile, artworks.length, totalReviewsCount, artistAverageRating]
-  );
 
   const handleShare = async () => {
     if (isSharing) return; // Prevent concurrent share invocations
@@ -570,7 +549,7 @@ Hi, I would like to connect with this artist for a commission/project.`;
 
       <div className="relative z-10">
         <header className="px-4 pb-12 pt-6 sm:pt-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-7xl">
             <div className="relative flex flex-col justify-between gap-6 rounded-4xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm dark:shadow-2xl p-8 md:flex-row md:items-start lg:items-center lg:p-10 group hover-lift">
               {/* Subtle hover overlay */}
               <div className="absolute inset-0 bg-zinc-50/50 dark:bg-white/[0.02] rounded-4xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
@@ -677,23 +656,64 @@ Hi, I would like to connect with this artist for a commission/project.`;
         </header>
 
         <main className="pb-24">
-          <div className="mx-auto grid max-w-5xl gap-10 px-4 sm:px-6 lg:grid-cols-[2fr_1fr] lg:gap-12 lg:px-8">
-            <section className="space-y-10">
-              {(profile.bio || (profile as any).description) && (
-                <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover-lift">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 icon-glow transition-all duration-300">
-                      <User className="h-4 w-4 text-primary" />
-                    </div>
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                      Artist Biography
-                    </h2>
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+            {(profile.bio || (profile as any).description) && (
+              <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm hover-lift">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 icon-glow transition-all duration-300">
+                    <User className="h-4 w-4 text-primary" />
                   </div>
-                  <p className="mt-4 whitespace-pre-line text-sm lg:text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
-                    {profile.bio || (profile as any).description}
-                  </p>
-                </section>
-              )}
+                  <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Artist Biography
+                  </h2>
+                </div>
+                <p className="mt-4 whitespace-pre-line text-sm lg:text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
+                  {profile.bio || (profile as any).description}
+                </p>
+
+                {formattedSkills.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-3 flex items-center gap-2">
+                      <Globe className="h-3.5 w-3.5 text-primary" />
+                      Art Styles &amp; Mediums
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {formattedSkills.map((skill) => (
+                        <Badge
+                          key={skill}
+                          className="border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200"
+                        >
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {!(profile.bio || (profile as any).description) && formattedSkills.length > 0 && (
+              <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm hover-lift">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 icon-glow transition-all duration-300">
+                    <Globe className="h-4 w-4 text-primary" />
+                  </div>
+                  <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Art Styles &amp; Mediums
+                  </h2>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {formattedSkills.map((skill) => (
+                    <Badge
+                      key={skill}
+                      className="border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200"
+                    >
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </section>
+            )}
 
               {/* ARTIST PORTFOLIO / GALLERY */}
               <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm hover-lift space-y-6">
@@ -724,7 +744,7 @@ Hi, I would like to connect with this artist for a commission/project.`;
                     <p className="text-sm">Loading gallery artworks...</p>
                   </div>
                 ) : artworks.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {artworks.map((art) => (
                       <ArtworkCard key={art.id} artwork={art} artistName={displayName} />
                     ))}
@@ -795,7 +815,7 @@ Hi, I would like to connect with this artist for a commission/project.`;
                       Featured Artworks &amp; Gallery
                     </h2>
                   </div>
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <div className="mt-6 grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     {profile.portfolioItems.map((item) => (
                       <div
                         key={item.id}
@@ -948,90 +968,6 @@ Hi, I would like to connect with this artist for a commission/project.`;
                   </div>
                 </section>
               )}
-            </section>
-
-            <aside className="space-y-8 lg:sticky lg:top-24 lg:self-start">
-              {formattedSkills.length > 0 && (
-                <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover-lift">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 icon-glow transition-all duration-300">
-                      <Globe className="h-4 w-4 text-primary" />
-                    </div>
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                      Art Styles &amp; Mediums
-                    </h2>
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {formattedSkills.map((skill) => (
-                      <Badge
-                        key={skill}
-                        className="border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200"
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover-lift">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-                    <Clock className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                    Artist Highlights
-                  </h2>
-                </div>
-                <div className="mt-4 grid gap-3">
-                  {highlightStats.map(({ label, value }) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 px-4 py-3"
-                    >
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
-                      <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover-lift">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-                    <Mail className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                    Get in Touch
-                  </h2>
-                </div>
-                <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                  Ready to collaborate with {displayName}? Share their profile with your team or send them a message to kick off the conversation.
-                </p>
-                <div className="mt-4 flex flex-col gap-2">
-                  <Button variant="outline" className="gap-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 interactive-scale" onClick={handleShare}>
-                    <Share2 className="h-4 w-4" />
-                    {copied ? 'Link copied' : 'Share profile'}
-                  </Button>
-                  <Button
-                    className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 button-ripple interactive-scale"
-                    onClick={handleMessage}
-                    disabled={status === 'loading'}
-                  >
-                    <Mail className="h-4 w-4" />
-                    Message {profile.first_name || profile.firstName || (displayName !== 'Artist' ? displayName.split(' ')[0] : 'Artist')}
-                  </Button>
-                  <Button
-                    className="w-full h-auto py-2.5 sm:py-3 px-4 gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white font-medium text-sm shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale justify-center"
-                    onClick={handleWhatsAppConnect}
-                    disabled={status === 'loading'}
-                  >
-                    <MessageCircle className="h-4 w-4 shrink-0" />
-                    <span>Inquire &amp; Ask Pricing via WhatsApp</span>
-                  </Button>
-                </div>
-              </section>
-            </aside>
           </div>
         </main>
       </div>
