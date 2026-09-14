@@ -266,12 +266,13 @@ export default function SignUpContent() {
 
       toast.success('Account created successfully!', {
         description: selectedRole === 'artist'
-          ? 'Welcome to Vivid Craft! Redirecting to your artist dashboard...'
+          ? 'Welcome to Vivid Craft! Please verify your account via WhatsApp...'
           : 'Welcome to Vivid Craft! Redirecting to explore artists...',
       });
 
       // STEP 4: Hard redirect to destination.
-      const destination = selectedRole === 'artist' ? '/dashboard' : '/freelancers';
+      // Artists must complete WhatsApp verification before accessing the dashboard.
+      const destination = selectedRole === 'artist' ? '/verify-whatsapp' : '/freelancers';
       window.location.replace(destination);
     } catch (err: any) {
       console.error('SIGNUP ERROR:', err?.message, err);

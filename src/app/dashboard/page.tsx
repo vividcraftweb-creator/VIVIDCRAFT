@@ -122,7 +122,7 @@ export default async function DashboardPage({
         try {
           const { data: profileRow } = await supabase
             .from('profiles')
-            .select('role, is_verified, verification_status')
+            .select('role, is_verified, verification_status, whatsapp_verification_status')
             .eq('id', authUser.id)
             .maybeSingle();
           if (profileRow?.role) {
@@ -132,7 +132,19 @@ export default async function DashboardPage({
             (activeSession.user as any).is_verified = true;
             (activeSession.user as any).verification_status = 'approved';
           }
-        } catch {}
+
+          // Block artist dashboard access if WhatsApp verification not completed
+          const whatsappStatus = profileRow?.whatsapp_verification_status;
+          const profileRole = (profileRow?.role || '').toLowerCase();
+          if (profileRole === 'artist') {
+            if (!whatsappStatus || whatsappStatus === 'pending_whatsapp') {
+              redirect('/verify-whatsapp');
+            }
+          }
+        } catch (e: any) {
+          // Don't block on redirect errors — rethrow NEXT_REDIRECT
+          if (e?.digest?.startsWith('NEXT_REDIRECT')) throw e;
+        }
 
         // HARDCODE: profiles table is the ONLY source for role (set by provision-user on signup).
         // User/users tables are only read for isVerified and email — NOT for role.

@@ -11,6 +11,7 @@ import {
   Briefcase,
   FileCheck,
   MessageSquare,
+  MessageCircle,
   LifeBuoy,
   BarChart3,
   Settings,
@@ -121,6 +122,12 @@ export default function AdminSidebar() {
       href: '/admin/artworks',
       icon: LayoutDashboard,
       description: 'Monitor listed artworks',
+    },
+    {
+      title: 'WhatsApp Verifications',
+      href: '/admin/whatsapp-verifications',
+      icon: MessageCircle,
+      description: 'Manual artist approvals',
     },
     {
       title: 'Support',
