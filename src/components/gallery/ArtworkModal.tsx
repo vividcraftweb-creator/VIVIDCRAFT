@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { X, Heart, Send, Loader2, MessageSquare, LogIn } from 'lucide-react';
@@ -38,8 +39,13 @@ export function ArtworkModal({
   const isAuthenticated = status === 'authenticated' && !!session?.session?.user;
   const currentUserId = session?.session?.user?.id;
 
+  const [mounted, setMounted] = useState(false);
   const [commentText, setCommentText] = useState('');
   const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const utils = trpc.useUtils();
 
@@ -72,7 +78,6 @@ export function ArtworkModal({
   // Lock body scroll when modal is open and handle ESC key
   useEffect(() => {
     if (!isOpen) return;
-    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -81,12 +86,12 @@ export function ArtworkModal({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!mounted || !isOpen) return null;
 
   const handleCommentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,13 +128,13 @@ export function ArtworkModal({
     }
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative max-w-5xl w-full rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 my-auto border border-slate-200 dark:border-slate-800"
+        className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-[100000] grid grid-cols-1 md:grid-cols-2 my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -180,7 +185,7 @@ export function ArtworkModal({
         {/* RIGHT COLUMN: Details, Metadata, Comments & WhatsApp Action Button */}
         <div className="flex flex-col h-full max-h-[580px] md:max-h-[640px] bg-white dark:bg-slate-900 overflow-hidden">
           {/* Header Section: Status, Title, Artist, Ref ID, Date, Likes */}
-          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
+          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0 bg-white dark:bg-slate-900">
             {/* Status Badges & Likes Counter Row */}
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">
@@ -265,8 +270,8 @@ export function ArtworkModal({
           </div>
 
           {/* Comments Section (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 min-h-[140px]">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 min-h-[140px] bg-white dark:bg-slate-900">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <MessageSquare className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                 Comments &amp; Feedback ({comments?.length || 0})
@@ -274,12 +279,12 @@ export function ArtworkModal({
             </div>
 
             {isLoadingComments ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-500 dark:text-slate-400">
+              <div className="flex flex-col items-center justify-center py-10 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
                 <Loader2 className="h-6 w-6 animate-spin text-purple-600 dark:text-purple-400 mb-2" />
                 <p className="text-xs">Loading comments...</p>
               </div>
             ) : comments && comments.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 bg-white dark:bg-slate-900">
                 {comments.map((c: any) => {
                   const isCurrentUser = currentUserId && c.userId === currentUserId;
                   const initial = (c.userName || 'A').charAt(0).toUpperCase();
@@ -287,7 +292,7 @@ export function ArtworkModal({
                   return (
                     <div
                       key={c.id}
-                      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-1 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm"
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -336,7 +341,7 @@ export function ArtworkModal({
                 <div ref={commentsEndRef} />
               </div>
             ) : (
-              <div className="text-center py-8 px-4 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-800">
+              <div className="text-center py-8 px-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
                 <MessageSquare className="h-7 w-7 text-slate-400 dark:text-slate-600 mx-auto mb-1.5" />
                 <p className="text-xs font-medium text-slate-800 dark:text-slate-200">No comments yet</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -347,7 +352,7 @@ export function ArtworkModal({
           </div>
 
           {/* Bottom Area: WhatsApp Inquiry / Action Button & Comment Input */}
-          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 space-y-3 shrink-0">
+          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0">
             {/* WhatsApp Action Button */}
             {(artwork.selling_mode === 'FIXED_PRICE' || artwork.selling_mode === 'BIDDING') && (
               <a
@@ -417,5 +422,7 @@ export function ArtworkModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 

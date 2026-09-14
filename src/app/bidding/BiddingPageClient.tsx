@@ -231,7 +231,7 @@ export default function BiddingPageClient() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [selectedArtwork]);
@@ -989,11 +989,11 @@ export default function BiddingPageClient() {
       {/* DETAIL LIGHTBOX MODAL */}
       {selectedArtwork && (
         <div
-          className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setSelectedArtwork(null)}
         >
           <div
-            className="relative bg-white dark:bg-[#111827] w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row my-8 max-h-[90vh]"
+            className="relative bg-white dark:bg-[#111827] w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 z-[100000] flex flex-col md:flex-row my-8 max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
