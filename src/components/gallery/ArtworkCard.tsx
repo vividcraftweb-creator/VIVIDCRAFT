@@ -139,13 +139,6 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             </div>
           </div>
 
-          {/* Artwork ID Badge */}
-          <div className="absolute top-3 left-3 z-30 pointer-events-none">
-            <span className="font-mono text-[11px] font-bold px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md text-purple-300 border border-purple-500/30 shadow-md">
-              {artwork.art_code || '#ART-101'}
-            </span>
-          </div>
-
           {/* Quick Zoom Preview Icon on Hover */}
           <div className="absolute top-3 right-3 z-30 p-2 rounded-xl bg-black/50 backdrop-blur-md text-white/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 hover:text-white shadow-lg">
             <ZoomIn className="h-4 w-4" />
@@ -195,15 +188,20 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
               </p>
             )}
 
-            {/* Artist Badge */}
-            {artistName && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 truncate max-w-full">
-                  <User className="w-3 h-3 text-purple-500 shrink-0" />
-                  <span className="truncate">{artistName}</span>
-                </span>
-              </div>
-            )}
+            {/* Artist & Lower Metadata Row with Ref ID */}
+            <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+              {artistName ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 truncate max-w-[170px]">
+                    <User className="w-3 h-3 text-purple-500 shrink-0" />
+                    <span className="truncate">{artistName}</span>
+                  </span>
+                </div>
+              ) : <div />}
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                Ref ID: {artwork.art_code || '#ART-101'}
+              </span>
+            </div>
           </div>
 
           {/* Stats & Actions: Like button, Rating badge, Expand */}

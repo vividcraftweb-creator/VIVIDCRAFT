@@ -895,13 +895,6 @@ export default function GalleryPageClient() {
                       </div>
                     </div>
 
-                    {/* Formatted Artwork ID Badge */}
-                    <div className="absolute top-3 left-3 z-20 pointer-events-none">
-                      <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-md text-purple-300 border border-purple-500/30 shadow-md">
-                        {artwork.art_code || '#ART-101'}
-                      </span>
-                    </div>
-
                     {/* Task 2: In-situ Admin Moderation Control ("Delete Post") */}
                     {isAdmin && (
                       <button
@@ -910,7 +903,7 @@ export default function GalleryPageClient() {
                           setDeletingArtwork(artwork);
                           setDeleteReason('');
                         }}
-                        className="absolute top-11 left-3 z-30 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-bold shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
+                        className="absolute top-3 left-3 z-30 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-bold shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
                         title="Admin Moderation: Delete Post with Reason"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -997,33 +990,39 @@ export default function GalleryPageClient() {
                         </p>
                       )}
 
-                      {/* Artist Row */}
-                      <div className="flex items-center gap-2.5 mt-2">
-                        <Link
-                          href={`/freelancers/${artwork.artist_id}`}
-                          className="flex-shrink-0 group/avatar"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Avatar className="w-7 h-7 ring-1 ring-purple-500/30 group-hover/avatar:ring-purple-400 transition-all">
-                            {artistAvatar && <AvatarImage src={artistAvatar} alt={artwork.artist.name} />}
-                            <AvatarFallback className="bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-200 text-xs font-semibold">
-                              {initials || <User className="w-3.5 h-3.5" />}
-                            </AvatarFallback>
-                          </Avatar>
-                        </Link>
-
-                        <div className="flex-1 min-w-0">
+                      {/* Artist Row & Ref ID */}
+                      <div className="flex items-center justify-between gap-2.5 mt-2">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <Link
                             href={`/freelancers/${artwork.artist_id}`}
+                            className="flex-shrink-0 group/avatar"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-300 truncate block transition-colors"
                           >
-                            {artwork.artist.name}
+                            <Avatar className="w-7 h-7 ring-1 ring-purple-500/30 group-hover/avatar:ring-purple-400 transition-all">
+                              {artistAvatar && <AvatarImage src={artistAvatar} alt={artwork.artist.name} />}
+                              <AvatarFallback className="bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-200 text-xs font-semibold">
+                                {initials || <User className="w-3.5 h-3.5" />}
+                              </AvatarFallback>
+                            </Avatar>
                           </Link>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                            {artwork.artist.title || 'Creator'}
-                          </p>
+
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              href={`/freelancers/${artwork.artist_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-300 truncate block transition-colors"
+                            >
+                              {artwork.artist.name}
+                            </Link>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              {artwork.artist.title || 'Creator'}
+                            </p>
+                          </div>
                         </div>
+
+                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 shrink-0">
+                          Ref ID: {artwork.art_code || '#ART-101'}
+                        </span>
                       </div>
                     </div>
 
@@ -1109,16 +1108,13 @@ export default function GalleryPageClient() {
                   </Avatar>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
-                        {selectedArtwork.art_code || '#ART-101'}
-                      </span>
                       {selectedArtwork.selling_mode === 'FIXED_PRICE' && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full">
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
                           For Sale
                         </span>
                       )}
                       {selectedArtwork.selling_mode === 'NOT_FOR_SALE' && (
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
                           Not For Sale
                         </span>
                       )}
@@ -1126,13 +1122,16 @@ export default function GalleryPageClient() {
                     <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight truncate">
                       {selectedArtwork.title}
                     </h4>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <Link
                         href={`/freelancers/${selectedArtwork.artist_id}`}
                         className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline"
                       >
                         by {selectedArtwork.artist.name}
                       </Link>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                        • Ref ID: {selectedArtwork.art_code || '#ART-101'}
+                      </span>
                       {selectedArtwork.selling_mode === 'FIXED_PRICE' && selectedArtwork.price && (
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                           • Price: LKR {Number(selectedArtwork.price).toLocaleString()}

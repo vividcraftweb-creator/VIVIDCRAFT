@@ -423,6 +423,39 @@ export default async function RootLayout({
           </SessionProvider>
         </LanguageProvider>
 
+        {/* Strict Style Overrides to Prevent Google Translate Body-Blinking / DOM Flicker */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              body {
+                top: 0px !important;
+                position: static !important;
+                min-height: 100vh;
+              }
+              .goog-te-banner-frame {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                width: 0 !important;
+                opacity: 0 !important;
+              }
+              .skiptranslate {
+                display: none !important;
+              }
+              body > .skiptranslate {
+                display: none !important;
+              }
+              #goog-gt-tt, .goog-te-balloon-frame {
+                display: none !important;
+              }
+              .goog-text-highlight {
+                background: none !important;
+                box-shadow: none !important;
+              }
+            `,
+          }}
+        />
+
         {/* Hidden Google Translate Element & Script */}
         <div
           id="google_translate_element"
@@ -442,6 +475,28 @@ export default async function RootLayout({
                   }, 'google_translate_element');
                 }
               };
+              // Suppress Google Translate frame dynamic top-margin injection to stop continuous layout re-renders and visual flickering
+              if (typeof window !== 'undefined') {
+                const suppressGoogleTranslateFlicker = function() {
+                  if (document.body && document.body.style.top && document.body.style.top !== '0px') {
+                    document.body.style.top = '0px';
+                  }
+                  if (document.body && document.body.style.position && document.body.style.position !== 'static') {
+                    document.body.style.position = 'static';
+                  }
+                };
+                try {
+                  const observer = new MutationObserver(suppressGoogleTranslateFlicker);
+                  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+                  if (document.body) {
+                    observer.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] });
+                  } else {
+                    document.addEventListener('DOMContentLoaded', function() {
+                      observer.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] });
+                    });
+                  }
+                } catch(e) {}
+              }
             `,
           }}
         />

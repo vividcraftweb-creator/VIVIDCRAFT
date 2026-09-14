@@ -177,11 +177,7 @@ export function ArtworkModal({
         <div className="flex-1 flex flex-col h-full max-h-[58vh] lg:max-h-[85vh] border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900">
           {/* Header & Stats */}
           <div className="p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 space-y-4">
-            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/25">
-                  {artwork.art_code || '#ART-101'}
-                </span>
                 {artwork.selling_mode === 'FIXED_PRICE' && (
                   <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 rounded-full">
                     For Sale
@@ -219,7 +215,17 @@ export function ArtworkModal({
                   Created by <span className="font-semibold text-zinc-900 dark:text-zinc-100">{artistName}</span>
                 </p>
               )}
-            </div>
+
+              {/* Lower Metadata Section: Ref ID & Date */}
+              <div className="flex items-center gap-3 pt-1 text-xs text-zinc-500 dark:text-zinc-400 flex-wrap">
+                <span>Ref ID: <span className="font-mono font-medium text-zinc-700 dark:text-zinc-300">{artwork.art_code || '#ART-101'}</span></span>
+                {artwork.created_at && (
+                  <>
+                    <span>•</span>
+                    <span>{new Date(artwork.created_at).toLocaleDateString()}</span>
+                  </>
+                )}
+              </div>
 
             {/* Like & WhatsApp Inquiry Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

@@ -801,33 +801,28 @@ export default function BiddingPageClient() {
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
 
-                  {/* Top Bar on Image: Artwork ID & Live Bidding Badge */}
+                  {/* Top Bar on Image: Live Bidding Badge */}
                   <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none">
-                    {/* Artwork ID Badge */}
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-black/60 text-white backdrop-blur-md border border-white/20 shadow-md">
-                      <span>{artwork.art_code || '#ART-104'}</span>
-                    </div>
-
                     {/* Open Bidding Badge */}
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500 text-black shadow-lg">
                       <Gavel className="w-3 h-3 text-black" />
                       <span>Open Bidding</span>
                     </div>
-                  </div>
 
-                  {/* Admin Moderation Button (In-Situ) */}
-                  {isAdmin && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeletingArtwork(artwork);
-                      }}
-                      className="absolute top-12 right-3 p-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md transition-all cursor-pointer z-10"
-                      title="Admin: Remove this bidding item"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                    {/* Admin Moderation Button (In-Situ) */}
+                    {isAdmin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingArtwork(artwork);
+                        }}
+                        className="p-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md transition-all cursor-pointer pointer-events-auto"
+                        title="Admin: Remove this bidding item"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
 
                   {/* Zoom/Maximize Button on Hover */}
                   <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
@@ -867,30 +862,36 @@ export default function BiddingPageClient() {
                       {artwork.title}
                     </h3>
 
-                    {/* Real Artist Profile Info */}
-                    <Link
-                      href={`/freelancers/${artwork.artist_id}`}
-                      className="mt-3 flex items-center gap-3 group/artist hover:opacity-80 transition-opacity"
-                    >
-                      <Avatar className="w-9 h-9 border border-amber-500/30">
-                        <AvatarImage
-                          src={getProfilePictureUrl(artwork.artist_id, artwork.artist.avatar_url)}
-                          alt={artwork.artist.name}
-                        />
-                        <AvatarFallback className="bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-xs">
-                          {artwork.artist.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                    {/* Real Artist Profile Info & Ref ID */}
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <Link
+                        href={`/freelancers/${artwork.artist_id}`}
+                        className="flex items-center gap-2.5 group/artist hover:opacity-80 transition-opacity flex-1 min-w-0"
+                      >
+                        <Avatar className="w-8 h-8 border border-amber-500/30 shrink-0">
+                          <AvatarImage
+                            src={getProfilePictureUrl(artwork.artist_id, artwork.artist.avatar_url)}
+                            alt={artwork.artist.name}
+                          />
+                          <AvatarFallback className="bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-xs">
+                            {artwork.artist.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
 
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover/artist:text-amber-600 dark:group-hover/artist:text-amber-400">
-                          {artwork.artist.name}
-                        </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          {artwork.artist.title || 'Artist / Creator'}
-                        </p>
-                      </div>
-                    </Link>
+                        <div className="min-w-0 text-left">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover/artist:text-amber-600 dark:group-hover/artist:text-amber-400">
+                            {artwork.artist.name}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                            {artwork.artist.title || 'Artist / Creator'}
+                          </p>
+                        </div>
+                      </Link>
+
+                      <span className="text-[11px] font-mono font-medium text-slate-400 dark:text-slate-500 shrink-0">
+                        Ref ID: {artwork.art_code || '#ART-104'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Rating Stars & Interaction */}
@@ -996,9 +997,6 @@ export default function BiddingPageClient() {
 
               {/* Badges Over Image */}
               <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/70 text-white backdrop-blur-md border border-white/20">
-                  <span>{selectedArtwork.art_code || '#ART-104'}</span>
-                </div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-black shadow-md">
                   <Gavel className="w-3 h-3" />
                   <span>Open Bidding</span>
@@ -1009,9 +1007,12 @@ export default function BiddingPageClient() {
             {/* Right: Artwork Details & Bidding Panel */}
             <div className="md:w-2/5 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto bg-white dark:bg-[#111827]">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
                   {selectedArtwork.title}
                 </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mb-2">
+                  Ref ID: <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedArtwork.art_code || '#ART-104'}</span>
+                </p>
 
                 {/* Starting Bid Panel */}
                 <div className="my-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/25">

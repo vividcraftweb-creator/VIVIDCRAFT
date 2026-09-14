@@ -300,13 +300,6 @@ export default function GalleryView() {
                       }}
                     />
 
-                    {/* Artwork ID Badge */}
-                    <div className="absolute top-3 left-3 z-10">
-                      <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md text-purple-300 border border-purple-500/30 shadow-md">
-                        {artCode}
-                      </span>
-                    </div>
-
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                       <Button
                         variant="destructive"
@@ -357,6 +350,11 @@ export default function GalleryView() {
                           Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
                         </p>
                       )}
+
+                      {/* Subtle Metadata: Ref ID */}
+                      <p className="text-[11px] font-mono text-slate-400 mt-1">
+                        Ref ID: {artCode}
+                      </p>
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">

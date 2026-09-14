@@ -63,6 +63,41 @@ h1, h2, h3, h4, h5, h6 {
   --radius-3xl: calc(var(--radius) + 16px);
 }
 
+/* Google Translate Flickering & Body Shifting Fix */
+body {
+  top: 0px !important;
+  position: static !important;
+  min-height: 100vh;
+}
+
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+iframe.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  opacity: 0 !important;
+}
+
+.skiptranslate {
+  display: none !important;
+}
+
+body > .skiptranslate {
+  display: none !important;
+}
+
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+}
+
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+}
+
 :root {
   --radius: 0.875rem;
   /* Light theme as default */
