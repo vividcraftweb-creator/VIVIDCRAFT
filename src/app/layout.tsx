@@ -1,5 +1,18 @@
 import "@/app/globals.css";
 import type { Metadata, Viewport } from "next";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://vividcraft.vercel.app'),
@@ -378,7 +391,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className="antialiased min-h-screen overflow-x-hidden"
+        className={`${inter.variable} ${plusJakartaSans.variable} font-sans antialiased min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 transition-colors duration-200`}
         suppressHydrationWarning
       >
         {/* JSON-LD structured data */}

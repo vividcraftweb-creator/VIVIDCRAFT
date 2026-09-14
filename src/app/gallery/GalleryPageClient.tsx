@@ -565,32 +565,32 @@ export default function GalleryPageClient() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pt-28 pb-24 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 pt-28 pb-24 relative overflow-hidden transition-colors duration-300">
       {/* Background aesthetic gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-purple-600/15 via-indigo-600/10 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 -left-48 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 -right-48 w-96 h-96 bg-blue-900/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-purple-500/10 via-indigo-500/5 to-transparent dark:from-purple-600/15 dark:via-indigo-600/10 dark:to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 -left-48 w-96 h-96 bg-purple-500/5 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 -right-48 w-96 h-96 bg-blue-500/5 dark:bg-blue-900/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Admin Floating Banner (Active Session Indicator) */}
       {isAdmin && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-amber-500/15 via-purple-500/10 to-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md shadow-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-amber-500/10 dark:bg-gradient-to-r dark:from-amber-500/15 dark:via-purple-500/10 dark:to-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md shadow-sm">
             <div className="flex items-center gap-2.5">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
               </span>
-              <ShieldCheck className="w-5 h-5 text-amber-400" />
+              <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               <div>
-                <span className="text-sm font-bold text-white">Admin Moderation Active</span>
-                <span className="text-xs text-amber-300/80 ml-2 hidden sm:inline">
+                <span className="text-sm font-bold text-slate-900 dark:text-white">Admin Moderation Active</span>
+                <span className="text-xs text-amber-800 dark:text-amber-300/80 ml-2 hidden sm:inline">
                   You have full moderation rights to delete posts with reason and upload direct artwork.
                 </span>
               </div>
@@ -609,7 +609,7 @@ export default function GalleryPageClient() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 text-xs h-8 px-3 cursor-pointer"
+                  className="border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 text-xs h-8 px-3 cursor-pointer"
                 >
                   Admin Console
                 </Button>
@@ -622,16 +622,16 @@ export default function GalleryPageClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header Hero Section */}
         <div className="text-center max-w-3xl mx-auto mb-10 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-700 dark:text-purple-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
             Vivid Art Gallery & Exhibition
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
             Curated Artworks & Portfolios
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-400 font-normal">
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 font-normal">
             Discover ranked original creations from verified artists. Like your favorites, rate remarkable pieces, and commission top talent.
           </p>
 
@@ -644,12 +644,12 @@ export default function GalleryPageClient() {
                 placeholder="Search artworks by title or artist name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 h-12 bg-slate-900/80 backdrop-blur-md border border-slate-800 focus:border-purple-500 rounded-2xl text-white placeholder:text-slate-500 text-sm shadow-xl focus:ring-2 focus:ring-purple-500/20"
+                className="w-full pl-11 pr-4 h-12 bg-white dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 focus:border-purple-500 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm shadow-md dark:shadow-xl focus:ring-2 focus:ring-purple-500/20"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-2 py-1 rounded-md cursor-pointer"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md cursor-pointer border border-slate-200 dark:border-transparent"
                 >
                   Clear
                 </button>
@@ -669,17 +669,17 @@ export default function GalleryPageClient() {
         </div>
 
         {/* Quick Filter Tabs / Sort Controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-800/80">
-          <div className="flex items-center gap-2 p-1 bg-slate-900/90 border border-slate-800 rounded-2xl overflow-x-auto max-w-full">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200 dark:border-slate-800/80">
+          <div className="flex items-center gap-2 p-1 bg-slate-200/70 dark:bg-slate-900/90 border border-slate-300/70 dark:border-slate-800 rounded-2xl overflow-x-auto max-w-full">
             <button
               onClick={() => setActiveSort('popular')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
                 activeSort === 'popular'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
-              <Flame className="w-4 h-4 text-amber-400" />
+              <Flame className="w-4 h-4 text-amber-500 dark:text-amber-400" />
               <span>Most Popular</span>
             </button>
 
@@ -687,11 +687,11 @@ export default function GalleryPageClient() {
               onClick={() => setActiveSort('highest_rated')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
                 activeSort === 'highest_rated'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
-              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <Star className="w-4 h-4 text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400" />
               <span>Highest Rated</span>
             </button>
 
@@ -699,11 +699,11 @@ export default function GalleryPageClient() {
               onClick={() => setActiveSort('most_liked')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
                 activeSort === 'most_liked'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
-              <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
+              <Heart className="w-4 h-4 text-rose-500 dark:text-rose-400 fill-rose-500 dark:fill-rose-400" />
               <span>Most Liked</span>
             </button>
 
@@ -711,17 +711,17 @@ export default function GalleryPageClient() {
               onClick={() => setActiveSort('newest')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
                 activeSort === 'newest'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
-              <Clock className="w-4 h-4 text-blue-400" />
+              <Clock className="w-4 h-4 text-blue-500 dark:text-blue-400" />
               <span>Newest</span>
             </button>
           </div>
 
-          <div className="text-xs sm:text-sm text-slate-400 font-medium">
-            Showing <span className="text-white font-semibold">{displayedArtworks.length}</span> artworks
+          <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Showing <span className="text-slate-900 dark:text-white font-semibold">{displayedArtworks.length}</span> artworks
           </div>
         </div>
 
@@ -731,26 +731,26 @@ export default function GalleryPageClient() {
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div
                 key={i}
-                className="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden animate-pulse"
+                className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden animate-pulse shadow-sm"
               >
-                <div className="aspect-[4/3] bg-slate-800/60" />
+                <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-800/60" />
                 <div className="p-4 space-y-3">
-                  <div className="h-4 bg-slate-800 rounded w-3/4" />
+                  <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-slate-800" />
-                    <div className="h-3 bg-slate-800 rounded w-1/2" />
+                    <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : displayedArtworks.length === 0 ? (
-          <div className="text-center py-20 bg-slate-900/40 border border-slate-800 border-dashed rounded-3xl max-w-2xl mx-auto p-8 space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto">
+          <div className="text-center py-20 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 border-dashed rounded-3xl max-w-2xl mx-auto p-8 space-y-4 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto">
               <ImageIcon className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-white">No Artworks Found</h3>
-            <p className="text-sm text-slate-400">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white">No Artworks Found</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               {searchQuery
                 ? `No artworks matched your search query "${searchQuery}". Try a different keyword.`
                 : 'No artworks have been uploaded yet. Artists or admins can upload pieces to start the gallery.'}
@@ -782,12 +782,12 @@ export default function GalleryPageClient() {
               return (
                 <div
                   key={artwork.id}
-                  className="group relative bg-slate-900/70 hover:bg-slate-900 border border-slate-800/80 hover:border-purple-500/40 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/10 flex flex-col"
+                  className="group relative bg-white dark:bg-slate-900/70 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800/80 hover:border-purple-400 dark:hover:border-purple-500/40 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-purple-500/10 flex flex-col"
                 >
                   {/* Image Preview Container */}
                   <div
                     onClick={() => setSelectedArtwork(artwork)}
-                    className="relative aspect-[4/3] w-full overflow-hidden bg-slate-950 cursor-pointer"
+                    className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -835,7 +835,7 @@ export default function GalleryPageClient() {
                     {/* Bottom hover action: Quick Rate Stars */}
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-between bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white"
+                      className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-between bg-slate-950/85 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white"
                     >
                       <span className="text-[11px] text-slate-300 font-medium">Rate:</span>
                       <div className="flex items-center gap-1">
@@ -873,7 +873,7 @@ export default function GalleryPageClient() {
                       {/* Title */}
                       <h3
                         onClick={() => setSelectedArtwork(artwork)}
-                        className="text-white font-bold text-base truncate cursor-pointer hover:text-purple-300 transition-colors"
+                        className="text-slate-900 dark:text-white font-bold text-base truncate cursor-pointer hover:text-purple-600 dark:hover:text-purple-300 transition-colors"
                         title={artwork.title}
                       >
                         {artwork.title}
@@ -888,7 +888,7 @@ export default function GalleryPageClient() {
                         >
                           <Avatar className="w-7 h-7 ring-1 ring-purple-500/30 group-hover/avatar:ring-purple-400 transition-all">
                             {artistAvatar && <AvatarImage src={artistAvatar} alt={artwork.artist.name} />}
-                            <AvatarFallback className="bg-purple-900/60 text-purple-200 text-xs font-semibold">
+                            <AvatarFallback className="bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-200 text-xs font-semibold">
                               {initials || <User className="w-3.5 h-3.5" />}
                             </AvatarFallback>
                           </Avatar>
@@ -898,11 +898,11 @@ export default function GalleryPageClient() {
                           <Link
                             href={`/freelancers/${artwork.artist_id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="text-xs font-semibold text-slate-200 hover:text-white truncate block group-hover:text-purple-300 transition-colors"
+                            className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-white truncate block group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors"
                           >
                             {artwork.artist.name}
                           </Link>
-                          <p className="text-[11px] text-slate-500 truncate">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                             {artwork.artist.title || 'Creator'}
                           </p>
                         </div>
@@ -910,15 +910,15 @@ export default function GalleryPageClient() {
                     </div>
 
                     {/* Stats & Actions Footer */}
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
                       {/* Interactive Like Button */}
                       <button
                         type="button"
                         onClick={(e) => handleLike(artwork.id, e)}
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
                           artwork.isLiked
-                            ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 font-semibold'
-                            : 'bg-slate-800/50 border-slate-700/60 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30'
+                            ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400 font-semibold'
+                            : 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-300 dark:hover:border-rose-500/30'
                         }`}
                         title={artwork.isLiked ? 'Unlike artwork' : 'Like artwork'}
                       >
@@ -932,11 +932,11 @@ export default function GalleryPageClient() {
 
                       {/* Average Rating Display */}
                       <div
-                        className="inline-flex items-center gap-1 text-slate-300 font-medium px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20"
+                        className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300 font-medium px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20"
                         title={`Average rating: ${artwork.averageRating} from ${artwork.ratingsCount} review(s)`}
                       >
-                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                        <span className="font-semibold text-white">
+                        <Star className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400" />
+                        <span className="font-semibold text-slate-900 dark:text-white">
                           {artwork.averageRating > 0 ? artwork.averageRating.toFixed(1) : '—'}
                         </span>
                         {artwork.ratingsCount > 0 && (
@@ -954,32 +954,32 @@ export default function GalleryPageClient() {
         {/* Lightbox / Modal View */}
         {selectedArtwork && (
           <div
-            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 bg-black/80 dark:bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
             onClick={() => setSelectedArtwork(null)}
           >
             <div
-              className="relative max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="relative max-w-4xl w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-800 bg-slate-950/50">
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/50">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-9 h-9 ring-1 ring-purple-500/30">
                     <AvatarImage
                       src={getProfilePictureUrl(selectedArtwork.artist_id, selectedArtwork.artist.avatar_url)}
                       alt={selectedArtwork.artist.name}
                     />
-                    <AvatarFallback className="bg-purple-950 text-purple-200 text-xs">
+                    <AvatarFallback className="bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-200 text-xs">
                       {selectedArtwork.artist.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h4 className="font-bold text-white text-sm sm:text-base leading-tight">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight">
                       {selectedArtwork.title}
                     </h4>
                     <Link
                       href={`/freelancers/${selectedArtwork.artist_id}`}
-                      className="text-xs text-purple-400 hover:text-purple-300 hover:underline"
+                      className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline"
                     >
                       by {selectedArtwork.artist.name}
                     </Link>
@@ -1004,7 +1004,7 @@ export default function GalleryPageClient() {
 
                   <button
                     onClick={() => setSelectedArtwork(null)}
-                    className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-slate-200 dark:border-transparent"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1012,7 +1012,7 @@ export default function GalleryPageClient() {
               </div>
 
               {/* Modal Image Display */}
-              <div className="relative flex-1 bg-black flex items-center justify-center min-h-[300px] overflow-hidden">
+              <div className="relative flex-1 bg-slate-950 flex items-center justify-center min-h-[300px] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={getSafeArtworkUrl(selectedArtwork.image_url)}
@@ -1022,17 +1022,17 @@ export default function GalleryPageClient() {
               </div>
 
               {/* Modal Actions Footer */}
-              <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950/70 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
                   {/* Like Button */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={(e) => handleLike(selectedArtwork.id, e)}
-                    className={`gap-2 border-slate-700 h-10 px-4 ${
+                    className={`gap-2 h-10 px-4 cursor-pointer ${
                       selectedArtwork.isLiked
-                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 font-semibold'
-                        : 'text-white hover:bg-rose-500/10 hover:border-rose-500/30'
+                        ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400 font-semibold'
+                        : 'bg-white dark:bg-transparent border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-300 dark:hover:border-rose-500/30'
                     }`}
                   >
                     <Heart
@@ -1044,14 +1044,14 @@ export default function GalleryPageClient() {
                   </Button>
 
                   {/* Rating Score */}
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300">
                     <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span className="font-semibold text-white text-sm">
+                    <span className="font-semibold text-slate-900 dark:text-white text-sm">
                       {selectedArtwork.averageRating > 0
                         ? selectedArtwork.averageRating.toFixed(1)
                         : 'Unrated'}
                     </span>
-                    <span className="text-slate-400">({selectedArtwork.ratingsCount} reviews)</span>
+                    <span className="text-slate-500 dark:text-slate-400">({selectedArtwork.ratingsCount} reviews)</span>
                   </div>
                 </div>
 
@@ -1060,7 +1060,7 @@ export default function GalleryPageClient() {
                   href={`/freelancers/${selectedArtwork.artist_id}`}
                   className="w-full sm:w-auto"
                 >
-                  <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 h-10 px-5 cursor-pointer">
+                  <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 h-10 px-5 cursor-pointer shadow-sm">
                     <span>Commission / Contact Artist</span>
                     <ExternalLink className="w-4 h-4" />
                   </Button>
@@ -1073,45 +1073,45 @@ export default function GalleryPageClient() {
         {/* Task 2: Reasoned Artwork Deletion Modal (Admin Moderation) */}
         {deletingArtwork && (
           <div
-            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 z-50 bg-black/75 dark:bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
             onClick={() => !isDeleting && setDeletingArtwork(null)}
           >
             <div
-              className="relative max-w-lg w-full bg-slate-900 border border-rose-500/30 rounded-3xl p-6 shadow-2xl shadow-rose-950/40 space-y-5"
+              className="relative max-w-lg w-full bg-white dark:bg-slate-900 border border-rose-500/30 rounded-3xl p-6 shadow-2xl shadow-rose-950/20 dark:shadow-rose-950/40 space-y-5"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center flex-shrink-0 text-rose-400">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center flex-shrink-0 text-rose-500 dark:text-rose-400">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold text-white leading-snug">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-snug">
                     Remove Artwork from Gallery
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                     This post will be permanently deleted and the target artist will receive an official notification detailing the reason.
                   </p>
                 </div>
               </div>
 
               {/* Artwork Summary */}
-              <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center gap-3">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={getSafeArtworkUrl(deletingArtwork.image_url)}
                   alt={deletingArtwork.title}
-                  className="w-12 h-12 rounded-lg object-cover bg-slate-900 flex-shrink-0"
+                  className="w-12 h-12 rounded-lg object-cover bg-slate-200 dark:bg-slate-900 flex-shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white text-sm truncate">{deletingArtwork.title}</p>
-                  <p className="text-xs text-slate-500 truncate">Artist: {deletingArtwork.artist.name}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{deletingArtwork.title}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Artist: {deletingArtwork.artist.name}</p>
                 </div>
               </div>
 
               {/* Reason Input */}
               <div className="space-y-2">
-                <label htmlFor="deletion-reason" className="text-xs font-semibold text-slate-300 block">
-                  Reason for Deletion <span className="text-rose-400">*</span>
+                <label htmlFor="deletion-reason" className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  Reason for Deletion <span className="text-rose-500 dark:text-rose-400">*</span>
                 </label>
                 <textarea
                   id="deletion-reason"
@@ -1119,7 +1119,7 @@ export default function GalleryPageClient() {
                   value={deleteReason}
                   onChange={(e) => setDeleteReason(e.target.value)}
                   placeholder="Explain why this artwork is being removed (sent directly to the artist's notifications)..."
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500 rounded-xl p-3 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-rose-500 focus:outline-none resize-none"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-rose-500 rounded-xl p-3 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-1 focus:ring-rose-500 focus:outline-none resize-none"
                 />
 
                 {/* Preset quick chips */}
@@ -1134,7 +1134,7 @@ export default function GalleryPageClient() {
                       key={preset}
                       type="button"
                       onClick={() => setDeleteReason(preset)}
-                      className="text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                      className="text-[11px] px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent transition-colors cursor-pointer"
                     >
                       {preset}
                     </button>
@@ -1143,14 +1143,14 @@ export default function GalleryPageClient() {
               </div>
 
               {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   disabled={isDeleting}
                   onClick={() => setDeletingArtwork(null)}
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800 cursor-pointer"
+                  className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -1181,27 +1181,27 @@ export default function GalleryPageClient() {
         {/* Task 3: Admin Artwork Upload Modal */}
         {isUploadOpen && (
           <div
-            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 z-50 bg-black/75 dark:bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
             onClick={() => !isUploading && setIsUploadOpen(false)}
           >
             <div
-              className="relative max-w-lg w-full bg-slate-900 border border-purple-500/30 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-purple-950/40 space-y-5"
+              className="relative max-w-lg w-full bg-white dark:bg-slate-900 border border-purple-500/30 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-purple-950/20 dark:shadow-purple-950/40 space-y-5"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
                     <UploadCloud className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Admin Artwork Publisher</h3>
-                    <p className="text-xs text-slate-400">Publish curated artwork directly to the gallery</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Admin Artwork Publisher</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">Publish curated artwork directly to the gallery</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => !isUploading && setIsUploadOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center justify-center cursor-pointer border border-slate-200 dark:border-transparent"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1210,8 +1210,8 @@ export default function GalleryPageClient() {
               <form onSubmit={handleAdminUpload} className="space-y-4">
                 {/* Title */}
                 <div className="space-y-1.5">
-                  <label htmlFor="art-title" className="text-xs font-semibold text-slate-300">
-                    Artwork Title <span className="text-purple-400">*</span>
+                  <label htmlFor="art-title" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Artwork Title <span className="text-purple-600 dark:text-purple-400">*</span>
                   </label>
                   <Input
                     id="art-title"
@@ -1219,13 +1219,13 @@ export default function GalleryPageClient() {
                     placeholder="e.g. Celestial Symphony, Cyberpunk Metropolis"
                     value={uploadTitle}
                     onChange={(e) => setUploadTitle(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 text-sm h-11"
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11"
                   />
                 </div>
 
                 {/* Artist Attribution */}
                 <div className="space-y-1.5">
-                  <label htmlFor="art-artist" className="text-xs font-semibold text-slate-300">
+                  <label htmlFor="art-artist" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Artist Attribution (Optional)
                   </label>
                   <Input
@@ -1233,18 +1233,18 @@ export default function GalleryPageClient() {
                     placeholder="e.g. Vivid Art Studio, Master Artist"
                     value={uploadArtistName}
                     onChange={(e) => setUploadArtistName(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 text-sm h-11"
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11"
                   />
                 </div>
 
                 {/* File Upload OR URL */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300 block">
-                    Artwork Image <span className="text-purple-400">*</span>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                    Artwork Image <span className="text-purple-600 dark:text-purple-400">*</span>
                   </label>
 
                   {/* File Selector */}
-                  <div className="p-4 border border-dashed border-slate-700 hover:border-purple-500 rounded-xl text-center bg-slate-950/60 transition-colors">
+                  <div className="p-4 border border-dashed border-slate-300 dark:border-slate-700 hover:border-purple-500 rounded-xl text-center bg-slate-50/80 dark:bg-slate-950/60 transition-colors">
                     <input
                       type="file"
                       id="art-file-input"
@@ -1256,8 +1256,8 @@ export default function GalleryPageClient() {
                       htmlFor="art-file-input"
                       className="flex flex-col items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <ImageIcon className="w-7 h-7 text-purple-400" />
-                      <span className="text-xs font-medium text-purple-300">
+                      <ImageIcon className="w-7 h-7 text-purple-600 dark:text-purple-400" />
+                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
                         {uploadFile ? uploadFile.name : 'Click to select image file (PNG, JPG, WEBP)'}
                       </span>
                       <span className="text-[11px] text-slate-500">
@@ -1267,9 +1267,9 @@ export default function GalleryPageClient() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="h-px bg-slate-800 flex-1" />
+                    <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
                     <span className="text-[10px] text-slate-500 uppercase">OR URL</span>
-                    <div className="h-px bg-slate-800 flex-1" />
+                    <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
                   </div>
 
                   <Input
@@ -1277,19 +1277,19 @@ export default function GalleryPageClient() {
                     value={uploadImageUrl}
                     onChange={(e) => setUploadImageUrl(e.target.value)}
                     disabled={!!uploadFile}
-                    className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 text-sm h-10 disabled:opacity-50"
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-10 disabled:opacity-50"
                   />
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     disabled={isUploading}
                     onClick={() => setIsUploadOpen(false)}
-                    className="border-slate-700 text-slate-300 hover:bg-slate-800 cursor-pointer"
+                    className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     Cancel
                   </Button>
