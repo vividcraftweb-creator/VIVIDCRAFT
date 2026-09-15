@@ -7,10 +7,17 @@ export interface UploadArtworkFormData {
   description?: string | null;
   category?: string | null;
   pricingType?: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
+  pricing_type?: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
+  selling_mode?: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
   price?: number | string | null;
+  amount?: number | string | null;
+  price_amount?: number | string | null;
+  priceAmount?: number | string | null;
   startingBid?: number | string | null;
+  starting_bid?: number | string | null;
   file?: File | null;
   imageUrl?: string | null;
+  image_url?: string | null;
 }
 
 export async function uploadArtwork(formData: FormData | UploadArtworkFormData) {
@@ -33,13 +40,16 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
   let file: File | null = null;
   let imageUrl: string | null = null;
 
+  let payload: any = {};
+
   if (formData instanceof FormData) {
-    const payload = {
+    payload = {
       title: formData.get('title'),
       description: formData.get('description'),
       category: formData.get('category'),
       pricing_type: formData.get('pricing_type') || formData.get('pricingType') || formData.get('selling_mode') || formData.get('selling_type'),
-      price: formData.get('price') || formData.get('priceAmount') || formData.get('price_amount') || formData.get('amount'),
+      price: formData.get('price'),
+      amount: formData.get('amount') || formData.get('priceAmount') || formData.get('price_amount'),
       starting_bid: formData.get('starting_bid') || formData.get('startingBid') || formData.get('bid_amount'),
     };
     title = String(payload.title || '').trim();
@@ -57,7 +67,7 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     const formUrl = formData.get('imageUrl') || formData.get('image_url');
     if (formUrl) imageUrl = String(formUrl);
   } else {
-    const payload = formData as any;
+    payload = formData as any;
     title = String(payload.title || '').trim();
     description = String(payload.description || '').trim();
     category = String(payload.category || '').trim();
@@ -69,6 +79,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     file = formData.file || null;
     imageUrl = formData.imageUrl || (formData as any).image_url || null;
   }
+
+  // Extract price strictly per user specification
+  const priceValue = parseFloat((formData as any).price || (formData as any).amount || payload.price || payload.amount || 0);
 
   if (!title) {
     return { success: false, error: 'Artwork title is required' };
@@ -105,19 +118,22 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
   const id = crypto.randomUUID();
   const randomCode = `#ART-${Math.floor(100 + Math.random() * 900)}`;
 
-  // Strict primary payload per user instruction
-  const insertPayload = {
+  // In Supabase insert object, send BOTH price and amount gracefully:
+  const insertData: Record<string, any> = {
     title,
     description: description || '',
     image_url: uploadedImageUrl,
     pricing_type: pricingType || 'FIXED_PRICE',
-    price: priceVal,
     user_id: currentUserId,
   };
+  if (priceValue > 0) {
+    insertData.price = priceValue;
+    insertData.amount = priceValue;
+  }
 
-  // Graceful fallback candidates if 'price' or other columns fail in schema cache:
+  // Graceful fallback candidates if 'price' or 'amount' fails in schema cache:
   const candidatePayloads: any[] = [
-    // 1. Strict primary mapping with id and art_code
+    // 1. Comprehensive payload with BOTH price and amount, id, art_code, user_id, artist_id
     {
       id,
       title,
@@ -125,22 +141,22 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       image_url: uploadedImageUrl,
       pricing_type: pricingType || 'FIXED_PRICE',
       selling_mode: pricingType || 'FIXED_PRICE',
-      price: priceVal,
-      starting_bid: startingBidVal,
       user_id: currentUserId,
       artist_id: currentUserId,
       category: category || null,
       art_code: randomCode,
+      starting_bid: startingBidVal,
       created_at: new Date().toISOString(),
+      ...(priceValue > 0 ? { price: priceValue, amount: priceValue } : {}),
     },
-    // 2. Strict primary mapping requested by user
-    insertPayload,
-    // 3. User request mapping + artist_id
+    // 2. Strict user insertData sending BOTH price and amount
+    insertData,
+    // 3. User insertData with artist_id
     {
-      ...insertPayload,
+      ...insertData,
       artist_id: currentUserId,
     },
-    // 4. Fallback if 'price' column schema cache error: use 'amount'
+    // 4. Fallback if 'amount' column doesn't exist in schema cache: use 'price' only
     {
       id,
       title,
@@ -148,7 +164,7 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       image_url: uploadedImageUrl,
       pricing_type: pricingType || 'FIXED_PRICE',
       selling_mode: pricingType || 'FIXED_PRICE',
-      amount: priceVal,
+      price: priceValue > 0 ? priceValue : null,
       starting_bid: startingBidVal,
       user_id: currentUserId,
       artist_id: currentUserId,
@@ -156,34 +172,50 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       art_code: randomCode,
       created_at: new Date().toISOString(),
     },
-    // 5. Fallback if 'price' fails: use 'price_amount'
+    // 5. Fallback if 'price' column schema cache error: use 'amount' only
     {
       id,
       title,
       description: description || '',
       image_url: uploadedImageUrl,
       pricing_type: pricingType || 'FIXED_PRICE',
-      price_amount: priceVal,
+      selling_mode: pricingType || 'FIXED_PRICE',
+      amount: priceValue > 0 ? priceValue : null,
+      starting_bid: startingBidVal,
+      user_id: currentUserId,
+      artist_id: currentUserId,
+      category: category || null,
+      art_code: randomCode,
+      created_at: new Date().toISOString(),
+    },
+    // 6. Fallback if 'price' fails: use 'price_amount'
+    {
+      id,
+      title,
+      description: description || '',
+      image_url: uploadedImageUrl,
+      pricing_type: pricingType || 'FIXED_PRICE',
+      price_amount: priceValue > 0 ? priceValue : null,
       user_id: currentUserId,
       artist_id: currentUserId,
       created_at: new Date().toISOString(),
     },
-    // 6. Fallback if 'user_id' fails in schema cache: use 'artist_id' with 'price'
+    // 7. Fallback with artist_id and price
     {
       title,
       description: description || '',
       image_url: uploadedImageUrl,
       pricing_type: pricingType || 'FIXED_PRICE',
-      price: priceVal,
+      price: priceValue > 0 ? priceValue : null,
       artist_id: currentUserId,
     },
-    // 7. Fallback if both 'price' and 'user_id' fail: use 'artist_id' + 'amount'
+    // 8. Fallback with artist_id and amount
     {
       title,
       description: description || '',
       image_url: uploadedImageUrl,
       pricing_type: pricingType || 'FIXED_PRICE',
-      amount: priceVal,
+      amount: priceValue > 0 ? priceValue : null,
       artist_id: currentUserId,
     },
   ];

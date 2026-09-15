@@ -30,6 +30,8 @@ export interface ArtworkItem {
   selling_mode?: string;
   pricing_type?: string;
   price?: number | null;
+  amount?: number | null;
+  price_amount?: number | null;
   starting_bid?: number | null;
   art_code?: string;
   profiles?: {
@@ -76,8 +78,11 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
     amount: (artwork as any)?.amount,
   });
 
+  // Retrieve price safely per user specification
+  const displayPrice = Number(artwork.price || artwork.amount || artwork.price_amount || 0);
+
   // Dynamic Pricing & Status Badge Evaluation
-  const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
+  const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
 
   const resolvedArtistName = extractArtistName(artwork, artistName);
 
@@ -216,17 +221,17 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             {/* Price / Starting Bid Line */}
             {badgeType === 'FOR_SALE' && (
               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                Price: {displayPrice}
+                Price: LKR {displayPrice.toLocaleString()}
               </p>
             )}
             {badgeType === 'BIDDING' && (
               <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">
-                {displayPrice}
+                {fallbackDisplayPrice}
               </p>
             )}
             {badgeType === 'NOT_FOR_SALE' && (
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-                {displayPrice}
+                {fallbackDisplayPrice}
               </p>
             )}
 

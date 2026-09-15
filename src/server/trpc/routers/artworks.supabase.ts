@@ -108,6 +108,8 @@ export const artworksRouter = router({
         pricing_type: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         pricingType: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         price: z.number().nullable().optional(),
+        amount: z.number().nullable().optional(),
+        price_amount: z.number().nullable().optional(),
         starting_bid: z.number().nullable().optional(),
         startingBid: z.number().nullable().optional(),
       })
@@ -126,10 +128,12 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
-      // Step 2: Read incoming values strictly per Task 2
+      // Read incoming values strictly
       const payload = input as any;
       const pricingType = String(payload.pricing_type || payload.pricingType || payload.sellingMode || payload.selling_mode || 'FIXED_PRICE').toUpperCase().trim();
-      const priceVal = payload.price ? parseFloat(String(payload.price)) : 0;
+      const priceValue = parseFloat(
+        String(payload.price ?? payload.amount ?? payload.price_amount ?? input.price ?? 0)
+      ) || 0;
       const startingBidVal = (payload.starting_bid ?? payload.startingBid) ? parseFloat(String(payload.starting_bid ?? payload.startingBid)) : null;
 
       const description = input.description?.trim() || null;
@@ -152,9 +156,22 @@ export const artworksRouter = router({
         artCode = `#ART-${hash}`;
       }
 
+      // In Supabase insert object, send BOTH price and amount gracefully:
+      const insertData: Record<string, any> = {
+        title: input.title.trim(),
+        description: description || '',
+        image_url: input.imageUrl,
+        pricing_type: pricingType,
+        user_id: artistId,
+      };
+      if (priceValue > 0) {
+        insertData.price = priceValue;
+        insertData.amount = priceValue;
+      }
+
       // Explicit insert query candidates with graceful fallback column names if 'price' or 'user_id' fails in schema cache
       const candidateInserts: any[] = [
-        // Candidate 1: Full payload with price, user_id, and artist_id
+        // Candidate 1: Full payload with BOTH price and amount, user_id, and artist_id
         {
           id,
           artist_id: artistId,
@@ -166,31 +183,20 @@ export const artworksRouter = router({
           tags,
           pricing_type: pricingType,
           selling_mode: pricingType,
-          price: priceVal,
           starting_bid: startingBidVal,
           image_url: input.imageUrl,
           created_at: new Date().toISOString(),
           art_code: artCode,
+          ...(priceValue > 0 ? { price: priceValue, amount: priceValue } : {}),
         },
-        // Candidate 2: Strict user payload
+        // Candidate 2: Strict user insertData sending BOTH price and amount
+        insertData,
+        // Candidate 3: Strict user insertData with artist_id
         {
-          title: input.title.trim(),
-          description: description || '',
-          image_url: input.imageUrl,
-          pricing_type: pricingType,
-          price: priceVal,
-          user_id: artistId,
-        },
-        // Candidate 3: Strict user payload with artist_id
-        {
-          title: input.title.trim(),
-          description: description || '',
-          image_url: input.imageUrl,
-          pricing_type: pricingType,
-          price: priceVal,
+          ...insertData,
           artist_id: artistId,
         },
-        // Candidate 4: Fallback if 'price' column schema cache fails: use 'amount'
+        // Candidate 4: Fallback if 'amount' fails: use 'price' only
         {
           id,
           artist_id: artistId,
@@ -202,13 +208,13 @@ export const artworksRouter = router({
           tags,
           pricing_type: pricingType,
           selling_mode: pricingType,
-          amount: priceVal,
+          price: priceValue > 0 ? priceValue : null,
           starting_bid: startingBidVal,
           image_url: input.imageUrl,
           created_at: new Date().toISOString(),
           art_code: artCode,
         },
-        // Candidate 5: Fallback if 'price' fails: use 'price_amount'
+        // Candidate 5: Fallback if 'price' fails: use 'amount' only
         {
           id,
           artist_id: artistId,
@@ -219,17 +225,44 @@ export const artworksRouter = router({
           medium,
           tags,
           pricing_type: pricingType,
-          price_amount: priceVal,
+          selling_mode: pricingType,
+          amount: priceValue > 0 ? priceValue : null,
+          starting_bid: startingBidVal,
+          image_url: input.imageUrl,
+          created_at: new Date().toISOString(),
+          art_code: artCode,
+        },
+        // Candidate 6: Fallback if 'price' fails: use 'price_amount'
+        {
+          id,
+          artist_id: artistId,
+          user_id: artistId,
+          title: input.title.trim(),
+          description,
+          category,
+          medium,
+          tags,
+          pricing_type: pricingType,
+          price_amount: priceValue > 0 ? priceValue : null,
           image_url: input.imageUrl,
           created_at: new Date().toISOString(),
         },
-        // Candidate 6: Fallback if 'price' fails and artist_id only
+        // Candidate 7: Fallback if 'amount' fails and artist_id only
         {
           title: input.title.trim(),
           description: description || '',
           image_url: input.imageUrl,
           pricing_type: pricingType,
-          amount: priceVal,
+          price: priceValue > 0 ? priceValue : null,
+          artist_id: artistId,
+        },
+        // Candidate 8: Fallback if 'price' fails and artist_id only
+        {
+          title: input.title.trim(),
+          description: description || '',
+          image_url: input.imageUrl,
+          pricing_type: pricingType,
+          amount: priceValue > 0 ? priceValue : null,
           artist_id: artistId,
         },
       ];
@@ -258,7 +291,7 @@ export const artworksRouter = router({
         ...res.data,
         selling_mode: res.data?.selling_mode || res.data?.pricing_type || pricingType,
         pricing_type: res.data?.pricing_type || res.data?.selling_mode || pricingType,
-        price: res.data?.price ?? priceVal,
+        price: res.data?.price ?? res.data?.amount ?? priceValue,
         starting_bid: res.data?.starting_bid ?? startingBidVal,
         art_code: res.data?.art_code || artCode,
       };

@@ -34,6 +34,8 @@ export interface ArtworkWithProfile {
   selling_mode?: string;
   pricing_type?: string;
   price?: number | null;
+  amount?: number | null;
+  price_amount?: number | null;
   starting_bid?: number | null;
   art_code?: string;
   profiles?: ArtworkProfile | null;
@@ -85,15 +87,14 @@ export interface ArtworkPricingDisplay {
  */
 export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
   const pType = String(artwork?.pricing_type || artwork?.selling_type || artwork?.selling_mode || '').toUpperCase().trim();
-  const rawPrice = Number(artwork?.price ?? artwork?.price_amount ?? artwork?.priceAmount ?? artwork?.amount ?? 0);
+  const displayPrice = Number(artwork?.price ?? artwork?.amount ?? artwork?.price_amount ?? artwork?.priceAmount ?? 0);
   const rawBid = Number(artwork?.starting_bid ?? artwork?.startingBid ?? 0);
 
   // Check if artwork.price > 0 OR pricing_type === 'FIXED_PRICE' -> Badge: "For Sale", Price: "LKR " + (artwork.price || 0)
-  if (rawPrice > 0 || pType === 'FIXED_PRICE' || pType.includes('FIXED') || pType === 'FOR_SALE' || pType === 'SALE') {
-    const finalPrice = rawPrice > 0 ? rawPrice : Number(artwork?.price || 0);
+  if (displayPrice > 0 || pType === 'FIXED_PRICE' || pType.includes('FIXED') || pType === 'FOR_SALE' || pType === 'SALE') {
     return {
       statusBadge: 'For Sale',
-      displayPrice: `LKR ${finalPrice.toLocaleString()}`,
+      displayPrice: `LKR ${displayPrice.toLocaleString()}`,
       badgeType: 'FOR_SALE',
     };
   }

@@ -252,22 +252,23 @@ export function ArtworkModal({
 
             {/* Price / Starting Bid Display */}
             {(() => {
-              const { displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
+              const displayPrice = Number(artwork.price || (artwork as any).amount || (artwork as any).price_amount || 0);
+              const { badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
               return (
                 <>
                   {badgeType === 'FOR_SALE' && (
                     <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                      Price: {displayPrice}
+                      Price: LKR {displayPrice.toLocaleString()}
                     </p>
                   )}
                   {badgeType === 'BIDDING' && (
                     <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                      {displayPrice}
+                      {fallbackDisplayPrice}
                     </p>
                   )}
                   {badgeType === 'NOT_FOR_SALE' && (
                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                      {displayPrice}
+                      {fallbackDisplayPrice}
                     </p>
                   )}
                 </>

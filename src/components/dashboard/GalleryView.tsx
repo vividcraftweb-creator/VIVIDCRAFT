@@ -115,6 +115,7 @@ export default function GalleryView() {
         pricing_type: pricing_type,
         pricingType: pricing_type,
         price: numericPrice,
+        amount: numericPrice,
         starting_bid: numericBid,
         startingBid: numericBid,
       });
@@ -445,7 +446,7 @@ export default function GalleryView() {
                       {/* Pricing / Bid amount display */}
                       {badgeType === 'FOR_SALE' && (
                         <p className="text-xs font-bold text-emerald-400">
-                          Price: {displayPrice}
+                          Price: LKR {Number(artwork.price || (artwork as any).amount || (artwork as any).price_amount || 0).toLocaleString()}
                         </p>
                       )}
                       {badgeType === 'BIDDING' && (
