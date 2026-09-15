@@ -14,6 +14,9 @@ export default function GalleryView() {
   const [isUploading, setIsUploading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Painting');
+  const [medium, setMedium] = useState('');
+  const [tags, setTags] = useState('');
   const [sellingMode, setSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('NOT_FOR_SALE');
   const [price, setPrice] = useState('');
   const [startingBid, setStartingBid] = useState('');
@@ -31,6 +34,9 @@ export default function GalleryView() {
       });
       setTitle('');
       setDescription('');
+      setCategory('Painting');
+      setMedium('');
+      setTags('');
       setPrice('');
       setStartingBid('');
       setSellingMode('NOT_FOR_SALE');
@@ -94,9 +100,15 @@ export default function GalleryView() {
       await createArtwork.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
+        category: category.trim() || undefined,
+        medium: medium.trim() || undefined,
+        tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         imageUrl: publicUrl,
         sellingMode,
+        pricing_type: sellingMode,
+        pricingType: sellingMode,
         price: sellingMode === 'FIXED_PRICE' && price ? Number(price) : null,
+        starting_bid: sellingMode === 'BIDDING' && startingBid ? Number(startingBid) : null,
         startingBid: sellingMode === 'BIDDING' && startingBid ? Number(startingBid) : null,
       });
 
@@ -166,6 +178,54 @@ export default function GalleryView() {
               onChange={(e) => setDescription(e.target.value)}
               className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 min-h-[90px] text-sm"
             />
+          </div>
+
+          {/* Category, Medium & Tags Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label htmlFor="artwork-category" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                Category
+              </label>
+              <select
+                id="artwork-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 text-white rounded-md px-3 h-10 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                <option value="Painting">Painting</option>
+                <option value="Digital Art">Digital Art</option>
+                <option value="Sculpture">Sculpture</option>
+                <option value="Photography">Photography</option>
+                <option value="Drawing & Sketching">Drawing &amp; Sketching</option>
+                <option value="Mixed Media">Mixed Media</option>
+                <option value="Illustration">Illustration</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="artwork-medium" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                Medium / Technique
+              </label>
+              <Input
+                id="artwork-medium"
+                placeholder="e.g. Oil on Canvas, Acrylic, Procreate"
+                value={medium}
+                onChange={(e) => setMedium(e.target.value)}
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-10 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="artwork-tags" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                Tags (comma separated)
+              </label>
+              <Input
+                id="artwork-tags"
+                placeholder="e.g. landscape, modern, vibrant"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-10 text-sm"
+              />
+            </div>
           </div>
 
           {/* Selling Options Configuration */}

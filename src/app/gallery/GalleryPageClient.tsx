@@ -1386,14 +1386,48 @@ export default function GalleryPageClient() {
                     </div>
 
                     {/* Artwork Description in Modal */}
-                    {selectedArtwork.description && (
-                      <div className="mt-2.5 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed max-h-24 overflow-y-auto">
-                        <span className="font-semibold text-amber-600 dark:text-amber-400 block mb-0.5 text-[10px] uppercase tracking-wider">
-                          Artwork Story &amp; Description
-                        </span>
-                        <p className="whitespace-pre-line">{selectedArtwork.description}</p>
-                      </div>
-                    )}
+                    <div className="mt-2.5 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                      <span className="font-semibold text-amber-600 dark:text-amber-400 block mb-0.5 text-[10px] uppercase tracking-wider">
+                        Artwork Story &amp; Description
+                      </span>
+                      {selectedArtwork.description ? (
+                        <p className="whitespace-pre-line text-xs">{selectedArtwork.description}</p>
+                      ) : (
+                        <p className="italic text-slate-400 dark:text-slate-500 text-xs">No description provided for this artwork.</p>
+                      )}
+                    </div>
+
+                    {/* Full Artist Profile Info Section */}
+                    {(() => {
+                      const profile = (selectedArtwork as any).profiles;
+                      const name = profile?.artist_name || profile?.full_name || selectedArtwork.artist?.name || 'Verified Artist';
+                      const bio = profile?.bio || profile?.headline || profile?.title || selectedArtwork.artist?.bio || selectedArtwork.artist?.title || 'Visual artist & creator on JobHorizons.';
+                      const location = profile?.location || profile?.address || selectedArtwork.artist?.location || 'Sri Lanka';
+                      const category = (selectedArtwork as any).category || profile?.category || (profile?.role ? (profile.role.charAt(0).toUpperCase() + profile.role.slice(1)) : 'Visual Arts');
+
+                      return (
+                        <div className="mt-2 p-2.5 rounded-xl bg-amber-50/60 dark:bg-slate-800/50 border border-amber-200/50 dark:border-slate-700/60 text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                              Artist Profile
+                            </span>
+                            <Link
+                              href={`/freelancers/${selectedArtwork.artist_id}`}
+                              className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline font-semibold"
+                            >
+                              View Profile &rarr;
+                            </Link>
+                          </div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-xs">{name}</div>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5">{bio}</p>
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
+                            <span>Location: <strong className="text-slate-700 dark:text-slate-300">{location}</strong></span>
+                            <span>•</span>
+                            <span>Category: <strong className="text-slate-700 dark:text-slate-300">{category}</strong></span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

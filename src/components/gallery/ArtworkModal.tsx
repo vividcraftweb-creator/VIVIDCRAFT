@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { X, Heart, Send, Loader2, MessageSquare, LogIn } from 'lucide-react';
+import { X, Heart, Send, Loader2, MessageSquare, LogIn, MapPin, Palette, User, Tag, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -185,12 +185,13 @@ export function ArtworkModal({
         {/* RIGHT COLUMN: Details, Metadata, Comments & WhatsApp Action Button */}
         <div className="flex flex-col h-full max-h-[580px] md:max-h-[640px] bg-white dark:bg-slate-900 overflow-hidden">
           {/* Header Section: Status, Title, Artist, Ref ID, Date, Likes */}
-          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0 bg-white dark:bg-slate-900">
+          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0 bg-white dark:bg-slate-900 overflow-y-auto max-h-[300px]">
             {/* Status Badges & Likes Counter Row */}
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">
                 {(() => {
-                  const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+                  const rawMode = String(artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE').toUpperCase();
+                  const mode = rawMode.includes('FIXED') ? 'FIXED_PRICE' : rawMode.includes('BID') ? 'BIDDING' : 'NOT_FOR_SALE';
                   return (
                     <>
                       {mode === 'FIXED_PRICE' && (
@@ -239,22 +240,25 @@ export function ArtworkModal({
 
             {/* Price / Starting Bid Display */}
             {(() => {
-              const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+              const rawMode = String(artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE').toUpperCase();
+              const mode = rawMode.includes('FIXED') ? 'FIXED_PRICE' : rawMode.includes('BID') ? 'BIDDING' : 'NOT_FOR_SALE';
+              const price = artwork.price !== undefined && artwork.price !== null ? Number(artwork.price) : 0;
+              const startingBid = artwork.starting_bid !== undefined && artwork.starting_bid !== null ? Number(artwork.starting_bid) : 0;
               return (
                 <>
                   {mode === 'FIXED_PRICE' && (
                     <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                      Price: LKR {artwork.price ? Number(artwork.price).toLocaleString() : '0'}
+                      Price: LKR {price.toLocaleString()}
                     </p>
                   )}
                   {mode === 'BIDDING' && (
                     <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                      Starting Bid: LKR {artwork.starting_bid ? Number(artwork.starting_bid).toLocaleString() : '0'}
+                      Starting Bid: LKR {startingBid.toLocaleString()}
                     </p>
                   )}
                   {mode === 'NOT_FOR_SALE' && (
                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                      Price: Display Only
+                      Not For Sale
                     </p>
                   )}
                 </>
@@ -291,15 +295,116 @@ export function ArtworkModal({
               )}
             </div>
 
-            {/* Artwork Description */}
-            {artwork.description && (
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed max-h-28 overflow-y-auto">
-                <span className="font-semibold block mb-1 text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  Artwork Story &amp; Description
-                </span>
-                <p className="whitespace-pre-line">{artwork.description}</p>
-              </div>
-            )}
+            {/* Artwork Description explicitly rendered below Title / Artist */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+              <span className="font-semibold block mb-1 text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Artwork Story &amp; Description
+              </span>
+              {artwork.description ? (
+                <p className="whitespace-pre-line text-slate-800 dark:text-slate-200 text-xs leading-relaxed">
+                  {artwork.description}
+                </p>
+              ) : (
+                <p className="italic text-slate-400 dark:text-slate-500 text-xs">
+                  No description provided for this piece.
+                </p>
+              )}
+              {(artwork.category || artwork.medium) && (
+                <div className="flex items-center gap-3 mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+                  {artwork.category && (
+                    <span className="inline-flex items-center gap-1 font-medium">
+                      <Palette className="w-3 h-3 text-amber-500" />
+                      Category: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.category}</span>
+                    </span>
+                  )}
+                  {artwork.medium && (
+                    <span className="inline-flex items-center gap-1 font-medium">
+                      <Tag className="w-3 h-3 text-amber-500" />
+                      Medium: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.medium}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Full Artist Profile Info Section */}
+            {(() => {
+              const artistProfile = artwork.profiles;
+              const artistNameResolved =
+                artistProfile?.artist_name ||
+                artistProfile?.full_name ||
+                artistName ||
+                artwork.artist?.name ||
+                'Verified Artist';
+              const artistBio =
+                artistProfile?.bio ||
+                artistProfile?.headline ||
+                artistProfile?.title ||
+                artwork.artist?.bio ||
+                artwork.artist?.title ||
+                'Creative artist & designer on JobHorizons.';
+              const artistLocation =
+                artistProfile?.location ||
+                artistProfile?.address ||
+                artwork.artist?.location ||
+                'Sri Lanka';
+              const artistCategory =
+                artwork.category ||
+                artistProfile?.category ||
+                (artistProfile?.role ? (artistProfile.role.charAt(0).toUpperCase() + artistProfile.role.slice(1)) : 'Visual Arts');
+              const avatar = artistProfile?.avatar_url || artwork.artist?.avatar_url;
+
+              return (
+                <div className="p-3 rounded-xl bg-gradient-to-r from-amber-50/70 to-orange-50/50 dark:from-slate-800/90 dark:to-slate-800/60 border border-amber-200/60 dark:border-slate-700/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      Artist Profile
+                    </span>
+                    <Link
+                      href={`/freelancers/${artwork.artist_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>Full Profile</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </Link>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="relative h-9 w-9 rounded-full overflow-hidden shrink-0 border border-amber-300 dark:border-amber-500/40 bg-amber-100 dark:bg-amber-950 flex items-center justify-center font-bold text-amber-900 dark:text-amber-200 text-xs">
+                      {avatar && isValidImageUrl(avatar) ? (
+                        <img
+                          src={avatar}
+                          alt={artistNameResolved}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span>{artistNameResolved.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                        {artistNameResolved}
+                      </h4>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5 leading-snug">
+                        {artistBio}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                          <span className="truncate">{artistLocation}</span>
+                        </span>
+                        <span>•</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Palette className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                          <span className="truncate">{artistCategory}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Comments Section (Scrollable) */}

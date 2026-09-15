@@ -9,12 +9,17 @@ import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { ArtworkModal } from './ArtworkModal';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
+import { inferArtworkPricing, extractArtistName } from '@/lib/artworks';
 
 export interface ArtworkItem {
   id: string;
   artist_id: string;
+  user_id?: string;
   title: string;
   description?: string | null;
+  category?: string | null;
+  medium?: string | null;
+  tags?: string[] | string | null;
   image_url: string;
   created_at: string;
   likesCount: number;
@@ -32,6 +37,13 @@ export interface ArtworkItem {
     artist_name?: string | null;
     avatar_url?: string | null;
     role?: string | null;
+    bio?: string | null;
+    headline?: string | null;
+    title?: string | null;
+    location?: string | null;
+    category?: string | null;
+    address?: string | null;
+    [key: string]: any;
   } | null;
   artist?: {
     id: string;
@@ -43,6 +55,8 @@ export interface ArtworkItem {
     location?: string | null;
     phone?: string | null;
     whatsapp_number?: string | null;
+    category?: string | null;
+    [key: string]: any;
   };
 }
 
@@ -52,6 +66,14 @@ interface ArtworkCardProps {
 }
 
 export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
+  // Read pricing_type, price, and starting_bid directly from DB with smart fallback
+  const pricing = inferArtworkPricing(artwork);
+  const rawMode = String(artwork.pricing_type || artwork.selling_mode || pricing.mode || 'NOT_FOR_SALE').toUpperCase();
+  const mode = rawMode.includes('FIXED') ? 'FIXED_PRICE' : rawMode.includes('BID') ? 'BIDDING' : 'NOT_FOR_SALE';
+  const price = artwork.price !== undefined && artwork.price !== null ? Number(artwork.price) : pricing.price;
+  const startingBid = artwork.starting_bid !== undefined && artwork.starting_bid !== null ? Number(artwork.starting_bid) : pricing.startingBid;
+  const resolvedArtistName = extractArtistName(artwork, artistName);
+
   const router = useRouter();
   const { data: session, status } = useAuth();
   const isAuthenticated = status === 'authenticated' && !!session?.session?.user;
@@ -166,69 +188,49 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
                 {artwork.title}
               </h3>
 
-              {/* Status Badges */}
-              {(() => {
-                const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
-                return (
-                  <>
-                    {mode === 'FIXED_PRICE' && (
-                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                        For Sale
-                      </span>
-                    )}
-                    {mode === 'BIDDING' && (
-                      <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                        Open Bidding
-                      </span>
-                    )}
-                    {mode === 'NOT_FOR_SALE' && (
-                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                        Not For Sale
-                      </span>
-                    )}
-                  </>
-                );
-              })()}
+              {/* Status Badges directly based on pricing_type */}
+              {mode === 'FIXED_PRICE' && (
+                <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400 dark:bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
+                  For Sale
+                </span>
+              )}
+              {mode === 'BIDDING' && (
+                <span className="text-[10px] font-bold text-white bg-orange-500 dark:bg-orange-500/25 dark:text-orange-300 border border-orange-500/50 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
+                  Open Bidding
+                </span>
+              )}
+              {mode === 'NOT_FOR_SALE' && (
+                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                  Not For Sale
+                </span>
+              )}
             </div>
 
             {/* Price / Starting Bid Line */}
-            {(() => {
-              const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
-              return (
-                <>
-                  {mode === 'FIXED_PRICE' && (
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                      Price: LKR {artwork.price ? Number(artwork.price).toLocaleString() : '0'}
-                    </p>
-                  )}
-                  {mode === 'BIDDING' && (
-                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                      Starting Bid: LKR {artwork.starting_bid ? Number(artwork.starting_bid).toLocaleString() : '0'}
-                    </p>
-                  )}
-                  {mode === 'NOT_FOR_SALE' && (
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-                      Price: Display Only
-                    </p>
-                  )}
-                </>
-              );
-            })()}
+            {mode === 'FIXED_PRICE' && (
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
+                LKR {price ? price.toLocaleString() : '0'}
+              </p>
+            )}
+            {mode === 'BIDDING' && (
+              <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">
+                LKR {startingBid ? startingBid.toLocaleString() : '0'}
+              </p>
+            )}
+            {mode === 'NOT_FOR_SALE' && (
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+                Not For Sale
+              </p>
+            )}
 
             {/* Artist & Lower Metadata Row with Ref ID */}
             <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-              {(() => {
-                const rawName = artwork.profiles?.artist_name || artwork.profiles?.full_name || artistName || artwork.artist?.name;
-                const resolvedArtist = (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
-                return (
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[170px]">
-                      <User className="w-3 h-3 text-amber-500 shrink-0" />
-                      <span className="truncate">{resolvedArtist}</span>
-                    </span>
-                  </div>
-                );
-              })()}
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[170px]">
+                  <User className="w-3 h-3 text-amber-500 shrink-0" />
+                  <span className="truncate">{resolvedArtistName}</span>
+                </span>
+              </div>
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                 Ref ID: {artwork.art_code || '#ART-101'}
               </span>

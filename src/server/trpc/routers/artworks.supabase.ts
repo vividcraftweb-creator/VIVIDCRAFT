@@ -58,6 +58,9 @@ export const artworksRouter = router({
           artist_id: art.artist_id,
           title: art.title,
           description: art.description || null,
+          category: art.category || null,
+          medium: art.medium || null,
+          tags: art.tags || [],
           image_url: art.image_url,
           created_at: art.created_at,
           likesCount: artLikes.length,
@@ -81,10 +84,15 @@ export const artworksRouter = router({
       z.object({
         title: z.string().min(1, 'Title is required'),
         description: z.string().nullable().optional(),
+        category: z.string().nullable().optional(),
+        medium: z.string().nullable().optional(),
+        tags: z.union([z.array(z.string()), z.string()]).nullable().optional(),
         imageUrl: z.string().url('A valid image URL is required'),
         sellingMode: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).default('NOT_FOR_SALE').optional(),
+        pricing_type: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         pricingType: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         price: z.number().nullable().optional(),
+        starting_bid: z.number().nullable().optional(),
         startingBid: z.number().nullable().optional(),
       })
     )
@@ -102,10 +110,17 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
-      const sellingMode = input.pricingType || input.sellingMode || 'NOT_FOR_SALE';
-      const price = sellingMode === 'FIXED_PRICE' ? (input.price ?? null) : null;
-      const startingBid = sellingMode === 'BIDDING' ? (input.startingBid ?? null) : null;
+      const pricingMode = input.pricing_type || input.pricingType || input.sellingMode || 'NOT_FOR_SALE';
+      const price = pricingMode === 'FIXED_PRICE' ? (input.price ?? null) : null;
+      const startingBid = pricingMode === 'BIDDING' ? (input.starting_bid ?? input.startingBid ?? null) : null;
       const description = input.description?.trim() || null;
+      const category = input.category?.trim() || null;
+      const medium = input.medium?.trim() || null;
+      const tags = Array.isArray(input.tags)
+        ? input.tags
+        : typeof input.tags === 'string'
+        ? input.tags.split(',').map((t) => t.trim()).filter(Boolean)
+        : [];
 
       // Generate sequential Artwork ID (e.g., #ART-104)
       let artCode = '#ART-101';
@@ -118,24 +133,52 @@ export const artworksRouter = router({
         artCode = `#ART-${hash}`;
       }
 
+      // Explicit insert query payload strictly including: pricing_type, price, starting_bid, description, category, medium, tags
+      const insertPayload = {
+        id,
+        artist_id: artistId,
+        user_id: artistId,
+        title: input.title.trim(),
+        description,
+        category,
+        medium,
+        tags,
+        pricing_type: pricingMode,
+        selling_mode: pricingMode,
+        price,
+        starting_bid: startingBid,
+        image_url: input.imageUrl,
+        created_at: new Date().toISOString(),
+        art_code: artCode,
+      };
+
       let res = await supabase
         .from('artworks')
-        .insert({
-          id,
-          artist_id: artistId,
-          user_id: artistId,
-          title: input.title.trim(),
-          description,
-          image_url: input.imageUrl,
-          created_at: new Date().toISOString(),
-          selling_mode: sellingMode,
-          pricing_type: sellingMode,
-          price,
-          starting_bid: startingBid,
-          art_code: artCode,
-        })
+        .insert(insertPayload)
         .select()
         .single();
+
+      if (res.error) {
+        console.warn('createArtwork full insert error, trying without category/medium/tags:', res.error);
+        res = await supabase
+          .from('artworks')
+          .insert({
+            id,
+            artist_id: artistId,
+            user_id: artistId,
+            title: input.title.trim(),
+            description,
+            image_url: input.imageUrl,
+            created_at: new Date().toISOString(),
+            selling_mode: pricingMode,
+            pricing_type: pricingMode,
+            price,
+            starting_bid: startingBid,
+            art_code: artCode,
+          })
+          .select()
+          .single();
+      }
 
       if (res.error) {
         console.warn('createArtwork dual insert error, trying with pricing_type only:', res.error);
@@ -144,55 +187,11 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
-            user_id: artistId,
             title: input.title.trim(),
             description,
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
-            pricing_type: sellingMode,
-            price,
-            starting_bid: startingBid,
-            art_code: artCode,
-          })
-          .select()
-          .single();
-      }
-
-      if (res.error) {
-        console.warn('createArtwork pricing_type insert error, trying with selling_mode only:', res.error);
-        res = await supabase
-          .from('artworks')
-          .insert({
-            id,
-            artist_id: artistId,
-            user_id: artistId,
-            title: input.title.trim(),
-            description,
-            image_url: input.imageUrl,
-            created_at: new Date().toISOString(),
-            selling_mode: sellingMode,
-            pricing_type: sellingMode,
-            price,
-            starting_bid: startingBid,
-            art_code: artCode,
-          })
-          .select()
-          .single();
-      }
-
-      if (res.error) {
-        console.warn('createArtwork without extra metadata, preserving selling_mode & pricing:', res.error);
-        res = await supabase
-          .from('artworks')
-          .insert({
-            id,
-            artist_id: artistId,
-            user_id: artistId,
-            title: input.title.trim(),
-            image_url: input.imageUrl,
-            created_at: new Date().toISOString(),
-            selling_mode: sellingMode,
-            pricing_type: sellingMode,
+            pricing_type: pricingMode,
             price,
             starting_bid: startingBid,
           })
@@ -207,7 +206,6 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
-            user_id: artistId,
             title: input.title.trim(),
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
