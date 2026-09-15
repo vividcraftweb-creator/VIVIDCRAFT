@@ -273,10 +273,13 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
       return 'studio One';
     }
 
+    const artistName = (profile as any).artist_name?.trim();
+    if (artistName) return artistName;
+
     const fullName = (profile as any).full_name || (profile as any).fullName || `${fName} ${lName}`.trim();
     if (fullName) return fullName;
 
-    return profile.title || (profile as any).professional_title || 'studio One';
+    return profile.title || (profile as any).professional_title || 'Verified Artist';
   }, [profile]);
 
   const avatarUrl = useMemo(() => {

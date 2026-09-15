@@ -71,6 +71,12 @@ interface RankedArtwork {
   price?: number | null;
   starting_bid?: number | null;
   art_code?: string;
+  profiles?: {
+    full_name?: string | null;
+    artist_name?: string | null;
+    avatar_url?: string | null;
+    role?: string | null;
+  } | null;
   artist: ArtworkArtist;
 }
 
@@ -177,7 +183,7 @@ export default function GalleryPageClient() {
 
   // Fetch via tRPC procedure
   const { data: remoteArtworks, isLoading, refetch } = trpc.artworks.getAllArtworks.useQuery(
-    { sort: activeSort, search: searchQuery, mode: 'GALLERY' },
+    { sort: activeSort, search: searchQuery, mode: 'ALL' },
     {
       refetchOnWindowFocus: false,
     }
@@ -269,7 +275,7 @@ export default function GalleryPageClient() {
                 artCode = `#ART-${hash}`;
               }
 
-              const sellingMode = art.selling_mode || 'NOT_FOR_SALE';
+              const sellingMode = art.pricing_type || art.selling_mode || 'NOT_FOR_SALE';
 
               return {
                 id: art.id,
@@ -289,11 +295,17 @@ export default function GalleryPageClient() {
                 price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
                 starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
                 art_code: artCode,
+                profiles: prof ? {
+                  full_name: profileFullName,
+                  artist_name: artistNameField || null,
+                  avatar_url: prof?.avatar_url || null,
+                  role: prof?.role || 'artist',
+                } : null,
                 artist: {
                   id: art.artist_id,
                   name: artistName,
                   avatar_url: prof?.avatar_url || null,
-                  title: prof?.title || 'Artist / Creator',
+                  title: prof?.title || 'Verified Artist',
                   role: prof?.role || 'artist',
                   bio: prof?.bio || null,
                   location: prof?.location || null,
@@ -596,6 +608,7 @@ export default function GalleryPageClient() {
         .insert({
           id: newId,
           artist_id: artistId,
+          user_id: artistId,
           title: uploadTitle.trim(),
           description: uploadDescription.trim() || null,
           image_url: finalImageUrl,
@@ -614,6 +627,7 @@ export default function GalleryPageClient() {
           .insert({
             id: newId,
             artist_id: artistId,
+            user_id: artistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: finalImageUrl,
@@ -633,6 +647,7 @@ export default function GalleryPageClient() {
           .insert({
             id: newId,
             artist_id: artistId,
+            user_id: artistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: finalImageUrl,
@@ -652,10 +667,12 @@ export default function GalleryPageClient() {
           .insert({
             id: newId,
             artist_id: artistId,
+            user_id: artistId,
             title: uploadTitle.trim(),
             image_url: finalImageUrl,
             created_at: now,
             selling_mode: uploadSellingMode,
+            pricing_type: uploadSellingMode,
             price,
             starting_bid: startingBid,
           });
@@ -668,10 +685,13 @@ export default function GalleryPageClient() {
           await supabase.from('artworks').insert({
             id: newId,
             artist_id: artistId,
+            user_id: artistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: finalImageUrl,
             created_at: now,
+            pricing_type: uploadSellingMode,
+            selling_mode: uploadSellingMode,
           });
         } catch {}
       }
@@ -1162,14 +1182,19 @@ export default function GalleryPageClient() {
                         const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
                         return (
                           <>
-                            {mode === 'FIXED_PRICE' && artwork.price && (
+                            {mode === 'FIXED_PRICE' && (
                               <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                                Price: LKR {Number(artwork.price).toLocaleString()}
+                                Price: LKR {artwork.price ? Number(artwork.price).toLocaleString() : '0'}
                               </p>
                             )}
-                            {mode === 'BIDDING' && artwork.starting_bid && (
+                            {mode === 'BIDDING' && (
                               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                                Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                                Starting Bid: LKR {artwork.starting_bid ? Number(artwork.starting_bid).toLocaleString() : '0'}
+                              </p>
+                            )}
+                            {mode === 'NOT_FOR_SALE' && (
+                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+                                Price: Display Only
                               </p>
                             )}
                           </>
@@ -1198,10 +1223,13 @@ export default function GalleryPageClient() {
                               onClick={(e) => e.stopPropagation()}
                               className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-amber-600 dark:hover:text-amber-400 truncate block transition-colors"
                             >
-                              {artwork.artist.name}
+                              {(() => {
+                                const rawName = artwork.profiles?.artist_name || artwork.profiles?.full_name || artwork.artist?.name;
+                                return (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
+                              })()}
                             </Link>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                              {artwork.artist.title || 'Creator'}
+                              {artwork.artist.title && artwork.artist.title !== 'Artist / Creator' ? artwork.artist.title : 'Verified Artist'}
                             </p>
                           </div>
                         </div>
@@ -1325,7 +1353,10 @@ export default function GalleryPageClient() {
                         href={`/freelancers/${selectedArtwork.artist_id}`}
                         className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:underline font-medium"
                       >
-                        by {selectedArtwork.artist.name}
+                        by {(() => {
+                          const rawName = (selectedArtwork as any).profiles?.artist_name || (selectedArtwork as any).profiles?.full_name || selectedArtwork.artist?.name;
+                          return (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
+                        })()}
                       </Link>
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                         • Ref ID: {selectedArtwork.art_code || '#ART-101'}
@@ -1334,14 +1365,19 @@ export default function GalleryPageClient() {
                         const mode = selectedArtwork.pricing_type || selectedArtwork.selling_mode || 'NOT_FOR_SALE';
                         return (
                           <>
-                            {mode === 'FIXED_PRICE' && selectedArtwork.price && (
+                            {mode === 'FIXED_PRICE' && (
                               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                • Price: LKR {Number(selectedArtwork.price).toLocaleString()}
+                                • Price: LKR {selectedArtwork.price ? Number(selectedArtwork.price).toLocaleString() : '0'}
                               </span>
                             )}
-                            {mode === 'BIDDING' && selectedArtwork.starting_bid && (
+                            {mode === 'BIDDING' && (
                               <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                                • Starting Bid: LKR {Number(selectedArtwork.starting_bid).toLocaleString()}
+                                • Starting Bid: LKR {selectedArtwork.starting_bid ? Number(selectedArtwork.starting_bid).toLocaleString() : '0'}
+                              </span>
+                            )}
+                            {mode === 'NOT_FOR_SALE' && (
+                              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                • Price: Display Only
                               </span>
                             )}
                           </>

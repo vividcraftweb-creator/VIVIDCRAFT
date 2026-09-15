@@ -83,6 +83,7 @@ export const artworksRouter = router({
         description: z.string().nullable().optional(),
         imageUrl: z.string().url('A valid image URL is required'),
         sellingMode: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).default('NOT_FOR_SALE').optional(),
+        pricingType: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         price: z.number().nullable().optional(),
         startingBid: z.number().nullable().optional(),
       })
@@ -101,7 +102,7 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
-      const sellingMode = input.sellingMode || 'NOT_FOR_SALE';
+      const sellingMode = input.pricingType || input.sellingMode || 'NOT_FOR_SALE';
       const price = sellingMode === 'FIXED_PRICE' ? (input.price ?? null) : null;
       const startingBid = sellingMode === 'BIDDING' ? (input.startingBid ?? null) : null;
       const description = input.description?.trim() || null;
@@ -122,6 +123,7 @@ export const artworksRouter = router({
         .insert({
           id,
           artist_id: artistId,
+          user_id: artistId,
           title: input.title.trim(),
           description,
           image_url: input.imageUrl,
@@ -142,6 +144,7 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
+            user_id: artistId,
             title: input.title.trim(),
             description,
             image_url: input.imageUrl,
@@ -162,11 +165,13 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
+            user_id: artistId,
             title: input.title.trim(),
             description,
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
             selling_mode: sellingMode,
+            pricing_type: sellingMode,
             price,
             starting_bid: startingBid,
             art_code: artCode,
@@ -182,10 +187,12 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
+            user_id: artistId,
             title: input.title.trim(),
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
             selling_mode: sellingMode,
+            pricing_type: sellingMode,
             price,
             starting_bid: startingBid,
           })
@@ -200,6 +207,7 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
+            user_id: artistId,
             title: input.title.trim(),
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
@@ -302,11 +310,22 @@ export const artworksRouter = router({
           .select('artwork_id, user_id')
           .in('artwork_id', artworkIds);
 
-        // Fetch ratings
-        const { data: ratings } = await supabase
-          .from('artwork_ratings')
-          .select('artwork_id, user_id, rating')
-          .in('artwork_id', artworkIds);
+        // Fetch ratings & artist profile in parallel
+        const [ratingsRes, profileRes] = await Promise.all([
+          supabase
+            .from('artwork_ratings')
+            .select('artwork_id, user_id, rating')
+            .in('artwork_id', artworkIds),
+          supabase
+            .from('profiles')
+            .select('id, full_name, artist_name, avatar_url, role, title')
+            .eq('id', artistId)
+            .maybeSingle(),
+        ]);
+
+        const ratings = ratingsRes.data || [];
+        const artistProf = profileRes.data || null;
+        const artistName = artistProf?.artist_name?.trim() || artistProf?.full_name?.trim() || 'Verified Artist';
 
         return artworks.map((art: any, index: number) => {
           const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
@@ -321,6 +340,8 @@ export const artworksRouter = router({
           const rawCode = art.art_code;
           const artCode = rawCode ? (rawCode.startsWith('#') ? rawCode : `#${rawCode}`) : `#ART-${101 + index}`;
 
+          const pricingType = (art as any).pricing_type || art.selling_mode || 'NOT_FOR_SALE';
+
           return {
             id: art.id,
             artist_id: art.artist_id,
@@ -333,11 +354,24 @@ export const artworksRouter = router({
             ratingsCount: artRatings.length,
             averageRating: avgRating,
             userRating,
-            selling_mode: art.selling_mode || (art as any).pricing_type || 'NOT_FOR_SALE',
-            pricing_type: (art as any).pricing_type || art.selling_mode || 'NOT_FOR_SALE',
+            selling_mode: pricingType,
+            pricing_type: pricingType,
             price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
             starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
             art_code: artCode,
+            profiles: artistProf ? {
+              full_name: artistProf.full_name || null,
+              artist_name: artistProf.artist_name || null,
+              avatar_url: artistProf.avatar_url || null,
+              role: artistProf.role || 'artist',
+            } : null,
+            artist: {
+              id: artistId,
+              name: artistName,
+              avatar_url: artistProf?.avatar_url || null,
+              title: artistProf?.title || 'Verified Artist',
+              role: artistProf?.role || 'artist',
+            },
           };
         });
       } catch (err) {
@@ -477,13 +511,19 @@ export const artworksRouter = router({
               id: art.artist_id,
               name: artistName,
               avatar_url: artistProfile?.avatar_url || null,
-              title: artistProfile?.title || 'Artist / Creator',
+              title: artistProfile?.title || 'Verified Artist',
               role: artistProfile?.role || 'artist',
               bio: artistProfile?.bio || null,
               location: artistProfile?.location || null,
               phone: artistProfile?.phone || null,
               whatsapp_number: artistProfile?.whatsapp_number || artistProfile?.phone || null,
             },
+            profiles: artistProfile ? {
+              full_name: profileFullName,
+              artist_name: artistNameField || null,
+              avatar_url: artistProfile?.avatar_url || null,
+              role: artistProfile?.role || 'artist',
+            } : null,
           };
         });
 

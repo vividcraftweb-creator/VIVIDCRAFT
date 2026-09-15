@@ -242,14 +242,19 @@ export function ArtworkModal({
               const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
               return (
                 <>
-                  {mode === 'FIXED_PRICE' && artwork.price && (
+                  {mode === 'FIXED_PRICE' && (
                     <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                      Price: LKR {Number(artwork.price).toLocaleString()}
+                      Price: LKR {artwork.price ? Number(artwork.price).toLocaleString() : '0'}
                     </p>
                   )}
-                  {mode === 'BIDDING' && artwork.starting_bid && (
+                  {mode === 'BIDDING' && (
                     <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                      Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                      Starting Bid: LKR {artwork.starting_bid ? Number(artwork.starting_bid).toLocaleString() : '0'}
+                    </p>
+                  )}
+                  {mode === 'NOT_FOR_SALE' && (
+                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                      Price: Display Only
                     </p>
                   )}
                 </>
@@ -258,18 +263,22 @@ export function ArtworkModal({
 
             {/* Artist Link, Ref ID: #ART-XXX, and Date */}
             <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap pt-0.5">
-              {artistName && (
-                <span>
-                  By{' '}
-                  <Link
-                    href={`/freelancers/${artwork.artist_id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
-                  >
-                    {artistName}
-                  </Link>
-                </span>
-              )}
+              {(() => {
+                const rawName = artwork.profiles?.artist_name || artwork.profiles?.full_name || artistName || artwork.artist?.name;
+                const resolvedArtist = (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
+                return (
+                  <span>
+                    By{' '}
+                    <Link
+                      href={`/freelancers/${artwork.artist_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                      {resolvedArtist}
+                    </Link>
+                  </span>
+                );
+              })()}
               <span className="text-slate-400 dark:text-slate-500">•</span>
               <span className="font-mono text-slate-500 dark:text-slate-400">
                 Ref ID: <span className="font-semibold text-slate-700 dark:text-slate-200">{artwork.art_code || '#ART-101'}</span>

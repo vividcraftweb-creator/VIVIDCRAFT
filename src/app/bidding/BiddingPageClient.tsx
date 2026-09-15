@@ -474,6 +474,7 @@ export default function BiddingPageClient() {
         .from('artworks')
         .insert({
           artist_id: effectiveArtistId,
+          user_id: effectiveArtistId,
           title: uploadTitle.trim(),
           description: uploadDescription.trim() || null,
           image_url: imageUrl,
@@ -492,6 +493,7 @@ export default function BiddingPageClient() {
           .from('artworks')
           .insert({
             artist_id: effectiveArtistId,
+            user_id: effectiveArtistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: imageUrl,
@@ -511,10 +513,12 @@ export default function BiddingPageClient() {
           .from('artworks')
           .insert({
             artist_id: effectiveArtistId,
+            user_id: effectiveArtistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: imageUrl,
             selling_mode: 'BIDDING',
+            pricing_type: 'BIDDING',
             starting_bid: startingBidNum,
             price: null,
             art_code: randomCode,

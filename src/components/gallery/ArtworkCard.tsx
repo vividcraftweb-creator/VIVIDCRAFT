@@ -27,6 +27,12 @@ export interface ArtworkItem {
   price?: number | null;
   starting_bid?: number | null;
   art_code?: string;
+  profiles?: {
+    full_name?: string | null;
+    artist_name?: string | null;
+    avatar_url?: string | null;
+    role?: string | null;
+  } | null;
   artist?: {
     id: string;
     name: string;
@@ -190,14 +196,19 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
               const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
               return (
                 <>
-                  {mode === 'FIXED_PRICE' && artwork.price && (
+                  {mode === 'FIXED_PRICE' && (
                     <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                      Price: LKR {Number(artwork.price).toLocaleString()}
+                      Price: LKR {artwork.price ? Number(artwork.price).toLocaleString() : '0'}
                     </p>
                   )}
-                  {mode === 'BIDDING' && artwork.starting_bid && (
+                  {mode === 'BIDDING' && (
                     <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                      Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                      Starting Bid: LKR {artwork.starting_bid ? Number(artwork.starting_bid).toLocaleString() : '0'}
+                    </p>
+                  )}
+                  {mode === 'NOT_FOR_SALE' && (
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+                      Price: Display Only
                     </p>
                   )}
                 </>
@@ -206,14 +217,18 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
 
             {/* Artist & Lower Metadata Row with Ref ID */}
             <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-              {artistName ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[170px]">
-                    <User className="w-3 h-3 text-amber-500 shrink-0" />
-                    <span className="truncate">{artistName}</span>
-                  </span>
-                </div>
-              ) : <div />}
+              {(() => {
+                const rawName = artwork.profiles?.artist_name || artwork.profiles?.full_name || artistName || artwork.artist?.name;
+                const resolvedArtist = (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[170px]">
+                      <User className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span className="truncate">{resolvedArtist}</span>
+                    </span>
+                  </div>
+                );
+              })()}
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                 Ref ID: {artwork.art_code || '#ART-101'}
               </span>
