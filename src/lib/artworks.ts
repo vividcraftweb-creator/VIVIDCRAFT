@@ -113,7 +113,7 @@ export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
       ? Number(artwork.current_bid)
       : null;
 
-  // 1. If artwork.price exists and Number(artwork.price) > 0
+  // 1. If Number(artwork.price) > 0: force badge "For Sale" with "LKR " + Number(artwork.price).toLocaleString()
   if (rawPrice !== null && rawPrice > 0) {
     return {
       statusBadge: 'For Sale',
@@ -122,7 +122,7 @@ export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
     };
   }
 
-  // 2. Else if artwork.starting_bid exists and Number(artwork.starting_bid) > 0
+  // 2. Else if Number(artwork.starting_bid) > 0: force badge "Open Bidding" with "Starting Bid: LKR " + Number(artwork.starting_bid).toLocaleString()
   if (rawBid !== null && rawBid > 0) {
     return {
       statusBadge: 'Open Bidding',
@@ -131,28 +131,10 @@ export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
     };
   }
 
-  // 3. Else if String(artwork.pricing_type).toUpperCase() === 'FIXED_PRICE'
-  if (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') {
-    return {
-      statusBadge: 'For Sale',
-      displayPrice: `LKR ${Number(rawPrice || 0).toLocaleString()}`,
-      badgeType: 'FOR_SALE',
-    };
-  }
-
-  // 4. Else if String(artwork.pricing_type).toUpperCase() === 'BIDDING'
-  if (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') {
-    return {
-      statusBadge: 'Open Bidding',
-      displayPrice: `Starting Bid: LKR ${Number(rawBid || 0).toLocaleString()}`,
-      badgeType: 'BIDDING',
-    };
-  }
-
-  // 5. Otherwise
+  // 3. Only render "Not For Sale" if both price and starting_bid are 0 or null
   return {
     statusBadge: 'Not For Sale',
-    displayPrice: 'Display Only',
+    displayPrice: 'Not For Sale',
     badgeType: 'NOT_FOR_SALE',
   };
 }

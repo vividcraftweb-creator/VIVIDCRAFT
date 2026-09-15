@@ -132,22 +132,22 @@ export const artworksRouter = router({
       const rawBid = input.starting_bid ?? input.startingBid;
       const bidVal = rawBid !== undefined && rawBid !== null && !isNaN(Number(rawBid)) ? Number(rawBid) : null;
 
-      const rawType = input.pricing_type || input.pricingType || input.sellingMode || (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'NOT_FOR_SALE');
+      const rawType = input.pricing_type || input.pricingType || input.sellingMode || 'FIXED_PRICE';
       const cleanPricingType = String(rawType).toUpperCase().trim();
 
       let pricingMode: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
-      if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
-        pricingMode = 'BIDDING';
-      } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
-        pricingMode = 'NOT_FOR_SALE';
-      } else if (cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
+      if (cleanPricingType === 'FIXED_PRICE' || cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
         pricingMode = 'FIXED_PRICE';
-      } else {
+      } else if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
+        pricingMode = 'BIDDING';
+      } else if (cleanPricingType.includes('NOT')) {
         pricingMode = 'NOT_FOR_SALE';
+      } else {
+        pricingMode = 'FIXED_PRICE';
       }
 
-      const price = pricingMode === 'FIXED_PRICE' && priceVal !== null && !isNaN(priceVal) ? Number(priceVal) : null;
-      const startingBid = pricingMode === 'BIDDING' && bidVal !== null && !isNaN(bidVal) ? Number(bidVal) : null;
+      const price = pricingMode === 'FIXED_PRICE' && priceVal !== null ? Number(priceVal) : null;
+      const startingBid = pricingMode === 'BIDDING' && bidVal !== null ? Number(bidVal) : null;
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
       const medium = input.medium?.trim() || null;

@@ -100,6 +100,15 @@ export default function GalleryView() {
         .from('artworks')
         .getPublicUrl(filePath);
 
+      const effectiveMode = sellingMode === 'BIDDING' || (startingBid && Number(startingBid) > 0)
+        ? 'BIDDING'
+        : (sellingMode === 'FIXED_PRICE' || (price && Number(price) > 0))
+        ? 'FIXED_PRICE'
+        : 'NOT_FOR_SALE';
+
+      const numericPrice = effectiveMode === 'FIXED_PRICE' && price && !isNaN(Number(price)) ? Number(price) : null;
+      const numericBid = effectiveMode === 'BIDDING' && startingBid && !isNaN(Number(startingBid)) ? Number(startingBid) : null;
+
       await createArtwork.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
@@ -107,12 +116,12 @@ export default function GalleryView() {
         medium: medium.trim() || undefined,
         tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         imageUrl: publicUrl,
-        sellingMode,
-        pricing_type: sellingMode,
-        pricingType: sellingMode,
-        price: sellingMode === 'FIXED_PRICE' && price ? Number(price) : null,
-        starting_bid: sellingMode === 'BIDDING' && startingBid ? Number(startingBid) : null,
-        startingBid: sellingMode === 'BIDDING' && startingBid ? Number(startingBid) : null,
+        sellingMode: effectiveMode,
+        pricing_type: effectiveMode,
+        pricingType: effectiveMode,
+        price: numericPrice,
+        starting_bid: numericBid,
+        startingBid: numericBid,
       });
 
     } catch (error: any) {

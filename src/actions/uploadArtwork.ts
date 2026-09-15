@@ -40,7 +40,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
 
     const rawPricing = formData.get('pricing_type') || formData.get('pricingType') || formData.get('selling_type') || 'FIXED_PRICE';
     const cleanType = String(rawPricing).toUpperCase().trim();
-    if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
+    if (cleanType === 'FIXED_PRICE' || cleanType.includes('FIXED') || cleanType.includes('SALE')) {
+      pricingType = 'FIXED_PRICE';
+    } else if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
       pricingType = 'BIDDING';
     } else if (cleanType.includes('NOT')) {
       pricingType = 'NOT_FOR_SALE';
@@ -68,7 +70,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
 
     const rawPricing = (formData as any).pricing_type || (formData as any).pricingType || (formData as any).selling_type || 'FIXED_PRICE';
     const cleanType = String(rawPricing).toUpperCase().trim();
-    if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
+    if (cleanType === 'FIXED_PRICE' || cleanType.includes('FIXED') || cleanType.includes('SALE')) {
+      pricingType = 'FIXED_PRICE';
+    } else if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
       pricingType = 'BIDDING';
     } else if (cleanType.includes('NOT')) {
       pricingType = 'NOT_FOR_SALE';
