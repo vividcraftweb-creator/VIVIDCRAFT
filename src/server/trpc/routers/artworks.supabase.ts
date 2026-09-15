@@ -104,6 +104,7 @@ export const artworksRouter = router({
         tags: z.union([z.array(z.string()), z.string()]).nullable().optional(),
         imageUrl: z.string().url('A valid image URL is required'),
         sellingMode: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).default('NOT_FOR_SALE').optional(),
+        selling_mode: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         pricing_type: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         pricingType: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).optional(),
         price: z.number().nullable().optional(),
@@ -125,31 +126,12 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
-      // Step 2: Extract the price safely & convert to valid number
-      const rawPrice = input.price ?? (input as any).priceAmount ?? (input as any).price_amount ?? (input as any).amount ?? 0;
-      const parsedPrice = Number(rawPrice) || 0;
-      const priceVal = parsedPrice > 0 ? parsedPrice : null;
+      // Step 2: Read incoming values strictly per Task 2
+      const payload = input as any;
+      const pricingType = String(payload.pricing_type || payload.pricingType || payload.sellingMode || payload.selling_mode || 'FIXED_PRICE').toUpperCase().trim();
+      const priceVal = payload.price ? Number(payload.price) : null;
+      const startingBidVal = (payload.starting_bid ?? payload.startingBid) ? Number(payload.starting_bid ?? payload.startingBid) : null;
 
-      const rawBidInput = input.starting_bid ?? input.startingBid ?? (input as any).bid_amount ?? 0;
-      const numericBid = parseFloat(String(rawBidInput || 0));
-      const bidVal = !isNaN(numericBid) ? numericBid : null;
-
-      const rawType = input.pricing_type || input.pricingType || input.sellingMode || 'FIXED_PRICE';
-      const cleanPricingType = String(rawType).toUpperCase().trim();
-
-      let pricingMode: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
-      if (cleanPricingType === 'FIXED_PRICE' || cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
-        pricingMode = 'FIXED_PRICE';
-      } else if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
-        pricingMode = 'BIDDING';
-      } else if (cleanPricingType.includes('NOT')) {
-        pricingMode = 'NOT_FOR_SALE';
-      } else {
-        pricingMode = 'FIXED_PRICE';
-      }
-
-      const price = pricingMode === 'FIXED_PRICE' ? (priceVal !== null ? priceVal : 0) : null;
-      const startingBid = pricingMode === 'BIDDING' ? (bidVal !== null ? bidVal : 0) : null;
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
       const medium = input.medium?.trim() || null;
@@ -180,10 +162,10 @@ export const artworksRouter = router({
         category,
         medium,
         tags,
-        pricing_type: pricingMode,
-        selling_mode: pricingMode,
-        price,
-        starting_bid: startingBid,
+        pricing_type: pricingType,
+        selling_mode: pricingType,
+        price: priceVal,
+        starting_bid: startingBidVal,
         image_url: input.imageUrl,
         created_at: new Date().toISOString(),
         art_code: artCode,
@@ -206,10 +188,10 @@ export const artworksRouter = router({
             description,
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
-            selling_mode: pricingMode,
-            pricing_type: pricingMode,
-            price,
-            starting_bid: startingBid,
+            selling_mode: pricingType,
+            pricing_type: pricingType,
+            price: priceVal,
+            starting_bid: startingBidVal,
             art_code: artCode,
           })
           .select()
@@ -227,11 +209,11 @@ export const artworksRouter = router({
             description,
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
-            selling_type: pricingMode,
-            selling_mode: pricingMode,
-            pricing_type: pricingMode,
-            price,
-            starting_bid: startingBid,
+            selling_type: pricingType,
+            selling_mode: pricingType,
+            pricing_type: pricingType,
+            price: priceVal,
+            starting_bid: startingBidVal,
           })
           .select()
           .single();
@@ -246,6 +228,10 @@ export const artworksRouter = router({
             artist_id: artistId,
             title: input.title.trim(),
             image_url: input.imageUrl,
+            pricing_type: pricingType,
+            selling_mode: pricingType,
+            price: priceVal,
+            starting_bid: startingBidVal,
             created_at: new Date().toISOString(),
           })
           .select()
@@ -262,10 +248,10 @@ export const artworksRouter = router({
 
       return {
         ...res.data,
-        selling_mode: res.data?.selling_mode || res.data?.pricing_type || pricingMode,
-        pricing_type: res.data?.pricing_type || res.data?.selling_mode || pricingMode,
-        price: res.data?.price ?? price,
-        starting_bid: res.data?.starting_bid ?? startingBid,
+        selling_mode: res.data?.selling_mode || res.data?.pricing_type || pricingType,
+        pricing_type: res.data?.pricing_type || res.data?.selling_mode || pricingType,
+        price: res.data?.price ?? priceVal,
+        starting_bid: res.data?.starting_bid ?? startingBidVal,
         art_code: res.data?.art_code || artCode,
       };
     }),

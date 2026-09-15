@@ -84,67 +84,31 @@ export interface ArtworkPricingDisplay {
  *    - Show Price: "Display Only"
  */
 export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
-  // Step 2: Log artwork database object directly to console to verify column names
-  console.log('Artwork database object:', {
-    id: artwork?.id,
-    title: artwork?.title,
-    price: artwork?.price,
-    pricing_type: artwork?.pricing_type,
-    selling_type: artwork?.selling_type || artwork?.selling_mode,
-    amount: artwork?.amount,
-  });
-
-  const rawPrice = Number(artwork?.price ?? artwork?.amount ?? 0);
+  const pType = String(artwork?.pricing_type || artwork?.selling_type || artwork?.selling_mode || '').toUpperCase().trim();
+  const rawPrice = Number(artwork?.price ?? artwork?.price_amount ?? artwork?.priceAmount ?? artwork?.amount ?? 0);
   const rawBid = Number(artwork?.starting_bid ?? artwork?.startingBid ?? 0);
-  const pType = String(artwork?.pricing_type || '').toUpperCase().trim();
-  const sType = String(artwork?.selling_type || artwork?.selling_mode || '').toUpperCase().trim();
 
-  // Step 3: Force badge logic override:
-  // IF Number(artwork.price) > 0 OR Number(artwork.amount) > 0 OR artwork.pricing_type === 'FIXED_PRICE' OR artwork.selling_type === 'FIXED_PRICE':
-  //   Render Badge: "For Sale"
-  //   Render Price: "LKR " + (artwork.price || artwork.amount)
-  if (
-    rawPrice > 0 ||
-    (artwork?.amount !== undefined && Number(artwork?.amount) > 0) ||
-    pType === 'FIXED_PRICE' ||
-    sType === 'FIXED_PRICE'
-  ) {
-    let val = Number(
-      artwork?.price ||
-      artwork?.price_amount ||
-      artwork?.priceAmount ||
-      artwork?.amount ||
-      artwork?.starting_bid ||
-      0
-    );
-    if (val === 0) {
-      val = 50000;
-    }
+  // Check if artwork.price > 0 OR pricing_type === 'FIXED_PRICE' -> Badge: "For Sale", Price: "LKR " + (artwork.price || 0)
+  if (rawPrice > 0 || pType === 'FIXED_PRICE' || pType.includes('FIXED') || pType === 'FOR_SALE' || pType === 'SALE') {
+    const finalPrice = rawPrice > 0 ? rawPrice : Number(artwork?.price || 0);
     return {
       statusBadge: 'For Sale',
-      displayPrice: `LKR ${val.toLocaleString()}`,
+      displayPrice: `LKR ${finalPrice.toLocaleString()}`,
       badgeType: 'FOR_SALE',
     };
   }
 
-  // ELSE IF Number(artwork.starting_bid) > 0 OR artwork.pricing_type === 'BIDDING':
-  //   Render Badge: "Open Bidding"
-  //   Render Price: "Starting Bid: LKR " + artwork.starting_bid
-  if (
-    rawBid > 0 ||
-    pType === 'BIDDING' ||
-    sType === 'BIDDING'
-  ) {
-    const val = rawBid > 0 ? rawBid.toLocaleString() : (artwork?.starting_bid ?? artwork?.startingBid ?? '0');
+  // Check if artwork.starting_bid > 0 OR pricing_type === 'BIDDING' -> Badge: "Open Bidding", Price: "Starting Bid: LKR " + (artwork.starting_bid || 0)
+  if (rawBid > 0 || pType === 'BIDDING' || pType.includes('BID') || pType.includes('AUCTION')) {
+    const finalBid = rawBid > 0 ? rawBid : Number(artwork?.starting_bid || 0);
     return {
       statusBadge: 'Open Bidding',
-      displayPrice: `Starting Bid: LKR ${val}`,
+      displayPrice: `Starting Bid: LKR ${finalBid.toLocaleString()}`,
       badgeType: 'BIDDING',
     };
   }
 
-  // ELSE:
-  //   Render Badge: "Not For Sale"
+  // Otherwise -> Badge: "Not For Sale", Price: "Not For Sale"
   return {
     statusBadge: 'Not For Sale',
     displayPrice: 'Not For Sale',

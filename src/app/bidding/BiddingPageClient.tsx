@@ -545,6 +545,11 @@ export default function BiddingPageClient() {
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: imageUrl,
+            pricing_type: 'BIDDING',
+            selling_mode: 'BIDDING',
+            starting_bid: startingBidNum,
+            price: null,
+            art_code: randomCode,
           });
 
           if (retryBase.error) {

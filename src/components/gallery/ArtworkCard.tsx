@@ -214,24 +214,11 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             </div>
 
             {/* Price / Starting Bid Line */}
-            {badgeType === 'FOR_SALE' && (() => {
-              let val = Number(
-                artwork.price ||
-                (artwork as any).price_amount ||
-                (artwork as any).priceAmount ||
-                (artwork as any).amount ||
-                artwork.starting_bid ||
-                0
-              );
-              if (val === 0) {
-                val = 50000;
-              }
-              return (
-                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                  Price: LKR {val.toLocaleString()}
-                </p>
-              );
-            })()}
+            {badgeType === 'FOR_SALE' && (
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
+                Price: {displayPrice}
+              </p>
+            )}
             {badgeType === 'BIDDING' && (
               <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">
                 {displayPrice}

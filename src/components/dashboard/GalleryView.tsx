@@ -18,7 +18,7 @@ export default function GalleryView() {
   const [category, setCategory] = useState('Painting');
   const [medium, setMedium] = useState('');
   const [tags, setTags] = useState('');
-  const [sellingMode, setSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('NOT_FOR_SALE');
+  const [pricing_type, setPricingType] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('FIXED_PRICE');
   const [price, setPrice] = useState('');
   const [startingBid, setStartingBid] = useState('');
   
@@ -29,7 +29,7 @@ export default function GalleryView() {
   const createArtwork = trpc.artworks.createArtwork.useMutation({
     onSuccess: (data) => {
       utils.artworks.getMyArtworks.invalidate();
-      const targetDestination = sellingMode === 'BIDDING' ? 'Bidding page (/bidding)' : 'Gallery (/gallery)';
+      const targetDestination = pricing_type === 'BIDDING' ? 'Bidding page (/bidding)' : 'Gallery (/gallery)';
       toast.success('Artwork added successfully!', {
         description: `Your piece is now live in the ${targetDestination}.`,
       });
@@ -40,7 +40,7 @@ export default function GalleryView() {
       setTags('');
       setPrice('');
       setStartingBid('');
-      setSellingMode('NOT_FOR_SALE');
+      setPricingType('FIXED_PRICE');
     },
     onError: (error) => {
       toast.error(`Failed to add artwork: ${error.message}`);
@@ -66,12 +66,12 @@ export default function GalleryView() {
       return;
     }
 
-    if (sellingMode === 'FIXED_PRICE' && (!price || Number(price) <= 0)) {
+    if (pricing_type === 'FIXED_PRICE' && (!price || Number(price) <= 0)) {
       toast.error('Please enter a valid price amount in LKR for Fixed Price selling.');
       return;
     }
 
-    if (sellingMode === 'BIDDING' && (!startingBid || Number(startingBid) <= 0)) {
+    if (pricing_type === 'BIDDING' && (!startingBid || Number(startingBid) <= 0)) {
       toast.error('Please enter a valid starting bid amount in LKR for Bidding.');
       return;
     }
@@ -100,14 +100,8 @@ export default function GalleryView() {
         .from('artworks')
         .getPublicUrl(filePath);
 
-      const effectiveMode = sellingMode === 'BIDDING' || (startingBid && Number(startingBid) > 0)
-        ? 'BIDDING'
-        : (sellingMode === 'FIXED_PRICE' || (price && Number(price) > 0))
-        ? 'FIXED_PRICE'
-        : 'NOT_FOR_SALE';
-
-      const numericPrice = effectiveMode === 'FIXED_PRICE' ? parseFloat(String(price || 0)) : null;
-      const numericBid = effectiveMode === 'BIDDING' ? parseFloat(String(startingBid || 0)) : null;
+      const numericPrice = pricing_type === 'FIXED_PRICE' ? Number(price) : (Number(price) > 0 ? Number(price) : null);
+      const numericBid = pricing_type === 'BIDDING' ? Number(startingBid) : (Number(startingBid) > 0 ? Number(startingBid) : null);
 
       await createArtwork.mutateAsync({
         title: title.trim(),
@@ -116,9 +110,10 @@ export default function GalleryView() {
         medium: medium.trim() || undefined,
         tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         imageUrl: publicUrl,
-        sellingMode: effectiveMode,
-        pricing_type: effectiveMode,
-        pricingType: effectiveMode,
+        sellingMode: pricing_type,
+        selling_mode: pricing_type,
+        pricing_type: pricing_type,
+        pricingType: pricing_type,
         price: numericPrice,
         starting_bid: numericBid,
         startingBid: numericBid,
@@ -257,21 +252,9 @@ export default function GalleryView() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => setSellingMode('NOT_FOR_SALE')}
+                onClick={() => setPricingType('FIXED_PRICE')}
                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  sellingMode === 'NOT_FOR_SALE'
-                    ? 'bg-amber-500/15 border-amber-500/60 text-white shadow-sm ring-1 ring-amber-500/40'
-                    : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
-                }`}
-              >
-                <div className="text-sm font-semibold">Not For Sale</div>
-                <div className="text-xs text-slate-400 mt-0.5">Display only in /gallery</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSellingMode('FIXED_PRICE')}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  sellingMode === 'FIXED_PRICE'
+                  pricing_type === 'FIXED_PRICE'
                     ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/50'
                     : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
                 }`}
@@ -281,9 +264,9 @@ export default function GalleryView() {
               </button>
               <button
                 type="button"
-                onClick={() => setSellingMode('BIDDING')}
+                onClick={() => setPricingType('BIDDING')}
                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  sellingMode === 'BIDDING'
+                  pricing_type === 'BIDDING'
                     ? 'bg-amber-600/20 border-amber-500 text-white shadow-sm ring-1 ring-amber-500/50'
                     : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
                 }`}
@@ -291,10 +274,22 @@ export default function GalleryView() {
                 <div className="text-sm font-semibold text-amber-400">Open Bidding</div>
                 <div className="text-xs text-slate-400 mt-0.5">Exclusively in /bidding</div>
               </button>
+              <button
+                type="button"
+                onClick={() => setPricingType('NOT_FOR_SALE')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  pricing_type === 'NOT_FOR_SALE'
+                    ? 'bg-amber-500/15 border-amber-500/60 text-white shadow-sm ring-1 ring-amber-500/40'
+                    : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                }`}
+              >
+                <div className="text-sm font-semibold">Not For Sale</div>
+                <div className="text-xs text-slate-400 mt-0.5">Display only in /gallery</div>
+              </button>
             </div>
 
             {/* Conditional Input for Fixed Price */}
-            {sellingMode === 'FIXED_PRICE' && (
+            {pricing_type === 'FIXED_PRICE' && (
               <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-1.5">
                 <label htmlFor="price-amount" className="text-xs font-semibold text-emerald-300 block">
                   Price Amount (LKR) *
@@ -316,7 +311,7 @@ export default function GalleryView() {
             )}
 
             {/* Conditional Input for Bidding */}
-            {sellingMode === 'BIDDING' && (
+            {pricing_type === 'BIDDING' && (
               <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 space-y-1.5">
                 <label htmlFor="bid-amount" className="text-xs font-semibold text-amber-300 block">
                   Starting Bid Amount (LKR) *
@@ -336,7 +331,7 @@ export default function GalleryView() {
               </div>
             )}
 
-            {sellingMode === 'NOT_FOR_SALE' && (
+            {pricing_type === 'NOT_FOR_SALE' && (
               <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
                 Marked as display only. Will appear in public Gallery for portfolio presentation.
               </div>

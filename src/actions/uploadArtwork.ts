@@ -27,42 +27,29 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
   let title = '';
   let description = '';
   let category = '';
-  let pricingType: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE' = 'NOT_FOR_SALE';
-  let price: number | null = null;
-  let startingBid: number | null = null;
+  let pricingType = 'FIXED_PRICE';
+  let priceVal: number | null = null;
+  let startingBidVal: number | null = null;
   let file: File | null = null;
   let imageUrl: string | null = null;
 
   if (formData instanceof FormData) {
-    title = String(formData.get('title') || '').trim();
-    description = String(formData.get('description') || '').trim();
-    category = String(formData.get('category') || '').trim();
+    const payload = {
+      title: formData.get('title'),
+      description: formData.get('description'),
+      category: formData.get('category'),
+      pricing_type: formData.get('pricing_type'),
+      pricingType: formData.get('pricingType'),
+      price: formData.get('price') || formData.get('priceAmount') || formData.get('price_amount') || formData.get('amount'),
+      starting_bid: formData.get('starting_bid') || formData.get('startingBid') || formData.get('bid_amount'),
+    };
+    title = String(payload.title || '').trim();
+    description = String(payload.description || '').trim();
+    category = String(payload.category || '').trim();
 
-    const rawPricing = formData.get('pricing_type') || formData.get('pricingType') || formData.get('selling_type') || 'FIXED_PRICE';
-    const cleanType = String(rawPricing).toUpperCase().trim();
-    if (cleanType === 'FIXED_PRICE' || cleanType.includes('FIXED') || cleanType.includes('SALE')) {
-      pricingType = 'FIXED_PRICE';
-    } else if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
-      pricingType = 'BIDDING';
-    } else if (cleanType.includes('NOT')) {
-      pricingType = 'NOT_FOR_SALE';
-    } else {
-      pricingType = 'FIXED_PRICE';
-    }
-
-    // Step 2: Extract the price safely & convert to valid number
-    const rawPrice = formData.get('price') || formData.get('priceAmount') || formData.get('price_amount') || formData.get('amount');
-    const parsedPrice = Number(rawPrice) || 0;
-
-    const rawBid = formData.get('starting_bid') || formData.get('startingBid') || formData.get('bid_amount') || 0;
-    const parsedBid = Number(rawBid) || 0;
-
-    if (parsedPrice > 0 && pricingType === 'NOT_FOR_SALE') {
-      pricingType = 'FIXED_PRICE';
-    }
-
-    price = pricingType === 'FIXED_PRICE' ? parsedPrice : null;
-    startingBid = pricingType === 'BIDDING' ? parsedBid : null;
+    pricingType = String(payload.pricing_type || payload.pricingType || 'FIXED_PRICE').toUpperCase().trim();
+    priceVal = payload.price ? Number(payload.price) : null;
+    startingBidVal = payload.starting_bid ? Number(payload.starting_bid) : null;
 
     const formFile = formData.get('file');
     if (formFile instanceof File && formFile.size > 0) {
@@ -71,36 +58,14 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     const formUrl = formData.get('imageUrl') || formData.get('image_url');
     if (formUrl) imageUrl = String(formUrl);
   } else {
-    title = (formData.title || '').trim();
-    description = (formData.description || '').trim();
-    category = (formData.category || '').trim();
-
-    const rawPricing = (formData as any).pricing_type || (formData as any).pricingType || (formData as any).selling_type || 'FIXED_PRICE';
-    const cleanType = String(rawPricing).toUpperCase().trim();
-    if (cleanType === 'FIXED_PRICE' || cleanType.includes('FIXED') || cleanType.includes('SALE')) {
-      pricingType = 'FIXED_PRICE';
-    } else if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
-      pricingType = 'BIDDING';
-    } else if (cleanType.includes('NOT')) {
-      pricingType = 'NOT_FOR_SALE';
-    } else {
-      pricingType = 'FIXED_PRICE';
-    }
-
-    // Step 2: Extract the price safely & convert to valid number
     const payload = formData as any;
-    const rawPrice = payload.price ?? payload.priceAmount ?? payload.price_amount ?? payload.amount;
-    const parsedPrice = Number(rawPrice) || 0;
+    title = String(payload.title || '').trim();
+    description = String(payload.description || '').trim();
+    category = String(payload.category || '').trim();
 
-    const rawBid = payload.starting_bid ?? payload.startingBid ?? payload.bid_amount ?? 0;
-    const parsedBid = Number(rawBid) || 0;
-
-    if (parsedPrice > 0 && pricingType === 'NOT_FOR_SALE') {
-      pricingType = 'FIXED_PRICE';
-    }
-
-    price = pricingType === 'FIXED_PRICE' ? parsedPrice : null;
-    startingBid = pricingType === 'BIDDING' ? parsedBid : null;
+    pricingType = String(payload.pricing_type || payload.pricingType || 'FIXED_PRICE').toUpperCase().trim();
+    priceVal = payload.price ? Number(payload.price) : null;
+    startingBidVal = payload.starting_bid ? Number(payload.starting_bid) : null;
 
     file = formData.file || null;
     imageUrl = formData.imageUrl || (formData as any).image_url || null;
@@ -149,8 +114,8 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     image_url: uploadedImageUrl,
     pricing_type: pricingType,
     selling_mode: pricingType,
-    price: pricingType === 'FIXED_PRICE' ? price : null,
-    starting_bid: pricingType === 'BIDDING' ? startingBid : null,
+    price: priceVal,
+    starting_bid: startingBidVal,
     user_id: currentUserId,
     artist_id: currentUserId,
     category: category || null,
@@ -176,8 +141,8 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       image_url: uploadedImageUrl,
       pricing_type: pricingType,
       selling_mode: pricingType,
-      price: pricingType === 'FIXED_PRICE' ? price : null,
-      starting_bid: pricingType === 'BIDDING' ? startingBid : null,
+      price: priceVal,
+      starting_bid: startingBidVal,
       user_id: currentUserId,
       category: category || null,
       art_code: randomCode,
@@ -198,8 +163,8 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
         image_url: uploadedImageUrl,
         pricing_type: pricingType,
         selling_mode: pricingType,
-        price: pricingType === 'FIXED_PRICE' ? price : null,
-        starting_bid: pricingType === 'BIDDING' ? startingBid : null,
+        price: priceVal,
+        starting_bid: startingBidVal,
         artist_id: currentUserId,
         category: category || null,
         art_code: randomCode,
@@ -212,12 +177,16 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       } else {
         console.warn('Supabase Retry (artist_id):', resB.error);
 
-        // Fallback C: Core columns fallback matching minimum base schema
+        // Fallback C: Core columns fallback matching minimum base schema with pricing retained
         const fallbackCore = {
           id,
           artist_id: currentUserId,
           title,
           image_url: uploadedImageUrl,
+          pricing_type: pricingType,
+          selling_mode: pricingType,
+          price: priceVal,
+          starting_bid: startingBidVal,
           created_at: new Date().toISOString(),
         };
         const resC = await supabase.from('artworks').insert(fallbackCore).select().single();

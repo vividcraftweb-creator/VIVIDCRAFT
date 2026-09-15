@@ -107,7 +107,7 @@ export default function GalleryPageClient() {
   const [uploadImageUrl, setUploadImageUrl] = useState('');
   const [uploadArtistName, setUploadArtistName] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadSellingMode, setUploadSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('NOT_FOR_SALE');
+  const [uploadSellingMode, setUploadSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('FIXED_PRICE');
   const [uploadPrice, setUploadPrice] = useState('');
   const [uploadStartingBid, setUploadStartingBid] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -700,6 +700,9 @@ export default function GalleryPageClient() {
           description: uploadDescription.trim() || null,
           image_url: finalImageUrl,
           created_at: now,
+          pricing_type: uploadSellingMode,
+          price,
+          starting_bid: startingBid,
         });
 
         if (retryBasic.error) {
@@ -1213,24 +1216,11 @@ export default function GalleryPageClient() {
                         const { displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
                         return (
                           <>
-                            {badgeType === 'FOR_SALE' && (() => {
-                              let val = Number(
-                                artwork.price ||
-                                (artwork as any).price_amount ||
-                                (artwork as any).priceAmount ||
-                                (artwork as any).amount ||
-                                artwork.starting_bid ||
-                                0
-                              );
-                              if (val === 0) {
-                                val = 50000;
-                              }
-                              return (
-                                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                                  Price: LKR {val.toLocaleString()}
-                                </p>
-                              );
-                            })()}
+                            {badgeType === 'FOR_SALE' && (
+                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                                Price: {displayPrice}
+                              </p>
+                            )}
                             {badgeType === 'BIDDING' && (
                               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
                                 {displayPrice}
@@ -1238,7 +1228,7 @@ export default function GalleryPageClient() {
                             )}
                             {badgeType === 'NOT_FOR_SALE' && (
                               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-                                Price: Display Only
+                                {displayPrice}
                               </p>
                             )}
                           </>
@@ -1413,24 +1403,11 @@ export default function GalleryPageClient() {
                         const { displayPrice, badgeType } = getArtworkPricingDisplay(selectedArtwork);
                         return (
                           <>
-                            {badgeType === 'FOR_SALE' && (() => {
-                              let val = Number(
-                                selectedArtwork.price ||
-                                (selectedArtwork as any).price_amount ||
-                                (selectedArtwork as any).priceAmount ||
-                                (selectedArtwork as any).amount ||
-                                selectedArtwork.starting_bid ||
-                                0
-                              );
-                              if (val === 0) {
-                                val = 50000;
-                              }
-                              return (
-                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                  • Price: LKR {val.toLocaleString()}
-                                </span>
-                              );
-                            })()}
+                            {badgeType === 'FOR_SALE' && (
+                              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                • Price: {displayPrice}
+                              </span>
+                            )}
                             {badgeType === 'BIDDING' && (
                               <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
                                 • {displayPrice}
@@ -1438,7 +1415,7 @@ export default function GalleryPageClient() {
                             )}
                             {badgeType === 'NOT_FOR_SALE' && (
                               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                                • Price: Display Only
+                                • {displayPrice}
                               </span>
                             )}
                           </>
