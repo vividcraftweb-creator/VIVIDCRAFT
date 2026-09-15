@@ -301,6 +301,7 @@ export default function GalleryView() {
                 </label>
                 <Input
                   id="price-amount"
+                  name="price"
                   type="number"
                   min="1"
                   placeholder="e.g. 75000"

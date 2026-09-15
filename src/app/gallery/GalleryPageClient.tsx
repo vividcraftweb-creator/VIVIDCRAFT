@@ -1214,10 +1214,10 @@ export default function GalleryPageClient() {
                         return (
                           <>
                             {badgeType === 'FOR_SALE' && (() => {
-                              const finalPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || 0);
+                              const displayPrice = Number(artwork.price || (artwork as any).priceAmount || (artwork as any).price_amount || (artwork as any).amount || 0);
                               return (
                                 <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                                  Price: LKR {finalPrice.toLocaleString()}
+                                  Price: LKR {displayPrice.toLocaleString()}
                                 </p>
                               );
                             })()}
@@ -1404,10 +1404,10 @@ export default function GalleryPageClient() {
                         return (
                           <>
                             {badgeType === 'FOR_SALE' && (() => {
-                              const finalPrice = Number(selectedArtwork.price || (selectedArtwork as any).price_amount || (selectedArtwork as any).amount || 0);
+                              const displayPrice = Number(selectedArtwork.price || (selectedArtwork as any).priceAmount || (selectedArtwork as any).price_amount || (selectedArtwork as any).amount || 0);
                               return (
                                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                  • Price: LKR {finalPrice.toLocaleString()}
+                                  • Price: LKR {displayPrice.toLocaleString()}
                                 </span>
                               );
                             })()}
@@ -1860,6 +1860,7 @@ export default function GalleryPageClient() {
                       </label>
                       <Input
                         id="admin-price-input"
+                        name="price"
                         type="number"
                         min="1"
                         placeholder="e.g. 75000"

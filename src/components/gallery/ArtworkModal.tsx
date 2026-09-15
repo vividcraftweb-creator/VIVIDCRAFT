@@ -256,10 +256,10 @@ export function ArtworkModal({
               return (
                 <>
                   {badgeType === 'FOR_SALE' && (() => {
-                    const finalPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || 0);
+                    const displayPrice = Number(artwork.price || (artwork as any).priceAmount || (artwork as any).price_amount || (artwork as any).amount || 0);
                     return (
                       <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                        Price: LKR {finalPrice.toLocaleString()}
+                        Price: LKR {displayPrice.toLocaleString()}
                       </p>
                     );
                   })()}

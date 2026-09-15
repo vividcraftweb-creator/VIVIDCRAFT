@@ -125,10 +125,10 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
-      // Step 1: Check input form field names for price (price, price_amount, amount)
-      const rawPriceInput = input.price ?? (input as any).price_amount ?? (input as any).amount ?? 0;
-      const numericPrice = parseFloat(String(rawPriceInput || 0));
-      const priceVal = !isNaN(numericPrice) ? numericPrice : null;
+      // Step 2: Extract the price safely & convert to valid number
+      const rawPrice = input.price ?? (input as any).priceAmount ?? (input as any).price_amount ?? (input as any).amount ?? 0;
+      const parsedPrice = Number(rawPrice) || 0;
+      const priceVal = parsedPrice > 0 ? parsedPrice : null;
 
       const rawBidInput = input.starting_bid ?? input.startingBid ?? (input as any).bid_amount ?? 0;
       const numericBid = parseFloat(String(rawBidInput || 0));
