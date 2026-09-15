@@ -9,6 +9,7 @@ import { Image as ImageIcon, Trash2, Loader2, UploadCloud, Heart, Star } from 'l
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
+import { getArtworkPricingDisplay } from '@/lib/artworks';
 
 export default function GalleryView() {
   const [isUploading, setIsUploading] = useState(false);
@@ -376,17 +377,7 @@ export default function GalleryView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {safeArtworks.map((artwork: any) => {
               const imgUrl = artwork.image_url || artwork.imageUrl;
-              const pType = String(artwork.pricing_type || artwork.selling_type || artwork.selling_mode || '').toUpperCase().trim();
-              const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
-              const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
-
-              const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
-              const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
-
-              const isForSale = (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice !== null;
-              const isBidding = !isForSale && (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid !== null;
-
-              const mode = isForSale ? 'FIXED_PRICE' : isBidding ? 'BIDDING' : 'NOT_FOR_SALE';
+              const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
               const artCode = artwork.art_code || '#ART-101';
 
               return (
@@ -429,37 +420,37 @@ export default function GalleryView() {
                         </h3>
 
                         {/* Status Badges */}
-                        {mode === 'FIXED_PRICE' && displayPrice && (
+                        {badgeType === 'FOR_SALE' && (
                           <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                            For Sale
+                            {statusBadge}
                           </span>
                         )}
-                        {mode === 'BIDDING' && displayBid && (
+                        {badgeType === 'BIDDING' && (
                           <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                            Open Bidding
+                            {statusBadge}
                           </span>
                         )}
-                        {mode === 'NOT_FOR_SALE' && (
+                        {badgeType === 'NOT_FOR_SALE' && (
                           <span className="text-[11px] font-semibold text-slate-400 bg-slate-500/15 border border-slate-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                            Not For Sale
+                            {statusBadge}
                           </span>
                         )}
                       </div>
 
                       {/* Pricing / Bid amount display */}
-                      {mode === 'FIXED_PRICE' && displayPrice && (
+                      {badgeType === 'FOR_SALE' && (
                         <p className="text-xs font-bold text-emerald-400">
                           Price: {displayPrice}
                         </p>
                       )}
-                      {mode === 'BIDDING' && displayBid && (
+                      {badgeType === 'BIDDING' && (
                         <p className="text-xs font-bold text-amber-400">
-                          {displayBid}
+                          {displayPrice}
                         </p>
                       )}
-                      {mode === 'NOT_FOR_SALE' && (
+                      {badgeType === 'NOT_FOR_SALE' && (
                         <p className="text-xs font-medium text-slate-400">
-                          Not For Sale
+                          {displayPrice}
                         </p>
                       )}
 

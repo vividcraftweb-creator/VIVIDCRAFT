@@ -10,6 +10,7 @@ import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { type ArtworkItem } from './ArtworkCard';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER, isValidImageUrl } from '@/lib/image-placeholders';
+import { getArtworkPricingDisplay } from '@/lib/artworks';
 
 interface ArtworkModalProps {
   isOpen: boolean;
@@ -190,31 +191,22 @@ export function ArtworkModal({
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">
                 {(() => {
-                  const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
-                  const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
-                  const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
-
-                  const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
-                  const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
-
-                  const isForSale = (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice !== null;
-                  const isBidding = !isForSale && (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid !== null;
-
+                  const { statusBadge, badgeType } = getArtworkPricingDisplay(artwork);
                   return (
                     <>
-                      {isForSale && displayPrice && (
+                      {badgeType === 'FOR_SALE' && (
                         <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                          For Sale
+                          {statusBadge}
                         </span>
                       )}
-                      {isBidding && displayBid && (
+                      {badgeType === 'BIDDING' && (
                         <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
-                          Open Bidding
+                          {statusBadge}
                         </span>
                       )}
-                      {(!isForSale || !displayPrice) && (!isBidding || !displayBid) && (
+                      {badgeType === 'NOT_FOR_SALE' && (
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
-                          Not For Sale
+                          {statusBadge}
                         </span>
                       )}
                     </>
@@ -248,31 +240,22 @@ export function ArtworkModal({
 
             {/* Price / Starting Bid Display */}
             {(() => {
-              const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
-              const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
-              const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
-
-              const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
-              const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
-
-              const isForSale = (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice !== null;
-              const isBidding = !isForSale && (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid !== null;
-
+              const { displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
               return (
                 <>
-                  {isForSale && displayPrice && (
+                  {badgeType === 'FOR_SALE' && (
                     <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
                       Price: {displayPrice}
                     </p>
                   )}
-                  {isBidding && displayBid && (
+                  {badgeType === 'BIDDING' && (
                     <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                      {displayBid}
+                      {displayPrice}
                     </p>
                   )}
-                  {(!isForSale || !displayPrice) && (!isBidding || !displayBid) && (
+                  {badgeType === 'NOT_FOR_SALE' && (
                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                      Not For Sale
+                      {displayPrice}
                     </p>
                   )}
                 </>
@@ -510,20 +493,25 @@ export function ArtworkModal({
           {/* Bottom Area: WhatsApp Inquiry / Action Button & Comment Input */}
           <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0">
             {/* WhatsApp Action Button */}
-            {(artwork.selling_mode === 'FIXED_PRICE' || artwork.selling_mode === 'BIDDING') && (
-              <a
-                href={`https://wa.me/94783813833?text=${encodeURIComponent(
-                  artwork.selling_mode === 'BIDDING'
-                    ? `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Listed Status: Starting Bid LKR ${Number(artwork.starting_bid || 0).toLocaleString()}.`
-                    : `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Price: LKR ${Number(artwork.price || 0).toLocaleString()}.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all cursor-pointer"
-              >
-                <span>{artwork.selling_mode === 'BIDDING' ? 'Ask About Price / Place Bid (WhatsApp)' : 'Inquire via WhatsApp'}</span>
-              </a>
-            )}
+            {(() => {
+              const { badgeType, displayPrice } = getArtworkPricingDisplay(artwork);
+              if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+
+              return (
+                <a
+                  href={`https://wa.me/94783813833?text=${encodeURIComponent(
+                    badgeType === 'BIDDING'
+                      ? `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Listed Status: ${displayPrice}.`
+                      : `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Price: ${displayPrice}.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all cursor-pointer"
+                >
+                  <span>{badgeType === 'BIDDING' ? 'Ask About Price / Place Bid (WhatsApp)' : 'Inquire via WhatsApp'}</span>
+                </a>
+              );
+            })()}
 
             {/* Comment Submission Form */}
             {isAuthenticated ? (

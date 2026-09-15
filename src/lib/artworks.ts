@@ -57,12 +57,42 @@ export interface ArtworkWithProfile {
  * Inspects all possible database columns (pricing_type, selling_type, type, mode, sale_type)
  * and infers pricing from price, starting_bid, is_bidding, and title keywords.
  */
-export function inferArtworkPricing(artwork: any): {
-  mode: PricingType;
-  price: number | null;
-  startingBid: number | null;
+export type PricingBadgeType = 'FOR_SALE' | 'BIDDING' | 'NOT_FOR_SALE';
+
+export interface ArtworkPricingDisplay {
+  statusBadge: 'For Sale' | 'Open Bidding' | 'Not For Sale';
   displayPrice: string;
-} {
+  badgeType: PricingBadgeType;
+}
+
+/**
+ * Dynamic Pricing & Status Logic:
+ * 1. If artwork.price exists and Number(artwork.price) > 0:
+ *    - Show Badge: "For Sale" (Green/Amber)
+ *    - Show Price: "LKR " + Number(artwork.price).toLocaleString()
+ * 2. Else if artwork.starting_bid exists and Number(artwork.starting_bid) > 0:
+ *    - Show Badge: "Open Bidding" (Orange)
+ *    - Show Price: "Starting Bid: LKR " + Number(artwork.starting_bid).toLocaleString()
+ * 3. Else if String(artwork.pricing_type).toUpperCase() === 'FIXED_PRICE':
+ *    - Show Badge: "For Sale"
+ *    - Show Price: "LKR " + Number(artwork.price || 0).toLocaleString()
+ * 4. Else if String(artwork.pricing_type).toUpperCase() === 'BIDDING':
+ *    - Show Badge: "Open Bidding"
+ *    - Show Price: "Starting Bid: LKR " + Number(artwork.starting_bid || 0).toLocaleString()
+ * 5. Otherwise:
+ *    - Show Badge: "Not For Sale"
+ *    - Show Price: "Display Only"
+ */
+export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
+  const pType = String(
+    artwork?.pricing_type ||
+    artwork?.selling_type ||
+    artwork?.selling_mode ||
+    artwork?.mode ||
+    artwork?.pricingType ||
+    ''
+  ).toUpperCase().trim();
+
   const rawPrice =
     artwork?.price !== undefined && artwork?.price !== null && !isNaN(Number(artwork.price))
       ? Number(artwork.price)
@@ -83,67 +113,79 @@ export function inferArtworkPricing(artwork: any): {
       ? Number(artwork.current_bid)
       : null;
 
-  const isBiddingFlag = Boolean(artwork?.is_bidding ?? artwork?.isBidding ?? artwork?.bidding);
-
-  const rawMode = String(
-    artwork?.pricing_type ||
-    artwork?.selling_type ||
-    artwork?.selling_mode ||
-    artwork?.type ||
-    artwork?.mode ||
-    artwork?.sale_type ||
-    ''
-  ).toUpperCase().trim();
-
-  const titleLower = String(artwork?.title || '').toLowerCase();
-
-  const isForSale =
-    rawMode === 'FIXED_PRICE' ||
-    rawMode === 'FOR_SALE' ||
-    rawMode === 'SALE' ||
-    rawMode.includes('FIXED') ||
-    (rawPrice !== null && rawPrice > 0) ||
-    (titleLower.includes('sale') && !titleLower.includes('not for sale'));
-
-  const isBidding =
-    !isForSale &&
-    (rawMode === 'BIDDING' ||
-      rawMode === 'AUCTION' ||
-      rawMode === 'BID' ||
-      rawMode.includes('BID') ||
-      rawMode.includes('AUCTION') ||
-      (rawBid !== null && rawBid > 0) ||
-      isBiddingFlag ||
-      titleLower.includes('bid') ||
-      titleLower.includes('auction'));
-
-  let mode: PricingType = 'NOT_FOR_SALE';
-  if (isForSale) {
-    mode = 'FIXED_PRICE';
-  } else if (isBidding) {
-    mode = 'BIDDING';
+  // 1. If artwork.price exists and Number(artwork.price) > 0
+  if (rawPrice !== null && rawPrice > 0) {
+    return {
+      statusBadge: 'For Sale',
+      displayPrice: `LKR ${rawPrice.toLocaleString()}`,
+      badgeType: 'FOR_SALE',
+    };
   }
 
-  // Dynamic pricing values directly from database (no sample fallbacks)
-  const effectivePrice = rawPrice && rawPrice > 0 ? rawPrice : null;
-  const effectiveBid = rawBid && rawBid > 0 ? rawBid : null;
+  // 2. Else if artwork.starting_bid exists and Number(artwork.starting_bid) > 0
+  if (rawBid !== null && rawBid > 0) {
+    return {
+      statusBadge: 'Open Bidding',
+      displayPrice: `Starting Bid: LKR ${rawBid.toLocaleString()}`,
+      badgeType: 'BIDDING',
+    };
+  }
 
-  // 3. Construct clean price display string
-  let displayPrice = 'Not For Sale';
-  if (mode === 'FIXED_PRICE' && effectivePrice) {
-    displayPrice = `LKR ${effectivePrice.toLocaleString()}`;
-  } else if (mode === 'BIDDING' && effectiveBid) {
-    displayPrice = `Starting Bid: LKR ${effectiveBid.toLocaleString()}`;
-  } else if (mode === 'BIDDING') {
-    displayPrice = `Open Bidding`;
-  } else {
-    displayPrice = 'Not For Sale';
+  // 3. Else if String(artwork.pricing_type).toUpperCase() === 'FIXED_PRICE'
+  if (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') {
+    return {
+      statusBadge: 'For Sale',
+      displayPrice: `LKR ${Number(rawPrice || 0).toLocaleString()}`,
+      badgeType: 'FOR_SALE',
+    };
+  }
+
+  // 4. Else if String(artwork.pricing_type).toUpperCase() === 'BIDDING'
+  if (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') {
+    return {
+      statusBadge: 'Open Bidding',
+      displayPrice: `Starting Bid: LKR ${Number(rawBid || 0).toLocaleString()}`,
+      badgeType: 'BIDDING',
+    };
+  }
+
+  // 5. Otherwise
+  return {
+    statusBadge: 'Not For Sale',
+    displayPrice: 'Display Only',
+    badgeType: 'NOT_FOR_SALE',
+  };
+}
+
+export function inferArtworkPricing(artwork: any): {
+  mode: PricingType;
+  price: number | null;
+  startingBid: number | null;
+  displayPrice: string;
+} {
+  const { displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
+  const rawPrice =
+    artwork?.price !== undefined && artwork?.price !== null && !isNaN(Number(artwork.price))
+      ? Number(artwork.price)
+      : null;
+  const rawBid =
+    artwork?.starting_bid !== undefined && artwork?.starting_bid !== null && !isNaN(Number(artwork.starting_bid))
+      ? Number(artwork.starting_bid)
+      : (artwork?.startingBid !== undefined && artwork?.startingBid !== null && !isNaN(Number(artwork?.startingBid))
+        ? Number(artwork.startingBid)
+        : null);
+
+  let mode: PricingType = 'NOT_FOR_SALE';
+  if (badgeType === 'FOR_SALE') {
+    mode = 'FIXED_PRICE';
+  } else if (badgeType === 'BIDDING') {
+    mode = 'BIDDING';
   }
 
   return {
     mode,
-    price: effectivePrice,
-    startingBid: effectiveBid,
+    price: mode === 'FIXED_PRICE' ? (rawPrice !== null && rawPrice > 0 ? rawPrice : Number(rawPrice || 0)) : null,
+    startingBid: mode === 'BIDDING' ? (rawBid !== null && rawBid > 0 ? rawBid : Number(rawBid || 0)) : null,
     displayPrice,
   };
 }

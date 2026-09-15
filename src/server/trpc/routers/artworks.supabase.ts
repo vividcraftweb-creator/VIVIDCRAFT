@@ -132,7 +132,7 @@ export const artworksRouter = router({
       const rawBid = input.starting_bid ?? input.startingBid;
       const bidVal = rawBid !== undefined && rawBid !== null && !isNaN(Number(rawBid)) ? Number(rawBid) : null;
 
-      const rawType = input.pricing_type || input.pricingType || input.sellingMode || (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'FIXED_PRICE');
+      const rawType = input.pricing_type || input.pricingType || input.sellingMode || (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'NOT_FOR_SALE');
       const cleanPricingType = String(rawType).toUpperCase().trim();
 
       let pricingMode: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
@@ -140,12 +140,14 @@ export const artworksRouter = router({
         pricingMode = 'BIDDING';
       } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
         pricingMode = 'NOT_FOR_SALE';
-      } else {
+      } else if (cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
         pricingMode = 'FIXED_PRICE';
+      } else {
+        pricingMode = 'NOT_FOR_SALE';
       }
 
-      const price = pricingMode === 'FIXED_PRICE' ? (priceVal ?? null) : null;
-      const startingBid = pricingMode === 'BIDDING' ? (bidVal ?? null) : null;
+      const price = pricingMode === 'FIXED_PRICE' && priceVal !== null && !isNaN(priceVal) ? Number(priceVal) : null;
+      const startingBid = pricingMode === 'BIDDING' && bidVal !== null && !isNaN(bidVal) ? Number(bidVal) : null;
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
       const medium = input.medium?.trim() || null;

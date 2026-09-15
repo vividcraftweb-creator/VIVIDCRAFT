@@ -9,7 +9,7 @@ import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { ArtworkModal } from './ArtworkModal';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
-import { inferArtworkPricing, extractArtistName } from '@/lib/artworks';
+import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay } from '@/lib/artworks';
 
 export interface ArtworkItem {
   id: string;
@@ -66,26 +66,8 @@ interface ArtworkCardProps {
 }
 
 export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
-  // Render exact numerical price fetched from database without hardcoded fallbacks
-  const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
-  const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
-  const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
-
-  const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
-  const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
-
-  let mode: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE' = 'NOT_FOR_SALE';
-  if ((pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice) {
-    mode = 'FIXED_PRICE';
-  } else if ((pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid) {
-    mode = 'BIDDING';
-  } else if (displayPrice) {
-    mode = 'FIXED_PRICE';
-  } else if (displayBid) {
-    mode = 'BIDDING';
-  } else {
-    mode = 'NOT_FOR_SALE';
-  }
+  // Dynamic Pricing & Status Badge Evaluation
+  const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
 
   const resolvedArtistName = extractArtistName(artwork, artistName);
 
@@ -203,38 +185,38 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
                 {artwork.title}
               </h3>
 
-              {/* Status Badges directly based on pricing_type */}
-              {mode === 'FIXED_PRICE' && displayPrice && (
+              {/* Status Badges dynamically based on pricing and pricing_type */}
+              {badgeType === 'FOR_SALE' && (
                 <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400 dark:bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
-                  For Sale
+                  {statusBadge}
                 </span>
               )}
-              {mode === 'BIDDING' && displayBid && (
+              {badgeType === 'BIDDING' && (
                 <span className="text-[10px] font-bold text-white bg-orange-500 dark:bg-orange-500/25 dark:text-orange-300 border border-orange-500/50 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
-                  Open Bidding
+                  {statusBadge}
                 </span>
               )}
-              {mode === 'NOT_FOR_SALE' && (
+              {badgeType === 'NOT_FOR_SALE' && (
                 <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                  Not For Sale
+                  {statusBadge}
                 </span>
               )}
             </div>
 
             {/* Price / Starting Bid Line */}
-            {mode === 'FIXED_PRICE' && displayPrice && (
+            {badgeType === 'FOR_SALE' && (
               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
                 {displayPrice}
               </p>
             )}
-            {mode === 'BIDDING' && displayBid && (
+            {badgeType === 'BIDDING' && (
               <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">
-                {displayBid}
+                {displayPrice}
               </p>
             )}
-            {mode === 'NOT_FOR_SALE' && (
+            {badgeType === 'NOT_FOR_SALE' && (
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-                Not For Sale
+                {displayPrice}
               </p>
             )}
 

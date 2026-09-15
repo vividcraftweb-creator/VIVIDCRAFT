@@ -49,20 +49,24 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       formData.get('selling_type') ||
       formData.get('selling_mode') ||
       formData.get('sellingMode') ||
-      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'FIXED_PRICE');
+      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'NOT_FOR_SALE');
     const cleanPricingType = String(rawType).toUpperCase().trim();
 
     if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
       pricingType = 'BIDDING';
-      startingBid = bidVal;
+      startingBid = bidVal !== null && !isNaN(bidVal) ? Number(bidVal) : null;
       price = null;
     } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
       pricingType = 'NOT_FOR_SALE';
       price = null;
       startingBid = null;
-    } else {
+    } else if (cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
       pricingType = 'FIXED_PRICE';
-      price = priceVal;
+      price = priceVal !== null && !isNaN(priceVal) ? Number(priceVal) : null;
+      startingBid = null;
+    } else {
+      pricingType = 'NOT_FOR_SALE';
+      price = null;
       startingBid = null;
     }
 
@@ -88,20 +92,24 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       (formData as any).selling_type ||
       (formData as any).selling_mode ||
       (formData as any).sellingMode ||
-      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'FIXED_PRICE');
+      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'NOT_FOR_SALE');
     const cleanPricingType = String(rawType).toUpperCase().trim();
 
     if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
       pricingType = 'BIDDING';
-      startingBid = bidVal;
+      startingBid = bidVal !== null && !isNaN(bidVal) ? Number(bidVal) : null;
       price = null;
     } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
       pricingType = 'NOT_FOR_SALE';
       price = null;
       startingBid = null;
-    } else {
+    } else if (cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
       pricingType = 'FIXED_PRICE';
-      price = priceVal;
+      price = priceVal !== null && !isNaN(priceVal) ? Number(priceVal) : null;
+      startingBid = null;
+    } else {
+      pricingType = 'NOT_FOR_SALE';
+      price = null;
       startingBid = null;
     }
 
