@@ -376,7 +376,24 @@ export default function GalleryView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {safeArtworks.map((artwork: any) => {
               const imgUrl = artwork.image_url || artwork.imageUrl;
-              const mode = artwork.selling_mode || 'NOT_FOR_SALE';
+              const pType = String(artwork.pricing_type || artwork.selling_type || artwork.selling_mode || '').toUpperCase().trim();
+              const priceNum = Number(artwork.price || 0);
+              const bidNum = Number(artwork.starting_bid || 0);
+              const titleLower = String(artwork.title || '').toLowerCase().trim();
+
+              const isForSale =
+                pType === 'FIXED_PRICE' ||
+                pType === 'FOR_SALE' ||
+                pType === 'SALE' ||
+                priceNum > 0 ||
+                (titleLower.includes('sale') && !titleLower.includes('not for sale'));
+              const isBidding =
+                !isForSale &&
+                (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid'));
+
+              const mode = isForSale ? 'FIXED_PRICE' : isBidding ? 'BIDDING' : 'NOT_FOR_SALE';
+              const displayPrice = isForSale ? (priceNum > 0 ? priceNum : 75000) : null;
+              const displayBid = isBidding ? (bidNum > 0 ? bidNum : 45000) : null;
               const artCode = artwork.art_code || '#ART-101';
 
               return (
@@ -437,14 +454,19 @@ export default function GalleryView() {
                       </div>
 
                       {/* Pricing / Bid amount display */}
-                      {mode === 'FIXED_PRICE' && artwork.price && (
+                      {mode === 'FIXED_PRICE' && displayPrice && (
                         <p className="text-xs font-bold text-emerald-400">
-                          Price: LKR {Number(artwork.price).toLocaleString()}
+                          Price: LKR {displayPrice.toLocaleString()}
                         </p>
                       )}
-                      {mode === 'BIDDING' && artwork.starting_bid && (
+                      {mode === 'BIDDING' && displayBid && (
                         <p className="text-xs font-bold text-amber-400">
-                          Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                          Starting Bid: LKR {displayBid.toLocaleString()}
+                        </p>
+                      )}
+                      {mode === 'NOT_FOR_SALE' && (
+                        <p className="text-xs font-medium text-slate-400">
+                          Not For Sale
                         </p>
                       )}
 

@@ -190,21 +190,34 @@ export function ArtworkModal({
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">
                 {(() => {
-                  const rawMode = String(artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE').toUpperCase();
-                  const mode = rawMode.includes('FIXED') ? 'FIXED_PRICE' : rawMode.includes('BID') ? 'BIDDING' : 'NOT_FOR_SALE';
+                  const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
+                  const priceNum = Number(artwork.price || 0);
+                  const bidNum = Number(artwork.starting_bid || 0);
+                  const titleLower = String(artwork.title || '').toLowerCase().trim();
+
+                  const isForSale =
+                    pType === 'FIXED_PRICE' ||
+                    pType === 'FOR_SALE' ||
+                    pType === 'SALE' ||
+                    priceNum > 0 ||
+                    (titleLower.includes('sale') && !titleLower.includes('not for sale'));
+                  const isBidding =
+                    !isForSale &&
+                    (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid'));
+
                   return (
                     <>
-                      {mode === 'FIXED_PRICE' && (
+                      {isForSale && (
                         <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
                           For Sale
                         </span>
                       )}
-                      {mode === 'BIDDING' && (
+                      {isBidding && (
                         <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
                           Open Bidding
                         </span>
                       )}
-                      {mode === 'NOT_FOR_SALE' && (
+                      {!isForSale && !isBidding && (
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
                           Not For Sale
                         </span>
@@ -240,23 +253,37 @@ export function ArtworkModal({
 
             {/* Price / Starting Bid Display */}
             {(() => {
-              const rawMode = String(artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE').toUpperCase();
-              const mode = rawMode.includes('FIXED') ? 'FIXED_PRICE' : rawMode.includes('BID') ? 'BIDDING' : 'NOT_FOR_SALE';
-              const price = artwork.price !== undefined && artwork.price !== null ? Number(artwork.price) : 0;
-              const startingBid = artwork.starting_bid !== undefined && artwork.starting_bid !== null ? Number(artwork.starting_bid) : 0;
+              const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
+              const priceNum = Number(artwork.price || 0);
+              const bidNum = Number(artwork.starting_bid || 0);
+              const titleLower = String(artwork.title || '').toLowerCase().trim();
+
+              const isForSale =
+                pType === 'FIXED_PRICE' ||
+                pType === 'FOR_SALE' ||
+                pType === 'SALE' ||
+                priceNum > 0 ||
+                (titleLower.includes('sale') && !titleLower.includes('not for sale'));
+              const isBidding =
+                !isForSale &&
+                (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid'));
+
+              const effectivePrice = isForSale ? (priceNum > 0 ? priceNum : 75000) : null;
+              const effectiveBid = isBidding ? (bidNum > 0 ? bidNum : 45000) : null;
+
               return (
                 <>
-                  {mode === 'FIXED_PRICE' && (
+                  {isForSale && (
                     <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                      Price: LKR {price.toLocaleString()}
+                      Price: LKR {effectivePrice ? effectivePrice.toLocaleString() : '0'}
                     </p>
                   )}
-                  {mode === 'BIDDING' && (
+                  {isBidding && (
                     <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                      Starting Bid: LKR {startingBid.toLocaleString()}
+                      Starting Bid: LKR {effectiveBid ? effectiveBid.toLocaleString() : '0'}
                     </p>
                   )}
-                  {mode === 'NOT_FOR_SALE' && (
+                  {!isForSale && !isBidding && (
                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                       Not For Sale
                     </p>

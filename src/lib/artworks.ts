@@ -97,30 +97,31 @@ export function inferArtworkPricing(artwork: any): {
 
   const titleLower = String(artwork?.title || '').toLowerCase();
 
-  let mode: PricingType | null = null;
+  const isForSale =
+    rawMode === 'FIXED_PRICE' ||
+    rawMode === 'FOR_SALE' ||
+    rawMode === 'SALE' ||
+    rawMode.includes('FIXED') ||
+    (rawPrice !== null && rawPrice > 0) ||
+    (titleLower.includes('sale') && !titleLower.includes('not for sale'));
 
-  // 1. Check if an explicit non-empty mode was set
-  if (rawMode.includes('FIXED') || rawMode === 'FOR_SALE' || rawMode === 'SALE' || rawMode === 'BUY') {
+  const isBidding =
+    !isForSale &&
+    (rawMode === 'BIDDING' ||
+      rawMode === 'AUCTION' ||
+      rawMode === 'BID' ||
+      rawMode.includes('BID') ||
+      rawMode.includes('AUCTION') ||
+      (rawBid !== null && rawBid > 0) ||
+      isBiddingFlag ||
+      titleLower.includes('bid') ||
+      titleLower.includes('auction'));
+
+  let mode: PricingType = 'NOT_FOR_SALE';
+  if (isForSale) {
     mode = 'FIXED_PRICE';
-  } else if (rawMode.includes('BID') || rawMode.includes('AUCTION')) {
+  } else if (isBidding) {
     mode = 'BIDDING';
-  } else if (rawMode.includes('NOT') || rawMode.includes('DISPLAY') || rawMode === 'PORTFOLIO') {
-    mode = 'NOT_FOR_SALE';
-  }
-
-  // 2. Smart overrides from price, starting_bid, and title keywords
-  if (!mode || mode === 'NOT_FOR_SALE') {
-    if (rawPrice && rawPrice > 0) {
-      mode = 'FIXED_PRICE';
-    } else if ((rawBid && rawBid > 0) || isBiddingFlag) {
-      mode = 'BIDDING';
-    } else if (titleLower.includes('bid') || titleLower.includes('auction')) {
-      mode = 'BIDDING';
-    } else if (titleLower.includes('sale') || titleLower.includes('buy')) {
-      mode = 'FIXED_PRICE';
-    } else {
-      mode = 'NOT_FOR_SALE';
-    }
   }
 
   // Realistic defaults for test items where numeric columns are not yet set

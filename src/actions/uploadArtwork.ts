@@ -37,14 +37,34 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     title = String(formData.get('title') || '').trim();
     description = String(formData.get('description') || '').trim();
     category = String(formData.get('category') || '').trim();
-    const rawPricing = String(formData.get('pricingType') || formData.get('pricing_type') || 'NOT_FOR_SALE').toUpperCase();
-    pricingType = (rawPricing.includes('FIXED') ? 'FIXED_PRICE' : rawPricing.includes('BID') ? 'BIDDING' : 'NOT_FOR_SALE') as any;
-    
+
     const rawPrice = formData.get('price');
-    price = pricingType === 'FIXED_PRICE' && rawPrice ? Number(rawPrice) : null;
-    
     const rawBid = formData.get('startingBid') || formData.get('starting_bid');
-    startingBid = pricingType === 'BIDDING' && rawBid ? Number(rawBid) : null;
+    const priceVal = rawPrice !== null && rawPrice !== undefined && rawPrice !== '' ? Number(rawPrice) : null;
+    const bidVal = rawBid !== null && rawBid !== undefined && rawBid !== '' ? Number(rawBid) : null;
+
+    const rawType =
+      formData.get('pricing_type') ||
+      formData.get('pricingType') ||
+      formData.get('selling_type') ||
+      formData.get('selling_mode') ||
+      formData.get('sellingMode') ||
+      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'FIXED_PRICE');
+    const cleanPricingType = String(rawType).toUpperCase().trim();
+
+    if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
+      pricingType = 'BIDDING';
+      startingBid = bidVal;
+      price = null;
+    } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
+      pricingType = 'NOT_FOR_SALE';
+      price = null;
+      startingBid = null;
+    } else {
+      pricingType = 'FIXED_PRICE';
+      price = priceVal;
+      startingBid = null;
+    }
 
     const formFile = formData.get('file');
     if (formFile instanceof File && formFile.size > 0) {
@@ -56,11 +76,37 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     title = (formData.title || '').trim();
     description = (formData.description || '').trim();
     category = (formData.category || '').trim();
-    pricingType = formData.pricingType || 'NOT_FOR_SALE';
-    price = pricingType === 'FIXED_PRICE' && formData.price ? Number(formData.price) : null;
-    startingBid = pricingType === 'BIDDING' && formData.startingBid ? Number(formData.startingBid) : null;
+
+    const rawPrice = (formData as any).price;
+    const rawBid = (formData as any).startingBid || (formData as any).starting_bid;
+    const priceVal = rawPrice !== null && rawPrice !== undefined && rawPrice !== '' ? Number(rawPrice) : null;
+    const bidVal = rawBid !== null && rawBid !== undefined && rawBid !== '' ? Number(rawBid) : null;
+
+    const rawType =
+      (formData as any).pricing_type ||
+      (formData as any).pricingType ||
+      (formData as any).selling_type ||
+      (formData as any).selling_mode ||
+      (formData as any).sellingMode ||
+      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'FIXED_PRICE');
+    const cleanPricingType = String(rawType).toUpperCase().trim();
+
+    if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
+      pricingType = 'BIDDING';
+      startingBid = bidVal;
+      price = null;
+    } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
+      pricingType = 'NOT_FOR_SALE';
+      price = null;
+      startingBid = null;
+    } else {
+      pricingType = 'FIXED_PRICE';
+      price = priceVal;
+      startingBid = null;
+    }
+
     file = formData.file || null;
-    imageUrl = formData.imageUrl || null;
+    imageUrl = formData.imageUrl || (formData as any).image_url || null;
   }
 
   if (!title) {
