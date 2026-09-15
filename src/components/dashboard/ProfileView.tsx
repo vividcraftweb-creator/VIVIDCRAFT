@@ -361,7 +361,7 @@ export default function ProfileView() {
                 {profile?.timezone && (
                   <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 sm:p-6 hover:border-slate-700 transition-all">
                     <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-4 w-4 text-purple-400" />
+                      <Clock className="h-4 w-4 text-amber-400" />
                       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide">Timezone</h3>
                     </div>
                     <p className="text-lg font-semibold text-white">{profile.timezone}</p>
@@ -400,8 +400,8 @@ export default function ProfileView() {
             {skills.length > 0 && (
               <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-sm">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Star className="h-5 w-5 text-purple-400" />
+                  <div className="p-2 bg-amber-500/20 rounded-lg">
+                    <Star className="h-5 w-5 text-amber-400" />
                   </div>
                   <h2 className="text-2xl font-bold text-white">Skills & Expertise</h2>
                 </div>
@@ -481,8 +481,8 @@ export default function ProfileView() {
             {profile?.portfolio && (
               <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Globe className="h-5 w-5 text-purple-400" />
+                  <div className="p-2 bg-amber-500/20 rounded-lg">
+                    <Globe className="h-5 w-5 text-amber-400" />
                   </div>
                   <h3 className="text-lg font-bold text-white">Portfolio</h3>
                 </div>

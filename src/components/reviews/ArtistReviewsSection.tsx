@@ -331,7 +331,7 @@ export function ArtistReviewsSection({
             <button
               type="button"
               onClick={handleOpenReviewModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-md shadow-amber-500/20 transition-all active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Write Review</span>
@@ -420,7 +420,7 @@ export function ArtistReviewsSection({
               placeholder={`Write your honest review and testimonial for ${artistName}...`}
               maxLength={2000}
               required
-              className="w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400 rounded-xl p-4 text-xs sm:text-sm focus:outline-none focus:border-purple-500/60 focus:ring-1 focus:ring-purple-500/60 resize-none transition-all shadow-sm"
+              className="w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400 rounded-xl p-4 text-xs sm:text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none transition-all shadow-sm"
             />
             <div className="flex justify-between items-center text-[10px] text-zinc-500 dark:text-zinc-400 mt-1.5 px-1">
               <span>Your feedback will be published on this artist&apos;s public profile.</span>
@@ -433,7 +433,7 @@ export function ArtistReviewsSection({
             <button
               type="submit"
               disabled={isSubmitting || !reviewText.trim()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-lg shadow-purple-600/25 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/25 transition-all active:scale-95"
             >
               {isSubmitting ? (
                 <>
@@ -453,7 +453,7 @@ export function ArtistReviewsSection({
         <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-              <LogIn className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <LogIn className="h-4 w-4 text-amber-500 dark:text-amber-400" />
             </div>
             <div>
               <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100">Worked with {artistName}?</p>
@@ -473,7 +473,7 @@ export function ArtistReviewsSection({
       {/* Reviews Content */}
       {isLoading && reviews.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-zinc-500 dark:text-zinc-400">
-          <Loader2 className="h-7 w-7 animate-spin text-purple-600 dark:text-purple-400 mb-2" />
+          <Loader2 className="h-7 w-7 animate-spin text-amber-500 dark:text-amber-400 mb-2" />
           <p className="text-xs">Loading client reviews...</p>
         </div>
       ) : totalReviews > 0 ? (
@@ -494,7 +494,7 @@ export function ArtistReviewsSection({
               return (
                 <article
                   key={rev.id}
-                  className="w-[290px] sm:w-[350px] md:w-[380px] flex-shrink-0 snap-start flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-purple-400 dark:hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md group/card"
+                  className="w-[290px] sm:w-[350px] md:w-[380px] flex-shrink-0 snap-start flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-amber-400/60 dark:hover:border-amber-500/40 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md group/card"
                 >
                   {/* Card Top: Stars + Quote + Date */}
                   <div>
@@ -511,7 +511,7 @@ export function ArtistReviewsSection({
                           />
                         ))}
                       </div>
-                      <Quote className="h-5 w-5 text-purple-400/40 group-hover/card:text-purple-600 dark:group-hover/card:text-purple-400 transition-colors" />
+                      <Quote className="h-5 w-5 text-amber-400/40 group-hover/card:text-amber-500 dark:group-hover/card:text-amber-400 transition-colors" />
                     </div>
 
                     {/* Review text */}
@@ -540,7 +540,7 @@ export function ArtistReviewsSection({
                           />
                         ) : null}
                         <div
-                          className="h-full w-full rounded-full bg-gradient-to-tr from-purple-600 to-amber-600 flex items-center justify-center text-xs font-bold text-white uppercase border border-zinc-200 dark:border-zinc-700"
+                          className="h-full w-full rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-xs font-bold text-slate-950 uppercase border border-zinc-200 dark:border-zinc-700"
                           style={{ display: (rev.clientAvatar && isValidImageUrl(rev.clientAvatar)) ? 'none' : 'flex' }}
                         >
                           {initial}
@@ -582,7 +582,7 @@ export function ArtistReviewsSection({
             <button
               type="button"
               onClick={handleOpenReviewModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all mt-2"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-md shadow-amber-500/20 transition-all mt-2"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Write First Review</span>
@@ -673,7 +673,7 @@ export function ArtistReviewsSection({
                   placeholder="Describe the artist's professionalism, creativity, artwork quality, or communication..."
                   maxLength={2000}
                   required
-                  className="w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400 rounded-2xl p-4 text-xs sm:text-sm focus:outline-none focus:border-purple-500/60 focus:ring-1 focus:ring-purple-500/60 resize-none transition-colors"
+                  className="w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 placeholder:text-zinc-400 rounded-2xl p-4 text-xs sm:text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none transition-colors"
                 />
                 <div className="flex justify-between items-center text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
                   <span>Minimum 5 characters</span>
@@ -693,7 +693,7 @@ export function ArtistReviewsSection({
                 <button
                   type="submit"
                   disabled={addReviewMutation.isPending || !reviewText.trim()}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 text-xs font-bold shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5"
                 >
                   {addReviewMutation.isPending ? (
                     <>

@@ -219,8 +219,8 @@ export default function PrioritySupport() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Shield className="h-5 w-5 text-purple-400" />
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+              <Shield className="h-5 w-5 text-amber-400" />
             </div>
             <div>
               <h4 className="font-medium text-foreground">Support Team</h4>
@@ -391,8 +391,8 @@ export default function PrioritySupport() {
               </div>
 
               <div className="flex items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                  <Phone className="h-6 w-6 text-purple-400" />
+                <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <Phone className="h-6 w-6 text-amber-400" />
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground">Need real-time help?</h4>

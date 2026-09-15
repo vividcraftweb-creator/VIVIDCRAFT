@@ -448,7 +448,7 @@ function JobDetailClient() {
             <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-2xl">
               <div className="absolute inset-0 opacity-80">
                 <div className="absolute -top-24 right-12 h-56 w-56 animate-[spin_18s_linear_infinite] rounded-full border border-white/10 bg-white/5 shadow-[0_0_120px_rgba(59,130,246,0.25)]" />
-                <div className="absolute bottom-0 left-0 h-40 w-40 translate-x-1/2 translate-y-1/3 rounded-full bg-purple-500/20 blur-3xl" />
+                <div className="absolute bottom-0 left-0 h-40 w-40 translate-x-1/2 translate-y-1/3 rounded-full bg-amber-500/20 blur-3xl" />
               </div>
 
               <div className="relative flex flex-col gap-10 p-8 md:p-12 lg:flex-row lg:items-center lg:justify-between">
@@ -584,7 +584,7 @@ function JobDetailClient() {
               )}
 
               {parsedMilestones.length > 0 && (
-                <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-purple-600/15 to-blue-500/10 p-8 backdrop-blur-xl">
+                <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-amber-500/10 to-yellow-500/5 p-8 backdrop-blur-xl">
                   <header className="mb-4 flex items-center gap-3 text-white">
                     <Layers className="h-5 w-5 text-blue-300" />
                     <h3 className="text-lg font-semibold">Milestone structure</h3>

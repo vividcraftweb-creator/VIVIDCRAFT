@@ -70,14 +70,14 @@ export default function AnalyticsView() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-purple-400" />
+            <BarChart3 className="h-6 w-6 text-amber-400" />
             Enhanced Analytics Dashboard
           </h2>
           <p className="text-slate-400 mt-1">
             Comprehensive insights into your hiring performance and metrics
           </p>
         </div>
-        <Badge variant="outline" className="bg-purple-500/10 text-purple-300 border-purple-500/30">
+        <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30">
           {isEnterprise ? 'Advanced' : 'Standard'} Analytics
         </Badge>
       </div>
@@ -96,7 +96,7 @@ export default function AnalyticsView() {
                   onClick={() => setDays(d)}
                   className={
                     days === d
-                      ? 'bg-purple-600 hover:bg-purple-700'
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold'
                       : 'bg-white/5 hover:bg-white/10 border-white/10'
                   }
                 >
@@ -112,7 +112,7 @@ export default function AnalyticsView() {
       {isLoading && (
         <Card className="bg-white/5 border-white/10">
           <CardContent className="p-8 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-400 mr-3" />
+            <Loader2 className="h-8 w-8 animate-spin text-amber-400 mr-3" />
             <span className="text-slate-400">Loading analytics...</span>
           </CardContent>
         </Card>
@@ -164,9 +164,9 @@ export default function AnalyticsView() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+              <Card className="bg-gradient-to-br from-amber-500/10 to-yellow-600/5 border-amber-500/20">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-purple-200">
+                  <CardTitle className="text-sm font-medium text-amber-200">
                     Acceptance Rate
                   </CardTitle>
                 </CardHeader>
@@ -174,7 +174,7 @@ export default function AnalyticsView() {
                   <div className="text-3xl font-bold text-white">
                     {analytics.proposalMetrics.acceptanceRate}%
                   </div>
-                  <p className="text-xs text-purple-300 mt-1">
+                  <p className="text-xs text-amber-300 mt-1">
                     {analytics.proposalMetrics.acceptedProposals}/{analytics.proposalMetrics.totalProposals} proposals
                   </p>
                 </CardContent>
@@ -340,7 +340,7 @@ export default function AnalyticsView() {
           {Array.isArray(analytics?.topSkills) && analytics.topSkills.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Zap className="h-5 w-5 text-indigo-400" />
+                <Zap className="h-5 w-5 text-amber-400" />
                 Top Skills in Demand
               </h3>
               <Card className="bg-white/5 border-white/10">

@@ -675,8 +675,8 @@ ${questionsOrConcerns || 'None at this time.'}`;
 
           <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-purple-500/20 p-2">
-                <User className="h-5 w-5 text-purple-400" />
+              <div className="rounded-lg bg-amber-500/20 p-2">
+                <User className="h-5 w-5 text-amber-400" />
               </div>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-white">Questions & communication</h3>
             </div>

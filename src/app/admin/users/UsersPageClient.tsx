@@ -558,7 +558,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
-              <UserPlus className="h-4 w-4 text-purple-400" />
+              <UserPlus className="h-4 w-4 text-amber-400" />
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-white">{statsOverview.newThisWeek}</span>
                 <span className="text-xs text-slate-400">New</span>
@@ -608,7 +608,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 variant={role === 'FREELANCER' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => handleRoleChange('FREELANCER')}
-                className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
               >
                 Artists
               </Button>

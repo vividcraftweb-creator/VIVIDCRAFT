@@ -184,8 +184,8 @@ export default function WhatsAppVerificationsClient({ initialArtists }: WhatsApp
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                            <User className="w-4 h-4 text-purple-400" />
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-amber-400" />
                           </div>
                           <div>
                             <p className="font-medium text-white">{fullName}</p>
@@ -265,8 +265,8 @@ export default function WhatsAppVerificationsClient({ initialArtists }: WhatsApp
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-purple-400" />
+                      <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                        <User className="w-4 h-4 text-amber-400" />
                       </div>
                       <div>
                         <p className="font-semibold text-white text-sm">{fullName}</p>

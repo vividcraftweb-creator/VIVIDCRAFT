@@ -630,12 +630,12 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                   {safeProposals.length > 0 ? Math.round((acceptedProposals.length / safeProposals.length) * 100) : 0}%
                 </p>
                 <p className="text-slate-400 text-sm mt-1 flex items-center">
-                  <Target className="h-4 w-4 mr-1 text-purple-400" />
-                  <span className="text-purple-300">{acceptedProposals.length || 0} of {safeProposals.length} commissions</span>
+                  <Target className="h-4 w-4 mr-1 text-amber-400" />
+                  <span className="text-amber-300">{acceptedProposals.length || 0} of {safeProposals.length} commissions</span>
                 </p>
               </div>
-              <div className="p-2 sm:p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl group-hover:bg-purple-500/20 transition-colors">
-                <Award className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400" />
+              <div className="p-2 sm:p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl group-hover:bg-amber-500/20 transition-colors">
+                <Award className="h-6 w-6 sm:h-8 sm:w-8 text-amber-400" />
               </div>
             </div>
           </div>
@@ -753,9 +753,9 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <h3 className="text-base sm:text-lg font-semibold text-white">Market Demand Trends</h3>
-                    <p className="text-xs sm:text-sm text-purple-300">Weekly insight into in-demand skills across the platform</p>
+                    <p className="text-xs sm:text-sm text-amber-300">Weekly insight into in-demand skills across the platform</p>
                   </div>
-                  <Badge className="bg-purple-500/20 text-purple-200 border-purple-500/30 w-fit">Unlocked</Badge>
+                  <Badge className="bg-amber-500/20 text-amber-200 border-amber-500/30 w-fit">Unlocked</Badge>
                 </div>
               </div>
               <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">

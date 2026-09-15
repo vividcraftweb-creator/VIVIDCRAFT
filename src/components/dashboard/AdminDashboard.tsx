@@ -215,11 +215,11 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-            <FileText className="h-4 w-4 text-purple-400" />
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <FileText className="h-4 w-4 text-amber-400" />
             <div className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-white">{totalProposals}</span>
-              <span className="text-xs text-purple-300">Proposals</span>
+              <span className="text-xs text-amber-300">Proposals</span>
             </div>
           </div>
 
@@ -353,7 +353,7 @@ export default function AdminDashboard() {
 
               <div className="p-2.5 bg-slate-950/60 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <FileText className="h-3 w-3 text-purple-400" />
+                  <FileText className="h-3 w-3 text-amber-400" />
                   <span className="text-xs text-slate-400">Proposals</span>
                 </div>
                 <div className="text-lg font-bold text-white">{totalProposals}</div>
@@ -416,7 +416,7 @@ export default function AdminDashboard() {
               <Button
                 asChild
                 size="sm"
-                className="w-full justify-start bg-purple-600 hover:bg-purple-500 text-white h-8 text-xs shadow-md shadow-purple-600/20"
+                className="w-full justify-start bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold h-8 text-xs shadow-md shadow-amber-500/20"
               >
                 <Link href="/admin/fraud-review">
                   <Shield className="h-3.5 w-3.5 mr-2" />

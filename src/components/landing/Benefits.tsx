@@ -43,12 +43,12 @@ export default function Benefits() {
   return (
     <section className="relative z-20 py-16 sm:py-24 lg:py-32 max-w-7xl mx-auto overflow-hidden">
       {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-purple-500/10 via-indigo-500/5 to-transparent dark:from-purple-600/15 dark:via-indigo-600/10 dark:to-transparent blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-amber-500/10 via-yellow-500/5 to-transparent dark:from-amber-600/15 dark:via-yellow-600/10 dark:to-transparent blur-3xl pointer-events-none -z-10" />
 
       {/* Task 1: Heading Redesign */}
       <div className="px-4 sm:px-6 lg:px-8 text-center max-w-4xl mx-auto space-y-4 mb-10 sm:mb-14">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-700 dark:text-purple-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
-          <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
+          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
           <span>Global Artistic Community</span>
         </div>
 
@@ -68,14 +68,14 @@ export default function Benefits() {
           <div
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            className="relative w-full rounded-3xl p-6 sm:p-8 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/60 dark:border-slate-800/80 shadow-2xl dark:shadow-purple-950/20 overflow-hidden"
+            className="relative w-full rounded-3xl p-6 sm:p-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl dark:shadow-amber-950/10 overflow-hidden"
           >
             {/* Subtle ambient colorful backdrop highlights */}
-            <div className="absolute -top-12 -left-12 w-36 h-36 bg-purple-500/10 dark:bg-purple-600/15 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-blue-500/10 dark:bg-blue-600/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-12 -left-12 w-36 h-36 bg-amber-500/10 dark:bg-amber-600/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-yellow-500/10 dark:bg-yellow-600/15 rounded-full blur-2xl pointer-events-none" />
 
             {/* Quote Icon Header */}
-            <div className="flex justify-center mb-2 sm:mb-3 text-purple-600/40 dark:text-purple-400/40">
+            <div className="flex justify-center mb-2 sm:mb-3 text-amber-600/40 dark:text-amber-400/40">
               <Quote className="w-7 h-7 sm:w-8 sm:h-8" />
             </div>
 
@@ -94,11 +94,11 @@ export default function Benefits() {
                     &ldquo;{ART_QUOTES[activeQuoteIndex].quote}&rdquo;
                   </p>
                   <div className="mt-3.5 inline-flex items-center gap-2">
-                    <span className="w-6 h-[1.5px] bg-gradient-to-r from-transparent to-purple-500/60" />
-                    <p className="text-xs sm:text-sm font-semibold tracking-wider text-purple-600 dark:text-purple-400 uppercase">
+                    <span className="w-6 h-[1.5px] bg-gradient-to-r from-transparent to-amber-500/60" />
+                    <p className="text-xs sm:text-sm font-semibold tracking-wider text-amber-600 dark:text-amber-400 uppercase">
                       {ART_QUOTES[activeQuoteIndex].author}
                     </p>
-                    <span className="w-6 h-[1.5px] bg-gradient-to-l from-transparent to-purple-500/60" />
+                    <span className="w-6 h-[1.5px] bg-gradient-to-l from-transparent to-amber-500/60" />
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -115,7 +115,7 @@ export default function Benefits() {
                   className={cn(
                     'h-2 rounded-full transition-all duration-300 cursor-pointer',
                     activeQuoteIndex === idx
-                      ? 'w-8 bg-gradient-to-r from-purple-600 to-indigo-600 shadow-sm shadow-purple-500/30'
+                      ? 'w-8 bg-gradient-to-r from-amber-500 to-yellow-500 shadow-sm shadow-amber-500/30'
                       : 'w-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600'
                   )}
                 />
@@ -127,10 +127,10 @@ export default function Benefits() {
         {/* Center-Aligned 3D Interactive Globe Element */}
         <div className="relative w-full max-w-[620px] aspect-square flex items-center justify-center -mt-4 sm:-mt-8 pointer-events-auto">
           {/* Subtle glowing halo behind globe */}
-          <div className="absolute inset-0 bg-gradient-to-t from-purple-600/20 via-indigo-600/10 to-transparent rounded-full blur-3xl -z-10 pointer-events-none" />
-          <div className="absolute w-80 h-80 bg-blue-500/10 rounded-full blur-2xl -z-10 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-amber-600/15 via-yellow-600/10 to-transparent rounded-full blur-3xl -z-10 pointer-events-none" />
+          <div className="absolute w-80 h-80 bg-amber-500/10 rounded-full blur-2xl -z-10 pointer-events-none" />
 
-          <Globe className="w-full h-full max-w-[600px] max-h-[600px] drop-shadow-[0_20px_60px_rgba(124,58,237,0.18)]" />
+          <Globe className="w-full h-full max-w-[600px] max-h-[600px] drop-shadow-[0_20px_60px_rgba(245,158,11,0.18)]" />
         </div>
       </div>
     </section>
@@ -159,8 +159,8 @@ export const Globe = ({ className }: { className?: string }) => {
       mapSamples: 16000,
       mapBrightness: 6,
       baseColor: [0.3, 0.3, 0.3],
-      markerColor: [0.65, 0.35, 1], // Aesthetic violet marker tint
-      glowColor: [0.85, 0.7, 1],
+      markerColor: [0.96, 0.62, 0.05], // Aesthetic warm golden amber marker tint
+      glowColor: [1, 0.85, 0.4],
       markers: [
         // North America
         { location: [37.7595, -122.4367], size: 0.04 }, // San Francisco

@@ -123,7 +123,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
         {/* Industry */}
         <div className="space-y-2">
           <Label htmlFor="industry" className="text-white font-medium flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-purple-400" />
+            <Briefcase className="h-4 w-4 text-amber-400" />
             Industry or Company Type <span className="text-red-400">*</span>
           </Label>
           <select

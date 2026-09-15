@@ -299,8 +299,8 @@ export default function SignUpContent() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-slate-950 p-4 py-8 relative overflow-hidden">
       {/* Ambient background glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 p-6 sm:p-8 space-y-6 relative z-10">
         
@@ -315,7 +315,7 @@ export default function SignUpContent() {
         {successMessage && (
           <div className="p-4 text-sm text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 rounded-lg text-center space-y-3">
             <p>{successMessage}</p>
-            <Link href="/auth/signin" className="inline-block text-indigo-400 hover:text-indigo-300 underline font-medium">
+            <Link href="/auth/signin" className="inline-block text-amber-400 hover:text-amber-300 underline font-medium">
               Proceed to Sign in
             </Link>
           </div>
@@ -323,7 +323,7 @@ export default function SignUpContent() {
         
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-1">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-1">
             <Sparkles className="w-6 h-6" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
@@ -365,11 +365,11 @@ export default function SignUpContent() {
             }}
             className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
               selectedRole === 'artist'
-                ? 'bg-purple-600/20 border-purple-500 text-white ring-1 ring-purple-500/40 shadow-lg shadow-purple-500/15'
+                ? 'bg-amber-500/15 border-amber-500 text-amber-300 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/15'
                 : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
             }`}
           >
-            <Palette className={`h-5 w-5 ${selectedRole === 'artist' ? 'text-purple-400' : 'text-slate-400'}`} />
+            <Palette className={`h-5 w-5 ${selectedRole === 'artist' ? 'text-amber-400' : 'text-slate-400'}`} />
             <div className="text-center">
               <div className="font-semibold text-sm">Artist / Creator</div>
               <div className="text-xs text-slate-400">Email & Password only</div>
@@ -435,7 +435,7 @@ export default function SignUpContent() {
                     value={formData.firstName}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                    className="w-full pl-10 pr-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                   />
                 </div>
               </div>
@@ -452,7 +452,7 @@ export default function SignUpContent() {
                   value={formData.lastName}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                 />
               </div>
             </div>
@@ -471,7 +471,7 @@ export default function SignUpContent() {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full pl-10 pr-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                  className="w-full pl-10 pr-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                 />
               </div>
             </div>
@@ -490,7 +490,7 @@ export default function SignUpContent() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="w-full pl-10 pr-10 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                  className="w-full pl-10 pr-10 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                 />
                 <button
                   type="button"
@@ -517,7 +517,7 @@ export default function SignUpContent() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required
-                  className="w-full pl-10 pr-10 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                  className="w-full pl-10 pr-10 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                 />
                 <button
                   type="button"
@@ -542,7 +542,7 @@ export default function SignUpContent() {
                   placeholder="Concept Artist & Painter"
                   value={formData.title}
                   onChange={handleChange}
-                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                 />
               </div>
 
@@ -557,7 +557,7 @@ export default function SignUpContent() {
                   placeholder="City, Country"
                   value={formData.location}
                   onChange={handleChange}
-                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all rounded-xl text-sm"
+                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                 />
               </div>
             </div>
@@ -565,11 +565,11 @@ export default function SignUpContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-purple-600/25 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="w-full h-12 mt-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
                   <span>Registering Artist Account...</span>
                 </>
               ) : (
@@ -587,7 +587,7 @@ export default function SignUpContent() {
         <div className="flex flex-col space-y-4 pt-4 border-t border-slate-800">
           <p className="text-center text-sm text-slate-400">
             Already have an account?{' '}
-            <Link href={`/auth/login?role=${selectedRole}`} className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold transition-colors">
+            <Link href={`/auth/login?role=${selectedRole}`} className="text-amber-400 hover:text-amber-300 hover:underline font-semibold transition-colors">
               Sign in
             </Link>
           </p>

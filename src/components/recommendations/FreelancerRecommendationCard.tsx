@@ -76,7 +76,7 @@ export default function FreelancerRecommendationCard({
           <div className="flex items-center gap-3">
             <Avatar className="h-14 w-14">
               <AvatarImage src={avatarSrc} alt={freelancerName} />
-              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-semibold">
+              <AvatarFallback className="bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 font-bold">
                 {getInitials()}
               </AvatarFallback>
             </Avatar>
@@ -124,7 +124,7 @@ export default function FreelancerRecommendationCard({
             </Badge>
           )}
           {freelancer.subscriptionTier === 'FREELANCER_ELITE' && (
-            <Badge className="bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-200 border-purple-200 dark:border-purple-500/30">
+            <Badge className="bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-200 border-amber-200 dark:border-amber-500/30">
               Elite
             </Badge>
           )}

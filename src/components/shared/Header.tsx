@@ -343,17 +343,17 @@ const Header = () => {
                         {isAdmin && (
                           <>
                             <DropdownMenuItem
-                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-purple-600 dark:text-purple-400 font-medium"
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-amber-600 dark:text-amber-400 font-medium"
                               onClick={() => router.push('/admin')}
                             >
-                              <Shield className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                              <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                               <span>Admin Panel</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-purple-600 dark:text-purple-300 font-medium"
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-amber-600 dark:text-amber-400 font-medium"
                               onClick={() => router.push('/gallery?upload=true')}
                             >
-                              <UploadCloud className="h-4 w-4 text-purple-500" />
+                              <UploadCloud className="h-4 w-4 text-amber-500" />
                               <span>Upload Artwork</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -510,7 +510,7 @@ const Header = () => {
                       <Link
                         href="/admin"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-3 text-xl font-medium text-purple-400 hover:text-purple-300 transition-all hover:translate-x-2"
+                        className="flex items-center gap-3 text-xl font-medium text-amber-400 hover:text-amber-300 transition-all hover:translate-x-2"
                       >
                         <Shield className="h-5 w-5" />
                         <span>Admin Panel</span>
@@ -518,7 +518,7 @@ const Header = () => {
                       <Link
                         href="/gallery?upload=true"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-3 text-xl font-medium text-purple-400 hover:text-purple-300 transition-all hover:translate-x-2"
+                        className="flex items-center gap-3 text-xl font-medium text-amber-400 hover:text-amber-300 transition-all hover:translate-x-2"
                       >
                         <UploadCloud className="h-5 w-5" />
                         <span>Upload Artwork</span>

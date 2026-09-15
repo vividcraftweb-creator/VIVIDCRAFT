@@ -719,8 +719,8 @@ Hi, I would like to connect with this artist for a commission/project.`;
               <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm hover-lift space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 icon-glow transition-all duration-300">
-                      <FolderOpen className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 icon-glow transition-all duration-300">
+                      <FolderOpen className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
                       <h2 className="text-sm sm:text-base font-bold tracking-wider uppercase text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
@@ -732,7 +732,7 @@ Hi, I would like to connect with this artist for a commission/project.`;
                     </div>
                   </div>
                   {artworks.length > 0 && (
-                    <Badge className="bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-200 border-purple-200 dark:border-purple-500/30 px-3 py-1 self-start sm:self-auto text-xs">
+                    <Badge className="bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 px-3 py-1 self-start sm:self-auto text-xs">
                       {artworks.length} {artworks.length === 1 ? 'Artwork' : 'Artworks'}
                     </Badge>
                   )}

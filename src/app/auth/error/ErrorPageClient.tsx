@@ -36,7 +36,7 @@ function AuthErrorContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-amber-950/30 to-slate-900 p-4">
       <Card className="w-full max-w-md bg-white/10 border border-white/20">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -53,7 +53,7 @@ function AuthErrorContent() {
           </div>
           
           <div className="flex flex-col gap-3">
-            <Button asChild className="w-full">
+            <Button asChild className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-500/20">
               <Link href="/auth/signin">
                 Try Again
               </Link>
@@ -74,7 +74,7 @@ function AuthErrorContent() {
 export default function AuthError() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-amber-950/30 to-slate-900">
         <div className="text-white">Loading...</div>
       </div>
     }>

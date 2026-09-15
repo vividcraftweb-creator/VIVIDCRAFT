@@ -671,7 +671,7 @@ export default function GalleryPageClient() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     );
   }
@@ -679,9 +679,9 @@ export default function GalleryPageClient() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 pt-28 pb-24 relative overflow-hidden transition-colors duration-300">
       {/* Background aesthetic gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-purple-500/10 via-indigo-500/5 to-transparent dark:from-purple-600/15 dark:via-indigo-600/10 dark:to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 -left-48 w-96 h-96 bg-purple-500/5 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 -right-48 w-96 h-96 bg-blue-500/5 dark:bg-blue-900/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-amber-500/10 via-yellow-500/5 to-transparent dark:from-amber-600/15 dark:via-yellow-600/10 dark:to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 -left-48 w-96 h-96 bg-amber-500/5 dark:bg-amber-900/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 -right-48 w-96 h-96 bg-yellow-500/5 dark:bg-yellow-900/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Admin Floating Banner (Active Session Indicator) */}
       {isAdmin && (
@@ -851,7 +851,7 @@ export default function GalleryPageClient() {
           </div>
         ) : displayedArtworks.length === 0 ? (
           <div className="text-center py-20 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 border-dashed rounded-3xl max-w-2xl mx-auto p-8 space-y-4 shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
               <ImageIcon className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">No Artworks Found</h3>
@@ -1274,7 +1274,7 @@ export default function GalleryPageClient() {
                     href={`/freelancers/${selectedArtwork.artist_id}`}
                     className="w-full sm:w-auto"
                   >
-                    <Button variant="outline" className="w-full border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white hover:bg-purple-50 dark:hover:bg-purple-950/30 gap-2 h-10 px-4 cursor-pointer">
+                    <Button variant="outline" className="w-full border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white hover:bg-amber-50 dark:hover:bg-amber-950/30 gap-2 h-10 px-4 cursor-pointer">
                       <span>View Artist</span>
                       <ExternalLink className="w-4 h-4" />
                     </Button>
@@ -1400,12 +1400,12 @@ export default function GalleryPageClient() {
             onClick={() => !isUploading && setIsUploadOpen(false)}
           >
             <div
-              className="relative max-w-lg w-full bg-white dark:bg-slate-900 border border-purple-500/30 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-purple-950/20 dark:shadow-purple-950/40 space-y-5"
+              className="relative max-w-lg w-full bg-white dark:bg-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-amber-950/20 dark:shadow-amber-950/40 space-y-5"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
                     <UploadCloud className="w-5 h-5" />
                   </div>
                   <div>

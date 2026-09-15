@@ -39,7 +39,7 @@ function VerifyEmailContent() {
 
   return (
     <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 text-center space-y-6 shadow-2xl">
-      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
         <CheckCircle2 className="w-7 h-7 text-emerald-400" />
       </div>
 
@@ -55,7 +55,7 @@ function VerifyEmailContent() {
       <div className="space-y-3 pt-2">
         <Button
           asChild
-          className="w-full h-11 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 cursor-pointer"
+          className="w-full h-11 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer"
         >
           <Link href="/dashboard" className="flex items-center justify-center gap-2">
             <span>Go to Dashboard</span>

@@ -319,11 +319,11 @@ export default function RegisterForm() {
           }}
           className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
             selectedRole === 'FREELANCER'
-              ? 'bg-purple-600/20 border-purple-500 text-white ring-1 ring-purple-500/40 shadow-lg shadow-purple-500/15'
+              ? 'bg-amber-500/20 border-amber-500 text-white ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/15'
               : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
           }`}
         >
-          <Palette className={`h-5 w-5 ${selectedRole === 'FREELANCER' ? 'text-purple-400' : 'text-slate-400'}`} />
+          <Palette className={`h-5 w-5 ${selectedRole === 'FREELANCER' ? 'text-amber-400' : 'text-slate-400'}`} />
           <div className="text-center">
             <div className="font-semibold text-sm">Artist / Creator</div>
             <div className="text-xs text-slate-400">Full portfolio setup</div>
@@ -468,7 +468,7 @@ export default function RegisterForm() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-11 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl"
+            className="w-full h-11 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20"
           >
             {loading ? (
               <>

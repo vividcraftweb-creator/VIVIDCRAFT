@@ -304,20 +304,20 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-purple-500/40 transition-all duration-300 group shadow-sm">
+        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all duration-300 group shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-200 text-sm font-medium uppercase tracking-wide">Artist Consultations</p>
+              <p className="text-amber-200 text-sm font-medium uppercase tracking-wide">Artist Consultations</p>
               <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
                 {interviewsInProgressCount}
               </p>
-              <p className="text-purple-300 text-sm mt-1 flex items-center gap-1">
+              <p className="text-amber-300 text-sm mt-1 flex items-center gap-1">
                 <UserCheck className="h-4 w-4" />
                 Active artist inquiries
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
-              <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-purple-300" />
+            <div className="p-2 sm:p-3 bg-amber-500/20 rounded-xl group-hover:bg-amber-500/30 transition-colors">
+              <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-amber-300" />
             </div>
           </div>
         </div>

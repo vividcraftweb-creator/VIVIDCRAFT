@@ -136,7 +136,7 @@ export default function ProfileEditView() {
             <>
               <div className="space-y-2">
                 <Label htmlFor="title" className="text-white font-medium flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-purple-400" />
+                  <Briefcase className="h-4 w-4 text-amber-400" />
                   Professional Title
                 </Label>
                 <Input
@@ -228,7 +228,7 @@ export default function ProfileEditView() {
 
               <div className="space-y-2">
                 <Label htmlFor="portfolio" className="text-white font-medium flex items-center gap-2">
-                  <LinkIcon className="h-4 w-4 text-purple-400" />
+                  <LinkIcon className="h-4 w-4 text-amber-400" />
                   Portfolio URL
                 </Label>
                 <Input
@@ -294,7 +294,7 @@ export default function ProfileEditView() {
 
                 <div className="space-y-2">
                   <Label htmlFor="businessEmail" className="text-white font-medium flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-purple-400" />
+                    <Mail className="h-4 w-4 text-amber-400" />
                     Email Address
                   </Label>
                   <Input
@@ -322,7 +322,7 @@ export default function ProfileEditView() {
             <Button
               type="submit"
               disabled={updateProfileMutation.isPending}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base"
+              className="w-full h-12 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base shadow-lg shadow-amber-500/20"
             >
               {updateProfileMutation.isPending ? (
                 'Saving...'

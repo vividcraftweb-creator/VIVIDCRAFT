@@ -38,7 +38,7 @@ type TrackingStatus =
 const STATUS_OPTIONS: { value: TrackingStatus; label: string; color: string }[] = [
   { value: 'new', label: 'New', color: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
   { value: 'contacted', label: 'Contacted', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  { value: 'interview_scheduled', label: 'Interview Scheduled', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+  { value: 'interview_scheduled', label: 'Interview Scheduled', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
   { value: 'interview_completed', label: 'Interview Done', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
   { value: 'offer_sent', label: 'Offer Sent', color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
   { value: 'accepted', label: 'Accepted', color: 'bg-green-500/20 text-green-300 border-green-500/30' },
@@ -289,11 +289,11 @@ export default function ProposalTrackingCRM() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-slate-400">Interviews</p>
-                  <p className="text-2xl font-bold text-purple-300">
+                  <p className="text-2xl font-bold text-amber-300">
                     {stats.interview_scheduled + stats.interview_completed}
                   </p>
                 </div>
-                <Calendar className="h-8 w-8 text-purple-400 opacity-50" />
+                <Calendar className="h-8 w-8 text-amber-400 opacity-50" />
               </div>
             </CardContent>
           </Card>

@@ -127,7 +127,7 @@ export default function EditProfilePage() {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
           <p className="text-slate-400 text-sm">Loading your profile...</p>
         </div>
       </div>
@@ -151,7 +151,7 @@ export default function EditProfilePage() {
                 </Badge>
               )}
               {isFreelancer && (
-                <Badge variant="outline" className="border-purple-500/30 text-purple-400 bg-purple-500/10 text-xs font-normal">
+                <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-xs font-normal">
                   Artist / Creator
                 </Badge>
               )}
@@ -166,7 +166,7 @@ export default function EditProfilePage() {
         <Card className="bg-slate-900/90 border-white/10 shadow-2xl backdrop-blur-xl">
           <CardHeader className="pb-4 border-b border-white/5">
             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-              <User className="h-5 w-5 text-purple-400" />
+              <User className="h-5 w-5 text-amber-400" />
               <span>Personal Information</span>
             </CardTitle>
             <CardDescription className="text-slate-400 text-xs">
@@ -190,7 +190,7 @@ export default function EditProfilePage() {
                       value={formData.firstName}
                       onChange={handleChange}
                       placeholder="John"
-                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-purple-500/50"
+                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
                       required
                     />
                   </div>
@@ -208,7 +208,7 @@ export default function EditProfilePage() {
                       value={formData.lastName}
                       onChange={handleChange}
                       placeholder="Doe"
-                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-purple-500/50"
+                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
                       required
                     />
                   </div>
@@ -228,7 +228,7 @@ export default function EditProfilePage() {
                     value={formData.address}
                     onChange={handleChange}
                     placeholder="e.g. 123 Main Street, Suite 400, New York, NY 10001"
-                    className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-purple-500/50"
+                    className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
                   />
                 </div>
               </div>
@@ -248,7 +248,7 @@ export default function EditProfilePage() {
                       value={formData.whatsappNumber}
                       onChange={handleChange}
                       placeholder="+1 (555) 000-0000"
-                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-purple-500/50"
+                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
                     />
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export default function EditProfilePage() {
                       value={formData.email}
                       onChange={handleChange}
                       placeholder="client@example.com"
-                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-purple-500/50"
+                      className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
                     />
                   </div>
                 </div>
@@ -285,7 +285,7 @@ export default function EditProfilePage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto px-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-medium shadow-lg shadow-purple-900/20 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-8 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>

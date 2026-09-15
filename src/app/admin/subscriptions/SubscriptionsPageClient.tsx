@@ -109,7 +109,7 @@ export default function AdminSubscriptionsPage() {
     const planColors: Record<string, string> = {
       'FREELANCER_FREE': 'bg-slate-500/20 text-slate-300 border-slate-500/30',
       'FREELANCER_PRO': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-      'FREELANCER_ELITE': 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      'FREELANCER_ELITE': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
       'CLIENT_STARTER': 'bg-slate-500/20 text-slate-300 border-slate-500/30',
       'CLIENT_BUSINESS': 'bg-green-500/20 text-green-300 border-green-500/30',
       'CLIENT_ENTERPRISE': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
@@ -256,14 +256,14 @@ export default function AdminSubscriptionsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-purple-400 font-medium">Free Tier</div>
+                <div className="text-xs text-amber-400 font-medium">Free Tier</div>
                 <div className="text-2xl font-bold text-white mt-0.5">{stats.freeUsers}</div>
                 <div className="text-xs text-slate-400 mt-0.5">
                   {((stats.freeUsers/stats.totalSubscriptions) * 100).toFixed(1)}% of total
                 </div>
               </div>
-              <div className="p-2.5 bg-purple-500/20 rounded-lg">
-                <DollarSign className="h-5 w-5 text-purple-400" />
+              <div className="p-2.5 bg-amber-500/20 rounded-lg">
+                <DollarSign className="h-5 w-5 text-amber-400" />
               </div>
             </div>
           </CardContent>
@@ -448,7 +448,7 @@ export default function AdminSubscriptionsPage() {
                       </td>
                       <td className="py-3 px-4">
                         <Badge className={`text-xs ${
-                          formatRole(user.role) === 'ARTIST' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                          formatRole(user.role) === 'ARTIST' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
                           user.role === 'CLIENT' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                           'bg-blue-500/20 text-blue-300 border-blue-500/30'
                         }`}>
@@ -527,7 +527,7 @@ export default function AdminSubscriptionsPage() {
                                 <div className="flex items-start justify-between">
                                   <span className="text-slate-400">Role:</span>
                                   <Badge className={`text-xs ${
-                                    formatRole(user.role) === 'ARTIST' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                    formatRole(user.role) === 'ARTIST' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
                                     user.role === 'CLIENT' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                                     'bg-blue-500/20 text-blue-300 border-blue-500/30'
                                   }`}>

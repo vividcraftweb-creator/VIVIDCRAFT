@@ -253,7 +253,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
 
   const getRoleColor = () => {
     if (role === 'ADMIN') {
-      return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
     }
     return 'bg-green-500/20 text-green-300 border-green-500/30';
   };
@@ -326,7 +326,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
             <div className="flex items-center space-x-3">
               <Avatar className="h-10 w-10 border border-white/20">
                 <AvatarImage src={avatarSrc} />
-                <AvatarFallback className="bg-purple-600/30 text-white font-bold text-xs">
+                <AvatarFallback className="bg-amber-500/20 text-amber-300 font-bold text-xs">
                   {userInitials || <User className="h-5 w-5" />}
                 </AvatarFallback>
               </Avatar>

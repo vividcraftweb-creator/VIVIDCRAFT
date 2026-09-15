@@ -1002,7 +1002,7 @@ export default function MyJobsView() {
                             <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
                               <CardHeader>
                                 <CardTitle className="text-lg text-white flex items-center gap-2">
-                                  <Calendar className="h-5 w-5 text-purple-400" />
+                                  <Calendar className="h-5 w-5 text-amber-400" />
                                   Availability
                                 </CardTitle>
                               </CardHeader>
@@ -1276,7 +1276,7 @@ export default function MyJobsView() {
                           Send Message
                         </Button>
                         <Button
-                          className="w-full bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 justify-start"
+                          className="w-full bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 justify-start"
                           onClick={() => {
                             // Find the job this proposal belongs to
                             const job = jobs?.find(j => j.proposals?.some((p: Proposal) => p.id === selectedProposal.id));

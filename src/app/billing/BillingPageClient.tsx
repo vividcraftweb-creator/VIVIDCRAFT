@@ -409,8 +409,8 @@ export default function BillingPage() {
             {/* Stripe Invoice */}
             <div className="p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
               <div className="flex items-center gap-3 mb-2">
-                <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-purple-400" />
+                <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-amber-400" />
                 </div>
                 <div>
                   <h4 className="font-semibold text-white">Stripe Invoicing</h4>

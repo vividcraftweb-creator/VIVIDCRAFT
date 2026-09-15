@@ -14,7 +14,7 @@ export default function LanguageSwitcher() {
       aria-label={`Switch language to ${language === 'en' ? 'Sinhala' : 'English'}`}
       title={language === 'en' ? 'Translate to Sinhala (සිංහල)' : 'Switch back to English'}
     >
-      <Globe className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+      <Globe className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
       <span className="font-semibold">{language === 'en' ? 'සිං' : 'EN'}</span>
     </button>
   );

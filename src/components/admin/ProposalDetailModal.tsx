@@ -215,11 +215,11 @@ export default function ProposalDetailModal({
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-900/90 border border-purple-500/30 shadow-sm">
+            <Card className="bg-slate-900/90 border border-amber-500/30 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Award className="h-5 w-5 text-purple-400" />
+                  <div className="p-2 bg-amber-500/20 rounded-lg">
+                    <Award className="h-5 w-5 text-amber-400" />
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Token Bid</p>
@@ -365,7 +365,7 @@ export default function ProposalDetailModal({
             <Card className="bg-slate-900/80 border border-slate-800 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-purple-400" />
+                  <FileText className="h-4 w-4 text-amber-400" />
                   Screening Questions
                 </CardTitle>
               </CardHeader>

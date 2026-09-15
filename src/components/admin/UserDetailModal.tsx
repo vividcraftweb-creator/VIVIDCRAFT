@@ -96,7 +96,7 @@ export default function UserDetailModal({ userId, onClose, onUpdate }: UserDetai
   };
 
   const getPlanBadge = (plan: string) => {
-    return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+    return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
   };
 
   return (

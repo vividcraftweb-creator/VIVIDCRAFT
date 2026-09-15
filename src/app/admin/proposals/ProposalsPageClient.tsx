@@ -193,7 +193,7 @@ export default function AdminProposalsPage() {
             <span className="text-xs text-slate-400">/hr avg</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/60 rounded border border-slate-800">
-            <Award className="h-3 w-3 text-purple-400" />
+            <Award className="h-3 w-3 text-amber-400" />
             <span className="text-sm font-bold text-white">
               {proposals.length > 0
                 ? (proposals.reduce((sum, p) => sum + p.tokenBid, 0) / proposals.length).toFixed(1)
@@ -307,7 +307,7 @@ export default function AdminProposalsPage() {
                         <span className="text-sm text-white font-semibold">${proposal.proposedRate}/hr</span>
                       </td>
                       <td className="py-2.5 px-4 align-top">
-                        <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+                        <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
                           {proposal.tokenBid}
                         </Badge>
                       </td>

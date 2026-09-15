@@ -89,7 +89,7 @@ export default function AdminUsersTab() {
               <Badge className={
                 user.role === 'CLIENT' ? 'bg-blue-500/20 text-blue-300' :
                 user.role === 'FREELANCER' ? 'bg-green-500/20 text-green-300' :
-                'bg-purple-500/20 text-purple-300'
+                'bg-amber-500/20 text-amber-300'
               }>
                 {user.role === 'CLIENT' ? 'BUYER' : user.role === 'FREELANCER' ? 'ARTIST' : 'ADMIN'}
               </Badge>

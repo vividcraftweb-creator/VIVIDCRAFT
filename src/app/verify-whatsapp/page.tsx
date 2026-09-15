@@ -263,8 +263,8 @@ export default function VerifyWhatsAppPage() {
           <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-3">Account Details</p>
 
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-              <User className="w-4 h-4 text-purple-400" />
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <User className="w-4 h-4 text-amber-400" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Full Name</p>
@@ -283,8 +283,8 @@ export default function VerifyWhatsAppPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-              <Palette className="w-4 h-4 text-indigo-400" />
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Palette className="w-4 h-4 text-amber-400" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Account Type</p>
@@ -392,7 +392,7 @@ export default function VerifyWhatsAppPage() {
               type="button"
               onClick={handleCheckStatus}
               disabled={checking}
-              className="text-indigo-400 hover:text-indigo-300 underline font-medium transition-colors disabled:opacity-50"
+              className="text-amber-400 hover:text-amber-300 underline font-medium transition-colors disabled:opacity-50"
             >
               {checking ? 'Checking...' : 'Check status now'}
             </button>
