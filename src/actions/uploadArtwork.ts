@@ -50,12 +50,18 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       pricingType = 'FIXED_PRICE';
     }
 
-    const priceVal = formData.get('price') ? Number(formData.get('price')) : null;
-    const rawBid = formData.get('starting_bid') || formData.get('startingBid');
-    const startingBidVal = rawBid ? Number(rawBid) : null;
+    // Step 1: Check input form field names for price (price, price_amount, amount)
+    const rawPriceInput = formData.get('price') || formData.get('price_amount') || formData.get('amount') || 0;
+    const numericPrice = parseFloat(String(rawPriceInput || 0));
+    const rawBidInput = formData.get('starting_bid') || formData.get('startingBid') || formData.get('bid_amount') || 0;
+    const numericBid = parseFloat(String(rawBidInput || 0));
 
-    price = pricingType === 'FIXED_PRICE' ? priceVal : null;
-    startingBid = pricingType === 'BIDDING' ? startingBidVal : null;
+    if (numericPrice > 0 && pricingType === 'NOT_FOR_SALE') {
+      pricingType = 'FIXED_PRICE';
+    }
+
+    price = pricingType === 'FIXED_PRICE' ? (!isNaN(numericPrice) ? numericPrice : 0) : null;
+    startingBid = pricingType === 'BIDDING' ? (!isNaN(numericBid) ? numericBid : 0) : null;
 
     const formFile = formData.get('file');
     if (formFile instanceof File && formFile.size > 0) {
@@ -80,12 +86,18 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       pricingType = 'FIXED_PRICE';
     }
 
-    const priceVal = (formData as any).price ? Number((formData as any).price) : null;
-    const rawBid = (formData as any).starting_bid || (formData as any).startingBid;
-    const startingBidVal = rawBid ? Number(rawBid) : null;
+    // Step 1: Check input form field names for price (price, price_amount, amount)
+    const rawPriceInput = (formData as any).price || (formData as any).price_amount || (formData as any).amount || 0;
+    const numericPrice = parseFloat(String(rawPriceInput || 0));
+    const rawBidInput = (formData as any).starting_bid || (formData as any).startingBid || (formData as any).bid_amount || 0;
+    const numericBid = parseFloat(String(rawBidInput || 0));
 
-    price = pricingType === 'FIXED_PRICE' ? priceVal : null;
-    startingBid = pricingType === 'BIDDING' ? startingBidVal : null;
+    if (numericPrice > 0 && pricingType === 'NOT_FOR_SALE') {
+      pricingType = 'FIXED_PRICE';
+    }
+
+    price = pricingType === 'FIXED_PRICE' ? (!isNaN(numericPrice) ? numericPrice : 0) : null;
+    startingBid = pricingType === 'BIDDING' ? (!isNaN(numericBid) ? numericBid : 0) : null;
 
     file = formData.file || null;
     imageUrl = formData.imageUrl || (formData as any).image_url || null;

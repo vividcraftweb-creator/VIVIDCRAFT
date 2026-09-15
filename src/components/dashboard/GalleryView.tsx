@@ -106,8 +106,8 @@ export default function GalleryView() {
         ? 'FIXED_PRICE'
         : 'NOT_FOR_SALE';
 
-      const numericPrice = effectiveMode === 'FIXED_PRICE' && price && !isNaN(Number(price)) ? Number(price) : null;
-      const numericBid = effectiveMode === 'BIDDING' && startingBid && !isNaN(Number(startingBid)) ? Number(startingBid) : null;
+      const numericPrice = effectiveMode === 'FIXED_PRICE' ? parseFloat(String(price || 0)) : null;
+      const numericBid = effectiveMode === 'BIDDING' ? parseFloat(String(startingBid || 0)) : null;
 
       await createArtwork.mutateAsync({
         title: title.trim(),

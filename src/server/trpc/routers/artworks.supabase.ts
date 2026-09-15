@@ -125,9 +125,14 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
       const id = crypto.randomUUID();
 
-      const priceVal = input.price !== undefined && input.price !== null && !isNaN(Number(input.price)) ? Number(input.price) : null;
-      const rawBid = input.starting_bid ?? input.startingBid;
-      const bidVal = rawBid !== undefined && rawBid !== null && !isNaN(Number(rawBid)) ? Number(rawBid) : null;
+      // Step 1: Check input form field names for price (price, price_amount, amount)
+      const rawPriceInput = input.price ?? (input as any).price_amount ?? (input as any).amount ?? 0;
+      const numericPrice = parseFloat(String(rawPriceInput || 0));
+      const priceVal = !isNaN(numericPrice) ? numericPrice : null;
+
+      const rawBidInput = input.starting_bid ?? input.startingBid ?? (input as any).bid_amount ?? 0;
+      const numericBid = parseFloat(String(rawBidInput || 0));
+      const bidVal = !isNaN(numericBid) ? numericBid : null;
 
       const rawType = input.pricing_type || input.pricingType || input.sellingMode || 'FIXED_PRICE';
       const cleanPricingType = String(rawType).toUpperCase().trim();
@@ -143,8 +148,8 @@ export const artworksRouter = router({
         pricingMode = 'FIXED_PRICE';
       }
 
-      const price = pricingMode === 'FIXED_PRICE' && priceVal !== null ? Number(priceVal) : null;
-      const startingBid = pricingMode === 'BIDDING' && bidVal !== null ? Number(bidVal) : null;
+      const price = pricingMode === 'FIXED_PRICE' ? (priceVal !== null ? priceVal : 0) : null;
+      const startingBid = pricingMode === 'BIDDING' ? (bidVal !== null ? bidVal : 0) : null;
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
       const medium = input.medium?.trim() || null;

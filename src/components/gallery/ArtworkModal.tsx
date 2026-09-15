@@ -255,11 +255,14 @@ export function ArtworkModal({
               const { displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
               return (
                 <>
-                  {badgeType === 'FOR_SALE' && (
-                    <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                      Price: {displayPrice}
-                    </p>
-                  )}
+                  {badgeType === 'FOR_SALE' && (() => {
+                    const finalPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || 0);
+                    return (
+                      <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                        Price: LKR {finalPrice.toLocaleString()}
+                      </p>
+                    );
+                  })()}
                   {badgeType === 'BIDDING' && (
                     <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
                       {displayPrice}
