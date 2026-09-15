@@ -137,7 +137,6 @@ export const artworksRouter = router({
       const insertPayload = {
         id,
         artist_id: artistId,
-        user_id: artistId,
         title: input.title.trim(),
         description,
         category,
@@ -165,7 +164,6 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
-            user_id: artistId,
             title: input.title.trim(),
             description,
             image_url: input.imageUrl,
@@ -187,7 +185,6 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
-            user_id: artistId,
             title: input.title.trim(),
             description,
             image_url: input.imageUrl,
@@ -208,7 +205,6 @@ export const artworksRouter = router({
           .insert({
             id,
             artist_id: artistId,
-            user_id: artistId,
             title: input.title.trim(),
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),

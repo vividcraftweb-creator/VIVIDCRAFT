@@ -475,7 +475,6 @@ export default function BiddingPageClient() {
         .from('artworks')
         .insert({
           artist_id: effectiveArtistId,
-          user_id: effectiveArtistId,
           title: uploadTitle.trim(),
           description: uploadDescription.trim() || null,
           image_url: imageUrl,
@@ -494,7 +493,6 @@ export default function BiddingPageClient() {
           .from('artworks')
           .insert({
             artist_id: effectiveArtistId,
-            user_id: effectiveArtistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: imageUrl,
@@ -514,7 +512,6 @@ export default function BiddingPageClient() {
           .from('artworks')
           .insert({
             artist_id: effectiveArtistId,
-            user_id: effectiveArtistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: imageUrl,
@@ -545,7 +542,6 @@ export default function BiddingPageClient() {
         if (retryArtwork.error) {
           const retryBase = await supabase.from('artworks').insert({
             artist_id: effectiveArtistId,
-            user_id: effectiveArtistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: imageUrl,

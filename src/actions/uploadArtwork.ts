@@ -98,11 +98,10 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
   const id = crypto.randomUUID();
   const randomCode = `#ART-${Math.floor(100 + Math.random() * 900)}`;
 
-  // Task 1 explicit insert query payload:
+  // Task 1 explicit insert query payload using correct foreign key column (artist_id):
   const payload = {
     id,
     artist_id: currentUserId,
-    user_id: currentUserId,
     title,
     description: description || null,
     image_url: uploadedImageUrl,
@@ -129,7 +128,6 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     const fallback1 = {
       id,
       artist_id: currentUserId,
-      user_id: currentUserId,
       title,
       description: description || null,
       image_url: uploadedImageUrl,
@@ -150,7 +148,6 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     const fallback2 = {
       id,
       artist_id: currentUserId,
-      user_id: currentUserId,
       title,
       description: description || null,
       image_url: uploadedImageUrl,
@@ -166,11 +163,10 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
 
   if (insertError) {
     console.error('Supabase Insert Error (Retry 2):', insertError);
-    // Fallback 3: basic insert with only core columns
+    // Fallback 3: basic insert with only core columns matching database schema
     const fallback3 = {
       id,
       artist_id: currentUserId,
-      user_id: currentUserId,
       title,
       image_url: uploadedImageUrl,
       created_at: new Date().toISOString(),

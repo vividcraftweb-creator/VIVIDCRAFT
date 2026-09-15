@@ -610,7 +610,6 @@ export default function GalleryPageClient() {
         .insert({
           id: newId,
           artist_id: artistId,
-          user_id: artistId,
           title: uploadTitle.trim(),
           description: uploadDescription.trim() || null,
           image_url: finalImageUrl,
@@ -629,7 +628,6 @@ export default function GalleryPageClient() {
           .insert({
             id: newId,
             artist_id: artistId,
-            user_id: artistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: finalImageUrl,
@@ -649,7 +647,6 @@ export default function GalleryPageClient() {
           .insert({
             id: newId,
             artist_id: artistId,
-            user_id: artistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
             image_url: finalImageUrl,
@@ -669,7 +666,6 @@ export default function GalleryPageClient() {
           .insert({
             id: newId,
             artist_id: artistId,
-            user_id: artistId,
             title: uploadTitle.trim(),
             image_url: finalImageUrl,
             created_at: now,
@@ -686,7 +682,6 @@ export default function GalleryPageClient() {
         const retryBasic = await supabase.from('artworks').insert({
           id: newId,
           artist_id: artistId,
-          user_id: artistId,
           title: uploadTitle.trim(),
           description: uploadDescription.trim() || null,
           image_url: finalImageUrl,

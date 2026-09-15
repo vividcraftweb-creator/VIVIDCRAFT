@@ -206,11 +206,11 @@ export async function getArtworks(options?: {
 
   let data: any[] | null = null;
 
-  // 1. Try explicit relational query joining profiles via user_id
+  // 1. Primary: relational query joining profiles via artist_id foreign key constraint
   try {
     const res = await supabase
       .from('artworks')
-      .select('*, profiles:user_id(full_name, artist_name, avatar_url, bio)')
+      .select('*, profiles!artworks_artist_id_fkey(full_name, artist_name, avatar_url, bio)')
       .order('created_at', { ascending: false });
 
     if (!res.error && res.data && res.data.length > 0) {
@@ -218,7 +218,7 @@ export async function getArtworks(options?: {
     }
   } catch {}
 
-  // 2. Fallback: try relational query joining profiles via artist_id
+  // 2. Fallback: try column-based relational query joining profiles via artist_id
   if (!data) {
     try {
       const res = await supabase
@@ -232,7 +232,21 @@ export async function getArtworks(options?: {
     } catch {}
   }
 
-  // 3. Fallback: manual query & join
+  // 3. Fallback: try standard profiles relationship join
+  if (!data) {
+    try {
+      const res = await supabase
+        .from('artworks')
+        .select('*, profiles(full_name, artist_name, avatar_url, bio)')
+        .order('created_at', { ascending: false });
+
+      if (!res.error && res.data && res.data.length > 0) {
+        data = res.data;
+      }
+    } catch {}
+  }
+
+  // 4. Fallback: manual query & join by artist_id
   if (!data) {
     const { data: arts } = await supabase
       .from('artworks')
@@ -241,17 +255,17 @@ export async function getArtworks(options?: {
 
     if (!arts || arts.length === 0) return [];
 
-    const userIds = Array.from(
-      new Set(arts.map((a: any) => a.user_id || a.artist_id).filter(Boolean))
+    const artistIds = Array.from(
+      new Set(arts.map((a: any) => a.artist_id || a.user_id).filter(Boolean))
     );
 
     let profilesMap: Record<string, ArtworkProfile> = {};
-    if (userIds.length > 0) {
+    if (artistIds.length > 0) {
       // Use select('*') so no non-existent column causes a PostgREST error
       const { data: profs } = await supabase
         .from('profiles')
         .select('*')
-        .in('id', userIds);
+        .in('id', artistIds);
 
       (profs || []).forEach((p: any) => {
         profilesMap[p.id] = p;
@@ -260,7 +274,7 @@ export async function getArtworks(options?: {
 
     data = arts.map((art: any) => ({
       ...art,
-      profiles: profilesMap[art.user_id || art.artist_id] || null,
+      profiles: profilesMap[art.artist_id || art.user_id] || null,
     }));
   }
 
