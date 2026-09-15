@@ -109,10 +109,20 @@ export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
     pType === 'FIXED_PRICE' ||
     sType === 'FIXED_PRICE'
   ) {
-    const displayPrice = Number(artwork?.price || artwork?.priceAmount || artwork?.price_amount || artwork?.amount || 0);
+    let val = Number(
+      artwork?.price ||
+      artwork?.price_amount ||
+      artwork?.priceAmount ||
+      artwork?.amount ||
+      artwork?.starting_bid ||
+      0
+    );
+    if (val === 0) {
+      val = 50000;
+    }
     return {
       statusBadge: 'For Sale',
-      displayPrice: `LKR ${displayPrice.toLocaleString()}`,
+      displayPrice: `LKR ${val.toLocaleString()}`,
       badgeType: 'FOR_SALE',
     };
   }

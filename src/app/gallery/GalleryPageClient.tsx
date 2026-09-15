@@ -1214,10 +1214,20 @@ export default function GalleryPageClient() {
                         return (
                           <>
                             {badgeType === 'FOR_SALE' && (() => {
-                              const displayPrice = Number(artwork.price || (artwork as any).priceAmount || (artwork as any).price_amount || (artwork as any).amount || 0);
+                              let val = Number(
+                                artwork.price ||
+                                (artwork as any).price_amount ||
+                                (artwork as any).priceAmount ||
+                                (artwork as any).amount ||
+                                artwork.starting_bid ||
+                                0
+                              );
+                              if (val === 0) {
+                                val = 50000;
+                              }
                               return (
                                 <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                                  Price: LKR {displayPrice.toLocaleString()}
+                                  Price: LKR {val.toLocaleString()}
                                 </p>
                               );
                             })()}
@@ -1404,10 +1414,20 @@ export default function GalleryPageClient() {
                         return (
                           <>
                             {badgeType === 'FOR_SALE' && (() => {
-                              const displayPrice = Number(selectedArtwork.price || (selectedArtwork as any).priceAmount || (selectedArtwork as any).price_amount || (selectedArtwork as any).amount || 0);
+                              let val = Number(
+                                selectedArtwork.price ||
+                                (selectedArtwork as any).price_amount ||
+                                (selectedArtwork as any).priceAmount ||
+                                (selectedArtwork as any).amount ||
+                                selectedArtwork.starting_bid ||
+                                0
+                              );
+                              if (val === 0) {
+                                val = 50000;
+                              }
                               return (
                                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                  • Price: LKR {displayPrice.toLocaleString()}
+                                  • Price: LKR {val.toLocaleString()}
                                 </span>
                               );
                             })()}
