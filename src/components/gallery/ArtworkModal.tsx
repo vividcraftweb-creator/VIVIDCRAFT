@@ -191,33 +191,28 @@ export function ArtworkModal({
               <div className="flex items-center gap-2 flex-wrap">
                 {(() => {
                   const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
-                  const priceNum = Number(artwork.price || 0);
-                  const bidNum = Number(artwork.starting_bid || 0);
-                  const titleLower = String(artwork.title || '').toLowerCase().trim();
+                  const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
+                  const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
 
-                  const isForSale =
-                    pType === 'FIXED_PRICE' ||
-                    pType === 'FOR_SALE' ||
-                    pType === 'SALE' ||
-                    priceNum > 0 ||
-                    (titleLower.includes('sale') && !titleLower.includes('not for sale'));
-                  const isBidding =
-                    !isForSale &&
-                    (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid'));
+                  const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
+                  const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
+
+                  const isForSale = (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice !== null;
+                  const isBidding = !isForSale && (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid !== null;
 
                   return (
                     <>
-                      {isForSale && (
+                      {isForSale && displayPrice && (
                         <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
                           For Sale
                         </span>
                       )}
-                      {isBidding && (
+                      {isBidding && displayBid && (
                         <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
                           Open Bidding
                         </span>
                       )}
-                      {!isForSale && !isBidding && (
+                      {(!isForSale || !displayPrice) && (!isBidding || !displayBid) && (
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
                           Not For Sale
                         </span>
@@ -254,36 +249,28 @@ export function ArtworkModal({
             {/* Price / Starting Bid Display */}
             {(() => {
               const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
-              const priceNum = Number(artwork.price || 0);
-              const bidNum = Number(artwork.starting_bid || 0);
-              const titleLower = String(artwork.title || '').toLowerCase().trim();
+              const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
+              const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
 
-              const isForSale =
-                pType === 'FIXED_PRICE' ||
-                pType === 'FOR_SALE' ||
-                pType === 'SALE' ||
-                priceNum > 0 ||
-                (titleLower.includes('sale') && !titleLower.includes('not for sale'));
-              const isBidding =
-                !isForSale &&
-                (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid'));
+              const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
+              const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
 
-              const effectivePrice = isForSale ? (priceNum > 0 ? priceNum : 75000) : null;
-              const effectiveBid = isBidding ? (bidNum > 0 ? bidNum : 45000) : null;
+              const isForSale = (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice !== null;
+              const isBidding = !isForSale && (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid !== null;
 
               return (
                 <>
-                  {isForSale && (
+                  {isForSale && displayPrice && (
                     <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                      Price: LKR {effectivePrice ? effectivePrice.toLocaleString() : '0'}
+                      Price: {displayPrice}
                     </p>
                   )}
-                  {isBidding && (
+                  {isBidding && displayBid && (
                     <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                      Starting Bid: LKR {effectiveBid ? effectiveBid.toLocaleString() : '0'}
+                      {displayBid}
                     </p>
                   )}
-                  {!isForSale && !isBidding && (
+                  {(!isForSale || !displayPrice) && (!isBidding || !displayBid) && (
                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
                       Not For Sale
                     </p>

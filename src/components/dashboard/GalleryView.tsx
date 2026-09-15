@@ -377,23 +377,16 @@ export default function GalleryView() {
             {safeArtworks.map((artwork: any) => {
               const imgUrl = artwork.image_url || artwork.imageUrl;
               const pType = String(artwork.pricing_type || artwork.selling_type || artwork.selling_mode || '').toUpperCase().trim();
-              const priceNum = Number(artwork.price || 0);
-              const bidNum = Number(artwork.starting_bid || 0);
-              const titleLower = String(artwork.title || '').toLowerCase().trim();
+              const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
+              const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
 
-              const isForSale =
-                pType === 'FIXED_PRICE' ||
-                pType === 'FOR_SALE' ||
-                pType === 'SALE' ||
-                priceNum > 0 ||
-                (titleLower.includes('sale') && !titleLower.includes('not for sale'));
-              const isBidding =
-                !isForSale &&
-                (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid'));
+              const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
+              const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
+
+              const isForSale = (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice !== null;
+              const isBidding = !isForSale && (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid !== null;
 
               const mode = isForSale ? 'FIXED_PRICE' : isBidding ? 'BIDDING' : 'NOT_FOR_SALE';
-              const displayPrice = isForSale ? (priceNum > 0 ? priceNum : 75000) : null;
-              const displayBid = isBidding ? (bidNum > 0 ? bidNum : 45000) : null;
               const artCode = artwork.art_code || '#ART-101';
 
               return (
@@ -436,12 +429,12 @@ export default function GalleryView() {
                         </h3>
 
                         {/* Status Badges */}
-                        {mode === 'FIXED_PRICE' && (
+                        {mode === 'FIXED_PRICE' && displayPrice && (
                           <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
                             For Sale
                           </span>
                         )}
-                        {mode === 'BIDDING' && (
+                        {mode === 'BIDDING' && displayBid && (
                           <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
                             Open Bidding
                           </span>
@@ -456,12 +449,12 @@ export default function GalleryView() {
                       {/* Pricing / Bid amount display */}
                       {mode === 'FIXED_PRICE' && displayPrice && (
                         <p className="text-xs font-bold text-emerald-400">
-                          Price: LKR {displayPrice.toLocaleString()}
+                          Price: {displayPrice}
                         </p>
                       )}
                       {mode === 'BIDDING' && displayBid && (
                         <p className="text-xs font-bold text-amber-400">
-                          Starting Bid: LKR {displayBid.toLocaleString()}
+                          {displayBid}
                         </p>
                       )}
                       {mode === 'NOT_FOR_SALE' && (

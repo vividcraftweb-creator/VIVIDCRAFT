@@ -65,8 +65,11 @@ export const artworksRouter = router({
           evaluatedMode = 'BIDDING';
         }
 
-        const effectivePrice = evaluatedMode === 'FIXED_PRICE' ? (priceNum > 0 ? priceNum : 75000) : null;
-        const effectiveBid = evaluatedMode === 'BIDDING' ? (bidNum > 0 ? bidNum : 45000) : null;
+        const effectivePrice = evaluatedMode === 'FIXED_PRICE' && priceNum > 0 ? priceNum : null;
+        const effectiveBid = evaluatedMode === 'BIDDING' && bidNum > 0 ? bidNum : null;
+        if (evaluatedMode === 'FIXED_PRICE' && !effectivePrice) {
+          evaluatedMode = 'NOT_FOR_SALE';
+        }
 
         return {
           id: art.id,
@@ -141,8 +144,8 @@ export const artworksRouter = router({
         pricingMode = 'FIXED_PRICE';
       }
 
-      const price = pricingMode === 'FIXED_PRICE' ? (priceVal ?? 75000) : null;
-      const startingBid = pricingMode === 'BIDDING' ? (bidVal ?? 45000) : null;
+      const price = pricingMode === 'FIXED_PRICE' ? (priceVal ?? null) : null;
+      const startingBid = pricingMode === 'BIDDING' ? (bidVal ?? null) : null;
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
       const medium = input.medium?.trim() || null;

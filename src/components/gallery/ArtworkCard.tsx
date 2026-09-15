@@ -66,26 +66,27 @@ interface ArtworkCardProps {
 }
 
 export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
-  // Standardize pricing type evaluation as required by Task 2
+  // Render exact numerical price fetched from database without hardcoded fallbacks
   const pType = String(artwork.pricing_type || (artwork as any).selling_type || artwork.selling_mode || '').toUpperCase().trim();
-  const priceNum = Number(artwork.price || 0);
-  const bidNum = Number(artwork.starting_bid || 0);
-  const titleLower = String(artwork.title || '').toLowerCase().trim();
+  const priceNum = artwork.price !== null && artwork.price !== undefined && !isNaN(Number(artwork.price)) ? Number(artwork.price) : 0;
+  const bidNum = artwork.starting_bid !== null && artwork.starting_bid !== undefined && !isNaN(Number(artwork.starting_bid)) ? Number(artwork.starting_bid) : 0;
 
-  const isForSale =
-    pType === 'FIXED_PRICE' ||
-    pType === 'FOR_SALE' ||
-    pType === 'SALE' ||
-    priceNum > 0 ||
-    (titleLower.includes('sale') && !titleLower.includes('not for sale'));
+  const displayPrice = artwork.price && priceNum > 0 ? `LKR ${priceNum.toLocaleString()}` : null;
+  const displayBid = artwork.starting_bid && bidNum > 0 ? `Starting Bid: LKR ${bidNum.toLocaleString()}` : null;
 
-  const isBidding =
-    !isForSale &&
-    (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid'));
+  let mode: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE' = 'NOT_FOR_SALE';
+  if ((pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE') && displayPrice) {
+    mode = 'FIXED_PRICE';
+  } else if ((pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID') && displayBid) {
+    mode = 'BIDDING';
+  } else if (displayPrice) {
+    mode = 'FIXED_PRICE';
+  } else if (displayBid) {
+    mode = 'BIDDING';
+  } else {
+    mode = 'NOT_FOR_SALE';
+  }
 
-  const mode = isForSale ? 'FIXED_PRICE' : isBidding ? 'BIDDING' : 'NOT_FOR_SALE';
-  const effectivePrice = isForSale ? (priceNum > 0 ? priceNum : 75000) : null;
-  const effectiveBid = isBidding ? (bidNum > 0 ? bidNum : 45000) : null;
   const resolvedArtistName = extractArtistName(artwork, artistName);
 
   const router = useRouter();
@@ -203,12 +204,12 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
               </h3>
 
               {/* Status Badges directly based on pricing_type */}
-              {mode === 'FIXED_PRICE' && (
+              {mode === 'FIXED_PRICE' && displayPrice && (
                 <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400 dark:bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
                   For Sale
                 </span>
               )}
-              {mode === 'BIDDING' && (
+              {mode === 'BIDDING' && displayBid && (
                 <span className="text-[10px] font-bold text-white bg-orange-500 dark:bg-orange-500/25 dark:text-orange-300 border border-orange-500/50 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
                   Open Bidding
                 </span>
@@ -221,14 +222,14 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             </div>
 
             {/* Price / Starting Bid Line */}
-            {mode === 'FIXED_PRICE' && (
+            {mode === 'FIXED_PRICE' && displayPrice && (
               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                LKR {effectivePrice ? effectivePrice.toLocaleString() : '0'}
+                {displayPrice}
               </p>
             )}
-            {mode === 'BIDDING' && (
+            {mode === 'BIDDING' && displayBid && (
               <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">
-                Starting Bid: LKR {effectiveBid ? effectiveBid.toLocaleString() : '0'}
+                {displayBid}
               </p>
             )}
             {mode === 'NOT_FOR_SALE' && (

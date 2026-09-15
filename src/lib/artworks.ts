@@ -124,20 +124,9 @@ export function inferArtworkPricing(artwork: any): {
     mode = 'BIDDING';
   }
 
-  // Realistic defaults for test items where numeric columns are not yet set
-  const effectivePrice =
-    rawPrice && rawPrice > 0
-      ? rawPrice
-      : mode === 'FIXED_PRICE'
-      ? 85000
-      : null;
-
-  const effectiveBid =
-    rawBid && rawBid > 0
-      ? rawBid
-      : mode === 'BIDDING'
-      ? 45000
-      : null;
+  // Dynamic pricing values directly from database (no sample fallbacks)
+  const effectivePrice = rawPrice && rawPrice > 0 ? rawPrice : null;
+  const effectiveBid = rawBid && rawBid > 0 ? rawBid : null;
 
   // 3. Construct clean price display string
   let displayPrice = 'Not For Sale';
@@ -147,6 +136,8 @@ export function inferArtworkPricing(artwork: any): {
     displayPrice = `Starting Bid: LKR ${effectiveBid.toLocaleString()}`;
   } else if (mode === 'BIDDING') {
     displayPrice = `Open Bidding`;
+  } else {
+    displayPrice = 'Not For Sale';
   }
 
   return {
