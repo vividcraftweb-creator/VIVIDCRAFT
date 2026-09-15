@@ -168,10 +168,11 @@ export const artworksRouter = router({
         artCode = `#ART-${hash}`;
       }
 
-      // Explicit insert query payload strictly including: pricing_type, price, starting_bid, description, category, medium, tags
+      // Explicit insert query payload strictly including: pricing_type, price, starting_bid, user_id, artist_id, description, category, medium, tags
       const insertPayload = {
         id,
         artist_id: artistId,
+        user_id: artistId,
         title: input.title.trim(),
         description,
         category,

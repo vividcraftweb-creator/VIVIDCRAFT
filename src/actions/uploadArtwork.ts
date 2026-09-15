@@ -38,37 +38,22 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     description = String(formData.get('description') || '').trim();
     category = String(formData.get('category') || '').trim();
 
-    const rawPrice = formData.get('price');
-    const rawBid = formData.get('startingBid') || formData.get('starting_bid');
-    const priceVal = rawPrice !== null && rawPrice !== undefined && rawPrice !== '' ? Number(rawPrice) : null;
-    const bidVal = rawBid !== null && rawBid !== undefined && rawBid !== '' ? Number(rawBid) : null;
-
-    const rawType =
-      formData.get('pricing_type') ||
-      formData.get('pricingType') ||
-      formData.get('selling_type') ||
-      formData.get('selling_mode') ||
-      formData.get('sellingMode') ||
-      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'NOT_FOR_SALE');
-    const cleanPricingType = String(rawType).toUpperCase().trim();
-
-    if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
+    const rawPricing = formData.get('pricing_type') || formData.get('pricingType') || formData.get('selling_type') || 'FIXED_PRICE';
+    const cleanType = String(rawPricing).toUpperCase().trim();
+    if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
       pricingType = 'BIDDING';
-      startingBid = bidVal !== null && !isNaN(bidVal) ? Number(bidVal) : null;
-      price = null;
-    } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
+    } else if (cleanType.includes('NOT')) {
       pricingType = 'NOT_FOR_SALE';
-      price = null;
-      startingBid = null;
-    } else if (cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
-      pricingType = 'FIXED_PRICE';
-      price = priceVal !== null && !isNaN(priceVal) ? Number(priceVal) : null;
-      startingBid = null;
     } else {
-      pricingType = 'NOT_FOR_SALE';
-      price = null;
-      startingBid = null;
+      pricingType = 'FIXED_PRICE';
     }
+
+    const priceVal = formData.get('price') ? Number(formData.get('price')) : null;
+    const rawBid = formData.get('starting_bid') || formData.get('startingBid');
+    const startingBidVal = rawBid ? Number(rawBid) : null;
+
+    price = pricingType === 'FIXED_PRICE' ? priceVal : null;
+    startingBid = pricingType === 'BIDDING' ? startingBidVal : null;
 
     const formFile = formData.get('file');
     if (formFile instanceof File && formFile.size > 0) {
@@ -81,37 +66,22 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     description = (formData.description || '').trim();
     category = (formData.category || '').trim();
 
-    const rawPrice = (formData as any).price;
-    const rawBid = (formData as any).startingBid || (formData as any).starting_bid;
-    const priceVal = rawPrice !== null && rawPrice !== undefined && rawPrice !== '' ? Number(rawPrice) : null;
-    const bidVal = rawBid !== null && rawBid !== undefined && rawBid !== '' ? Number(rawBid) : null;
-
-    const rawType =
-      (formData as any).pricing_type ||
-      (formData as any).pricingType ||
-      (formData as any).selling_type ||
-      (formData as any).selling_mode ||
-      (formData as any).sellingMode ||
-      (priceVal && priceVal > 0 ? 'FIXED_PRICE' : bidVal && bidVal > 0 ? 'BIDDING' : 'NOT_FOR_SALE');
-    const cleanPricingType = String(rawType).toUpperCase().trim();
-
-    if (cleanPricingType.includes('BID') || cleanPricingType.includes('AUCTION') || (bidVal !== null && bidVal > 0)) {
+    const rawPricing = (formData as any).pricing_type || (formData as any).pricingType || (formData as any).selling_type || 'FIXED_PRICE';
+    const cleanType = String(rawPricing).toUpperCase().trim();
+    if (cleanType.includes('BID') || cleanType.includes('AUCTION')) {
       pricingType = 'BIDDING';
-      startingBid = bidVal !== null && !isNaN(bidVal) ? Number(bidVal) : null;
-      price = null;
-    } else if (cleanPricingType.includes('NOT') && !(priceVal && priceVal > 0)) {
+    } else if (cleanType.includes('NOT')) {
       pricingType = 'NOT_FOR_SALE';
-      price = null;
-      startingBid = null;
-    } else if (cleanPricingType.includes('FIXED') || cleanPricingType.includes('SALE') || (priceVal !== null && priceVal > 0)) {
-      pricingType = 'FIXED_PRICE';
-      price = priceVal !== null && !isNaN(priceVal) ? Number(priceVal) : null;
-      startingBid = null;
     } else {
-      pricingType = 'NOT_FOR_SALE';
-      price = null;
-      startingBid = null;
+      pricingType = 'FIXED_PRICE';
     }
+
+    const priceVal = (formData as any).price ? Number((formData as any).price) : null;
+    const rawBid = (formData as any).starting_bid || (formData as any).startingBid;
+    const startingBidVal = rawBid ? Number(rawBid) : null;
+
+    price = pricingType === 'FIXED_PRICE' ? priceVal : null;
+    startingBid = pricingType === 'BIDDING' ? startingBidVal : null;
 
     file = formData.file || null;
     imageUrl = formData.imageUrl || (formData as any).image_url || null;
@@ -152,82 +122,94 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
   const id = crypto.randomUUID();
   const randomCode = `#ART-${Math.floor(100 + Math.random() * 900)}`;
 
-  // Task 1 explicit insert query payload using correct foreign key column (artist_id):
-  const payload = {
+  // Task 2 Rebuilt upload action payload strictly mapping pricing_type, price, starting_bid, user_id, and artist_id:
+  const insertPayload = {
     id,
-    artist_id: currentUserId,
     title,
-    description: description || null,
+    description: description || '',
     image_url: uploadedImageUrl,
     pricing_type: pricingType,
     selling_mode: pricingType,
-    price,
-    starting_bid: startingBid,
+    price: pricingType === 'FIXED_PRICE' ? price : null,
+    starting_bid: pricingType === 'BIDDING' ? startingBid : null,
+    user_id: currentUserId,
+    artist_id: currentUserId,
     category: category || null,
     art_code: randomCode,
     created_at: new Date().toISOString(),
   };
 
-  // 1. Primary insert with all fields
+  // 1. Primary insert with strict user_id + artist_id payload
   let { data: inserted, error: insertError } = await supabase
     .from('artworks')
-    .insert(payload)
+    .insert(insertPayload)
     .select()
     .single();
 
   if (insertError) {
-    console.error('Supabase Insert Error:', insertError);
+    console.error('Supabase Insert Error (Primary):', insertError);
 
-    // Fallback 1: if column like category or art_code does not exist
-    const fallback1 = {
+    // Fallback A: With user_id strictly as specified
+    const fallbackUser = {
       id,
-      artist_id: currentUserId,
       title,
-      description: description || null,
+      description: description || '',
       image_url: uploadedImageUrl,
       pricing_type: pricingType,
       selling_mode: pricingType,
-      price,
-      starting_bid: startingBid,
+      price: pricingType === 'FIXED_PRICE' ? price : null,
+      starting_bid: pricingType === 'BIDDING' ? startingBid : null,
+      user_id: currentUserId,
+      category: category || null,
+      art_code: randomCode,
       created_at: new Date().toISOString(),
     };
-    const retry1 = await supabase.from('artworks').insert(fallback1).select().single();
-    insertError = retry1.error;
-    if (!insertError) inserted = retry1.data;
-  }
+    const resA = await supabase.from('artworks').insert(fallbackUser).select().single();
+    if (!resA.error) {
+      inserted = resA.data;
+      insertError = null;
+    } else {
+      console.warn('Supabase Retry (user_id):', resA.error);
 
-  if (insertError) {
-    console.error('Supabase Insert Error (Retry 1):', insertError);
-    // Fallback 2: map to existing selling_type / selling_mode / type if pricing_type column is missing
-    const fallback2 = {
-      id,
-      artist_id: currentUserId,
-      title,
-      description: description || null,
-      image_url: uploadedImageUrl,
-      selling_type: pricingType,
-      selling_mode: pricingType,
-      price,
-      starting_bid: startingBid,
-    };
-    const retry2 = await supabase.from('artworks').insert(fallback2).select().single();
-    insertError = retry2.error;
-    if (!insertError) inserted = retry2.data;
-  }
+      // Fallback B: With artist_id (if DB schema references artist_id)
+      const fallbackArtist = {
+        id,
+        title,
+        description: description || '',
+        image_url: uploadedImageUrl,
+        pricing_type: pricingType,
+        selling_mode: pricingType,
+        price: pricingType === 'FIXED_PRICE' ? price : null,
+        starting_bid: pricingType === 'BIDDING' ? startingBid : null,
+        artist_id: currentUserId,
+        category: category || null,
+        art_code: randomCode,
+        created_at: new Date().toISOString(),
+      };
+      const resB = await supabase.from('artworks').insert(fallbackArtist).select().single();
+      if (!resB.error) {
+        inserted = resB.data;
+        insertError = null;
+      } else {
+        console.warn('Supabase Retry (artist_id):', resB.error);
 
-  if (insertError) {
-    console.error('Supabase Insert Error (Retry 2):', insertError);
-    // Fallback 3: basic insert with only core columns matching database schema
-    const fallback3 = {
-      id,
-      artist_id: currentUserId,
-      title,
-      image_url: uploadedImageUrl,
-      created_at: new Date().toISOString(),
-    };
-    const retry3 = await supabase.from('artworks').insert(fallback3).select().single();
-    insertError = retry3.error;
-    if (!insertError) inserted = retry3.data;
+        // Fallback C: Core columns fallback matching minimum base schema
+        const fallbackCore = {
+          id,
+          artist_id: currentUserId,
+          title,
+          image_url: uploadedImageUrl,
+          created_at: new Date().toISOString(),
+        };
+        const resC = await supabase.from('artworks').insert(fallbackCore).select().single();
+        if (!resC.error) {
+          inserted = resC.data;
+          insertError = null;
+        } else {
+          insertError = resC.error;
+        }
+      }
+    }
   }
 
   // Task 3: Prevent Partial Saves on Upload Failure
