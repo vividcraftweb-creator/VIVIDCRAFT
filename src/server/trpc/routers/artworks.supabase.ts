@@ -64,6 +64,7 @@ export const artworksRouter = router({
           ratingsCount: artRatings.length,
           averageRating: avgRating,
           selling_mode: art.selling_mode || (art as any).pricing_type || 'NOT_FOR_SALE',
+          pricing_type: (art as any).pricing_type || art.selling_mode || 'NOT_FOR_SALE',
           price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
           starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
           art_code: artCode,
@@ -135,7 +136,27 @@ export const artworksRouter = router({
         .single();
 
       if (res.error) {
-        console.warn('createArtwork insert with pricing_type error, trying without pricing_type:', res.error);
+        console.warn('createArtwork dual insert error, trying with pricing_type only:', res.error);
+        res = await supabase
+          .from('artworks')
+          .insert({
+            id,
+            artist_id: artistId,
+            title: input.title.trim(),
+            description,
+            image_url: input.imageUrl,
+            created_at: new Date().toISOString(),
+            pricing_type: sellingMode,
+            price,
+            starting_bid: startingBid,
+            art_code: artCode,
+          })
+          .select()
+          .single();
+      }
+
+      if (res.error) {
+        console.warn('createArtwork pricing_type insert error, trying with selling_mode only:', res.error);
         res = await supabase
           .from('artworks')
           .insert({
@@ -155,7 +176,25 @@ export const artworksRouter = router({
       }
 
       if (res.error) {
-        console.warn('createArtwork full insert error, trying basic insert fallback:', res.error);
+        console.warn('createArtwork without extra metadata, preserving selling_mode & pricing:', res.error);
+        res = await supabase
+          .from('artworks')
+          .insert({
+            id,
+            artist_id: artistId,
+            title: input.title.trim(),
+            image_url: input.imageUrl,
+            created_at: new Date().toISOString(),
+            selling_mode: sellingMode,
+            price,
+            starting_bid: startingBid,
+          })
+          .select()
+          .single();
+      }
+
+      if (res.error) {
+        console.warn('createArtwork basic fallback:', res.error);
         res = await supabase
           .from('artworks')
           .insert({
@@ -179,7 +218,8 @@ export const artworksRouter = router({
 
       return {
         ...res.data,
-        selling_mode: res.data?.selling_mode || sellingMode,
+        selling_mode: res.data?.selling_mode || res.data?.pricing_type || sellingMode,
+        pricing_type: res.data?.pricing_type || res.data?.selling_mode || sellingMode,
         price: res.data?.price ?? price,
         starting_bid: res.data?.starting_bid ?? startingBid,
         art_code: res.data?.art_code || artCode,
@@ -294,6 +334,7 @@ export const artworksRouter = router({
             averageRating: avgRating,
             userRating,
             selling_mode: art.selling_mode || (art as any).pricing_type || 'NOT_FOR_SALE',
+            pricing_type: (art as any).pricing_type || art.selling_mode || 'NOT_FOR_SALE',
             price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
             starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
             art_code: artCode,

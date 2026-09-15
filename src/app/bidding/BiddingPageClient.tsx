@@ -82,6 +82,7 @@ export default function BiddingPageClient() {
   const [hoveredRating, setHoveredRating] = useState<{ [key: string]: number }>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Local state for instant optimistic updates
   const [localArtworks, setLocalArtworks] = useState<RankedArtwork[]>([]);
@@ -101,7 +102,7 @@ export default function BiddingPageClient() {
   const [uploadStartingBid, setUploadStartingBid] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
-  // Fetch current user and check admin status
+  // Fetch current user and check role
   useEffect(() => {
     setMounted(true);
     const supabase = createClient();
@@ -116,6 +117,9 @@ export default function BiddingPageClient() {
               if (parsed?.role === 'admin' || parsed?.email === 'vividcraftweb@gmail.com') {
                 setIsAdmin(true);
                 setCurrentUserId('admin-vividcraft-default-id');
+                setUserRole('ADMIN');
+              } else if (parsed?.role) {
+                setUserRole(parsed.role.toString().toUpperCase());
               }
             } catch {}
           }
@@ -127,6 +131,7 @@ export default function BiddingPageClient() {
       const metaRole = (user.user_metadata?.role || '').toString().toUpperCase();
       if (metaRole === 'ADMIN' || user.email === 'vividcraftweb@gmail.com') {
         setIsAdmin(true);
+        setUserRole('ADMIN');
         return;
       }
 
@@ -136,11 +141,14 @@ export default function BiddingPageClient() {
         .eq('id', user.id)
         .maybeSingle();
 
-      if (profile?.role?.toString().toUpperCase() === 'ADMIN') {
+      const resolved = (profile?.role || metaRole || 'BUYER').toString().toUpperCase();
+      setUserRole(resolved);
+      if (resolved === 'ADMIN') {
         setIsAdmin(true);
       }
     }).catch(() => {
       setCurrentUserId(null);
+      setUserRole(null);
     });
   }, []);
 
@@ -461,8 +469,8 @@ export default function BiddingPageClient() {
       const effectiveArtistId = currentUserId || 'admin-vividcraft-default-id';
       const randomCode = `#ART-${Math.floor(100 + Math.random() * 900)}`;
 
-      // Insert into artworks table
-      const { data: inserted, error: insertErr } = await supabase
+      // Tiered insert to support any Postgres column combinations
+      let { data: inserted, error: insertErr } = await supabase
         .from('artworks')
         .insert({
           artist_id: effectiveArtistId,
@@ -479,6 +487,45 @@ export default function BiddingPageClient() {
         .single();
 
       if (insertErr) {
+        console.warn('artworks insert dual mode failed, retrying with pricing_type only:', insertErr);
+        const retry1 = await supabase
+          .from('artworks')
+          .insert({
+            artist_id: effectiveArtistId,
+            title: uploadTitle.trim(),
+            description: uploadDescription.trim() || null,
+            image_url: imageUrl,
+            pricing_type: 'BIDDING',
+            starting_bid: startingBidNum,
+            price: null,
+            art_code: randomCode,
+          })
+          .select()
+          .single();
+        insertErr = retry1.error;
+      }
+
+      if (insertErr) {
+        console.warn('artworks insert pricing_type failed, retrying with selling_mode only:', insertErr);
+        const retry2 = await supabase
+          .from('artworks')
+          .insert({
+            artist_id: effectiveArtistId,
+            title: uploadTitle.trim(),
+            description: uploadDescription.trim() || null,
+            image_url: imageUrl,
+            selling_mode: 'BIDDING',
+            starting_bid: startingBidNum,
+            price: null,
+            art_code: randomCode,
+          })
+          .select()
+          .single();
+        insertErr = retry2.error;
+      }
+
+      if (insertErr) {
+        console.warn('artworks insert fallback to Artwork table:', insertErr);
         await supabase.from('Artwork').insert({
           artistId: effectiveArtistId,
           title: uploadTitle.trim(),
@@ -513,6 +560,47 @@ export default function BiddingPageClient() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Restrict Auction Listing exclusively to verified artists / admins
+  const handleListArtworkClick = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user && !currentUserId) {
+      toast.info('Sign in required', {
+        description: 'Please sign in or create an account to list artworks for auction.',
+        action: {
+          label: 'Sign In',
+          onClick: () => router.push('/auth/signin?callbackUrl=/bidding'),
+        },
+      });
+      return;
+    }
+
+    if (isAdmin || user?.email === 'vividcraftweb@gmail.com') {
+      setIsUploadOpen(true);
+      return;
+    }
+
+    const uid = user?.id || currentUserId;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', uid)
+      .maybeSingle();
+
+    const role = (profile?.role || user?.user_metadata?.role || userRole || '').toString().toUpperCase();
+    const isArtist = ['ARTIST', 'FREELANCER', 'CREATOR', 'SELLER', 'ADMIN'].includes(role);
+
+    if (!isArtist) {
+      toast.error('Only verified artists can list artworks for auction.', {
+        description: 'Your account is registered as a buyer/client.',
+      });
+      return;
+    }
+
+    setIsUploadOpen(true);
   };
 
   // Helper for WhatsApp inquiry URL
@@ -564,7 +652,7 @@ export default function BiddingPageClient() {
 
             {/* List Artwork For Bidding Button */}
             <Button
-              onClick={() => setIsUploadOpen(true)}
+              onClick={handleListArtworkClick}
               className="bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs px-4 py-2 rounded-full gap-2 shadow-md cursor-pointer ml-2"
             >
               <UploadCloud className="w-4 h-4" />

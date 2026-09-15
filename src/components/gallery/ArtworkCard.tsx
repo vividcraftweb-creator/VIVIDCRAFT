@@ -161,34 +161,48 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
               </h3>
 
               {/* Status Badges */}
-              {artwork.selling_mode === 'FIXED_PRICE' && (
-                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                  For Sale
-                </span>
-              )}
-              {artwork.selling_mode === 'BIDDING' && (
-                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                  Open Bidding
-                </span>
-              )}
-              {artwork.selling_mode === 'NOT_FOR_SALE' && (
-                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                  Not For Sale
-                </span>
-              )}
+              {(() => {
+                const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+                return (
+                  <>
+                    {mode === 'FIXED_PRICE' && (
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                        For Sale
+                      </span>
+                    )}
+                    {mode === 'BIDDING' && (
+                      <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                        Open Bidding
+                      </span>
+                    )}
+                    {mode === 'NOT_FOR_SALE' && (
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                        Not For Sale
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Price / Starting Bid Line */}
-            {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                Price: LKR {Number(artwork.price).toLocaleString()}
-              </p>
-            )}
-            {artwork.selling_mode === 'BIDDING' && artwork.starting_bid && (
-              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
-              </p>
-            )}
+            {(() => {
+              const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+              return (
+                <>
+                  {mode === 'FIXED_PRICE' && artwork.price && (
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                      Price: LKR {Number(artwork.price).toLocaleString()}
+                    </p>
+                  )}
+                  {mode === 'BIDDING' && artwork.starting_bid && (
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
+                      Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Artist & Lower Metadata Row with Ref ID */}
             <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">

@@ -577,7 +577,7 @@ export default function GalleryPageClient() {
       const price = uploadSellingMode === 'FIXED_PRICE' && uploadPrice ? Number(uploadPrice) : null;
       const startingBid = uploadSellingMode === 'BIDDING' && uploadStartingBid ? Number(uploadStartingBid) : null;
 
-      const { error: insertError } = await supabase
+      let { error: insertError } = await supabase
         .from('artworks')
         .insert({
           id: newId,
@@ -586,9 +586,6 @@ export default function GalleryPageClient() {
           description: uploadDescription.trim() || null,
           image_url: finalImageUrl,
           created_at: now,
-          likes_count: 0,
-          average_rating: 0,
-          ratings_count: 0,
           selling_mode: uploadSellingMode,
           pricing_type: uploadSellingMode,
           price,
@@ -597,7 +594,62 @@ export default function GalleryPageClient() {
         });
 
       if (insertError) {
-        console.warn('Direct insert into artworks error, fallback to basic insert:', insertError);
+        console.warn('Direct insert dual mode failed, trying with pricing_type only:', insertError);
+        const retry1 = await supabase
+          .from('artworks')
+          .insert({
+            id: newId,
+            artist_id: artistId,
+            title: uploadTitle.trim(),
+            description: uploadDescription.trim() || null,
+            image_url: finalImageUrl,
+            created_at: now,
+            pricing_type: uploadSellingMode,
+            price,
+            starting_bid: startingBid,
+            art_code: artCode,
+          });
+        insertError = retry1.error;
+      }
+
+      if (insertError) {
+        console.warn('Direct insert pricing_type failed, trying with selling_mode only:', insertError);
+        const retry2 = await supabase
+          .from('artworks')
+          .insert({
+            id: newId,
+            artist_id: artistId,
+            title: uploadTitle.trim(),
+            description: uploadDescription.trim() || null,
+            image_url: finalImageUrl,
+            created_at: now,
+            selling_mode: uploadSellingMode,
+            price,
+            starting_bid: startingBid,
+            art_code: artCode,
+          });
+        insertError = retry2.error;
+      }
+
+      if (insertError) {
+        console.warn('Direct insert without extra metadata, preserving pricing:', insertError);
+        const retry3 = await supabase
+          .from('artworks')
+          .insert({
+            id: newId,
+            artist_id: artistId,
+            title: uploadTitle.trim(),
+            image_url: finalImageUrl,
+            created_at: now,
+            selling_mode: uploadSellingMode,
+            price,
+            starting_bid: startingBid,
+          });
+        insertError = retry3.error;
+      }
+
+      if (insertError) {
+        console.warn('Fallback to basic insert:', insertError);
         try {
           await supabase.from('artworks').insert({
             id: newId,
@@ -1003,24 +1055,48 @@ export default function GalleryPageClient() {
                           {artwork.title}
                         </h3>
 
-                        {artwork.selling_mode === 'FIXED_PRICE' && (
-                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                            For Sale
-                          </span>
-                        )}
-                        {artwork.selling_mode === 'NOT_FOR_SALE' && (
-                          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                            Not For Sale
-                          </span>
-                        )}
+                        {(() => {
+                          const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+                          return (
+                            <>
+                              {mode === 'FIXED_PRICE' && (
+                                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                                  For Sale
+                                </span>
+                              )}
+                              {mode === 'BIDDING' && (
+                                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                                  Open Bidding
+                                </span>
+                              )}
+                              {mode === 'NOT_FOR_SALE' && (
+                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                                  Not For Sale
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
 
-                      {/* Price Display for Fixed Price Artworks */}
-                      {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                          Price: LKR {Number(artwork.price).toLocaleString()}
-                        </p>
-                      )}
+                      {/* Price Display for Fixed Price & Bidding Artworks */}
+                      {(() => {
+                        const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+                        return (
+                          <>
+                            {mode === 'FIXED_PRICE' && artwork.price && (
+                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                                Price: LKR {Number(artwork.price).toLocaleString()}
+                              </p>
+                            )}
+                            {mode === 'BIDDING' && artwork.starting_bid && (
+                              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
+                                Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
 
                       {/* Artist Row & Ref ID */}
                       <div className="flex items-center justify-between gap-2.5 mt-2">
@@ -1140,16 +1216,28 @@ export default function GalleryPageClient() {
                   </Avatar>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      {selectedArtwork.selling_mode === 'FIXED_PRICE' && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                          For Sale
-                        </span>
-                      )}
-                      {selectedArtwork.selling_mode === 'NOT_FOR_SALE' && (
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
-                          Not For Sale
-                        </span>
-                      )}
+                      {(() => {
+                        const mode = selectedArtwork.pricing_type || selectedArtwork.selling_mode || 'NOT_FOR_SALE';
+                        return (
+                          <>
+                            {mode === 'FIXED_PRICE' && (
+                              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                                For Sale
+                              </span>
+                            )}
+                            {mode === 'BIDDING' && (
+                              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                                Open Bidding
+                              </span>
+                            )}
+                            {mode === 'NOT_FOR_SALE' && (
+                              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
+                                Not For Sale
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base leading-tight truncate">
                       {selectedArtwork.title}
@@ -1164,11 +1252,23 @@ export default function GalleryPageClient() {
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                         • Ref ID: {selectedArtwork.art_code || '#ART-101'}
                       </span>
-                      {selectedArtwork.selling_mode === 'FIXED_PRICE' && selectedArtwork.price && (
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                          • Price: LKR {Number(selectedArtwork.price).toLocaleString()}
-                        </span>
-                      )}
+                      {(() => {
+                        const mode = selectedArtwork.pricing_type || selectedArtwork.selling_mode || 'NOT_FOR_SALE';
+                        return (
+                          <>
+                            {mode === 'FIXED_PRICE' && selectedArtwork.price && (
+                              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                • Price: LKR {Number(selectedArtwork.price).toLocaleString()}
+                              </span>
+                            )}
+                            {mode === 'BIDDING' && selectedArtwork.starting_bid && (
+                              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                                • Starting Bid: LKR {Number(selectedArtwork.starting_bid).toLocaleString()}
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* Artwork Description in Modal */}
@@ -1254,7 +1354,7 @@ export default function GalleryPageClient() {
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   {/* WhatsApp Inquiry Action for Fixed Price Artworks */}
-                  {selectedArtwork.selling_mode === 'FIXED_PRICE' && (
+                  {(selectedArtwork.pricing_type === 'FIXED_PRICE' || selectedArtwork.selling_mode === 'FIXED_PRICE') && (
                     <a
                       href={`https://wa.me/${selectedArtwork.artist.whatsapp_number ? selectedArtwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
                         `Hello! I would like to inquire about Artwork '${selectedArtwork.title}' (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${selectedArtwork.artist.name}. Price: LKR ${Number(selectedArtwork.price || 0).toLocaleString()}.`

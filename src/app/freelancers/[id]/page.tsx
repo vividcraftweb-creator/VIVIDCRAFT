@@ -241,10 +241,20 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
           const artRatings = ratings.filter((r: any) => r.artwork_id === art.id);
           const sum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
           const avg = artRatings.length > 0 ? Math.round((sum / artRatings.length) * 10) / 10 : 0;
+          const rawArtCode = art.art_code;
+          let artCode = '';
+          if (rawArtCode && typeof rawArtCode === 'string') {
+            artCode = rawArtCode.startsWith('#') ? rawArtCode : `#${rawArtCode}`;
+          } else {
+            const hash = Math.abs(art.id.split('').reduce((acc: number, c: string) => (acc * 31 + c.charCodeAt(0)) | 0, 0)) % 900 + 100;
+            artCode = `#ART-${hash}`;
+          }
+          const pricingType = art.pricing_type || art.selling_mode || (art as any).pricingType || (art as any).sellingMode || 'NOT_FOR_SALE';
           return {
             id: art.id,
             artist_id: art.artist_id,
             title: art.title,
+            description: art.description || null,
             image_url: art.image_url,
             created_at: art.created_at,
             likesCount: artLikes.length,
@@ -252,6 +262,11 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
             ratingsCount: artRatings.length,
             averageRating: avg,
             userRating: null,
+            pricing_type: pricingType,
+            selling_mode: pricingType,
+            price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
+            starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
+            art_code: artCode,
           };
         });
       }

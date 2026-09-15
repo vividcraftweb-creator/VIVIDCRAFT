@@ -189,21 +189,28 @@ export function ArtworkModal({
             {/* Status Badges & Likes Counter Row */}
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">
-                {artwork.selling_mode === 'FIXED_PRICE' && (
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                    For Sale
-                  </span>
-                )}
-                {artwork.selling_mode === 'BIDDING' && (
-                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
-                    Open Bidding
-                  </span>
-                )}
-                {artwork.selling_mode === 'NOT_FOR_SALE' && (
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
-                    Not For Sale
-                  </span>
-                )}
+                {(() => {
+                  const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+                  return (
+                    <>
+                      {mode === 'FIXED_PRICE' && (
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                          For Sale
+                        </span>
+                      )}
+                      {mode === 'BIDDING' && (
+                        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                          Open Bidding
+                        </span>
+                      )}
+                      {mode === 'NOT_FOR_SALE' && (
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
+                          Not For Sale
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Likes Counter */}
@@ -231,16 +238,23 @@ export function ArtworkModal({
             </h2>
 
             {/* Price / Starting Bid Display */}
-            {artwork.selling_mode === 'FIXED_PRICE' && artwork.price && (
-              <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                Price: LKR {Number(artwork.price).toLocaleString()}
-              </p>
-            )}
-            {artwork.selling_mode === 'BIDDING' && artwork.starting_bid && (
-              <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
-              </p>
-            )}
+            {(() => {
+              const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+              return (
+                <>
+                  {mode === 'FIXED_PRICE' && artwork.price && (
+                    <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                      Price: LKR {Number(artwork.price).toLocaleString()}
+                    </p>
+                  )}
+                  {mode === 'BIDDING' && artwork.starting_bid && (
+                    <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
+                      Starting Bid: LKR {Number(artwork.starting_bid).toLocaleString()}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Artist Link, Ref ID: #ART-XXX, and Date */}
             <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap pt-0.5">
