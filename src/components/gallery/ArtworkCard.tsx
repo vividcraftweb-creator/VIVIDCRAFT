@@ -66,6 +66,16 @@ interface ArtworkCardProps {
 }
 
 export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
+  // Step 2: Log artwork database object directly to console to verify column names
+  console.log('Artwork database object (ArtworkCard):', {
+    id: artwork?.id,
+    title: artwork?.title,
+    price: artwork?.price,
+    pricing_type: artwork?.pricing_type,
+    selling_type: (artwork as any)?.selling_type || artwork?.selling_mode,
+    amount: (artwork as any)?.amount,
+  });
+
   // Dynamic Pricing & Status Badge Evaluation
   const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
 

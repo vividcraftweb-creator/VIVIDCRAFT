@@ -54,22 +54,19 @@ export const artworksRouter = router({
         const artCode = rawCode ? (rawCode.startsWith('#') ? rawCode : `#${rawCode}`) : `#ART-${101 + index}`;
 
         const pType = String(art.pricing_type || (art as any).selling_type || art.selling_mode || '').toUpperCase().trim();
-        const priceNum = Number(art.price || 0);
-        const bidNum = Number(art.starting_bid || 0);
+        const priceNum = Number(art.price ?? (art as any).amount ?? 0);
+        const bidNum = Number(art.starting_bid ?? (art as any).startingBid ?? 0);
         const titleLower = String(art.title || '').toLowerCase().trim();
 
         let evaluatedMode: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE' = 'NOT_FOR_SALE';
-        if (pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE' || priceNum > 0 || (titleLower.includes('sale') && !titleLower.includes('not for sale'))) {
+        if (priceNum > 0 || (art as any).amount !== undefined && Number((art as any).amount) > 0 || pType === 'FIXED_PRICE' || pType === 'FOR_SALE' || pType === 'SALE' || (titleLower.includes('sale') && !titleLower.includes('not for sale'))) {
           evaluatedMode = 'FIXED_PRICE';
-        } else if (pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || bidNum > 0 || titleLower.includes('bid')) {
+        } else if (bidNum > 0 || pType === 'BIDDING' || pType === 'AUCTION' || pType === 'BID' || titleLower.includes('bid')) {
           evaluatedMode = 'BIDDING';
         }
 
-        const effectivePrice = evaluatedMode === 'FIXED_PRICE' && priceNum > 0 ? priceNum : null;
-        const effectiveBid = evaluatedMode === 'BIDDING' && bidNum > 0 ? bidNum : null;
-        if (evaluatedMode === 'FIXED_PRICE' && !effectivePrice) {
-          evaluatedMode = 'NOT_FOR_SALE';
-        }
+        const effectivePrice = evaluatedMode === 'FIXED_PRICE' ? (priceNum > 0 ? priceNum : (art.price ? Number(art.price) : 0)) : null;
+        const effectiveBid = evaluatedMode === 'BIDDING' ? (bidNum > 0 ? bidNum : (art.starting_bid ? Number(art.starting_bid) : 0)) : null;
 
         return {
           id: art.id,
@@ -227,6 +224,7 @@ export const artworksRouter = router({
             created_at: new Date().toISOString(),
             selling_type: pricingMode,
             selling_mode: pricingMode,
+            pricing_type: pricingMode,
             price,
             starting_bid: startingBid,
           })
@@ -373,7 +371,20 @@ export const artworksRouter = router({
           const rawCode = art.art_code;
           const artCode = rawCode ? (rawCode.startsWith('#') ? rawCode : `#${rawCode}`) : `#ART-${101 + index}`;
 
-          const pricingType = (art as any).pricing_type || art.selling_mode || 'NOT_FOR_SALE';
+          const rawPriceNum = Number(art.price ?? (art as any).amount ?? 0);
+          const rawBidNum = Number(art.starting_bid ?? (art as any).startingBid ?? 0);
+          const pt = String(art.pricing_type || '').toUpperCase().trim();
+          const st = String((art as any).selling_type || art.selling_mode || '').toUpperCase().trim();
+
+          let pricingType = 'NOT_FOR_SALE';
+          if (rawPriceNum > 0 || ((art as any).amount !== undefined && Number((art as any).amount) > 0) || pt === 'FIXED_PRICE' || st === 'FIXED_PRICE') {
+            pricingType = 'FIXED_PRICE';
+          } else if (rawBidNum > 0 || pt === 'BIDDING' || st === 'BIDDING') {
+            pricingType = 'BIDDING';
+          }
+
+          const price = rawPriceNum > 0 ? rawPriceNum : (art.price !== undefined && art.price !== null ? Number(art.price) : null);
+          const startingBid = rawBidNum > 0 ? rawBidNum : (art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null);
 
           return {
             id: art.id,
@@ -389,8 +400,8 @@ export const artworksRouter = router({
             userRating,
             selling_mode: pricingType,
             pricing_type: pricingType,
-            price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
-            starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
+            price,
+            starting_bid: startingBid,
             art_code: artCode,
             profiles: artistProf ? {
               full_name: artistProf.full_name || null,
@@ -518,9 +529,20 @@ export const artworksRouter = router({
             artCode = `#ART-${hash}`;
           }
 
-          const sellingMode = (art as any).pricing_type || art.selling_mode || 'NOT_FOR_SALE';
-          const price = art.price !== undefined && art.price !== null ? Number(art.price) : null;
-          const startingBid = art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null;
+          const rawPriceNum = Number(art.price ?? (art as any).amount ?? 0);
+          const rawBidNum = Number(art.starting_bid ?? (art as any).startingBid ?? 0);
+          const pt = String(art.pricing_type || '').toUpperCase().trim();
+          const st = String((art as any).selling_type || art.selling_mode || '').toUpperCase().trim();
+
+          let sellingMode = 'NOT_FOR_SALE';
+          if (rawPriceNum > 0 || ((art as any).amount !== undefined && Number((art as any).amount) > 0) || pt === 'FIXED_PRICE' || st === 'FIXED_PRICE') {
+            sellingMode = 'FIXED_PRICE';
+          } else if (rawBidNum > 0 || pt === 'BIDDING' || st === 'BIDDING') {
+            sellingMode = 'BIDDING';
+          }
+
+          const price = rawPriceNum > 0 ? rawPriceNum : (art.price !== undefined && art.price !== null ? Number(art.price) : null);
+          const startingBid = rawBidNum > 0 ? rawBidNum : (art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null);
 
           return {
             id: art.id,

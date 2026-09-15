@@ -40,6 +40,18 @@ export function ArtworkModal({
   const isAuthenticated = status === 'authenticated' && !!session?.session?.user;
   const currentUserId = session?.session?.user?.id;
 
+  // Step 2: Log artwork database object directly to console to verify column names
+  if (artwork) {
+    console.log('Artwork database object (ArtworkModal):', {
+      id: artwork?.id,
+      title: artwork?.title,
+      price: artwork?.price,
+      pricing_type: artwork?.pricing_type,
+      selling_type: (artwork as any)?.selling_type || artwork?.selling_mode,
+      amount: (artwork as any)?.amount,
+    });
+  }
+
   const [mounted, setMounted] = useState(false);
   const [commentText, setCommentText] = useState('');
   const commentsEndRef = useRef<HTMLDivElement>(null);

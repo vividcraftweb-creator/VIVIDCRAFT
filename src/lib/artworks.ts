@@ -84,54 +84,57 @@ export interface ArtworkPricingDisplay {
  *    - Show Price: "Display Only"
  */
 export function getArtworkPricingDisplay(artwork: any): ArtworkPricingDisplay {
-  const pType = String(
-    artwork?.pricing_type ||
-    artwork?.selling_type ||
-    artwork?.selling_mode ||
-    artwork?.mode ||
-    artwork?.pricingType ||
-    ''
-  ).toUpperCase().trim();
+  // Step 2: Log artwork database object directly to console to verify column names
+  console.log('Artwork database object:', {
+    id: artwork?.id,
+    title: artwork?.title,
+    price: artwork?.price,
+    pricing_type: artwork?.pricing_type,
+    selling_type: artwork?.selling_type || artwork?.selling_mode,
+    amount: artwork?.amount,
+  });
 
-  const rawPrice =
-    artwork?.price !== undefined && artwork?.price !== null && !isNaN(Number(artwork.price))
-      ? Number(artwork.price)
-      : artwork?.amount !== undefined && artwork?.amount !== null && !isNaN(Number(artwork.amount))
-      ? Number(artwork.amount)
-      : artwork?.fixed_price !== undefined && artwork?.fixed_price !== null && !isNaN(Number(artwork.fixed_price))
-      ? Number(artwork.fixed_price)
-      : null;
+  const rawPrice = Number(artwork?.price ?? artwork?.amount ?? 0);
+  const rawBid = Number(artwork?.starting_bid ?? artwork?.startingBid ?? 0);
+  const pType = String(artwork?.pricing_type || '').toUpperCase().trim();
+  const sType = String(artwork?.selling_type || artwork?.selling_mode || '').toUpperCase().trim();
 
-  const rawBid =
-    artwork?.starting_bid !== undefined && artwork?.starting_bid !== null && !isNaN(Number(artwork.starting_bid))
-      ? Number(artwork.starting_bid)
-      : artwork?.startingBid !== undefined && artwork?.startingBid !== null && !isNaN(Number(artwork.startingBid))
-      ? Number(artwork.startingBid)
-      : artwork?.bid_amount !== undefined && artwork?.bid_amount !== null && !isNaN(Number(artwork.bid_amount))
-      ? Number(artwork.bid_amount)
-      : artwork?.current_bid !== undefined && artwork?.current_bid !== null && !isNaN(Number(artwork.current_bid))
-      ? Number(artwork.current_bid)
-      : null;
-
-  // 1. If Number(artwork.price) > 0: force badge "For Sale" with "LKR " + Number(artwork.price).toLocaleString()
-  if (rawPrice !== null && rawPrice > 0) {
+  // Step 3: Force badge logic override:
+  // IF Number(artwork.price) > 0 OR Number(artwork.amount) > 0 OR artwork.pricing_type === 'FIXED_PRICE' OR artwork.selling_type === 'FIXED_PRICE':
+  //   Render Badge: "For Sale"
+  //   Render Price: "LKR " + (artwork.price || artwork.amount)
+  if (
+    rawPrice > 0 ||
+    (artwork?.amount !== undefined && Number(artwork?.amount) > 0) ||
+    pType === 'FIXED_PRICE' ||
+    sType === 'FIXED_PRICE'
+  ) {
+    const val = rawPrice > 0 ? rawPrice.toLocaleString() : (artwork?.price ?? artwork?.amount ?? '0');
     return {
       statusBadge: 'For Sale',
-      displayPrice: `LKR ${rawPrice.toLocaleString()}`,
+      displayPrice: `LKR ${val}`,
       badgeType: 'FOR_SALE',
     };
   }
 
-  // 2. Else if Number(artwork.starting_bid) > 0: force badge "Open Bidding" with "Starting Bid: LKR " + Number(artwork.starting_bid).toLocaleString()
-  if (rawBid !== null && rawBid > 0) {
+  // ELSE IF Number(artwork.starting_bid) > 0 OR artwork.pricing_type === 'BIDDING':
+  //   Render Badge: "Open Bidding"
+  //   Render Price: "Starting Bid: LKR " + artwork.starting_bid
+  if (
+    rawBid > 0 ||
+    pType === 'BIDDING' ||
+    sType === 'BIDDING'
+  ) {
+    const val = rawBid > 0 ? rawBid.toLocaleString() : (artwork?.starting_bid ?? artwork?.startingBid ?? '0');
     return {
       statusBadge: 'Open Bidding',
-      displayPrice: `Starting Bid: LKR ${rawBid.toLocaleString()}`,
+      displayPrice: `Starting Bid: LKR ${val}`,
       badgeType: 'BIDDING',
     };
   }
 
-  // 3. Only render "Not For Sale" if both price and starting_bid are 0 or null
+  // ELSE:
+  //   Render Badge: "Not For Sale"
   return {
     statusBadge: 'Not For Sale',
     displayPrice: 'Not For Sale',

@@ -37,6 +37,7 @@ import { trpc } from '@/utils/trpc';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
+import { getArtworkPricingDisplay } from '@/lib/artworks';
 
 type SortOption = 'popular' | 'highest_rated' | 'most_liked' | 'newest';
 type CategoryFilter = 'ALL' | 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
@@ -275,7 +276,13 @@ export default function GalleryPageClient() {
                 artCode = `#ART-${hash}`;
               }
 
-              const sellingMode = art.pricing_type || art.selling_mode || 'NOT_FOR_SALE';
+              const { badgeType } = getArtworkPricingDisplay(art);
+              const sellingMode =
+                badgeType === 'FOR_SALE'
+                  ? 'FIXED_PRICE'
+                  : badgeType === 'BIDDING'
+                  ? 'BIDDING'
+                  : 'NOT_FOR_SALE';
 
               return {
                 id: art.id,
@@ -291,7 +298,7 @@ export default function GalleryPageClient() {
                 isLiked,
                 popularityScore: artLikes.length * 3 + avg * Math.log2(artRatings.length + 2) * 4,
                 selling_mode: sellingMode,
-                pricing_type: art.pricing_type || sellingMode,
+                pricing_type: sellingMode,
                 price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
                 starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
                 art_code: artCode,
@@ -328,13 +335,20 @@ export default function GalleryPageClient() {
   const displayedArtworks = useMemo(() => {
     // When viewing ALL or specific category, include Bidding items only if explicitly requested
     let list = localArtworks.filter((art) => {
-      const pricingType = art.pricing_type || art.selling_mode || 'NOT_FOR_SALE';
+      const { badgeType } = getArtworkPricingDisplay(art);
+      const effectiveFilterType =
+        badgeType === 'FOR_SALE'
+          ? 'FIXED_PRICE'
+          : badgeType === 'BIDDING'
+          ? 'BIDDING'
+          : 'NOT_FOR_SALE';
+
       if (activeFilter === 'ALL') {
         // Show everything except BIDDING artworks on main gallery page
-        return pricingType !== 'BIDDING';
+        return effectiveFilterType !== 'BIDDING';
       }
-      // Specific category filter — show BIDDING artworks too when explicitly filtered
-      return pricingType === activeFilter;
+      // Specific category filter — show items matching the selected tab
+      return effectiveFilterType === activeFilter;
     });
 
     if (searchQuery.trim()) {
@@ -1030,6 +1044,16 @@ export default function GalleryPageClient() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {displayedArtworks.map((artwork) => {
+              // Step 2: Log artwork database object directly to console to verify column names
+              console.log('Artwork database object (GalleryCard):', {
+                id: artwork.id,
+                title: artwork.title,
+                price: artwork.price,
+                pricing_type: artwork.pricing_type,
+                selling_type: (artwork as any).selling_type || artwork.selling_mode,
+                amount: (artwork as any).amount,
+              });
+
               const safeImg = getSafeArtworkUrl(artwork.image_url);
               const artistAvatar = getProfilePictureUrl(artwork.artist_id, artwork.artist.avatar_url);
               const initials = artwork.artist.name
@@ -1161,22 +1185,22 @@ export default function GalleryPageClient() {
                         </h3>
 
                         {(() => {
-                          const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+                          const { statusBadge, badgeType } = getArtworkPricingDisplay(artwork);
                           return (
                             <>
-                              {mode === 'FIXED_PRICE' && (
+                              {badgeType === 'FOR_SALE' && (
                                 <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                                  For Sale
+                                  {statusBadge}
                                 </span>
                               )}
-                              {mode === 'BIDDING' && (
+                              {badgeType === 'BIDDING' && (
                                 <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                                  Open Bidding
+                                  {statusBadge}
                                 </span>
                               )}
-                              {mode === 'NOT_FOR_SALE' && (
+                              {badgeType === 'NOT_FOR_SALE' && (
                                 <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                                  Not For Sale
+                                  {statusBadge}
                                 </span>
                               )}
                             </>
@@ -1186,20 +1210,20 @@ export default function GalleryPageClient() {
 
                       {/* Price Display for Fixed Price & Bidding Artworks */}
                       {(() => {
-                        const mode = artwork.pricing_type || artwork.selling_mode || 'NOT_FOR_SALE';
+                        const { displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
                         return (
                           <>
-                            {mode === 'FIXED_PRICE' && (
+                            {badgeType === 'FOR_SALE' && (
                               <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                                Price: LKR {artwork.price ? Number(artwork.price).toLocaleString() : '0'}
+                                Price: {displayPrice}
                               </p>
                             )}
-                            {mode === 'BIDDING' && (
+                            {badgeType === 'BIDDING' && (
                               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                                Starting Bid: LKR {artwork.starting_bid ? Number(artwork.starting_bid).toLocaleString() : '0'}
+                                {displayPrice}
                               </p>
                             )}
-                            {mode === 'NOT_FOR_SALE' && (
+                            {badgeType === 'NOT_FOR_SALE' && (
                               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
                                 Price: Display Only
                               </p>
@@ -1282,21 +1306,25 @@ export default function GalleryPageClient() {
                         </div>
                       </div>
 
-                      {/* WhatsApp Inquiry Action for Fixed Price Artworks */}
-                      {artwork.selling_mode === 'FIXED_PRICE' && (
-                        <a
-                          href={`https://wa.me/${artwork.artist.whatsapp_number ? artwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
-                            `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artwork.artist.name}. Price: LKR ${Number(artwork.price || 0).toLocaleString()}.`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
-                          title="Ask about price or buy on WhatsApp"
-                        >
-                          <span>Ask Price (WhatsApp)</span>
-                        </a>
-                      )}
+                      {/* WhatsApp Inquiry Action for Fixed Price & For Sale Artworks */}
+                      {(() => {
+                        const { badgeType, displayPrice } = getArtworkPricingDisplay(artwork);
+                        if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+                        return (
+                          <a
+                            href={`https://wa.me/${artwork.artist.whatsapp_number ? artwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
+                              `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artwork.artist.name}. Status: ${displayPrice}.`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
+                            title="Ask about price or buy on WhatsApp"
+                          >
+                            <span>Ask Price (WhatsApp)</span>
+                          </a>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1330,22 +1358,22 @@ export default function GalleryPageClient() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       {(() => {
-                        const mode = selectedArtwork.pricing_type || selectedArtwork.selling_mode || 'NOT_FOR_SALE';
+                        const { statusBadge, badgeType } = getArtworkPricingDisplay(selectedArtwork);
                         return (
                           <>
-                            {mode === 'FIXED_PRICE' && (
+                            {badgeType === 'FOR_SALE' && (
                               <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                                For Sale
+                                {statusBadge}
                               </span>
                             )}
-                            {mode === 'BIDDING' && (
+                            {badgeType === 'BIDDING' && (
                               <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
-                                Open Bidding
+                                {statusBadge}
                               </span>
                             )}
-                            {mode === 'NOT_FOR_SALE' && (
+                            {badgeType === 'NOT_FOR_SALE' && (
                               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
-                                Not For Sale
+                                {statusBadge}
                               </span>
                             )}
                           </>
@@ -1369,20 +1397,20 @@ export default function GalleryPageClient() {
                         • Ref ID: {selectedArtwork.art_code || '#ART-101'}
                       </span>
                       {(() => {
-                        const mode = selectedArtwork.pricing_type || selectedArtwork.selling_mode || 'NOT_FOR_SALE';
+                        const { displayPrice, badgeType } = getArtworkPricingDisplay(selectedArtwork);
                         return (
                           <>
-                            {mode === 'FIXED_PRICE' && (
+                            {badgeType === 'FOR_SALE' && (
                               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                • Price: LKR {selectedArtwork.price ? Number(selectedArtwork.price).toLocaleString() : '0'}
+                                • Price: {displayPrice}
                               </span>
                             )}
-                            {mode === 'BIDDING' && (
+                            {badgeType === 'BIDDING' && (
                               <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                                • Starting Bid: LKR {selectedArtwork.starting_bid ? Number(selectedArtwork.starting_bid).toLocaleString() : '0'}
+                                • {displayPrice}
                               </span>
                             )}
-                            {mode === 'NOT_FOR_SALE' && (
+                            {badgeType === 'NOT_FOR_SALE' && (
                               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                                 • Price: Display Only
                               </span>
@@ -1508,21 +1536,25 @@ export default function GalleryPageClient() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                  {/* WhatsApp Inquiry Action for Fixed Price Artworks */}
-                  {(selectedArtwork.pricing_type === 'FIXED_PRICE' || selectedArtwork.selling_mode === 'FIXED_PRICE') && (
-                    <a
-                      href={`https://wa.me/${selectedArtwork.artist.whatsapp_number ? selectedArtwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
-                        `Hello! I would like to inquire about Artwork '${selectedArtwork.title}' (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${selectedArtwork.artist.name}. Price: LKR ${Number(selectedArtwork.price || 0).toLocaleString()}.`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full sm:w-auto"
-                    >
-                      <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 h-10 px-4 cursor-pointer shadow-sm">
-                        <span>Ask Price (WhatsApp)</span>
-                      </Button>
-                    </a>
-                  )}
+                  {/* WhatsApp Inquiry Action for Fixed Price & For Sale Artworks */}
+                  {(() => {
+                    const { badgeType, displayPrice } = getArtworkPricingDisplay(selectedArtwork);
+                    if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+                    return (
+                      <a
+                        href={`https://wa.me/${selectedArtwork.artist.whatsapp_number ? selectedArtwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
+                          `Hello! I would like to inquire about Artwork '${selectedArtwork.title}' (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${selectedArtwork.artist.name}. Status: ${displayPrice}.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full sm:w-auto"
+                      >
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 h-10 px-4 cursor-pointer shadow-sm">
+                          <span>Ask Price (WhatsApp)</span>
+                        </Button>
+                      </a>
+                    );
+                  })()}
 
                   {/* Direct Action: View Profile */}
                   <Link

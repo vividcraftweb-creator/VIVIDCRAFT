@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import FreelancerProfileClient from './FreelancerProfileClient';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createDynamicMetadata } from '@/lib/seo-metadata';
+import { getArtworkPricingDisplay } from '@/lib/artworks';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -249,7 +250,14 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
             const hash = Math.abs(art.id.split('').reduce((acc: number, c: string) => (acc * 31 + c.charCodeAt(0)) | 0, 0)) % 900 + 100;
             artCode = `#ART-${hash}`;
           }
-          const pricingType = art.pricing_type || art.selling_mode || (art as any).pricingType || (art as any).sellingMode || 'NOT_FOR_SALE';
+          const { badgeType } = getArtworkPricingDisplay(art);
+          const pricingType =
+            badgeType === 'FOR_SALE'
+              ? 'FIXED_PRICE'
+              : badgeType === 'BIDDING'
+              ? 'BIDDING'
+              : 'NOT_FOR_SALE';
+
           return {
             id: art.id,
             artist_id: art.artist_id,
