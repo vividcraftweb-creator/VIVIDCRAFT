@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
@@ -52,6 +53,7 @@ interface RankedArtwork {
   id: string;
   artist_id: string;
   title: string;
+  description?: string | null;
   image_url: string;
   created_at: string;
   likesCount: number;
@@ -61,6 +63,7 @@ interface RankedArtwork {
   isLiked: boolean;
   popularityScore?: number;
   selling_mode?: string;
+  pricing_type?: string;
   price?: number | null;
   starting_bid?: number | null;
   art_code?: string;
@@ -88,6 +91,7 @@ export default function GalleryPageClient() {
   // Admin Upload Modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
   const [uploadImageUrl, setUploadImageUrl] = useState('');
   const [uploadArtistName, setUploadArtistName] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -264,6 +268,7 @@ export default function GalleryPageClient() {
                 id: art.id,
                 artist_id: art.artist_id,
                 title: art.title || 'Untitled Artwork',
+                description: art.description || null,
                 image_url: art.image_url,
                 created_at: art.created_at,
                 likesCount: artLikes.length,
@@ -273,6 +278,7 @@ export default function GalleryPageClient() {
                 isLiked,
                 popularityScore: artLikes.length * 3 + avg * Math.log2(artRatings.length + 2) * 4,
                 selling_mode: sellingMode,
+                pricing_type: art.pricing_type || sellingMode,
                 price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
                 starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
                 art_code: artCode,
@@ -302,14 +308,17 @@ export default function GalleryPageClient() {
   // Client-side filtering and sorting for instant responsiveness
   const displayedArtworks = useMemo(() => {
     // Exclude Bidding items from main Gallery
-    let list = localArtworks.filter((art) => art.selling_mode !== 'BIDDING');
+    let list = localArtworks.filter(
+      (art) => art.selling_mode !== 'BIDDING' && art.pricing_type !== 'BIDDING'
+    );
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
         (art) =>
           art.title.toLowerCase().includes(q) ||
-          art.artist.name.toLowerCase().includes(q)
+          art.artist.name.toLowerCase().includes(q) ||
+          (art.art_code && art.art_code.toLowerCase().includes(q))
       );
     }
 
@@ -574,12 +583,14 @@ export default function GalleryPageClient() {
           id: newId,
           artist_id: artistId,
           title: uploadTitle.trim(),
+          description: uploadDescription.trim() || null,
           image_url: finalImageUrl,
           created_at: now,
           likes_count: 0,
           average_rating: 0,
           ratings_count: 0,
           selling_mode: uploadSellingMode,
+          pricing_type: uploadSellingMode,
           price,
           starting_bid: startingBid,
           art_code: artCode,
@@ -592,6 +603,7 @@ export default function GalleryPageClient() {
             id: newId,
             artist_id: artistId,
             title: uploadTitle.trim(),
+            description: uploadDescription.trim() || null,
             image_url: finalImageUrl,
             created_at: now,
           });
@@ -602,6 +614,7 @@ export default function GalleryPageClient() {
         id: newId,
         artist_id: artistId,
         title: uploadTitle.trim(),
+        description: uploadDescription.trim() || null,
         image_url: finalImageUrl,
         created_at: now,
         likesCount: 0,
@@ -611,6 +624,7 @@ export default function GalleryPageClient() {
         isLiked: false,
         popularityScore: 0,
         selling_mode: uploadSellingMode,
+        pricing_type: uploadSellingMode,
         price,
         starting_bid: startingBid,
         art_code: artCode,
@@ -636,6 +650,7 @@ export default function GalleryPageClient() {
 
       // Reset form & close
       setUploadTitle('');
+      setUploadDescription('');
       setUploadImageUrl('');
       setUploadArtistName('');
       setUploadFile(null);
@@ -671,7 +686,7 @@ export default function GalleryPageClient() {
       {/* Admin Floating Banner (Active Session Indicator) */}
       {isAdmin && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-amber-500/10 dark:bg-gradient-to-r dark:from-amber-500/15 dark:via-purple-500/10 dark:to-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-amber-500/10 dark:bg-gradient-to-r dark:from-amber-500/15 dark:via-amber-500/10 dark:to-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md shadow-sm">
             <div className="flex items-center gap-2.5">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
@@ -690,9 +705,9 @@ export default function GalleryPageClient() {
               <Button
                 size="sm"
                 onClick={() => setIsUploadOpen(true)}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs h-8 px-3 gap-1.5 shadow-md cursor-pointer"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs h-8 px-3 gap-1.5 shadow-md cursor-pointer"
               >
-                <UploadCloud className="w-3.5 h-3.5" />
+                <UploadCloud className="w-3.5 h-3.5 text-slate-950" />
                 <span>Upload Artwork</span>
               </Button>
               <Link href="/admin">
@@ -712,13 +727,13 @@ export default function GalleryPageClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header Hero Section */}
         <div className="text-center max-w-3xl mx-auto mb-10 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-700 dark:text-purple-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
-            Vivid Art Gallery & Exhibition
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
+            Vivid Art Gallery &amp; Exhibition
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-            Curated Artworks & Portfolios
+            Curated Artworks &amp; Portfolios
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 font-normal">
@@ -734,7 +749,7 @@ export default function GalleryPageClient() {
                 placeholder="Search artworks by title or artist name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 h-12 bg-white dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 focus:border-purple-500 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm shadow-md dark:shadow-xl focus:ring-2 focus:ring-purple-500/20"
+                className="w-full pl-11 pr-4 h-12 bg-white dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 focus:border-amber-500 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm shadow-md dark:shadow-xl focus:ring-2 focus:ring-amber-500/20"
               />
               {searchQuery && (
                 <button
@@ -749,7 +764,7 @@ export default function GalleryPageClient() {
             {isAdmin && (
               <Button
                 onClick={() => setIsUploadOpen(true)}
-                className="h-12 bg-purple-600 hover:bg-purple-500 text-white font-semibold px-4 rounded-2xl gap-2 shadow-lg shadow-purple-600/25 cursor-pointer flex-shrink-0"
+                className="h-12 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 rounded-2xl gap-2 shadow-lg shadow-amber-500/25 cursor-pointer flex-shrink-0"
               >
                 <UploadCloud className="w-4 h-4" />
                 <span className="hidden sm:inline">Upload Art</span>
@@ -763,33 +778,33 @@ export default function GalleryPageClient() {
           <div className="flex items-center gap-2 p-1 bg-slate-200/70 dark:bg-slate-900/90 border border-slate-300/70 dark:border-slate-800 rounded-2xl overflow-x-auto max-w-full">
             <button
               onClick={() => setActiveSort('popular')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                 activeSort === 'popular'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
-              <Flame className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+              <Flame className="w-4 h-4 text-orange-600 dark:text-orange-500" />
               <span>Most Popular</span>
             </button>
 
             <button
               onClick={() => setActiveSort('highest_rated')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                 activeSort === 'highest_rated'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
-              <Star className="w-4 h-4 text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400" />
+              <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-500 fill-current" />
               <span>Highest Rated</span>
             </button>
 
             <button
               onClick={() => setActiveSort('most_liked')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                 activeSort === 'most_liked'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
@@ -799,9 +814,9 @@ export default function GalleryPageClient() {
 
             <button
               onClick={() => setActiveSort('newest')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                 activeSort === 'newest'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
               }`}
             >
@@ -848,9 +863,9 @@ export default function GalleryPageClient() {
             {isAdmin && (
               <Button
                 onClick={() => setIsUploadOpen(true)}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold gap-2"
               >
-                <UploadCloud className="w-4 h-4" />
+                <UploadCloud className="w-4 h-4 text-slate-950" />
                 <span>Upload First Artwork</span>
               </Button>
             )}
@@ -872,7 +887,7 @@ export default function GalleryPageClient() {
               return (
                 <div
                   key={artwork.id}
-                  className="group relative bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-400/80 dark:hover:border-purple-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-purple-500/10 flex flex-col hover:-translate-y-0.5"
+                  className="group relative bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-amber-500/10 flex flex-col hover:-translate-y-0.5"
                 >
                   {/* Artwork Image Container with Smart Matte Framing & Blurred Backdrop */}
                   <div
@@ -912,7 +927,7 @@ export default function GalleryPageClient() {
                       </div>
                     </div>
 
-                    {/* Task 2: In-situ Admin Moderation Control ("Delete Post") */}
+                    {/* In-situ Admin Moderation Control ("Delete Post") */}
                     {isAdmin && (
                       <button
                         onClick={(e) => {
@@ -934,7 +949,7 @@ export default function GalleryPageClient() {
                         e.stopPropagation();
                         setSelectedArtwork(artwork);
                       }}
-                      className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-purple-600 hover:border-purple-500 cursor-pointer shadow-lg"
+                      className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-amber-500 hover:text-slate-950 hover:border-amber-400 cursor-pointer shadow-lg"
                       title="View full screen"
                     >
                       <Maximize2 className="w-4 h-4" />
@@ -982,7 +997,7 @@ export default function GalleryPageClient() {
                       <div className="flex items-start justify-between gap-2">
                         <h3
                           onClick={() => setSelectedArtwork(artwork)}
-                          className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex-1"
+                          className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex-1"
                           title={artwork.title}
                         >
                           {artwork.title}
@@ -1015,9 +1030,9 @@ export default function GalleryPageClient() {
                             className="flex-shrink-0 group/avatar"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Avatar className="w-7 h-7 ring-1 ring-purple-500/30 group-hover/avatar:ring-purple-400 transition-all">
+                            <Avatar className="w-7 h-7 ring-1 ring-amber-500/30 group-hover/avatar:ring-amber-400 transition-all">
                               {artistAvatar && <AvatarImage src={artistAvatar} alt={artwork.artist.name} />}
-                              <AvatarFallback className="bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-200 text-xs font-semibold">
+                              <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200 text-xs font-semibold">
                                 {initials || <User className="w-3.5 h-3.5" />}
                               </AvatarFallback>
                             </Avatar>
@@ -1027,7 +1042,7 @@ export default function GalleryPageClient() {
                             <Link
                               href={`/freelancers/${artwork.artist_id}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-300 truncate block transition-colors"
+                              className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-amber-600 dark:hover:text-amber-400 truncate block transition-colors"
                             >
                               {artwork.artist.name}
                             </Link>
@@ -1087,10 +1102,10 @@ export default function GalleryPageClient() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
                           title="Ask about price or buy on WhatsApp"
                         >
-                          <span>Ask Price</span>
+                          <span>Ask Price (WhatsApp)</span>
                         </a>
                       )}
                     </div>
@@ -1114,12 +1129,12 @@ export default function GalleryPageClient() {
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/50">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="w-10 h-10 ring-1 ring-purple-500/30 flex-shrink-0">
+                  <Avatar className="w-10 h-10 ring-1 ring-amber-500/30 flex-shrink-0">
                     <AvatarImage
                       src={getProfilePictureUrl(selectedArtwork.artist_id, selectedArtwork.artist.avatar_url)}
                       alt={selectedArtwork.artist.name}
                     />
-                    <AvatarFallback className="bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-200 text-xs">
+                    <AvatarFallback className="bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-xs font-bold">
                       {selectedArtwork.artist.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -1142,7 +1157,7 @@ export default function GalleryPageClient() {
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <Link
                         href={`/freelancers/${selectedArtwork.artist_id}`}
-                        className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline"
+                        className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:underline font-medium"
                       >
                         by {selectedArtwork.artist.name}
                       </Link>
@@ -1155,6 +1170,16 @@ export default function GalleryPageClient() {
                         </span>
                       )}
                     </div>
+
+                    {/* Artwork Description in Modal */}
+                    {selectedArtwork.description && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed max-h-24 overflow-y-auto">
+                        <span className="font-semibold text-amber-600 dark:text-amber-400 block mb-0.5 text-[10px] uppercase tracking-wider">
+                          Artwork Story &amp; Description
+                        </span>
+                        <p className="whitespace-pre-line">{selectedArtwork.description}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1401,7 +1426,7 @@ export default function GalleryPageClient() {
                 {/* Title */}
                 <div className="space-y-1.5">
                   <label htmlFor="art-title" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Artwork Title <span className="text-purple-600 dark:text-purple-400">*</span>
+                    Artwork Title <span className="text-amber-600 dark:text-amber-400">*</span>
                   </label>
                   <Input
                     id="art-title"
@@ -1409,7 +1434,21 @@ export default function GalleryPageClient() {
                     placeholder="e.g. Celestial Symphony, Cyberpunk Metropolis"
                     value={uploadTitle}
                     onChange={(e) => setUploadTitle(e.target.value)}
-                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11"
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11 focus-visible:ring-amber-500"
+                  />
+                </div>
+
+                {/* Artwork Description */}
+                <div className="space-y-1.5">
+                  <label htmlFor="art-desc" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Artwork Description (Tell the story behind your creation)
+                  </label>
+                  <Textarea
+                    id="art-desc"
+                    placeholder="Share the inspiration, medium, technique, or emotional depth of this piece..."
+                    value={uploadDescription}
+                    onChange={(e) => setUploadDescription(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs min-h-[80px] focus-visible:ring-amber-500"
                   />
                 </div>
 
@@ -1423,18 +1462,18 @@ export default function GalleryPageClient() {
                     placeholder="e.g. Vivid Art Studio, Master Artist"
                     value={uploadArtistName}
                     onChange={(e) => setUploadArtistName(e.target.value)}
-                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11"
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11 focus-visible:ring-amber-500"
                   />
                 </div>
 
                 {/* File Upload OR URL */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                    Artwork Image <span className="text-purple-600 dark:text-purple-400">*</span>
+                    Artwork Image <span className="text-amber-600 dark:text-amber-400">*</span>
                   </label>
 
                   {/* File Selector */}
-                  <div className="p-4 border border-dashed border-slate-300 dark:border-slate-700 hover:border-purple-500 rounded-xl text-center bg-slate-50/80 dark:bg-slate-950/60 transition-colors">
+                  <div className="p-4 border border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-500 rounded-xl text-center bg-slate-50/80 dark:bg-slate-950/60 transition-colors">
                     <input
                       type="file"
                       id="art-file-input"
@@ -1446,14 +1485,19 @@ export default function GalleryPageClient() {
                       htmlFor="art-file-input"
                       className="flex flex-col items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <ImageIcon className="w-7 h-7 text-purple-600 dark:text-purple-400" />
-                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                      <ImageIcon className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
                         {uploadFile ? uploadFile.name : 'Click to select image file (PNG, JPG, WEBP)'}
                       </span>
                       <span className="text-[11px] text-slate-500">
                         {uploadFile ? `${(uploadFile.size / 1024).toFixed(0)} KB selected` : 'or paste direct URL below'}
                       </span>
                     </label>
+                  </div>
+
+                  {/* Commission Fee Notice */}
+                  <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400">
+                    Note: A standard platform service fee of 5% to 15% will be applied upon successful sale of this artwork.
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1467,7 +1511,7 @@ export default function GalleryPageClient() {
                     value={uploadImageUrl}
                     onChange={(e) => setUploadImageUrl(e.target.value)}
                     disabled={!!uploadFile}
-                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-10 disabled:opacity-50"
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-10 disabled:opacity-50 focus-visible:ring-amber-500"
                   />
                 </div>
 
@@ -1482,7 +1526,7 @@ export default function GalleryPageClient() {
                       onClick={() => setUploadSellingMode('NOT_FOR_SALE')}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         uploadSellingMode === 'NOT_FOR_SALE'
-                          ? 'bg-purple-500/15 border-purple-500 text-purple-700 dark:text-purple-300 ring-1 ring-purple-500/40'
+                          ? 'bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/40'
                           : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400'
                       }`}
                     >
@@ -1579,11 +1623,11 @@ export default function GalleryPageClient() {
                   <Button
                     type="submit"
                     disabled={isUploading || (!uploadFile && !uploadImageUrl.trim()) || !uploadTitle.trim()}
-                    className="bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 cursor-pointer"
+                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold gap-2 cursor-pointer shadow-md"
                   >
                     {isUploading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
                         <span>Publishing to Gallery...</span>
                       </>
                     ) : (

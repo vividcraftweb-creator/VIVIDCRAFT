@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
@@ -55,6 +56,7 @@ interface RankedArtwork {
   id: string;
   artist_id: string;
   title: string;
+  description?: string | null;
   image_url: string;
   created_at: string;
   likesCount: number;
@@ -64,90 +66,12 @@ interface RankedArtwork {
   isLiked: boolean;
   popularityScore?: number;
   selling_mode?: string;
+  pricing_type?: string;
   price?: number | null;
   starting_bid?: number | null;
   art_code?: string;
   artist: ArtworkArtist;
 }
-
-// Fallback curated bidding items to display immediately if database has zero bidding items
-const FALLBACK_BIDDING_ARTWORKS: RankedArtwork[] = [
-  {
-    id: 'bid-fallback-1',
-    artist_id: 'artist-kasun-1',
-    title: 'Sacred Temple Procession at Twilight',
-    image_url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80',
-    created_at: new Date(Date.now() - 3600 * 1000 * 24 * 2).toISOString(),
-    likesCount: 38,
-    ratingsCount: 14,
-    averageRating: 4.9,
-    userRating: null,
-    isLiked: false,
-    popularityScore: 160,
-    selling_mode: 'BIDDING',
-    starting_bid: 75000,
-    art_code: '#ART-104',
-    artist: {
-      id: 'artist-kasun-1',
-      name: 'Kasun Perera',
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-      title: 'Master Oil Painter & Muralist',
-      bio: 'Contemporary Sri Lankan fine artist specializing in cultural ceremonies and atmospheric oil works.',
-      location: 'Kandy, Sri Lanka',
-      whatsapp_number: '94783813833',
-    },
-  },
-  {
-    id: 'bid-fallback-2',
-    artist_id: 'artist-nadee-2',
-    title: 'Sigiriya Mist & Ancient Whispers',
-    image_url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=1200&q=80',
-    created_at: new Date(Date.now() - 3600 * 1000 * 24 * 4).toISOString(),
-    likesCount: 29,
-    ratingsCount: 9,
-    averageRating: 4.8,
-    userRating: null,
-    isLiked: false,
-    popularityScore: 125,
-    selling_mode: 'BIDDING',
-    starting_bid: 110000,
-    art_code: '#ART-108',
-    artist: {
-      id: 'artist-nadee-2',
-      name: 'Nadeesha Jayawardena',
-      avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-      title: 'Visual Artist & Sculptor',
-      bio: 'Exhibited at the National Art Gallery of Sri Lanka. Deeply inspired by historical folklore.',
-      location: 'Colombo, Sri Lanka',
-      whatsapp_number: '94783813833',
-    },
-  },
-  {
-    id: 'bid-fallback-3',
-    artist_id: 'artist-malik-3',
-    title: 'Emerald Surge: Mirissa Sunset Break',
-    image_url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=1200&q=80',
-    created_at: new Date(Date.now() - 3600 * 1000 * 24 * 6).toISOString(),
-    likesCount: 42,
-    ratingsCount: 16,
-    averageRating: 5.0,
-    userRating: null,
-    isLiked: false,
-    popularityScore: 180,
-    selling_mode: 'BIDDING',
-    starting_bid: 65000,
-    art_code: '#ART-115',
-    artist: {
-      id: 'artist-malik-3',
-      name: 'Malik Fernando',
-      avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-      title: 'Expressionist Seascape Painter',
-      bio: 'Capturing the raw maritime rhythms of the southern coast in rich layered acrylics.',
-      location: 'Galle, Sri Lanka',
-      whatsapp_number: '94783813833',
-    },
-  },
-];
 
 export default function BiddingPageClient() {
   const router = useRouter();
@@ -170,6 +94,7 @@ export default function BiddingPageClient() {
   // Auction Upload Modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
   const [uploadImageUrl, setUploadImageUrl] = useState('');
   const [uploadArtistName, setUploadArtistName] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -269,31 +194,27 @@ export default function BiddingPageClient() {
     },
   });
 
-  // Sync remote data into local state or fallback if empty
+  // Sync remote data into local state
   useEffect(() => {
-    if (remoteArtworks && remoteArtworks.length > 0) {
+    if (remoteArtworks) {
       setLocalArtworks(remoteArtworks as RankedArtwork[]);
-    } else if (!isLoading && (!remoteArtworks || remoteArtworks.length === 0)) {
-      // If server returned 0 bidding items, use curated fallback bidding artworks
-      setLocalArtworks(FALLBACK_BIDDING_ARTWORKS);
+    } else if (!isLoading && !remoteArtworks) {
+      setLocalArtworks([]);
     }
   }, [remoteArtworks, isLoading]);
 
   // Client-side filtering and sorting for instant responsiveness
   const displayedArtworks = useMemo(() => {
-    let list = localArtworks.filter((art) => art.selling_mode === 'BIDDING');
-
-    // If list is empty but fallback is available
-    if (list.length === 0 && !isLoading) {
-      list = [...FALLBACK_BIDDING_ARTWORKS];
-    }
+    let list = (localArtworks || []).filter(
+      (art) => art.selling_mode === 'BIDDING' || art.pricing_type === 'BIDDING'
+    );
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
         (art) =>
-          art.title.toLowerCase().includes(q) ||
-          art.artist.name.toLowerCase().includes(q) ||
+          art.title?.toLowerCase().includes(q) ||
+          art.artist?.name?.toLowerCase().includes(q) ||
           (art.art_code && art.art_code.toLowerCase().includes(q))
       );
     }
@@ -546,8 +467,10 @@ export default function BiddingPageClient() {
         .insert({
           artist_id: effectiveArtistId,
           title: uploadTitle.trim(),
+          description: uploadDescription.trim() || null,
           image_url: imageUrl,
           selling_mode: 'BIDDING',
+          pricing_type: 'BIDDING',
           starting_bid: startingBidNum,
           price: null,
           art_code: randomCode,
@@ -559,8 +482,10 @@ export default function BiddingPageClient() {
         await supabase.from('Artwork').insert({
           artistId: effectiveArtistId,
           title: uploadTitle.trim(),
+          description: uploadDescription.trim() || null,
           imageUrl: imageUrl,
           selling_mode: 'BIDDING',
+          pricing_type: 'BIDDING',
           starting_bid: startingBidNum,
           art_code: randomCode,
         });
@@ -573,6 +498,7 @@ export default function BiddingPageClient() {
       // Reset modal state
       setIsUploadOpen(false);
       setUploadTitle('');
+      setUploadDescription('');
       setUploadImageUrl('');
       setUploadArtistName('');
       setUploadFile(null);
@@ -1031,6 +957,16 @@ export default function BiddingPageClient() {
                   Ref ID: <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedArtwork.art_code || '#ART-104'}</span>
                 </p>
 
+                {/* Artwork Description */}
+                {selectedArtwork.description && (
+                  <div className="my-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed max-h-28 overflow-y-auto">
+                    <span className="font-semibold text-amber-600 dark:text-amber-400 block mb-1 text-[10px] uppercase tracking-wider">
+                      Artwork Story &amp; Description
+                    </span>
+                    <p className="whitespace-pre-line">{selectedArtwork.description}</p>
+                  </div>
+                )}
+
                 {/* Starting Bid Panel */}
                 <div className="my-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/25">
                   <span className="text-xs uppercase font-bold tracking-wider text-amber-700 dark:text-amber-300 block mb-1">
@@ -1247,6 +1183,18 @@ export default function BiddingPageClient() {
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  Artwork Description (Tell the story behind your creation)
+                </label>
+                <Textarea
+                  placeholder="Share the inspiration, medium, technique, or story behind this piece..."
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                  className="text-xs min-h-[80px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
                   Starting Bid Amount (LKR) *
                 </label>
                 <Input
@@ -1275,6 +1223,11 @@ export default function BiddingPageClient() {
                   }}
                   className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-50 dark:file:bg-amber-950/40 file:text-amber-700 dark:file:text-amber-300 hover:file:bg-amber-100 cursor-pointer"
                 />
+              </div>
+
+              {/* Commission Fee Notice */}
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400">
+                Note: A standard platform service fee of 5% to 15% will be applied upon successful sale of this artwork.
               </div>
 
               <div>

@@ -14,6 +14,7 @@ export interface ArtworkItem {
   id: string;
   artist_id: string;
   title: string;
+  description?: string | null;
   image_url: string;
   created_at: string;
   likesCount: number;
@@ -22,6 +23,7 @@ export interface ArtworkItem {
   averageRating: number;
   userRating: number | null;
   selling_mode?: string;
+  pricing_type?: string;
   price?: number | null;
   starting_bid?: number | null;
   art_code?: string;
@@ -100,7 +102,7 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
 
   return (
     <>
-      <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-400/80 dark:hover:border-purple-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-purple-500/10 flex flex-col">
+      <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10 flex flex-col">
         {/* Artwork Image Container */}
         <div
           className="relative aspect-[4/3] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer"
@@ -152,7 +154,7 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
               {/* Title */}
               <h3
                 onClick={() => setIsZoomOpen(true)}
-                className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex-1"
+                className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex-1"
                 title={artwork.title}
               >
                 {artwork.title}
@@ -192,8 +194,8 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
             <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
               {artistName ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 truncate max-w-[170px]">
-                    <User className="w-3 h-3 text-purple-500 shrink-0" />
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[170px]">
+                    <User className="w-3 h-3 text-amber-500 shrink-0" />
                     <span className="truncate">{artistName}</span>
                   </span>
                 </div>
@@ -252,9 +254,9 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
               type="button"
               onClick={() => setIsZoomOpen(true)}
               aria-label="View artwork details and comments"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-300 bg-white/80 dark:bg-slate-800/80 hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-white/80 dark:bg-slate-800/80 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 cursor-pointer"
             >
-              <ZoomIn className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+              <ZoomIn className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
               <span>Details</span>
             </button>
           </div>

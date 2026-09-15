@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { trpc } from '@/utils/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Image as ImageIcon, Trash2, Loader2, UploadCloud, Heart, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -12,6 +13,7 @@ import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-plac
 export default function GalleryView() {
   const [isUploading, setIsUploading] = useState(false);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [sellingMode, setSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('NOT_FOR_SALE');
   const [price, setPrice] = useState('');
   const [startingBid, setStartingBid] = useState('');
@@ -28,6 +30,7 @@ export default function GalleryView() {
         description: `Your piece is now live in the ${targetDestination}.`,
       });
       setTitle('');
+      setDescription('');
       setPrice('');
       setStartingBid('');
       setSellingMode('NOT_FOR_SALE');
@@ -90,6 +93,7 @@ export default function GalleryView() {
 
       await createArtwork.mutateAsync({
         title: title.trim(),
+        description: description.trim() || undefined,
         imageUrl: publicUrl,
         sellingMode,
         price: sellingMode === 'FIXED_PRICE' && price ? Number(price) : null,
@@ -123,14 +127,14 @@ export default function GalleryView() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-              <ImageIcon className="h-6 w-6 text-purple-400" />
+              <ImageIcon className="h-6 w-6 text-amber-400" />
               Artworks / Gallery Manager
             </h2>
             <p className="text-slate-400 text-sm mt-1">
               Upload and manage your portfolio artworks, and monitor client interactions and ratings.
             </p>
           </div>
-          <div className="text-sm font-medium px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300">
+          <div className="text-sm font-medium px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300">
             {safeArtworks.length} {safeArtworks.length === 1 ? 'Artwork' : 'Artworks'} Total
           </div>
         </div>
@@ -149,6 +153,21 @@ export default function GalleryView() {
             className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-11"
           />
 
+          {/* Description Textarea Field */}
+          <div className="space-y-1.5">
+            <label htmlFor="artwork-description" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+              Artwork Description
+            </label>
+            <Textarea
+              id="artwork-description"
+              name="artwork-description"
+              placeholder="Artwork Description (Tell the story behind your creation)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 min-h-[90px] text-sm"
+            />
+          </div>
+
           {/* Selling Options Configuration */}
           <div className="space-y-3 pt-1">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
@@ -160,7 +179,7 @@ export default function GalleryView() {
                 onClick={() => setSellingMode('NOT_FOR_SALE')}
                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   sellingMode === 'NOT_FOR_SALE'
-                    ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/50'
+                    ? 'bg-amber-500/15 border-amber-500/60 text-white shadow-sm ring-1 ring-amber-500/40'
                     : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
                 }`}
               >
@@ -242,34 +261,41 @@ export default function GalleryView() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 mt-2">
-            <Button
-              asChild
-              disabled={isUploading || createArtwork.isPending || !title.trim()}
-              className={`bg-purple-600 hover:bg-purple-700 text-white font-medium h-11 px-5 border-0 ${
-                !title.trim() || isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-              }`}
-            >
-              <label htmlFor="artwork-file">
-                {isUploading || createArtwork.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <UploadCloud className="h-4 w-4 mr-2" />
-                )}
-                {isUploading ? 'Uploading to Storage...' : 'Upload Image File & Publish'}
-                <input
-                  id="artwork-file"
-                  name="artwork-file"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={isUploading || createArtwork.isPending || !title.trim()}
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </Button>
-            <p className="text-xs text-slate-400">
-              Select an image file (PNG, JPG, WEBP) to publish your artwork.
+          <div className="flex flex-col gap-2.5 mt-2">
+            <div className="flex flex-wrap items-center gap-4">
+              <Button
+                asChild
+                disabled={isUploading || createArtwork.isPending || !title.trim()}
+                className={`bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold h-11 px-5 border-0 shadow-lg shadow-amber-500/20 ${
+                  !title.trim() || isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                }`}
+              >
+                <label htmlFor="artwork-file">
+                  {isUploading || createArtwork.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <UploadCloud className="h-4 w-4 mr-2" />
+                  )}
+                  {isUploading ? 'Uploading to Storage...' : 'Upload Image File & Publish'}
+                  <input
+                    id="artwork-file"
+                    name="artwork-file"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploading || createArtwork.isPending || !title.trim()}
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              </Button>
+              <p className="text-xs text-slate-400">
+                Select an image file (PNG, JPG, WEBP) to publish your artwork.
+              </p>
+            </div>
+            {/* 5% to 15% Commission Notice */}
+            <p className="text-xs text-amber-300/90 font-medium flex items-center gap-1.5 pt-1">
+              <span className="font-bold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-amber-300">Notice</span>
+              <span>A standard platform service fee of 5% to 15% will be applied upon successful sale of this artwork.</span>
             </p>
           </div>
         </div>
@@ -285,7 +311,7 @@ export default function GalleryView() {
               return (
                 <div
                   key={artwork.id}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-950/60 border border-slate-800 transition-all duration-300 hover:border-purple-500/40 hover:shadow-xl hover:shadow-purple-500/10 flex flex-col"
+                  className="group relative rounded-2xl overflow-hidden bg-slate-950/60 border border-slate-800 transition-all duration-300 hover:border-amber-500/40 hover:shadow-xl hover:shadow-amber-500/10 flex flex-col"
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

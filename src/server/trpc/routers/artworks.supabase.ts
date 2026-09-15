@@ -57,12 +57,13 @@ export const artworksRouter = router({
           id: art.id,
           artist_id: art.artist_id,
           title: art.title,
+          description: art.description || null,
           image_url: art.image_url,
           created_at: art.created_at,
           likesCount: artLikes.length,
           ratingsCount: artRatings.length,
           averageRating: avgRating,
-          selling_mode: art.selling_mode || 'NOT_FOR_SALE',
+          selling_mode: art.selling_mode || (art as any).pricing_type || 'NOT_FOR_SALE',
           price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
           starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
           art_code: artCode,
@@ -78,6 +79,7 @@ export const artworksRouter = router({
     .input(
       z.object({
         title: z.string().min(1, 'Title is required'),
+        description: z.string().nullable().optional(),
         imageUrl: z.string().url('A valid image URL is required'),
         sellingMode: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).default('NOT_FOR_SALE').optional(),
         price: z.number().nullable().optional(),
@@ -101,6 +103,7 @@ export const artworksRouter = router({
       const sellingMode = input.sellingMode || 'NOT_FOR_SALE';
       const price = sellingMode === 'FIXED_PRICE' ? (input.price ?? null) : null;
       const startingBid = sellingMode === 'BIDDING' ? (input.startingBid ?? null) : null;
+      const description = input.description?.trim() || null;
 
       // Generate sequential Artwork ID (e.g., #ART-104)
       let artCode = '#ART-101';
@@ -119,15 +122,37 @@ export const artworksRouter = router({
           id,
           artist_id: artistId,
           title: input.title.trim(),
+          description,
           image_url: input.imageUrl,
           created_at: new Date().toISOString(),
           selling_mode: sellingMode,
+          pricing_type: sellingMode,
           price,
           starting_bid: startingBid,
           art_code: artCode,
         })
         .select()
         .single();
+
+      if (res.error) {
+        console.warn('createArtwork insert with pricing_type error, trying without pricing_type:', res.error);
+        res = await supabase
+          .from('artworks')
+          .insert({
+            id,
+            artist_id: artistId,
+            title: input.title.trim(),
+            description,
+            image_url: input.imageUrl,
+            created_at: new Date().toISOString(),
+            selling_mode: sellingMode,
+            price,
+            starting_bid: startingBid,
+            art_code: artCode,
+          })
+          .select()
+          .single();
+      }
 
       if (res.error) {
         console.warn('createArtwork full insert error, trying basic insert fallback:', res.error);
@@ -260,6 +285,7 @@ export const artworksRouter = router({
             id: art.id,
             artist_id: art.artist_id,
             title: art.title,
+            description: art.description || null,
             image_url: art.image_url,
             created_at: art.created_at,
             likesCount: artLikes.length,
@@ -267,7 +293,7 @@ export const artworksRouter = router({
             ratingsCount: artRatings.length,
             averageRating: avgRating,
             userRating,
-            selling_mode: art.selling_mode || 'NOT_FOR_SALE',
+            selling_mode: art.selling_mode || (art as any).pricing_type || 'NOT_FOR_SALE',
             price: art.price !== undefined && art.price !== null ? Number(art.price) : null,
             starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
             art_code: artCode,
@@ -383,7 +409,7 @@ export const artworksRouter = router({
             artCode = `#ART-${hash}`;
           }
 
-          const sellingMode = art.selling_mode || 'NOT_FOR_SALE';
+          const sellingMode = art.selling_mode || (art as any).pricing_type || 'NOT_FOR_SALE';
           const price = art.price !== undefined && art.price !== null ? Number(art.price) : null;
           const startingBid = art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null;
 
@@ -391,6 +417,7 @@ export const artworksRouter = router({
             id: art.id,
             artist_id: art.artist_id,
             title: art.title || 'Untitled Artwork',
+            description: art.description || null,
             image_url: art.image_url,
             created_at: art.created_at,
             likesCount,
@@ -400,6 +427,7 @@ export const artworksRouter = router({
             isLiked,
             popularityScore,
             selling_mode: sellingMode,
+            pricing_type: sellingMode,
             price,
             starting_bid: startingBid,
             art_code: artCode,
@@ -419,9 +447,9 @@ export const artworksRouter = router({
 
         // 3. Mode filtering (Gallery vs Bidding)
         if (input?.mode === 'GALLERY') {
-          list = list.filter((item: any) => item.selling_mode !== 'BIDDING');
+          list = list.filter((item: any) => item.selling_mode !== 'BIDDING' && (item as any).pricing_type !== 'BIDDING');
         } else if (input?.mode === 'BIDDING') {
-          list = list.filter((item: any) => item.selling_mode === 'BIDDING');
+          list = list.filter((item: any) => item.selling_mode === 'BIDDING' || (item as any).pricing_type === 'BIDDING');
         }
 
         // 4. Search filtering
