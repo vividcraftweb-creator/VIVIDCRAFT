@@ -185,7 +185,7 @@ export function extractArtistName(artwork: any, artistNameProp?: string): string
     }
   }
 
-  return 'Unknown Creator';
+  return artwork?.profiles?.artist_name || artwork?.profiles?.full_name || 'Artist';
 }
 
 /**
@@ -210,7 +210,7 @@ export async function getArtworks(options?: {
   try {
     const res = await supabase
       .from('artworks')
-      .select('*, profiles:user_id(*)')
+      .select('*, profiles:user_id(full_name, artist_name, avatar_url, bio)')
       .order('created_at', { ascending: false });
 
     if (!res.error && res.data && res.data.length > 0) {
@@ -223,7 +223,7 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles:artist_id(*)')
+        .select('*, profiles:artist_id(full_name, artist_name, avatar_url, bio)')
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {

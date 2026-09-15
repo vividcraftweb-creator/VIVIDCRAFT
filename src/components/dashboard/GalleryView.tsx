@@ -76,11 +76,13 @@ export default function GalleryView() {
     }
 
     setIsUploading(true);
+    let uploadedFilePath: string | null = null;
     try {
       const supabase = createClient();
       const fileExt = file.name.split('.').pop() || 'png';
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${fileName}`;
+      uploadedFilePath = filePath;
 
       const { error: uploadError } = await supabase.storage
         .from('artworks')
@@ -113,7 +115,16 @@ export default function GalleryView() {
       });
 
     } catch (error: any) {
-      console.error('Artwork upload failure:', error);
+      console.error("Supabase Insert Error:", error);
+      if (uploadedFilePath) {
+        try {
+          const supabase = createClient();
+          await supabase.storage.from('artworks').remove([uploadedFilePath]);
+          console.log('Cleaned up orphan storage file after upload error:', uploadedFilePath);
+        } catch (cleanupErr) {
+          console.error('Storage cleanup failure:', cleanupErr);
+        }
+      }
       toast.error(`Upload failed: ${error.message}`);
     } finally {
       setIsUploading(false);

@@ -567,6 +567,7 @@ export default function GalleryPageClient() {
     }
 
     setIsUploading(true);
+    let uploadedFileName: string | null = null;
     try {
       const supabase = createClient();
       let finalImageUrl = uploadImageUrl.trim();
@@ -574,6 +575,7 @@ export default function GalleryPageClient() {
       if (uploadFile) {
         const fileExt = uploadFile.name.split('.').pop() || 'png';
         const fileName = `admin_${crypto.randomUUID()}.${fileExt}`;
+        uploadedFileName = fileName;
         const { error: uploadErr } = await supabase.storage
           .from('artworks')
           .upload(fileName, uploadFile, { cacheControl: '3600', upsert: false });
@@ -681,19 +683,23 @@ export default function GalleryPageClient() {
 
       if (insertError) {
         console.warn('Fallback to basic insert:', insertError);
-        try {
-          await supabase.from('artworks').insert({
-            id: newId,
-            artist_id: artistId,
-            user_id: artistId,
-            title: uploadTitle.trim(),
-            description: uploadDescription.trim() || null,
-            image_url: finalImageUrl,
-            created_at: now,
-            pricing_type: uploadSellingMode,
-            selling_mode: uploadSellingMode,
-          });
-        } catch {}
+        const retryBasic = await supabase.from('artworks').insert({
+          id: newId,
+          artist_id: artistId,
+          user_id: artistId,
+          title: uploadTitle.trim(),
+          description: uploadDescription.trim() || null,
+          image_url: finalImageUrl,
+          created_at: now,
+        });
+
+        if (retryBasic.error) {
+          console.error("Supabase Insert Error:", retryBasic.error);
+          if (uploadedFileName) {
+            await supabase.storage.from('artworks').remove([uploadedFileName]);
+          }
+          throw retryBasic.error;
+        }
       }
 
       const newArtwork: RankedArtwork = {
@@ -747,7 +753,13 @@ export default function GalleryPageClient() {
 
       utils.artworks.getAllArtworks.invalidate();
     } catch (err: any) {
-      console.error('Artwork upload error:', err);
+      console.error("Supabase Insert Error:", err);
+      if (uploadedFileName) {
+        try {
+          const supabase = createClient();
+          await supabase.storage.from('artworks').remove([uploadedFileName]);
+        } catch {}
+      }
       toast.error('Upload failed: ' + (err.message || 'Unknown error'));
     } finally {
       setIsUploading(false);

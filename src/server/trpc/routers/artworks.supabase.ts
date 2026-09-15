@@ -159,7 +159,7 @@ export const artworksRouter = router({
         .single();
 
       if (res.error) {
-        console.warn('createArtwork full insert error, trying without category/medium/tags:', res.error);
+        console.error("Supabase Insert Error:", res.error);
         res = await supabase
           .from('artworks')
           .insert({
@@ -181,17 +181,19 @@ export const artworksRouter = router({
       }
 
       if (res.error) {
-        console.warn('createArtwork dual insert error, trying with pricing_type only:', res.error);
+        console.error("Supabase Insert Error (Fallback 1):", res.error);
         res = await supabase
           .from('artworks')
           .insert({
             id,
             artist_id: artistId,
+            user_id: artistId,
             title: input.title.trim(),
             description,
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
-            pricing_type: pricingMode,
+            selling_type: pricingMode,
+            selling_mode: pricingMode,
             price,
             starting_bid: startingBid,
           })
@@ -200,12 +202,13 @@ export const artworksRouter = router({
       }
 
       if (res.error) {
-        console.warn('createArtwork basic fallback:', res.error);
+        console.error("Supabase Insert Error (Fallback 2):", res.error);
         res = await supabase
           .from('artworks')
           .insert({
             id,
             artist_id: artistId,
+            user_id: artistId,
             title: input.title.trim(),
             image_url: input.imageUrl,
             created_at: new Date().toISOString(),
@@ -215,17 +218,17 @@ export const artworksRouter = router({
       }
 
       if (res.error) {
-        console.error('createArtwork error:', res.error);
+        console.error("Supabase Insert Error (All Fallbacks Failed):", res.error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: res.error.message || 'Failed to create artwork',
+          message: `Failed to insert artwork into database: ${res.error.message}`,
         });
       }
 
       return {
         ...res.data,
-        selling_mode: res.data?.selling_mode || res.data?.pricing_type || sellingMode,
-        pricing_type: res.data?.pricing_type || res.data?.selling_mode || sellingMode,
+        selling_mode: res.data?.selling_mode || res.data?.pricing_type || pricingMode,
+        pricing_type: res.data?.pricing_type || res.data?.selling_mode || pricingMode,
         price: res.data?.price ?? price,
         starting_bid: res.data?.starting_bid ?? startingBid,
         art_code: res.data?.art_code || artCode,

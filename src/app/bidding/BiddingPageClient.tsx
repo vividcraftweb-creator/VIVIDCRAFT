@@ -438,15 +438,16 @@ export default function BiddingPageClient() {
     }
 
     setIsUploading(true);
+    let uploadedFilePath: string | null = null;
     try {
       const supabase = createClient();
       let imageUrl = uploadImageUrl.trim();
-
       // If file uploaded, upload to Supabase storage
       if (uploadFile) {
         const fileExt = uploadFile.name.split('.').pop();
         const fileName = `bidding-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `artworks/${fileName}`;
+        uploadedFilePath = filePath;
 
         const { error: uploadErr } = await supabase.storage
           .from('portfolio')
@@ -530,7 +531,7 @@ export default function BiddingPageClient() {
 
       if (insertErr) {
         console.warn('artworks insert fallback to Artwork table:', insertErr);
-        await supabase.from('Artwork').insert({
+        const retryArtwork = await supabase.from('Artwork').insert({
           artistId: effectiveArtistId,
           title: uploadTitle.trim(),
           description: uploadDescription.trim() || null,
@@ -540,6 +541,24 @@ export default function BiddingPageClient() {
           starting_bid: startingBidNum,
           art_code: randomCode,
         });
+
+        if (retryArtwork.error) {
+          const retryBase = await supabase.from('artworks').insert({
+            artist_id: effectiveArtistId,
+            user_id: effectiveArtistId,
+            title: uploadTitle.trim(),
+            description: uploadDescription.trim() || null,
+            image_url: imageUrl,
+          });
+
+          if (retryBase.error) {
+            console.error("Supabase Insert Error:", retryBase.error);
+            if (uploadedFilePath) {
+              await supabase.storage.from('portfolio').remove([uploadedFilePath]);
+            }
+            throw retryBase.error;
+          }
+        }
       }
 
       toast.success('Artwork listed for live bidding!', {
@@ -559,7 +578,13 @@ export default function BiddingPageClient() {
       utils.artworks.getAllArtworks.invalidate();
       refetch();
     } catch (err: any) {
-      console.error('Failed to upload bidding artwork:', err);
+      console.error("Supabase Insert Error:", err);
+      if (uploadedFilePath) {
+        try {
+          const supabase = createClient();
+          await supabase.storage.from('portfolio').remove([uploadedFilePath]);
+        } catch {}
+      }
       toast.error('Upload failed: ' + (err.message || 'Unknown error'));
     } finally {
       setIsUploading(false);

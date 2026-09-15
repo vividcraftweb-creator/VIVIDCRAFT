@@ -268,8 +268,12 @@ export function ArtworkModal({
             {/* Artist Link, Ref ID: #ART-XXX, and Date */}
             <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap pt-0.5">
               {(() => {
-                const rawName = artwork.profiles?.artist_name || artwork.profiles?.full_name || artistName || artwork.artist?.name;
-                const resolvedArtist = (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
+                const resolvedArtist =
+                  artwork.profiles?.artist_name ||
+                  artwork.profiles?.full_name ||
+                  artistName ||
+                  artwork.artist?.name ||
+                  'Artist';
                 return (
                   <span>
                     By{' '}
@@ -335,7 +339,7 @@ export function ArtworkModal({
                 artistProfile?.full_name ||
                 artistName ||
                 artwork.artist?.name ||
-                'Verified Artist';
+                'Artist';
               const artistBio =
                 artistProfile?.bio ||
                 artistProfile?.headline ||
