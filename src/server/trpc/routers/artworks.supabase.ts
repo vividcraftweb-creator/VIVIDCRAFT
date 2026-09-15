@@ -402,7 +402,7 @@ export const artworksRouter = router({
           supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artworkIds),
           supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artworkIds),
           artistIds.length > 0
-            ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, title, location, bio, phone, whatsapp_number, email').in('id', artistIds)
+            ? supabase.from('profiles').select('id, first_name, last_name, full_name, artist_name, avatar_url, role, title, location, bio, phone, whatsapp_number, email').in('id', artistIds)
             : Promise.resolve({ data: [] }),
         ]);
 
@@ -435,10 +435,11 @@ export const artworksRouter = router({
 
           // Real Artist Profile Details
           const artistProfile = profilesMap.get(art.artist_id);
+          const artistNameField = (artistProfile?.artist_name || '').trim();
           const profileFullName = (artistProfile?.full_name || '').trim();
           const combinedFirstLast = [artistProfile?.first_name, artistProfile?.last_name].filter(Boolean).join(' ').trim();
           const emailPrefix = artistProfile?.email ? artistProfile.email.split('@')[0] : '';
-          const artistName = profileFullName || combinedFirstLast || emailPrefix || 'Artist';
+          const artistName = artistNameField || profileFullName || combinedFirstLast || emailPrefix || 'Verified Artist';
 
           // Formatted Artwork ID (e.g. #ART-104)
           const rawArtCode = art.art_code;
@@ -450,7 +451,7 @@ export const artworksRouter = router({
             artCode = `#ART-${hash}`;
           }
 
-          const sellingMode = art.selling_mode || (art as any).pricing_type || 'NOT_FOR_SALE';
+          const sellingMode = (art as any).pricing_type || art.selling_mode || 'NOT_FOR_SALE';
           const price = art.price !== undefined && art.price !== null ? Number(art.price) : null;
           const startingBid = art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null;
 

@@ -23,6 +23,9 @@ import {
   UploadCloud,
   AlertTriangle,
   FileText,
+  Tag,
+  Gavel,
+  Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +39,7 @@ import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-plac
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
 type SortOption = 'popular' | 'highest_rated' | 'most_liked' | 'newest';
+type CategoryFilter = 'ALL' | 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
 
 interface ArtworkArtist {
   id: string;
@@ -74,6 +78,7 @@ export default function GalleryPageClient() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [activeSort, setActiveSort] = useState<SortOption>('popular');
+  const [activeFilter, setActiveFilter] = useState<CategoryFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArtwork, setSelectedArtwork] = useState<RankedArtwork | null>(null);
   const [hoveredRating, setHoveredRating] = useState<{ [key: string]: number }>({});
@@ -229,7 +234,7 @@ export default function GalleryPageClient() {
               supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artIds),
               supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artIds),
               artistIds.length > 0
-                ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, title, bio, location, phone, whatsapp_number, email').in('id', artistIds)
+                ? supabase.from('profiles').select('id, first_name, last_name, full_name, artist_name, avatar_url, role, title, bio, location, phone, whatsapp_number, email').in('id', artistIds)
                 : Promise.resolve({ data: [] }),
             ]);
 
@@ -248,10 +253,12 @@ export default function GalleryPageClient() {
               const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
               const avg = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
               const prof = pMap.get(art.artist_id);
+              const artistNameField = (prof?.artist_name || '').trim();
               const profileFullName = (prof?.full_name || '').trim();
               const combinedFirstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(' ').trim();
               const emailPrefix = prof?.email ? prof.email.split('@')[0] : '';
-              const artistName = profileFullName || combinedFirstLast || emailPrefix || 'Artist';
+              const artistName = artistNameField || profileFullName || combinedFirstLast || emailPrefix || 'Verified Artist';
+
 
               const rawArtCode = art.art_code;
               let artCode = '';
@@ -307,10 +314,16 @@ export default function GalleryPageClient() {
 
   // Client-side filtering and sorting for instant responsiveness
   const displayedArtworks = useMemo(() => {
-    // Exclude Bidding items from main Gallery
-    let list = localArtworks.filter(
-      (art) => art.selling_mode !== 'BIDDING' && art.pricing_type !== 'BIDDING'
-    );
+    // When viewing ALL or specific category, include Bidding items only if explicitly requested
+    let list = localArtworks.filter((art) => {
+      const pricingType = art.pricing_type || art.selling_mode || 'NOT_FOR_SALE';
+      if (activeFilter === 'ALL') {
+        // Show everything except BIDDING artworks on main gallery page
+        return pricingType !== 'BIDDING';
+      }
+      // Specific category filter — show BIDDING artworks too when explicitly filtered
+      return pricingType === activeFilter;
+    });
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -349,7 +362,8 @@ export default function GalleryPageClient() {
     }
 
     return list;
-  }, [localArtworks, searchQuery, activeSort]);
+  }, [localArtworks, searchQuery, activeSort, activeFilter]);
+
 
   // Handle Interactive Like
   const handleLike = useCallback(
@@ -826,61 +840,119 @@ export default function GalleryPageClient() {
         </div>
 
         {/* Quick Filter Tabs / Sort Controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200 dark:border-slate-800/80">
-          <div className="flex items-center gap-2 p-1 bg-slate-200/70 dark:bg-slate-900/90 border border-slate-300/70 dark:border-slate-800 rounded-2xl overflow-x-auto max-w-full">
-            <button
-              onClick={() => setActiveSort('popular')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
-                activeSort === 'popular'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Flame className="w-4 h-4 text-orange-600 dark:text-orange-500" />
-              <span>Most Popular</span>
-            </button>
+        <div className="flex flex-col gap-3 mb-8 pb-4 border-b border-slate-200 dark:border-slate-800/80">
+          {/* Row 1 — Sort Tabs */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 p-1 bg-slate-200/70 dark:bg-slate-900/90 border border-slate-300/70 dark:border-slate-800 rounded-2xl overflow-x-auto max-w-full">
+              <button
+                onClick={() => setActiveSort('popular')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+                  activeSort === 'popular'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Flame className="w-4 h-4 text-orange-600 dark:text-orange-500" />
+                <span>Most Popular</span>
+              </button>
 
-            <button
-              onClick={() => setActiveSort('highest_rated')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
-                activeSort === 'highest_rated'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-500 fill-current" />
-              <span>Highest Rated</span>
-            </button>
+              <button
+                onClick={() => setActiveSort('highest_rated')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+                  activeSort === 'highest_rated'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-500 fill-current" />
+                <span>Highest Rated</span>
+              </button>
 
-            <button
-              onClick={() => setActiveSort('most_liked')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
-                activeSort === 'most_liked'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Heart className="w-4 h-4 text-rose-500 dark:text-rose-400 fill-rose-500 dark:fill-rose-400" />
-              <span>Most Liked</span>
-            </button>
+              <button
+                onClick={() => setActiveSort('most_liked')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+                  activeSort === 'most_liked'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Heart className="w-4 h-4 text-rose-500 dark:text-rose-400 fill-rose-500 dark:fill-rose-400" />
+                <span>Most Liked</span>
+              </button>
 
-            <button
-              onClick={() => setActiveSort('newest')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
-                activeSort === 'newest'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Clock className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-              <span>Newest</span>
-            </button>
+              <button
+                onClick={() => setActiveSort('newest')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+                  activeSort === 'newest'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Clock className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                <span>Newest</span>
+              </button>
+            </div>
+
+            <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+              Showing <span className="text-slate-900 dark:text-white font-semibold">{displayedArtworks.length}</span> artworks
+            </div>
           </div>
 
-          <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Showing <span className="text-slate-900 dark:text-white font-semibold">{displayedArtworks.length}</span> artworks
+          {/* Row 2 — Category Filter Tabs */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 shrink-0">
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filter:</span>
+            </div>
+
+            <button
+              onClick={() => setActiveFilter('ALL')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
+                activeFilter === 'ALL'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:border-slate-500 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <span>All Artworks</span>
+            </button>
+
+            <button
+              onClick={() => setActiveFilter('FIXED_PRICE')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
+                activeFilter === 'FIXED_PRICE'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+                  : 'text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:border-emerald-400 dark:hover:border-emerald-600'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>For Sale</span>
+            </button>
+
+            <button
+              onClick={() => setActiveFilter('BIDDING')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
+                activeFilter === 'BIDDING'
+                  ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20'
+                  : 'text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50 hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:border-amber-400 dark:hover:border-amber-500'
+              }`}
+            >
+              <Gavel className="w-3.5 h-3.5" />
+              <span>Open Bidding</span>
+            </button>
+
+            <button
+              onClick={() => setActiveFilter('NOT_FOR_SALE')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
+                activeFilter === 'NOT_FOR_SALE'
+                  ? 'bg-slate-500 text-white border-slate-500 shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
+              }`}
+            >
+              <span>Not For Sale</span>
+            </button>
           </div>
         </div>
+
 
         {/* Gallery Grid */}
         {isLoading && localArtworks.length === 0 ? (
@@ -910,6 +982,12 @@ export default function GalleryPageClient() {
             <p className="text-sm text-slate-600 dark:text-slate-400">
               {searchQuery
                 ? `No artworks matched your search query "${searchQuery}". Try a different keyword.`
+                : activeFilter === 'FIXED_PRICE'
+                ? 'No artworks are currently listed for sale. Check back later or explore all artworks.'
+                : activeFilter === 'BIDDING'
+                ? 'No artworks are currently open for bidding. Explore the full gallery or check the Bidding page.'
+                : activeFilter === 'NOT_FOR_SALE'
+                ? 'No portfolio-only artworks found in this view.'
                 : 'No artworks have been uploaded yet. Artists or admins can upload pieces to start the gallery.'}
             </p>
             {isAdmin && (
