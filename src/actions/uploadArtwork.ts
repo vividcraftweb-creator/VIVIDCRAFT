@@ -38,8 +38,7 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       title: formData.get('title'),
       description: formData.get('description'),
       category: formData.get('category'),
-      pricing_type: formData.get('pricing_type'),
-      pricingType: formData.get('pricingType'),
+      pricing_type: formData.get('pricing_type') || formData.get('pricingType') || formData.get('selling_mode') || formData.get('selling_type'),
       price: formData.get('price') || formData.get('priceAmount') || formData.get('price_amount') || formData.get('amount'),
       starting_bid: formData.get('starting_bid') || formData.get('startingBid') || formData.get('bid_amount'),
     };
@@ -47,9 +46,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     description = String(payload.description || '').trim();
     category = String(payload.category || '').trim();
 
-    pricingType = String(payload.pricing_type || payload.pricingType || 'FIXED_PRICE').toUpperCase().trim();
-    priceVal = payload.price ? Number(payload.price) : null;
-    startingBidVal = payload.starting_bid ? Number(payload.starting_bid) : null;
+    pricingType = String(payload.pricing_type || 'FIXED_PRICE').toUpperCase().trim();
+    priceVal = payload.price ? parseFloat(String(payload.price)) : 0;
+    startingBidVal = payload.starting_bid ? parseFloat(String(payload.starting_bid)) : null;
 
     const formFile = formData.get('file');
     if (formFile instanceof File && formFile.size > 0) {
@@ -63,9 +62,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     description = String(payload.description || '').trim();
     category = String(payload.category || '').trim();
 
-    pricingType = String(payload.pricing_type || payload.pricingType || 'FIXED_PRICE').toUpperCase().trim();
-    priceVal = payload.price ? Number(payload.price) : null;
-    startingBidVal = payload.starting_bid ? Number(payload.starting_bid) : null;
+    pricingType = String(payload.pricing_type || payload.pricingType || payload.selling_mode || 'FIXED_PRICE').toUpperCase().trim();
+    priceVal = payload.price ? parseFloat(String(payload.price)) : 0;
+    startingBidVal = (payload.starting_bid ?? payload.startingBid) ? parseFloat(String(payload.starting_bid ?? payload.startingBid)) : null;
 
     file = formData.file || null;
     imageUrl = formData.imageUrl || (formData as any).image_url || null;
@@ -106,97 +105,104 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
   const id = crypto.randomUUID();
   const randomCode = `#ART-${Math.floor(100 + Math.random() * 900)}`;
 
-  // Task 2 Rebuilt upload action payload strictly mapping pricing_type, price, starting_bid, user_id, and artist_id:
+  // Strict primary payload per user instruction
   const insertPayload = {
-    id,
     title,
     description: description || '',
     image_url: uploadedImageUrl,
-    pricing_type: pricingType,
-    selling_mode: pricingType,
+    pricing_type: pricingType || 'FIXED_PRICE',
     price: priceVal,
-    starting_bid: startingBidVal,
     user_id: currentUserId,
-    artist_id: currentUserId,
-    category: category || null,
-    art_code: randomCode,
-    created_at: new Date().toISOString(),
   };
 
-  // 1. Primary insert with strict user_id + artist_id payload
-  let { data: inserted, error: insertError } = await supabase
-    .from('artworks')
-    .insert(insertPayload)
-    .select()
-    .single();
-
-  if (insertError) {
-    console.error('Supabase Insert Error (Primary):', insertError);
-
-    // Fallback A: With user_id strictly as specified
-    const fallbackUser = {
+  // Graceful fallback candidates if 'price' or other columns fail in schema cache:
+  const candidatePayloads: any[] = [
+    // 1. Strict primary mapping with id and art_code
+    {
       id,
       title,
       description: description || '',
       image_url: uploadedImageUrl,
-      pricing_type: pricingType,
-      selling_mode: pricingType,
+      pricing_type: pricingType || 'FIXED_PRICE',
+      selling_mode: pricingType || 'FIXED_PRICE',
       price: priceVal,
       starting_bid: startingBidVal,
       user_id: currentUserId,
+      artist_id: currentUserId,
       category: category || null,
       art_code: randomCode,
       created_at: new Date().toISOString(),
-    };
-    const resA = await supabase.from('artworks').insert(fallbackUser).select().single();
-    if (!resA.error) {
-      inserted = resA.data;
+    },
+    // 2. Strict primary mapping requested by user
+    insertPayload,
+    // 3. User request mapping + artist_id
+    {
+      ...insertPayload,
+      artist_id: currentUserId,
+    },
+    // 4. Fallback if 'price' column schema cache error: use 'amount'
+    {
+      id,
+      title,
+      description: description || '',
+      image_url: uploadedImageUrl,
+      pricing_type: pricingType || 'FIXED_PRICE',
+      selling_mode: pricingType || 'FIXED_PRICE',
+      amount: priceVal,
+      starting_bid: startingBidVal,
+      user_id: currentUserId,
+      artist_id: currentUserId,
+      category: category || null,
+      art_code: randomCode,
+      created_at: new Date().toISOString(),
+    },
+    // 5. Fallback if 'price' fails: use 'price_amount'
+    {
+      id,
+      title,
+      description: description || '',
+      image_url: uploadedImageUrl,
+      pricing_type: pricingType || 'FIXED_PRICE',
+      price_amount: priceVal,
+      user_id: currentUserId,
+      artist_id: currentUserId,
+      created_at: new Date().toISOString(),
+    },
+    // 6. Fallback if 'user_id' fails in schema cache: use 'artist_id' with 'price'
+    {
+      title,
+      description: description || '',
+      image_url: uploadedImageUrl,
+      pricing_type: pricingType || 'FIXED_PRICE',
+      price: priceVal,
+      artist_id: currentUserId,
+    },
+    // 7. Fallback if both 'price' and 'user_id' fail: use 'artist_id' + 'amount'
+    {
+      title,
+      description: description || '',
+      image_url: uploadedImageUrl,
+      pricing_type: pricingType || 'FIXED_PRICE',
+      amount: priceVal,
+      artist_id: currentUserId,
+    },
+  ];
+
+  let inserted = null;
+  let insertError = null;
+
+  for (const candidate of candidatePayloads) {
+    const res = await supabase.from('artworks').insert(candidate).select().single();
+    if (!res.error) {
+      inserted = res.data;
       insertError = null;
+      break;
     } else {
-      console.warn('Supabase Retry (user_id):', resA.error);
-
-      // Fallback B: With artist_id (if DB schema references artist_id)
-      const fallbackArtist = {
-        id,
-        title,
-        description: description || '',
-        image_url: uploadedImageUrl,
-        pricing_type: pricingType,
-        selling_mode: pricingType,
-        price: priceVal,
-        starting_bid: startingBidVal,
-        artist_id: currentUserId,
-        category: category || null,
-        art_code: randomCode,
-        created_at: new Date().toISOString(),
-      };
-      const resB = await supabase.from('artworks').insert(fallbackArtist).select().single();
-      if (!resB.error) {
-        inserted = resB.data;
-        insertError = null;
-      } else {
-        console.warn('Supabase Retry (artist_id):', resB.error);
-
-        // Fallback C: Core columns fallback matching minimum base schema with pricing retained
-        const fallbackCore = {
-          id,
-          artist_id: currentUserId,
-          title,
-          image_url: uploadedImageUrl,
-          pricing_type: pricingType,
-          selling_mode: pricingType,
-          price: priceVal,
-          starting_bid: startingBidVal,
-          created_at: new Date().toISOString(),
-        };
-        const resC = await supabase.from('artworks').insert(fallbackCore).select().single();
-        if (!resC.error) {
-          inserted = resC.data;
-          insertError = null;
-        } else {
-          insertError = resC.error;
-        }
-      }
+      insertError = res.error;
+      console.warn('Supabase insert candidate failed, trying next schema cache fallback:', {
+        keys: Object.keys(candidate),
+        error: res.error.message,
+      });
     }
   }
 

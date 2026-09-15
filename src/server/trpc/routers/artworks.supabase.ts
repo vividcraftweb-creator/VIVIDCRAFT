@@ -129,8 +129,8 @@ export const artworksRouter = router({
       // Step 2: Read incoming values strictly per Task 2
       const payload = input as any;
       const pricingType = String(payload.pricing_type || payload.pricingType || payload.sellingMode || payload.selling_mode || 'FIXED_PRICE').toUpperCase().trim();
-      const priceVal = payload.price ? Number(payload.price) : null;
-      const startingBidVal = (payload.starting_bid ?? payload.startingBid) ? Number(payload.starting_bid ?? payload.startingBid) : null;
+      const priceVal = payload.price ? parseFloat(String(payload.price)) : 0;
+      const startingBidVal = (payload.starting_bid ?? payload.startingBid) ? parseFloat(String(payload.starting_bid ?? payload.startingBid)) : null;
 
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
@@ -152,90 +152,98 @@ export const artworksRouter = router({
         artCode = `#ART-${hash}`;
       }
 
-      // Explicit insert query payload strictly including: pricing_type, price, starting_bid, user_id, artist_id, description, category, medium, tags
-      const insertPayload = {
-        id,
-        artist_id: artistId,
-        user_id: artistId,
-        title: input.title.trim(),
-        description,
-        category,
-        medium,
-        tags,
-        pricing_type: pricingType,
-        selling_mode: pricingType,
-        price: priceVal,
-        starting_bid: startingBidVal,
-        image_url: input.imageUrl,
-        created_at: new Date().toISOString(),
-        art_code: artCode,
-      };
+      // Explicit insert query candidates with graceful fallback column names if 'price' or 'user_id' fails in schema cache
+      const candidateInserts: any[] = [
+        // Candidate 1: Full payload with price, user_id, and artist_id
+        {
+          id,
+          artist_id: artistId,
+          user_id: artistId,
+          title: input.title.trim(),
+          description,
+          category,
+          medium,
+          tags,
+          pricing_type: pricingType,
+          selling_mode: pricingType,
+          price: priceVal,
+          starting_bid: startingBidVal,
+          image_url: input.imageUrl,
+          created_at: new Date().toISOString(),
+          art_code: artCode,
+        },
+        // Candidate 2: Strict user payload
+        {
+          title: input.title.trim(),
+          description: description || '',
+          image_url: input.imageUrl,
+          pricing_type: pricingType,
+          price: priceVal,
+          user_id: artistId,
+        },
+        // Candidate 3: Strict user payload with artist_id
+        {
+          title: input.title.trim(),
+          description: description || '',
+          image_url: input.imageUrl,
+          pricing_type: pricingType,
+          price: priceVal,
+          artist_id: artistId,
+        },
+        // Candidate 4: Fallback if 'price' column schema cache fails: use 'amount'
+        {
+          id,
+          artist_id: artistId,
+          user_id: artistId,
+          title: input.title.trim(),
+          description,
+          category,
+          medium,
+          tags,
+          pricing_type: pricingType,
+          selling_mode: pricingType,
+          amount: priceVal,
+          starting_bid: startingBidVal,
+          image_url: input.imageUrl,
+          created_at: new Date().toISOString(),
+          art_code: artCode,
+        },
+        // Candidate 5: Fallback if 'price' fails: use 'price_amount'
+        {
+          id,
+          artist_id: artistId,
+          user_id: artistId,
+          title: input.title.trim(),
+          description,
+          category,
+          medium,
+          tags,
+          pricing_type: pricingType,
+          price_amount: priceVal,
+          image_url: input.imageUrl,
+          created_at: new Date().toISOString(),
+        },
+        // Candidate 6: Fallback if 'price' fails and artist_id only
+        {
+          title: input.title.trim(),
+          description: description || '',
+          image_url: input.imageUrl,
+          pricing_type: pricingType,
+          amount: priceVal,
+          artist_id: artistId,
+        },
+      ];
 
-      let res = await supabase
-        .from('artworks')
-        .insert(insertPayload)
-        .select()
-        .single();
-
-      if (res.error) {
-        console.error("Supabase Insert Error:", res.error);
-        res = await supabase
-          .from('artworks')
-          .insert({
-            id,
-            artist_id: artistId,
-            title: input.title.trim(),
-            description,
-            image_url: input.imageUrl,
-            created_at: new Date().toISOString(),
-            selling_mode: pricingType,
-            pricing_type: pricingType,
-            price: priceVal,
-            starting_bid: startingBidVal,
-            art_code: artCode,
-          })
-          .select()
-          .single();
-      }
-
-      if (res.error) {
-        console.error("Supabase Insert Error (Fallback 1):", res.error);
-        res = await supabase
-          .from('artworks')
-          .insert({
-            id,
-            artist_id: artistId,
-            title: input.title.trim(),
-            description,
-            image_url: input.imageUrl,
-            created_at: new Date().toISOString(),
-            selling_type: pricingType,
-            selling_mode: pricingType,
-            pricing_type: pricingType,
-            price: priceVal,
-            starting_bid: startingBidVal,
-          })
-          .select()
-          .single();
-      }
-
-      if (res.error) {
-        console.error("Supabase Insert Error (Fallback 2):", res.error);
-        res = await supabase
-          .from('artworks')
-          .insert({
-            id,
-            artist_id: artistId,
-            title: input.title.trim(),
-            image_url: input.imageUrl,
-            pricing_type: pricingType,
-            selling_mode: pricingType,
-            price: priceVal,
-            starting_bid: startingBidVal,
-            created_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
+      let res: any = null;
+      for (const candidate of candidateInserts) {
+        res = await supabase.from('artworks').insert(candidate).select().single();
+        if (!res.error) {
+          break;
+        }
+        console.warn('tRPC createArtwork candidate insert failed, trying next schema cache fallback:', {
+          keys: Object.keys(candidate),
+          error: res.error.message,
+        });
       }
 
       if (res.error) {

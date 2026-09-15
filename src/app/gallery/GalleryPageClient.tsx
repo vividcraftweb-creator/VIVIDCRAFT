@@ -706,11 +706,26 @@ export default function GalleryPageClient() {
         });
 
         if (retryBasic.error) {
-          console.error("Supabase Insert Error:", retryBasic.error);
-          if (uploadedFileName) {
-            await supabase.storage.from('artworks').remove([uploadedFileName]);
+          console.warn('Fallback with price failed, trying amount column:', retryBasic.error);
+          const retryAmount = await supabase.from('artworks').insert({
+            id: newId,
+            artist_id: artistId,
+            title: uploadTitle.trim(),
+            description: uploadDescription.trim() || null,
+            image_url: finalImageUrl,
+            created_at: now,
+            pricing_type: uploadSellingMode,
+            amount: price,
+            starting_bid: startingBid,
+          });
+
+          if (retryAmount.error) {
+            console.error("Supabase Insert Error:", retryAmount.error);
+            if (uploadedFileName) {
+              await supabase.storage.from('artworks').remove([uploadedFileName]);
+            }
+            throw retryAmount.error;
           }
-          throw retryBasic.error;
         }
       }
 

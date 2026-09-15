@@ -100,8 +100,8 @@ export default function GalleryView() {
         .from('artworks')
         .getPublicUrl(filePath);
 
-      const numericPrice = pricing_type === 'FIXED_PRICE' ? Number(price) : (Number(price) > 0 ? Number(price) : null);
-      const numericBid = pricing_type === 'BIDDING' ? Number(startingBid) : (Number(startingBid) > 0 ? Number(startingBid) : null);
+      const numericPrice = pricing_type === 'FIXED_PRICE' ? (price ? parseFloat(price) : 0) : (price && parseFloat(price) > 0 ? parseFloat(price) : null);
+      const numericBid = pricing_type === 'BIDDING' ? (startingBid ? parseFloat(startingBid) : 0) : (startingBid && parseFloat(startingBid) > 0 ? parseFloat(startingBid) : null);
 
       await createArtwork.mutateAsync({
         title: title.trim(),
