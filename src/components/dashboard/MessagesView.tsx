@@ -29,9 +29,24 @@ type ContactForChat = ContactsOutput[number];
 type MessagesOutput = inferRouterOutputs<AppRouter>['messages']['getMessages'];
 type MessageForChat = MessagesOutput[number];
 
-type ChatMessageItem = MessageForChat & {
+type ChatMessageItem = {
+  id: string;
+  content: string;
+  sender_id?: string;
+  receiver_id?: string;
+  senderId?: string;
+  receiverId?: string;
+  created_at?: string;
+  createdAt?: string;
+  is_read?: boolean;
+  isRead?: boolean;
   pending?: boolean;
   status?: 'pending' | 'sent' | 'failed';
+  jobId?: string | null;
+  proposalId?: string | null;
+  job?: any;
+  proposal?: any;
+  [key: string]: any;
 };
 
 const INTERVIEW_TEMPLATE = `Hi! I'm interested in your proposal and would like to schedule an interview to discuss the project in more detail.
@@ -51,6 +66,8 @@ export default function MessagesView() {
 
   const [selectedUser, setSelectedUser] = useState<ContactForChat | null>(null);
   const [message, setMessage] = useState('');
+  const newMessage = message;
+  const setNewMessage = setMessage;
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const chatHistory = messages;
   const setChatHistory = setMessages;
@@ -64,7 +81,7 @@ export default function MessagesView() {
     return contact.email || 'Unknown User';
   };
 
-  const formatJobContext = (contact: ContactForChat, messages: MessageForChat[]) => {
+  const formatJobContext = (contact: ContactForChat, messages: ChatMessageItem[]) => {
     const messageWithJob = messages?.find(m => m.job);
     if (!messageWithJob?.job) return null;
 
@@ -216,28 +233,12 @@ export default function MessagesView() {
 
   // Fetch chat messages real-time / on select
   useEffect(() => {
-    if (messagesQuery.data) {
-      setMessages((prev) => {
-        const combined = [...prev, ...messagesQuery.data];
-        return combined.filter((msg, index, self) =>
-          index === self.findIndex((m) => m.id === msg.id)
-        );
-      });
+    const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id || '').toString().trim();
+    const activeRecipientId = (selectedUser?.id || '').toString().trim();
+    if (!activeRecipientId || !currentUserId) return;
 
-      // Mark messages as read when viewing conversation (only once per conversation)
-      if (selectedUser &&
-          !markedAsReadRef.current.has(selectedUser.id) &&
-          messagesQuery.data.some(m => m.receiverId === session?.session?.user?.id && !m.isRead)) {
-        markedAsReadRef.current.add(selectedUser.id);
-        markAsReadMutation.mutate({ senderId: selectedUser.id });
-      }
-    }
-
-    if (!selectedUser?.id || !session?.session?.user?.id) return;
-    const currentUserId = session?.session?.user?.id;
-    const activeRecipientId = selectedUser.id;
-    const supabase = createClient();
     let isMounted = true;
+    const supabase = createClient();
 
     async function fetchDirectMessages() {
       try {
@@ -247,33 +248,36 @@ export default function MessagesView() {
           .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeRecipientId}),and(sender_id.eq.${activeRecipientId},receiver_id.eq.${currentUserId})`)
           .order('created_at', { ascending: true });
 
-        if (!error && data && data.length > 0 && isMounted) {
-          const normalized: ChatMessageItem[] = data.map((m: any) => ({
-            id: m.id || `msg-${Date.now()}`,
-            content: m.content || '',
-            senderId: m.sender_id || m.senderId || currentUserId,
-            receiverId: m.receiver_id || m.receiverId || activeRecipientId,
-            createdAt: m.created_at || m.createdAt || new Date().toISOString(),
-            isRead: Boolean(m.is_read ?? m.isRead),
-            jobId: m.job_id || m.jobId || null,
-            proposalId: m.proposal_id || m.proposalId || null,
-            job: null,
-            proposal: null,
-          }));
-
-          setMessages((prev) => {
-            const combined = [...prev, ...normalized];
-            return combined.filter((msg, index, self) =>
-              index === self.findIndex((m) => m.id === msg.id)
-            );
-          });
+        if (error) {
+          console.error('Supabase messages fetch error:', error);
+          if (messagesQuery.data && isMounted) {
+            setMessages(messagesQuery.data);
+          }
+        } else if (data && isMounted) {
+          if (data.length > 0) {
+            setMessages(data);
+          } else if (messagesQuery.data && messagesQuery.data.length > 0) {
+            setMessages(messagesQuery.data);
+          } else {
+            setMessages([]);
+          }
         }
       } catch (err) {
-        console.warn('Direct chat fetch notice:', err);
+        console.error('Direct chat fetch notice:', err);
       }
     }
 
     fetchDirectMessages();
+
+    // Mark messages as read when viewing conversation (only once per conversation)
+    if (
+      selectedUser &&
+      !markedAsReadRef.current.has(selectedUser.id) &&
+      messagesQuery.data?.some(m => (m.receiverId === currentUserId || (m as any).receiver_id === currentUserId) && !m.isRead)
+    ) {
+      markedAsReadRef.current.add(selectedUser.id);
+      markAsReadMutation.mutate({ senderId: selectedUser.id });
+    }
 
     // Subscribe to realtime changes with unique id deduplication
     const channel = supabase
@@ -287,25 +291,20 @@ export default function MessagesView() {
             (m.sender_id === currentUserId && m.receiver_id === activeRecipientId) ||
             (m.sender_id === activeRecipientId && m.receiver_id === currentUserId)
           ) {
-            const newMsg: ChatMessageItem = {
-              id: m.id,
-              content: m.content,
-              senderId: m.sender_id,
-              receiverId: m.receiver_id,
-              createdAt: m.created_at,
-              isRead: Boolean(m.is_read),
-              jobId: m.job_id || null,
-              proposalId: m.proposal_id || null,
-              job: null,
-              proposal: null,
-            };
-
-            // Enforce unique message objects inside setMessages
             setMessages((prev) => {
-              const combined = [...prev, newMsg];
-              return combined.filter((msg, index, self) => 
-                index === self.findIndex((m) => m.id === msg.id)
+              if (prev.some((msg) => msg.id === m.id)) return prev;
+              const tempIndex = prev.findIndex(
+                (msg) =>
+                  (msg.id?.startsWith?.('temp') || !isNaN(Number(msg.id))) &&
+                  (msg.sender_id === m.sender_id || msg.senderId === m.sender_id) &&
+                  msg.content === m.content
               );
+              if (tempIndex !== -1) {
+                const copy = [...prev];
+                copy[tempIndex] = m;
+                return copy;
+              }
+              return [...prev, m];
             });
           }
         }
@@ -318,135 +317,96 @@ export default function MessagesView() {
     };
   }, [selectedUser?.id, session?.session?.user?.id, messagesQuery.data, markAsReadMutation]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
     if (isSending) return;
 
-    const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id || '').toString().trim();
+    const text = newMessage.trim();
+    const currentUser = session?.session?.user || (session as any)?.user;
+    const currentUserId = (currentUser?.id || '').toString().trim();
     const activeRecipientId = (selectedUser?.id || '').toString().trim();
-    const trimmedMessage = message.trim();
 
-    // 1. Validate that sender_id and receiver_id are valid non-empty strings before dispatching
-    if (!currentUserId || !activeRecipientId || !trimmedMessage) {
-      console.warn('[Messaging] Dispatch skipped: invalid sender/receiver ID or empty message', {
-        sender_id: currentUserId,
-        receiver_id: activeRecipientId,
-        hasMessage: Boolean(trimmedMessage),
-      });
-      return;
-    }
+    if (!text || !activeRecipientId || !currentUserId) return;
 
     setIsSending(true);
-    const outgoingContent = trimmedMessage;
 
-    // Reset input immediately for responsive UX
-    setMessage('');
+    // Temporary UI add
+    const tempId = Date.now().toString();
+    const newMsgObj: ChatMessageItem = {
+      id: tempId,
+      sender_id: currentUserId,
+      senderId: currentUserId,
+      receiver_id: activeRecipientId,
+      receiverId: activeRecipientId,
+      content: text,
+      created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      pending: true,
+    };
 
-    // Removed manual optimistic push to setMessages to prevent duplicate rendering with Realtime/.select()
+    setMessages((prev) => [...prev, newMsgObj]);
+    setNewMessage('');
 
     try {
       const supabase = createClient();
 
-      // Direct Supabase insert into 'messages' table
-      const { data, error } = await supabase.from('messages').insert({
+      // Direct Supabase DB Insert
+      const { data, error } = await supabase.from('messages').insert([{
         sender_id: currentUserId,
         receiver_id: activeRecipientId,
-        content: outgoingContent,
-        created_at: new Date().toISOString(),
-      }).select();
+        content: text
+      }]).select();
 
       if (error) {
-        // Cleanly log in console.error without popping up browser alerts
-        console.error('Supabase message insert error:', error.message || error);
-      }
-
-      if (!error && data && data.length > 0) {
-        const newMsg: ChatMessageItem = {
-          id: data[0].id,
-          content: data[0].content,
-          senderId: data[0].sender_id || currentUserId,
-          receiverId: data[0].receiver_id || activeRecipientId,
-          createdAt: data[0].created_at || new Date().toISOString(),
-          isRead: false,
-          jobId: data[0].job_id || null,
-          proposalId: data[0].proposal_id || null,
-          job: null,
-          proposal: null,
-        };
-
-        // Enforce unique message objects inside setMessages
-        setMessages((prev) => {
-          const combined = [...prev, newMsg];
-          return combined.filter((msg, index, self) =>
-            index === self.findIndex((m) => m.id === msg.id)
-          );
-        });
-
-        utils.messages.getConversationPreviews.invalidate();
-        utils.profiles.getContacts.invalidate();
-        return;
-      }
-
-      // 4. Handle foreign key mismatch / Supabase error:
-      // Fallback cleanly without throwing disruptive alert dialogs
-      let fallbackSuccess = false;
-
-      // Fallback A: TRPC sendMessage mutation (handles Prisma/Postgres relations)
-      try {
-        await sendMessageMutation.mutateAsync({
-          receiverId: activeRecipientId,
-          content: outgoingContent,
-          jobId: jobId || undefined,
-          proposalId: proposalId || undefined,
-        });
-        fallbackSuccess = true;
-      } catch (trpcErr: any) {
-        console.error('TRPC fallback send error:', trpcErr?.message || trpcErr);
-      }
-
-      // Fallback B: If not resolved, attempt insert with email / profile metadata
-      if (!fallbackSuccess) {
+        console.error("Supabase insert failure:", error);
+        // Silent fallback to TRPC mutation if available
         try {
-          const senderEmail = session?.session?.user?.email || (session as any)?.user?.email || '';
-          const receiverEmail = selectedUser?.email || '';
-          if (senderEmail && receiverEmail) {
-            await supabase.from('messages').insert({
-              sender_id: currentUserId,
-              receiver_id: activeRecipientId,
-              sender_email: senderEmail,
-              receiver_email: receiverEmail,
-              content: outgoingContent,
-              created_at: new Date().toISOString(),
-            } as any);
-            fallbackSuccess = true;
-          }
-        } catch (emailFallbackErr: any) {
-          console.error('Email fallback error:', emailFallbackErr?.message || emailFallbackErr);
+          await sendMessageMutation.mutateAsync({
+            receiverId: activeRecipientId,
+            content: text,
+            jobId: jobId || undefined,
+            proposalId: proposalId || undefined,
+          });
+        } catch (trpcErr) {
+          console.error("TRPC fallback send error:", trpcErr);
         }
+      } else if (data && data[0]) {
+        // Replace temporary message with actual DB object
+        setMessages((prev) => {
+          const updated = prev.some((m) => m.id === data[0].id)
+            ? prev.filter((m) => m.id !== tempId)
+            : prev.map((m) => (m.id === tempId ? data[0] : m));
+          return updated.filter((msg, index, self) => index === self.findIndex((m) => m.id === msg.id));
+        });
       }
 
       utils.messages.getConversationPreviews.invalidate();
       utils.profiles.getContacts.invalidate();
     } catch (err: any) {
-      // Cleanly log in console.error without popping up browser alerts
-      console.error('Message dispatch error:', err?.message || err);
+      console.error("Message dispatch error:", err?.message || err);
     } finally {
       setIsSending(false);
     }
   };
 
-  const formatTimestamp = (dateString: string) => {
-    const date = parseISO(dateString);
+  const formatTimestamp = (dateString?: string | Date) => {
+    if (!dateString) return '';
+    try {
+      const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+      if (!date || isNaN(date.getTime())) return '';
 
-    if (isToday(date)) {
-      return format(date, 'h:mm a');
-    } else if (isYesterday(date)) {
-      return 'Yesterday';
-    } else if (isThisWeek(date)) {
-      return format(date, 'EEE h:mm a');
-    } else {
-      return format(date, 'MMM d');
+      if (isToday(date)) {
+        return format(date, 'h:mm a');
+      } else if (isYesterday(date)) {
+        return 'Yesterday';
+      } else if (isThisWeek(date)) {
+        return format(date, 'EEE h:mm a');
+      } else {
+        return format(date, 'MMM d');
+      }
+    } catch {
+      return '';
     }
   };
 
@@ -632,8 +592,11 @@ export default function MessagesView() {
                 {chatHistory.length > 0 ? (
                   <div className="space-y-4">
                     {chatHistory.map((chat, index) => {
-                      const isOwn = chat.senderId === (session?.session?.user?.id || (session as any)?.user?.id);
+                      const senderId = chat.sender_id || chat.senderId;
+                      const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id);
+                      const isOwn = senderId === currentUserId;
                       const isPending = Boolean(chat.pending);
+                      const timestamp = chat.created_at || chat.createdAt;
                       return (
                         <div
                           key={chat.id || index}
@@ -650,10 +613,10 @@ export default function MessagesView() {
                               <p className="break-words">{chat.content}</p>
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                              {chat.createdAt && (
+                              {timestamp && (
                                 <span className="flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
-                                  {formatTimestamp(chat.createdAt)}
+                                  {formatTimestamp(timestamp)}
                                 </span>
                               )}
                               {isPending && (
