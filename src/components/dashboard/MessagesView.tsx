@@ -136,7 +136,7 @@ export default function MessagesView() {
 
   const { data: contacts, isLoading: contactsLoading } = trpc.profiles.getContacts.useQuery(undefined, {
     enabled: !!session,
-    refetchInterval: 30000, // Refresh every 30 seconds to catch new contacts
+    refetchInterval: 5000, // Refresh every 5 seconds to catch new contacts immediately
     refetchOnWindowFocus: true, // Refresh when user returns to the tab
   });
 
@@ -224,7 +224,7 @@ export default function MessagesView() {
     }
   });
 
-  // Merge contacts with userById (excluding self and artist-to-artist)
+  // Merge contacts with userById and active conversation partners (excluding self and artist-to-artist)
   const allContacts = useMemo(() => {
     let contactsList = (contacts || []).filter((c) => {
       if (!c.id || c.id === currentUserId) return false;
@@ -245,8 +245,28 @@ export default function MessagesView() {
         }, ...contactsList];
       }
     }
+
+    // Also include any active partners from conversationPreviews so conversation sidebar never lags behind
+    if (conversationPreviews) {
+      Object.keys(conversationPreviews).forEach((partnerId) => {
+        if (partnerId && partnerId !== currentUserId && !contactsList.some((c) => c.id === partnerId)) {
+          contactsList.push({
+            id: partnerId,
+            email: null,
+            profile: {
+              firstName: 'Client',
+              lastName: '',
+              profilePicture: null,
+              companyName: null,
+              role: 'CLIENT',
+            },
+          });
+        }
+      });
+    }
+
     return contactsList;
-  }, [contacts, userById, currentUserId, isCurrentArtist]);
+  }, [contacts, userById, currentUserId, isCurrentArtist, conversationPreviews]);
 
   // Prevent activeRecipientId from defaulting to currentUser.id upon role or dashboard switching
   useEffect(() => {
@@ -345,7 +365,14 @@ export default function MessagesView() {
           setMessages(validTRPC);
         }
       } else if (data) {
-        const filtered = data.filter((m) => isWithin7Days({ ...m, created_at: (m as any).created_at }));
+        const normalized = data.map((m: any) => ({
+          ...m,
+          senderId: m.sender_id || m.senderId,
+          receiverId: m.receiver_id || m.receiverId,
+          createdAt: m.created_at || m.createdAt,
+          isRead: m.is_read ?? m.isRead ?? false,
+        }));
+        const filtered = normalized.filter((m) => isWithin7Days(m));
         setMessages(filtered);
       }
     } catch (err) {
@@ -402,8 +429,20 @@ export default function MessagesView() {
             ) {
               setMessages((prev) => {
                 if (prev.some((msg) => msg.id === m.id)) return prev;
-                return [...prev, { ...m, created_at: m.createdAt || m.created_at }];
+                const normalized = {
+                  ...m,
+                  senderId: m.sender_id || m.senderId,
+                  receiverId: m.receiver_id || m.receiverId,
+                  createdAt: m.created_at || m.createdAt,
+                  created_at: m.created_at || m.createdAt,
+                  isRead: m.is_read ?? m.isRead ?? false,
+                };
+                return [...prev, normalized];
               });
+              try {
+                utils.messages.getConversationPreviews.invalidate();
+                utils.profiles.getContacts.invalidate();
+              } catch {}
             }
           } catch (err) {
             console.warn('[Realtime] message notice:', err);

@@ -14,7 +14,7 @@ import { isArtistRole } from '@/lib/artist-filter';
 export const messagesRouter = router({
   getConversationPreviews: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { data: messages, error } = await supabase
       .from('messages')
@@ -85,7 +85,7 @@ export const messagesRouter = router({
     .input(z.object({ receiverId: z.string() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const supabase = await createClient();
+      const supabase = createAdminClient();
 
       const { data: messages, error } = await supabase
         .from('messages')
@@ -180,7 +180,7 @@ export const messagesRouter = router({
         }
       }
 
-      const supabase = await createClient();
+      const supabase = createAdminClient();
 
       // Scan message content for scam patterns BEFORE sending
       try {
@@ -289,7 +289,7 @@ export const messagesRouter = router({
     }),
 
   getUnreadMessageCount: protectedProcedure.query(async ({ ctx }) => {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { count, error } = await supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
@@ -305,7 +305,7 @@ export const messagesRouter = router({
   markMessagesAsRead: protectedProcedure
     .input(z.object({ senderId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const supabase = await createClient();
+      const supabase = createAdminClient();
       const { error } = await supabase
         .from('messages')
         .update({ is_read: true })

@@ -26,11 +26,13 @@ type PublicProfileSummary = Pick<
 type ContactUserSummary = {
   id: string;
   email?: string | null;
+  role?: string | null;
   profile: {
     firstName: string | null;
     lastName: string | null;
     profilePicture: string | null;
     companyName: string | null;
+    role?: string | null;
   } | null;
 };
 
@@ -1049,29 +1051,76 @@ export const profilesRouter = router({
         }
       });
 
-      // Fetch User profiles for message partners not already in contactsMap
+      // Fetch profiles for message partners not already in contactsMap
       const missingIds = partnerIds.filter((id) => !contactsMap.has(id));
       if (missingIds.length > 0) {
         try {
-          const { data: users } = await supabase
-            .from('User')
-            .select('id, email, Profile(firstName, lastName, profilePicture, companyName)')
+          const { data: profilesData, error: profsErr } = await supabase
+            .from('profiles')
+            .select('id, email, first_name, last_name, full_name, display_name, avatar_url, role')
             .in('id', missingIds);
 
-          (users ?? []).forEach((user: any) => {
-            const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
-            contactsMap.set(user.id, {
-              id: user.id,
-              email: user.email || null,
-              profile: profile ? {
-                firstName: profile.firstName || null,
-                lastName: profile.lastName || null,
-                profilePicture: profile.profilePicture || null,
-                companyName: profile.companyName || null,
-              } : null,
+          if (profilesData && !profsErr) {
+            profilesData.forEach((p: any) => {
+              contactsMap.set(p.id, {
+                id: p.id,
+                email: p.email || null,
+                profile: {
+                  firstName: p.first_name || p.display_name || p.full_name || 'Client',
+                  lastName: p.last_name || '',
+                  profilePicture: p.avatar_url || null,
+                  companyName: null,
+                  role: p.role || 'CLIENT',
+                },
+              });
             });
-          });
-        } catch {}
+          }
+        } catch (e) {
+          console.warn('getContacts profiles fetch error:', e);
+        }
+
+        // Secondary fallback to User table for any still missing
+        const stillMissing = missingIds.filter((id) => !contactsMap.has(id));
+        if (stillMissing.length > 0) {
+          try {
+            const { data: users } = await supabase
+              .from('User')
+              .select('id, email, Profile(firstName, lastName, profilePicture, companyName)')
+              .in('id', stillMissing);
+
+            (users ?? []).forEach((user: any) => {
+              const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
+              contactsMap.set(user.id, {
+                id: user.id,
+                email: user.email || null,
+                profile: profile ? {
+                  firstName: profile.firstName || null,
+                  lastName: profile.lastName || null,
+                  profilePicture: profile.profilePicture || null,
+                  companyName: profile.companyName || null,
+                  role: 'CLIENT',
+                } : null,
+              });
+            });
+          } catch {}
+        }
+
+        // Ultimate safety fallback: guarantee EVERY message partner has a contact entry
+        partnerIds.forEach((pid) => {
+          if (!contactsMap.has(pid)) {
+            contactsMap.set(pid, {
+              id: pid,
+              email: null,
+              profile: {
+                firstName: 'Client',
+                lastName: '',
+                profilePicture: null,
+                companyName: null,
+                role: 'CLIENT',
+              },
+            });
+          }
+        });
       }
 
       return Array.from(contactsMap.values());
