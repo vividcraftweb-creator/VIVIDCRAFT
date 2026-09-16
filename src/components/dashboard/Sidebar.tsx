@@ -28,11 +28,8 @@ export default function Sidebar({ profile, user, session, role }: SidebarProps) 
     <div className="p-4 border-b border-white/10">
       <div className="flex items-center space-x-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">
-            {displayRole}
-          </p>
           {email && (
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-xs text-gray-400 truncate mb-1">
               {email}
             </p>
           )}

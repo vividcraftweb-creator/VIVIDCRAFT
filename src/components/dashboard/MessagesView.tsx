@@ -73,6 +73,12 @@ export default function MessagesView() {
   const setChatHistory = setMessages;
   const [isSending, setIsSending] = useState(false);
   const markedAsReadRef = useRef<Set<string>>(new Set());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll chat to bottom on new message or messages update
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const getContactName = (contact: ContactForChat) => {
     if (contact.profile?.firstName && contact.profile?.lastName) {
@@ -624,6 +630,7 @@ export default function MessagesView() {
                     </p>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             </CardContent>
 
