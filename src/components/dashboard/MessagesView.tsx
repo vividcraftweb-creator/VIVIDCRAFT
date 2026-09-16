@@ -162,7 +162,7 @@ export default function MessagesView() {
     { enabled: !!activeRecipientId && !!session && !isSelf && !isArtistToArtist }
   );
 
-  const canChat = Boolean(activeRecipientId && !isSelf && !isArtistToArtist && (canChatQuery.data ?? true));
+  const canChat = Boolean(activeRecipientId && !isSelf && !isArtistToArtist);
 
   const utils = trpc.useUtils();
 
@@ -248,35 +248,53 @@ export default function MessagesView() {
     return contactsList;
   }, [contacts, userById, currentUserId, isCurrentArtist]);
 
-  // Auto-select user from URL parameter (recipientId or userId)
+  // Prevent activeRecipientId from defaulting to currentUser.id upon role or dashboard switching
   useEffect(() => {
-    if (!recipientId || recipientId === currentUserId) {
-      if (selectedUser?.id === currentUserId) {
-        setSelectedUser(null);
-      }
+    if (selectedUser && currentUserId && selectedUser.id === currentUserId) {
+      setSelectedUser(null);
+    }
+  }, [selectedUser, currentUserId]);
+
+  // Auto-select user from URL parameter or force auto-select first valid recipient for Client
+  useEffect(() => {
+    if (selectedUser && currentUserId && selectedUser.id === currentUserId) {
+      setSelectedUser(null);
       return;
     }
 
-    if (allContacts.length > 0) {
-      const user = allContacts.find(c => c.id === recipientId);
-      if (user && (!selectedUser || selectedUser.id !== recipientId)) {
-        setSelectedUser(user);
+    if (recipientId && recipientId !== currentUserId) {
+      if (allContacts.length > 0) {
+        const user = allContacts.find(c => c.id === recipientId && c.id !== currentUserId);
+        if (user && (!selectedUser || selectedUser.id !== recipientId)) {
+          setSelectedUser(user);
+          return;
+        }
+      }
+      if (userById && userById.id !== currentUserId && (!selectedUser || selectedUser.id !== recipientId)) {
+        const contactRole = (userById.Profile as any)?.role || (userById as any)?.role;
+        if (isCurrentArtist && isArtistRole(contactRole)) {
+          setSelectedUser(null);
+          toast.error('Artists can only exchange messages with clients.');
+          return;
+        }
+        const prof = userById.Profile ? (Array.isArray(userById.Profile) ? userById.Profile[0] : userById.Profile) : null;
+        setSelectedUser({
+          id: userById.id,
+          email: userById.email,
+          profile: prof,
+        });
         return;
       }
     }
-    if (userById && userById.id !== currentUserId && (!selectedUser || selectedUser.id !== recipientId)) {
-      const contactRole = (userById.Profile as any)?.role || (userById as any)?.role;
-      if (isCurrentArtist && isArtistRole(contactRole)) {
-        setSelectedUser(null);
-        toast.error('Artists can only exchange messages with clients.');
-        return;
+
+    // When a Client opens Messages, force auto-select to the FIRST valid conversation recipient where recipient.id !== currentUser.id
+    if (!selectedUser || selectedUser.id === currentUserId) {
+      if (allContacts.length > 0) {
+        const firstValid = allContacts.find(c => c.id && c.id !== currentUserId);
+        if (firstValid) {
+          setSelectedUser(firstValid);
+        }
       }
-      const prof = userById.Profile ? (Array.isArray(userById.Profile) ? userById.Profile[0] : userById.Profile) : null;
-      setSelectedUser({
-        id: userById.id,
-        email: userById.email,
-        profile: prof,
-      });
     }
   }, [recipientId, allContacts, userById, selectedUser, currentUserId, isCurrentArtist]);
 

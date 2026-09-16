@@ -223,8 +223,16 @@ export const messagesRouter = router({
 
       const supabase = createAdminClient();
 
-      // Check artist-to-artist restriction
-      const isCurrentArtist = isArtistRole(ctx.session.user.role);
+      // Check artist-to-artist restriction using authoritative database profile
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', ctx.session.user.id)
+        .maybeSingle();
+
+      const effectiveCurrentRole = currentProfile?.role || ctx.session.user.role;
+      const isCurrentArtist = isArtistRole(effectiveCurrentRole);
+
       if (isCurrentArtist) {
         const { data: partnerProfile } = await supabase
           .from('profiles')
@@ -281,9 +289,17 @@ export const messagesRouter = router({
       }
 
       if (ctx.session.user.role !== 'ADMIN') {
-        const isCurrentArtist = isArtistRole(ctx.session.user.role);
+        const adminClient = createAdminClient();
+        const { data: currentProfile } = await adminClient
+          .from('profiles')
+          .select('role')
+          .eq('id', ctx.session.user.id)
+          .maybeSingle();
+
+        const effectiveCurrentRole = currentProfile?.role || ctx.session.user.role;
+        const isCurrentArtist = isArtistRole(effectiveCurrentRole);
+
         if (isCurrentArtist) {
-          const adminClient = createAdminClient();
           const { data: partnerProfile } = await adminClient
             .from('profiles')
             .select('role')
@@ -298,7 +314,6 @@ export const messagesRouter = router({
           }
         }
 
-        const adminClient = createAdminClient();
         let { data: chatAccess } = await adminClient
           .from('ChatConnection')
           .select('chatEnabled')
