@@ -1,4 +1,4 @@
-﻿-- Migration: Open RLS permissions for messages table to fix 403 Forbidden error
+-- Migration: Open RLS permissions for messages table to fix 403 Forbidden error
 -- Grants ALL permissions on public.messages to authenticated, anon, and service_role, and creates permissive policies
 
 CREATE TABLE IF NOT EXISTS public.messages (
@@ -44,6 +44,21 @@ CREATE POLICY "Allow authenticated to update messages" ON public.messages
 CREATE POLICY "Allow authenticated to delete messages" ON public.messages
     FOR DELETE
     USING (true);
+
+-- Enable Realtime publication for messages table
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
 
 -- Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

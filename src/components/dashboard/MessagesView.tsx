@@ -322,8 +322,14 @@ export default function MessagesView() {
       )
       .subscribe();
 
+    // Resilient background sync so incoming messages append without page reloads
+    const pollInterval = setInterval(() => {
+      fetchDirectMessages();
+    }, 4000);
+
     return () => {
       isMounted = false;
+      clearInterval(pollInterval);
       try {
         supabase.removeChannel(channel);
       } catch {}
@@ -359,13 +365,16 @@ export default function MessagesView() {
         })
         .select();
 
-      if (error) {
-        console.warn("[Messaging] Supabase insert notice:", error.message || error);
-      } else if (data && data[0]) {
+      // Immediately push to local state and reset spinner
+      setIsSending(false);
+
+      if (!error && data && data[0]) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === data[0].id)) return prev;
           return [...prev, data[0]];
         });
+      } else if (error) {
+        console.warn("[Messaging] Supabase insert notice:", error.message || error);
       }
 
       try {
@@ -373,7 +382,7 @@ export default function MessagesView() {
         utils.profiles.getContacts.invalidate();
       } catch {}
     } catch (err) {
-      // Suppress extension/network promise rejection noise cleanly
+      setIsSending(false);
       console.warn("[Messaging] Handled dispatch notice:", err);
     } finally {
       setIsSending(false);

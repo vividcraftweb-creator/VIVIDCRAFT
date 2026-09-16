@@ -379,9 +379,11 @@ export default function Dashboard({ session }: { session: AppSession }) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {userFullName}
-                </p>
+                {userFullName && userFullName.toLowerCase() !== 'artist' && userFullName.toLowerCase() !== 'user' && (
+                  <p className="text-sm font-medium text-white truncate">
+                    {userFullName}
+                  </p>
+                )}
                 <p className="text-xs text-gray-400 truncate">
                   {session.user?.email}
                 </p>
