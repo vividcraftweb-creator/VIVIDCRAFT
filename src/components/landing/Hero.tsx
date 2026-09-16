@@ -152,56 +152,73 @@ const Hero = () => {
 
   return (
     <section
-      className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background via-background/90 to-background pt-28 pb-20 sm:pt-36 sm:pb-28"
+      className="relative min-h-screen overflow-hidden bg-gradient-to-b from-background via-background/90 to-background pt-6 pb-16 sm:pt-8 sm:pb-20"
       suppressHydrationWarning
     >
       {/* Vibrant fluid gradient mesh (adapts to light/dark) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-50 dark:bg-[#09090e] transition-colors duration-500">
-        <div className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-amber-400/20 dark:bg-amber-600/10 blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse duration-1000" style={{ animationDuration: '8s' }} />
-        <div className="absolute top-[10%] -right-[10%] w-[50%] h-[60%] rounded-full bg-yellow-300/20 dark:bg-amber-500/10 blur-[100px] mix-blend-multiply dark:mix-blend-screen animate-pulse" style={{ animationDuration: '10s' }} />
-        <div className="absolute -bottom-[20%] left-[20%] w-[60%] h-[60%] rounded-full bg-orange-300/15 dark:bg-yellow-600/10 blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse" style={{ animationDuration: '12s' }} />
+        <div
+          className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-amber-400/20 dark:bg-amber-600/10 blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse duration-1000"
+          style={{ animationDuration: '8s' }}
+        />
+        <div
+          className="absolute top-[10%] -right-[10%] w-[50%] h-[60%] rounded-full bg-yellow-300/20 dark:bg-amber-500/10 blur-[100px] mix-blend-multiply dark:mix-blend-screen animate-pulse"
+          style={{ animationDuration: '10s' }}
+        />
+        <div
+          className="absolute -bottom-[20%] left-[20%] w-[60%] h-[60%] rounded-full bg-orange-300/15 dark:bg-yellow-600/10 blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse"
+          style={{ animationDuration: '12s' }}
+        />
       </div>
 
       {/* Canvas noise texture overlay */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06] pointer-events-none mix-blend-overlay"
-        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}
+        style={{
+          backgroundImage:
+            'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")',
+        }}
       />
 
-      <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 space-y-14 sm:space-y-20">
-        {/* Top Hero Section: Single Minimal Heading + Search Bar */}
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/60 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 shadow-sm">
-            <span className="text-xs sm:text-sm font-semibold text-amber-800 dark:text-amber-300 sm:text-base">
-              ✨ The Art Marketplace
-            </span>
+      <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 space-y-10 sm:space-y-14">
+        {/* Top Hero Section: Single Minimal Heading + Compact Search Bar */}
+        <div className="max-w-xl mx-auto text-center">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 dark:border-amber-500/30 dark:bg-amber-500/10 backdrop-blur-md px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300 shadow-sm">
+            ✨ Vivid Art Marketplace
           </div>
 
-          <h1 className="mt-4 sm:mt-6 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-none">
-            Discover &amp; Collect Extraordinary Art
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            Discover &amp; Collect <span className="text-amber-600 dark:text-amber-400">Extraordinary Art</span>
           </h1>
 
           {/* Search Bar directly below Heading */}
-          <div className="mt-8 sm:mt-10 w-full">
-            <div className="mx-auto w-full max-w-2xl rounded-full border border-slate-300 dark:border-white/30 bg-white/90 dark:bg-white/15 backdrop-blur-xl shadow-xl dark:shadow-2xl px-4 py-3 sm:px-6 sm:py-3.5 focus-within:ring-2 focus-within:ring-amber-500/50 transition-all">
-              <div className="flex w-full items-center gap-4 sm:gap-5">
-                <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-white/60 sm:h-5 sm:w-5" />
-                <Input
-                  placeholder="Search by medium, style, or artist…"
-                  className="flex-1 border-none bg-transparent px-2 text-left text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/60 focus-visible:ring-0 sm:text-base font-medium"
-                  aria-label="Search by medium, style, or artist"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                />
+          <div className="mx-auto mt-4 max-w-xl">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-1.5 sm:p-2 shadow-md backdrop-blur">
+              <form
+                className="flex flex-col gap-2 sm:flex-row sm:items-center"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSearch();
+                }}
+              >
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by medium, style, or artist…"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-2 pl-10 pr-3 text-sm text-foreground shadow-sm transition focus:border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                    aria-label="Search by medium, style, or artist"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
                 <Button
-                  onClick={handleSearch}
+                  type="submit"
                   size="sm"
-                  className="shrink-0 rounded-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90 px-5 py-2 sm:px-6 transition-colors font-medium shadow-sm"
+                  className="inline-flex items-center justify-center rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 px-6 py-2 text-sm font-semibold shadow-md shadow-amber-500/20 transition"
                 >
                   Search
                 </Button>
-              </div>
+              </form>
             </div>
           </div>
         </div>

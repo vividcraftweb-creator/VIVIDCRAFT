@@ -837,7 +837,7 @@ export default function GalleryPageClient() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 pt-28 pb-24 relative overflow-hidden transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 pt-6 pb-20 sm:pt-6 sm:pb-20 relative overflow-hidden transition-colors duration-300">
       {/* Background aesthetic gradients */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-amber-500/10 via-yellow-500/5 to-transparent dark:from-amber-600/15 dark:via-yellow-600/10 dark:to-transparent blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 -left-48 w-96 h-96 bg-amber-500/5 dark:bg-amber-900/10 rounded-full blur-3xl pointer-events-none" />
@@ -845,8 +845,8 @@ export default function GalleryPageClient() {
 
       {/* Admin Floating Banner (Active Session Indicator) */}
       {isAdmin && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-amber-500/10 dark:bg-gradient-to-r dark:from-amber-500/15 dark:via-amber-500/10 dark:to-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-amber-500/10 dark:bg-gradient-to-r dark:from-amber-500/15 dark:via-amber-500/10 dark:to-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md shadow-sm">
             <div className="flex items-center gap-2.5">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
@@ -886,55 +886,57 @@ export default function GalleryPageClient() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header Hero Section */}
-        <div className="text-center max-w-3xl mx-auto mb-10 space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-semibold tracking-wide uppercase shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-            Vivid Art Gallery &amp; Exhibition
+        <div className="text-center max-w-xl mx-auto mb-6">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            Vivid Art Gallery
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-            Curated Artworks &amp; Portfolios
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            Curated <span className="text-amber-600 dark:text-amber-400">Artworks &amp; Portfolios</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 font-normal">
-            Discover ranked original creations from verified artists. Like your favorites, rate remarkable pieces, and commission top talent.
+          <p className="mt-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-normal">
+            Discover ranked original creations, rate pieces, and commission top artists.
           </p>
 
-          {/* Search Bar & Admin Quick Upload */}
-          <div className="pt-2 max-w-xl mx-auto flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
-              <Input
-                type="text"
-                placeholder="Search artworks by title or artist name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 h-12 bg-white dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 focus:border-amber-500 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm shadow-md dark:shadow-xl focus:ring-2 focus:ring-amber-500/20"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md cursor-pointer border border-slate-200 dark:border-transparent"
+          {/* Compact Search Bar & Admin Quick Upload */}
+          <div className="mx-auto mt-4 max-w-xl">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-1.5 sm:p-2 shadow-md backdrop-blur flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search artworks by title or artist…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-2 pl-10 pr-14 text-sm text-foreground shadow-sm transition focus:border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white text-[11px] bg-slate-200/70 dark:bg-slate-800 px-2 py-0.5 rounded cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {isAdmin && (
+                <Button
+                  onClick={() => setIsUploadOpen(true)}
+                  className="inline-flex items-center justify-center rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-4 py-2 text-sm shadow-md shadow-amber-500/20 transition flex-shrink-0 cursor-pointer"
                 >
-                  Clear
-                </button>
+                  <UploadCloud className="w-4 h-4 mr-1.5" />
+                  <span>Upload</span>
+                </Button>
               )}
             </div>
-
-            {isAdmin && (
-              <Button
-                onClick={() => setIsUploadOpen(true)}
-                className="h-12 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 rounded-2xl gap-2 shadow-lg shadow-amber-500/25 cursor-pointer flex-shrink-0"
-              >
-                <UploadCloud className="w-4 h-4" />
-                <span className="hidden sm:inline">Upload Art</span>
-              </Button>
-            )}
           </div>
         </div>
 
         {/* Quick Filter Tabs / Sort Controls */}
-        <div className="flex flex-col gap-3 mb-8 pb-4 border-b border-slate-200 dark:border-slate-800/80">
+        <div className="flex flex-col gap-3 mb-6 pb-3 border-b border-slate-200 dark:border-slate-800/80">
           {/* Row 1 — Sort Tabs */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 p-1 bg-slate-200/70 dark:bg-slate-900/90 border border-slate-300/70 dark:border-slate-800 rounded-2xl overflow-x-auto max-w-full">
