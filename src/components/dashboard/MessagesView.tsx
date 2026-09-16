@@ -287,16 +287,19 @@ export default function MessagesView() {
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
           const m = payload.new as any;
+          if (!m) return;
+          const sender = String(m.sender_id || m.senderId || '').trim();
+          const receiver = String(m.receiver_id || m.receiverId || '').trim();
           if (
-            (m.sender_id === currentUserId && m.receiver_id === activeRecipientId) ||
-            (m.sender_id === activeRecipientId && m.receiver_id === currentUserId)
+            (sender === currentUserId && receiver === activeRecipientId) ||
+            (sender === activeRecipientId && receiver === currentUserId)
           ) {
             setMessages((prev) => {
               if (prev.some((msg) => msg.id === m.id)) return prev;
               const tempIndex = prev.findIndex(
                 (msg) =>
-                  (msg.id?.startsWith?.('temp') || !isNaN(Number(msg.id))) &&
-                  (msg.sender_id === m.sender_id || msg.senderId === m.sender_id) &&
+                  msg.id?.startsWith?.('temp-') &&
+                  String(msg.sender_id || msg.senderId) === sender &&
                   msg.content === m.content
               );
               if (tempIndex !== -1) {
@@ -355,7 +358,10 @@ export default function MessagesView() {
       if (error) {
         console.error("Message DB Send Error:", error);
       } else if (data && data[0]) {
-        setMessages((prev) => prev.map((m) => (m.id === tempId ? data[0] : m)));
+        setMessages((prev) => {
+          const updated = prev.map((m) => (m.id === tempId ? data[0] : m));
+          return updated.filter((msg, idx, self) => idx === self.findIndex((item) => item.id === msg.id));
+        });
       }
 
       utils.messages.getConversationPreviews.invalidate();
