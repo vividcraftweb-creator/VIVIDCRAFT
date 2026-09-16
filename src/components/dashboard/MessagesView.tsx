@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
+import { createClient } from '@/lib/supabase/client';
 import { parseISO, format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/trpc/router';
@@ -205,6 +206,7 @@ export default function MessagesView() {
     }
   });
 
+  // Fetch chat messages real-time / on select
   useEffect(() => {
     if (messagesQuery.data) {
       setChatHistory(messagesQuery.data);
@@ -217,18 +219,132 @@ export default function MessagesView() {
         markAsReadMutation.mutate({ senderId: selectedUser.id });
       }
     }
-  }, [messagesQuery.data, selectedUser, session, markAsReadMutation]);
+
+    if (!selectedUser?.id || !session?.session?.user?.id) return;
+    const currentUserId = session?.session?.user?.id;
+    const activeRecipientId = selectedUser.id;
+    const supabase = createClient();
+    let isMounted = true;
+
+    async function fetchDirectMessages() {
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeRecipientId}),and(sender_id.eq.${activeRecipientId},receiver_id.eq.${currentUserId})`)
+          .order('created_at', { ascending: true });
+
+        if (!error && data && data.length > 0 && isMounted) {
+          const normalized: MessageForChat[] = data.map((m: any) => ({
+            id: m.id || `msg-${Date.now()}`,
+            content: m.content || '',
+            senderId: m.sender_id || m.senderId || currentUserId,
+            receiverId: m.receiver_id || m.receiverId || activeRecipientId,
+            createdAt: m.created_at || m.createdAt || new Date().toISOString(),
+            isRead: Boolean(m.is_read ?? m.isRead),
+            jobId: m.job_id || m.jobId || null,
+            proposalId: m.proposal_id || m.proposalId || null,
+            job: null,
+            proposal: null,
+          }));
+          setChatHistory(normalized);
+        }
+      } catch (err) {
+        console.warn('Direct chat fetch notice:', err);
+      }
+    }
+
+    fetchDirectMessages();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel(`chat_${currentUserId}_${activeRecipientId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const m = payload.new as any;
+          if (
+            (m.sender_id === currentUserId && m.receiver_id === activeRecipientId) ||
+            (m.sender_id === activeRecipientId && m.receiver_id === currentUserId)
+          ) {
+            setChatHistory((prev) => [
+              ...prev,
+              {
+                id: m.id,
+                content: m.content,
+                senderId: m.sender_id,
+                receiverId: m.receiver_id,
+                createdAt: m.created_at,
+                isRead: Boolean(m.is_read),
+                jobId: m.job_id || null,
+                proposalId: m.proposal_id || null,
+                job: null,
+                proposal: null,
+              },
+            ]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [selectedUser?.id, session?.session?.user?.id, messagesQuery.data, markAsReadMutation]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser || !message.trim()) return;
 
-    await sendMessageMutation.mutateAsync({
-      receiverId: selectedUser.id,
-      content: message.trim(),
-      jobId: jobId || undefined,
-      proposalId: proposalId || undefined,
-    });
+    const currentUserId = session?.session?.user?.id || (session as any)?.user?.id;
+    const activeRecipientId = selectedUser.id;
+    const newMessage = message.trim();
+
+    setMessage('');
+
+    try {
+      const supabase = createClient();
+
+      // 1. Direct Supabase insert into 'messages' table
+      const { data, error } = await supabase.from('messages').insert({
+        sender_id: currentUserId,
+        receiver_id: activeRecipientId,
+        content: newMessage,
+        created_at: new Date().toISOString()
+      }).select();
+
+      if (!error && data && data.length > 0) {
+        // Append to local chat state immediately upon DB confirmation
+        setChatHistory((prev) => [...prev, {
+          id: data[0].id,
+          content: data[0].content,
+          senderId: data[0].sender_id || currentUserId,
+          receiverId: data[0].receiver_id || activeRecipientId,
+          createdAt: data[0].created_at || new Date().toISOString(),
+          isRead: false,
+          jobId: data[0].job_id || null,
+          proposalId: data[0].proposal_id || null,
+          job: null,
+          proposal: null,
+        }]);
+        utils.messages.getConversationPreviews.invalidate();
+        utils.profiles.getContacts.invalidate();
+        return;
+      }
+
+      // 2. Fallback: try TRPC sendMessage mutation
+      await sendMessageMutation.mutateAsync({
+        receiverId: activeRecipientId,
+        content: newMessage,
+        jobId: jobId || undefined,
+        proposalId: proposalId || undefined,
+      });
+    } catch (err: any) {
+      console.error("Message send error:", err);
+      alert("Failed to send message: " + (err?.message || "Unknown error"));
+    }
   };
 
   const formatTimestamp = (dateString: string) => {

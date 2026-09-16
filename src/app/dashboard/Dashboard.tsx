@@ -123,6 +123,16 @@ export default function Dashboard({ session }: { session: AppSession }) {
 
   const userFirstName = fName || (session.user?.name ? session.user.name.split(' ')[0] : 'User') || 'User';
 
+  const greetingName =
+    (profile as any)?.full_name ||
+    (profile as any)?.display_name ||
+    (userFullName !== 'User' ? userFullName : '') ||
+    (session?.user as any)?.user_metadata?.full_name ||
+    (session?.user as any)?.user_metadata?.name ||
+    session?.user?.name ||
+    session?.user?.email?.split('@')[0] ||
+    'User';
+
   const rawAvatarPic =
     profile?.profilePicture ||
     (profile as any)?.avatar_url ||
@@ -459,7 +469,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
             </Button>
             <div className="flex-1">
               <h1 className="text-lg font-semibold text-white">
-                {role === 'ADMIN' ? 'Admin' : role === 'CLIENT' ? 'Client' : 'Artist'} Dashboard
+                {role === 'ADMIN' ? 'Admin Dashboard' : role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
               </h1>
             </div>
             <NotificationDropdown />
@@ -474,10 +484,10 @@ export default function Dashboard({ session }: { session: AppSession }) {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">
-                    {role === 'ADMIN' ? 'Admin' : role === 'CLIENT' ? 'Client' : 'Artist'} Dashboard
+                    {role === 'ADMIN' ? 'Admin Dashboard' : role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
                   </h1>
                   <p className="text-slate-400 text-lg">
-                    Welcome back, {userFirstName}
+                    Welcome back, {greetingName}
                   </p>
                 </div>
                 <NotificationDropdown />
