@@ -200,7 +200,9 @@ export default function VerifyWhatsAppPage() {
       const message = encodeURIComponent(
         `Hello Admin, I just registered as an Artist. Please verify my account. Name: ${profile.fullName}, Email: ${profile.email}, User ID: ${profile.id}`
       );
-      const whatsappUrl = `https://wa.me/94783813833?text=${message}`;
+      const rawPhone = '94783813833';
+      const cleanPhone = String(rawPhone).replace(/\D/g, '');
+      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${message}`;
 
       // Open WhatsApp in new tab
       window.open(whatsappUrl, '_blank', 'noopener,noreferrer');

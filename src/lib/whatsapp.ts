@@ -42,20 +42,22 @@ export function getSafeArtworkWhatsAppUrl(
   options?: WhatsAppUrlOptions
 ): string {
   if (!artwork) {
-    return `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}`;
+    const defaultNum = String(DEFAULT_WHATSAPP_NUMBER).replace(/\D/g, '');
+    return `https://wa.me/${defaultNum}`;
   }
 
   // 1. Extract phone number safely from artist/user profile
   const rawPhone =
     artwork.profiles?.phone ||
     artwork.user?.phone ||
+    artwork.artist_phone ||
     DEFAULT_WHATSAPP_NUMBER;
 
-  // 2. Sanitize to contain ONLY digits using /[^0-9]/g
-  const digitsOnly = String(rawPhone).replace(/[^0-9]/g, '') || DEFAULT_WHATSAPP_NUMBER;
+  // 2. Sanitize to contain ONLY digits using /\D/g
+  const cleanPhone = String(rawPhone).replace(/\D/g, '') || DEFAULT_WHATSAPP_NUMBER;
 
   const title = artwork.title || 'Artwork';
-  const defaultText = options?.customMessage || (artwork.id ? `Hi, I am interested in "${title}" (Ref: ${artwork.id})` : `Hi, I am interested in "${title}"`);
+  const defaultText = options?.customMessage || `Hi, I am interested in "${title}"`;
 
-  return `https://wa.me/${digitsOnly}?text=${encodeURIComponent(defaultText)}`;
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(defaultText)}`;
 }

@@ -530,12 +530,13 @@ export function ArtworkModal({
               const { badgeType } = getArtworkPricingDisplay(artwork);
               if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-              const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '94783813833';
-              const digitsOnly = String(rawPhone).replace(/[^0-9]/g, '') || '94783813833';
+              const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || (artwork as any).artist_phone || '94783813833';
+              const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833'; // Removes +, spaces, brackets, hyphens
+              const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}"`)}`;
 
               return (
                 <a
-                  href={`https://wa.me/${digitsOnly}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}" (Ref: ${artwork.id})`)}`}
+                  href={waUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all cursor-pointer"

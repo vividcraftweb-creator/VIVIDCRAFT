@@ -496,8 +496,10 @@ Artist Connection Request:
 
 Hi, I would like to connect with this artist for a commission/project.`;
 
+    const rawPhone = '94783813833';
+    const cleanPhone = String(rawPhone).replace(/\D/g, '');
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/94783813833?text=${encodedMessage}`;
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 
     window.open(whatsappUrl, '_blank');
   };

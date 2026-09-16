@@ -524,7 +524,9 @@ function JobDetailClient() {
                         const buyerName = session?.session?.user?.user_metadata?.firstName ? `${session.session.user.user_metadata.firstName} ${session.session.user.user_metadata.lastName}` : 'a buyer';
                         const artistName = job.companyName || 'the artist';
                         const message = `Hi Vivid Art Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
-                        const url = `https://wa.me/940783813833?text=${encodeURIComponent(message)}`;
+                        const rawPhone = '94783813833';
+                        const cleanPhone = String(rawPhone).replace(/\D/g, '');
+                        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
                         window.open(url, '_blank');
                       }}
                     >
@@ -833,7 +835,9 @@ function JobDetailClient() {
               const buyerName = session?.session?.user?.user_metadata?.firstName ? `${session.session.user.user_metadata.firstName} ${session.session.user.user_metadata.lastName}` : 'a buyer';
               const artistName = job.companyName || 'the artist';
               const message = `Hi Vivid Art Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
-              const url = `https://wa.me/940783813833?text=${encodeURIComponent(message)}`;
+              const rawPhone = '94783813833';
+              const cleanPhone = String(rawPhone).replace(/\D/g, '');
+              const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
               window.open(url, '_blank');
             }}
           >
