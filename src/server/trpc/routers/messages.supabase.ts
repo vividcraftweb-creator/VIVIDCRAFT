@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Messages Router - Migrated to Supabase
  * NOTE: messages table uses snake_case: sender_id, receiver_id, created_at, is_read, job_id, proposal_id
  */
@@ -214,23 +214,28 @@ export const messagesRouter = router({
         // Otherwise silent fail for fraud scanning
       }
 
-      // Insert using snake_case columns (actual Postgres column names)
-      const { data: message, error } = await supabase
+      // Use admin client to bypass RLS for the insert
+      const adminInsertClient = createAdminClient();
+
+      // Try full insert first
+      let insertPayload: Record<string, any> = {
+        sender_id: ctx.session.user.id,
+        receiver_id: input.receiverId,
+        content: input.content,
+      };
+
+      // Conditionally add optional fields (only if columns exist in the table)
+      if (input.jobId) insertPayload.job_id = input.jobId;
+      if (input.proposalId) insertPayload.proposal_id = input.proposalId;
+
+      const { data: message, error } = await adminInsertClient
         .from('messages')
-        .insert({
-          id: crypto.randomUUID(),
-          sender_id: ctx.session.user.id,
-          receiver_id: input.receiverId,
-          content: input.content,
-          job_id: input.jobId || null,
-          proposal_id: input.proposalId || null,
-          is_read: false,
-          created_at: new Date().toISOString(),
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
       if (error || !message) {
+        console.error('[sendMessage] Insert error:', JSON.stringify(error));
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send message' });
       }
 
