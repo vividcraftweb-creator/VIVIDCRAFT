@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+import { DashboardSkeleton } from '@/components/dashboard/DashboardLayout';
+
 export default function DashboardSessionHydrator() {
   const router = useRouter();
   const [timedOut, setTimedOut] = useState(false);
@@ -56,13 +58,5 @@ export default function DashboardSessionHydrator() {
     };
   }, [router]);
 
-  return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-      <div className="w-10 h-10 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
-      <p className="text-slate-300 text-sm font-medium tracking-wide">
-        {timedOut ? 'Redirecting to sign in...' : 'Loading your dashboard...'}
-      </p>
-      <p className="text-slate-500 text-xs mt-1">Synchronizing session</p>
-    </div>
-  );
+  return <DashboardSkeleton />;
 }

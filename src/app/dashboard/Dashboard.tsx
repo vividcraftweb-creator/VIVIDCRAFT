@@ -43,6 +43,7 @@ import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import ArtistDashboard from '@/components/dashboard/ArtistDashboard';
 import ClientDashboard from '@/components/dashboard/ClientDashboard';
 import MessagesView from '@/components/dashboard/MessagesView';
+import { DashboardSkeleton } from '@/components/dashboard/DashboardLayout';
 const GalleryView = dynamic(() => import('@/components/dashboard/GalleryView'), {
   loading: () => <div className="text-white p-8 animate-pulse">Loading gallery...</div>,
   ssr: false,
@@ -79,7 +80,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
   const router = useRouter();
 
   // Fetch profile data to get updated name & role
-  const { data: profile } = trpc.profiles.getMyProfile.useQuery({}, {
+  const { data: profile, isLoading: isProfileLoading } = trpc.profiles.getMyProfile.useQuery({}, {
     enabled: !!session,
     retry: false,
   });
@@ -298,6 +299,11 @@ export default function Dashboard({ session }: { session: AppSession }) {
     return 'bg-green-500/20 text-green-300 border-green-500/30';
   };
 
+  // Do NOT render child layout elements until user and profile state are fully resolved
+  if (!mounted || isProfileLoading || !session?.user || role === 'ADMIN') {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="h-screen bg-slate-950 dark flex overflow-hidden text-slate-100">
       {/* Mobile sidebar overlay */}
@@ -378,7 +384,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   {session.user?.email}
                 </p>
                 <Badge className={`w-fit text-xs mt-1 ${getRoleColor()}`}>
-                  {role === 'ADMIN' ? 'ADMIN' : role === 'CLIENT' ? 'CLIENT' : 'ARTIST'}
+                  {role === 'CLIENT' ? 'CLIENT' : 'ARTIST'}
                 </Badge>
               </div>
             </div>
@@ -469,7 +475,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
             </Button>
             <div className="flex-1">
               <h1 className="text-lg font-semibold text-white">
-                {role === 'ADMIN' ? 'Admin Dashboard' : role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
+                {role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
               </h1>
             </div>
             <NotificationDropdown />
@@ -484,7 +490,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">
-                    {role === 'ADMIN' ? 'Admin Dashboard' : role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
+                    {role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
                   </h1>
                   <p className="text-slate-400 text-lg">
                     Welcome back, {greetingName}
