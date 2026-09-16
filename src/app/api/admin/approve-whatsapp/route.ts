@@ -18,12 +18,27 @@ export async function POST(request: NextRequest) {
       const { data: userData } = await adminClient.auth.admin.getUserById(userId);
       const meta = userData?.user?.user_metadata;
       if (meta) {
-        if (Array.isArray(meta.mediums) && meta.mediums.length > 0) extraFields.mediums = meta.mediums;
-        if (Array.isArray(meta.specialties) && meta.specialties.length > 0) extraFields.specialties = meta.specialties;
-        if (Array.isArray(meta.services) && meta.services.length > 0) extraFields.services = meta.services;
-        if (Array.isArray(meta.other_categories) && meta.other_categories.length > 0) extraFields.other_categories = meta.other_categories;
-        if (extraFields.mediums || extraFields.specialties) {
-          extraFields.skills = [...(extraFields.mediums || []), ...(extraFields.specialties || [])];
+        const styles = meta.art_styles || meta.mediums;
+        const specialties = meta.art_specialties || meta.specialties;
+        const services = meta.services_offered || meta.services;
+
+        if (Array.isArray(styles) && styles.length > 0) {
+          extraFields.art_styles = styles;
+          extraFields.mediums = styles;
+        }
+        if (Array.isArray(specialties) && specialties.length > 0) {
+          extraFields.art_specialties = specialties;
+          extraFields.specialties = specialties;
+        }
+        if (Array.isArray(services) && services.length > 0) {
+          extraFields.services_offered = services;
+          extraFields.services = services;
+        }
+        if (Array.isArray(meta.other_categories) && meta.other_categories.length > 0) {
+          extraFields.other_categories = meta.other_categories;
+        }
+        if (extraFields.art_styles || extraFields.art_specialties) {
+          extraFields.skills = [...(extraFields.art_styles || []), ...(extraFields.art_specialties || [])];
         }
       }
     } catch (metaErr) {

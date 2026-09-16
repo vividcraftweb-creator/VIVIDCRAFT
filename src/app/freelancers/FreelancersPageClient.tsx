@@ -1,12 +1,30 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, CheckCircle, Clock, Shield } from 'lucide-react';
+import {
+  Search,
+  MapPin,
+  CheckCircle,
+  Clock,
+  Shield,
+  Palette,
+  Sparkles,
+  Briefcase,
+  ChevronDown,
+  Check,
+  X,
+  RotateCcw,
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import ArtistCard, { getPublicUrl } from '@/components/artists/ArtistCard';
+import {
+  ARTIST_MEDIUMS,
+  ARTIST_SPECIALTIES,
+  ARTIST_SERVICES,
+} from '@/lib/artist-categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,8 +48,29 @@ export default function FreelancersPageClient({
   const [loading, setLoading] = useState(initialProfiles.length === 0);
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
+  // Multi-select category filter states
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [openDropdown, setOpenDropdown] = useState<'style' | 'specialty' | 'service' | null>(null);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   // 1. Direct Supabase Query: Fetch all artists directly from 'profiles' table
@@ -67,6 +106,9 @@ export default function FreelancersPageClient({
                 userId: p.user_id || p.userId || key,
                 avatar_url: avatar,
                 profile_picture: avatar,
+                art_styles: p.art_styles || p.mediums || [],
+                art_specialties: p.art_specialties || p.specialties || [],
+                services_offered: p.services_offered || p.services || [],
                 display_order: p.display_order ?? 999,
               });
             }
@@ -107,26 +149,124 @@ export default function FreelancersPageClient({
     };
   }, []);
 
-  // 2. Display all artist profiles without restrictive filters, filtering only on search query
+  // Compute available category options dynamically from constants + loaded profiles
+  const availableStyles = useMemo(() => {
+    const set = new Set<string>(ARTIST_MEDIUMS);
+    profiles.forEach((p) => {
+      const arr = p.art_styles || p.mediums;
+      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x)));
+    });
+    return Array.from(set);
+  }, [profiles]);
+
+  const availableSpecialties = useMemo(() => {
+    const set = new Set<string>(ARTIST_SPECIALTIES);
+    profiles.forEach((p) => {
+      const arr = p.art_specialties || p.specialties;
+      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x)));
+    });
+    return Array.from(set);
+  }, [profiles]);
+
+  const availableServices = useMemo(() => {
+    const set = new Set<string>(ARTIST_SERVICES);
+    profiles.forEach((p) => {
+      const arr = p.services_offered || p.services;
+      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x)));
+    });
+    return Array.from(set);
+  }, [profiles]);
+
+  // Category selection toggle handlers
+  const toggleStyle = (val: string) => {
+    setSelectedStyles((prev) =>
+      prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
+    );
+  };
+
+  const toggleSpecialty = (val: string) => {
+    setSelectedSpecialties((prev) =>
+      prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
+    );
+  };
+
+  const toggleService = (val: string) => {
+    setSelectedServices((prev) =>
+      prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedStyles([]);
+    setSelectedSpecialties([]);
+    setSelectedServices([]);
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters =
+    selectedStyles.length > 0 ||
+    selectedSpecialties.length > 0 ||
+    selectedServices.length > 0;
+
+  // 2. Filter profiles dynamically with array overlap logic while strictly preserving display_order ASC
   const displayedArtists = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return profiles;
+    let result = profiles;
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter((artist: any) => {
+        const fName = artist.first_name || artist.firstName || '';
+        const lName = artist.last_name || artist.lastName || '';
+        const fullName = artist.full_name || artist.name || '';
+        const email = artist.email || artist.businessEmail || artist.business_email || '';
+        const title = artist.title || artist.professional_title || '';
+        const bio = artist.bio || artist.description || '';
+        const skills = Array.isArray(artist.skills) ? artist.skills.join(', ') : (artist.skills || '');
+        const loc = artist.location || artist.address || '';
+        const text = `${fName} ${lName} ${fullName} ${email} ${title} ${bio} ${skills} ${loc}`.toLowerCase();
+        return text.includes(q);
+      });
     }
 
-    const q = searchQuery.toLowerCase().trim();
-    return profiles.filter((artist: any) => {
-      const fName = artist.first_name || artist.firstName || '';
-      const lName = artist.last_name || artist.lastName || '';
-      const fullName = artist.full_name || artist.name || '';
-      const email = artist.email || artist.businessEmail || artist.business_email || '';
-      const title = artist.title || artist.professional_title || '';
-      const bio = artist.bio || artist.description || '';
-      const skills = Array.isArray(artist.skills) ? artist.skills.join(', ') : (artist.skills || '');
-      const loc = artist.location || artist.address || '';
-      const text = `${fName} ${lName} ${fullName} ${email} ${title} ${bio} ${skills} ${loc}`.toLowerCase();
-      return text.includes(q);
-    });
-  }, [profiles, searchQuery]);
+    // Art styles multi-select filter (strict array overlap logic)
+    if (selectedStyles.length > 0) {
+      result = result.filter((artist: any) => {
+        const artistStyles: string[] = [
+          ...(artist.art_styles || []),
+          ...(artist.mediums || []),
+        ].map((x: string) => String(x).toLowerCase());
+        return selectedStyles.every((s) => artistStyles.includes(s.toLowerCase()));
+      });
+    }
+
+    // Specialties multi-select filter (strict array overlap logic)
+    if (selectedSpecialties.length > 0) {
+      result = result.filter((artist: any) => {
+        const artistSpecialties: string[] = [
+          ...(artist.art_specialties || []),
+          ...(artist.specialties || []),
+        ].map((x: string) => String(x).toLowerCase());
+        return selectedSpecialties.every((s) => artistSpecialties.includes(s.toLowerCase()));
+      });
+    }
+
+    // Services multi-select filter (strict array overlap logic)
+    if (selectedServices.length > 0) {
+      result = result.filter((artist: any) => {
+        const artistServices: string[] = [
+          ...(artist.services_offered || []),
+          ...(artist.services || []),
+        ].map((x: string) => String(x).toLowerCase());
+        return selectedServices.every((s) => artistServices.includes(s.toLowerCase()));
+      });
+    }
+
+    // Strictly preserve manual artist ordering (display_order ASC)
+    return result.sort(
+      (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
+    );
+  }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedServices]);
 
   const resetSearch = () => {
     setSearchQuery('');
@@ -174,6 +314,244 @@ export default function FreelancersPageClient({
               </form>
             </div>
           </div>
+
+          {/* Multi-Select Category Filters */}
+          <div ref={dropdownRef} className="relative mx-auto mt-3 max-w-2xl">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {/* Filter 1: Medium / Art Style */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === 'style' ? null : 'style')}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition shadow-sm cursor-pointer ${
+                    selectedStyles.length > 0
+                      ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/20'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  <Palette className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Art Style</span>
+                  {selectedStyles.length > 0 && (
+                    <span className="rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                      {selectedStyles.length}
+                    </span>
+                  )}
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openDropdown === 'style' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDropdown === 'style' && (
+                  <div className="absolute left-0 sm:left-auto z-50 mt-1.5 w-64 sm:w-72 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 shadow-xl">
+                    <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Medium / Art Style</span>
+                      {selectedStyles.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStyles([])}
+                          className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                      {availableStyles.map((item) => {
+                        const isChecked = selectedStyles.includes(item);
+                        return (
+                          <label
+                            key={item}
+                            onClick={() => toggleStyle(item)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer select-none"
+                          >
+                            <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                              isChecked
+                                ? 'bg-amber-500 border-amber-500 text-white'
+                                : 'border-zinc-300 dark:border-zinc-700 bg-transparent'
+                            }`}>
+                              {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                            </div>
+                            <span className={`flex-1 ${isChecked ? 'font-semibold text-amber-700 dark:text-amber-300' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                              {item}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter 2: Specialty / Art Type */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === 'specialty' ? null : 'specialty')}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition shadow-sm cursor-pointer ${
+                    selectedSpecialties.length > 0
+                      ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Specialty</span>
+                  {selectedSpecialties.length > 0 && (
+                    <span className="rounded-full bg-indigo-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                      {selectedSpecialties.length}
+                    </span>
+                  )}
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openDropdown === 'specialty' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDropdown === 'specialty' && (
+                  <div className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 z-50 mt-1.5 w-64 sm:w-72 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 shadow-xl">
+                    <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Specialty / Art Type</span>
+                      {selectedSpecialties.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSpecialties([])}
+                          className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                      {availableSpecialties.map((item) => {
+                        const isChecked = selectedSpecialties.includes(item);
+                        return (
+                          <label
+                            key={item}
+                            onClick={() => toggleSpecialty(item)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer select-none"
+                          >
+                            <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                              isChecked
+                                ? 'bg-indigo-500 border-indigo-500 text-white'
+                                : 'border-zinc-300 dark:border-zinc-700 bg-transparent'
+                            }`}>
+                              {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                            </div>
+                            <span className={`flex-1 ${isChecked ? 'font-semibold text-indigo-700 dark:text-indigo-300' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                              {item}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter 3: Services Offered */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === 'service' ? null : 'service')}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition shadow-sm cursor-pointer ${
+                    selectedServices.length > 0
+                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  <Briefcase className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Services Offered</span>
+                  {selectedServices.length > 0 && (
+                    <span className="rounded-full bg-emerald-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                      {selectedServices.length}
+                    </span>
+                  )}
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openDropdown === 'service' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDropdown === 'service' && (
+                  <div className="absolute right-0 z-50 mt-1.5 w-64 sm:w-72 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 shadow-xl">
+                    <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Services Offered</span>
+                      {selectedServices.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedServices([])}
+                          className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
+                      {availableServices.map((item) => {
+                        const isChecked = selectedServices.includes(item);
+                        return (
+                          <label
+                            key={item}
+                            onClick={() => toggleService(item)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer select-none"
+                          >
+                            <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                              isChecked
+                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                : 'border-zinc-300 dark:border-zinc-700 bg-transparent'
+                            }`}>
+                              {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                            </div>
+                            <span className={`flex-1 ${isChecked ? 'font-semibold text-emerald-700 dark:text-emerald-300' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                              {item}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Active Filters Display & Reset */}
+            {hasActiveFilters && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+                {selectedStyles.map((style) => (
+                  <button
+                    key={`chip-style-${style}`}
+                    type="button"
+                    onClick={() => toggleStyle(style)}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition group cursor-pointer"
+                  >
+                    <span>{style}</span>
+                    <X className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                  </button>
+                ))}
+                {selectedSpecialties.map((spec) => (
+                  <button
+                    key={`chip-spec-${spec}`}
+                    type="button"
+                    onClick={() => toggleSpecialty(spec)}
+                    className="inline-flex items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 transition group cursor-pointer"
+                  >
+                    <span>{spec}</span>
+                    <X className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                  </button>
+                ))}
+                {selectedServices.map((srv) => (
+                  <button
+                    key={`chip-srv-${srv}`}
+                    type="button"
+                    onClick={() => toggleService(srv)}
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition group cursor-pointer"
+                  >
+                    <span>{srv}</span>
+                    <X className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-foreground transition cursor-pointer"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -184,12 +562,13 @@ export default function FreelancersPageClient({
               ? `Showing ${displayedArtists.length} ${displayedArtists.length === 1 ? 'artist' : 'artists'}`
               : 'Showing artists'}
           </p>
-          {searchQuery && (
+          {(searchQuery || hasActiveFilters) && (
             <button
-              onClick={resetSearch}
-              className="text-xs font-semibold text-primary transition hover:underline"
+              onClick={clearAllFilters}
+              className="text-xs font-semibold text-primary transition hover:underline flex items-center gap-1 cursor-pointer"
             >
-              Clear search
+              <RotateCcw className="h-3 w-3" />
+              Clear all filters
             </button>
           )}
         </div>
@@ -222,12 +601,12 @@ export default function FreelancersPageClient({
             <Shield className="mx-auto mb-4 h-10 w-10 text-primary" />
             <h3 className="mb-2 text-xl font-semibold text-foreground">No artists found</h3>
             <p className="mb-6 text-sm text-muted-foreground">
-              Try adjusting your search terms or clear the search to view all artists.
+              Try adjusting your search or category filters to view all artists.
             </p>
             <button
               type="button"
-              onClick={resetSearch}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 cursor-pointer"
             >
               Show all artists
             </button>

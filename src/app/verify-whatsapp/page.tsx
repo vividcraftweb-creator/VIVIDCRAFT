@@ -21,6 +21,9 @@ interface UserProfile {
   email: string;
   fullName: string;
   whatsapp_verification_status: string | null;
+  art_styles?: string[];
+  art_specialties?: string[];
+  services_offered?: string[];
   mediums?: string[];
   specialties?: string[];
   services?: string[];
@@ -30,6 +33,9 @@ interface UserProfile {
 async function persistCategoriesToProfile(
   userId: string,
   categories: {
+    art_styles?: string[];
+    art_specialties?: string[];
+    services_offered?: string[];
     mediums?: string[];
     specialties?: string[];
     services?: string[];
@@ -38,15 +44,27 @@ async function persistCategoriesToProfile(
 ) {
   try {
     const payload: any = {};
-    if (categories.mediums && categories.mediums.length > 0) payload.mediums = categories.mediums;
-    if (categories.specialties && categories.specialties.length > 0) payload.specialties = categories.specialties;
-    if (categories.services && categories.services.length > 0) payload.services = categories.services;
-    if (categories.other_categories && categories.other_categories.length > 0) payload.other_categories = categories.other_categories;
-    if (
-      (categories.mediums && categories.mediums.length > 0) ||
-      (categories.specialties && categories.specialties.length > 0)
-    ) {
-      payload.skills = [...(categories.mediums || []), ...(categories.specialties || [])];
+    const styles = categories.art_styles || categories.mediums || [];
+    const specs = categories.art_specialties || categories.specialties || [];
+    const servs = categories.services_offered || categories.services || [];
+
+    if (styles.length > 0) {
+      payload.art_styles = styles;
+      payload.mediums = styles;
+    }
+    if (specs.length > 0) {
+      payload.art_specialties = specs;
+      payload.specialties = specs;
+    }
+    if (servs.length > 0) {
+      payload.services_offered = servs;
+      payload.services = servs;
+    }
+    if (categories.other_categories && categories.other_categories.length > 0) {
+      payload.other_categories = categories.other_categories;
+    }
+    if (styles.length > 0 || specs.length > 0) {
+      payload.skills = [...styles, ...specs];
     }
 
     if (Object.keys(payload).length > 0) {
@@ -98,7 +116,7 @@ export default function VerifyWhatsAppPage() {
         try {
           const { data } = await supabase
             .from('profiles')
-            .select('first_name, last_name, email, whatsapp_verification_status, verification_status, role, mediums, specialties, services, other_categories')
+            .select('first_name, last_name, email, whatsapp_verification_status, verification_status, role, art_styles, art_specialties, services_offered, mediums, specialties, services, other_categories')
             .eq('id', user.id)
             .maybeSingle();
           profileRow = data;
@@ -128,16 +146,44 @@ export default function VerifyWhatsAppPage() {
           if (raw) cachedCategories = JSON.parse(raw);
         } catch {}
 
-        const userMediums: string[] = profileRow?.mediums || user.user_metadata?.mediums || cachedCategories?.mediums || [];
-        const userSpecialties: string[] = profileRow?.specialties || user.user_metadata?.specialties || cachedCategories?.specialties || [];
-        const userServices: string[] = profileRow?.services || user.user_metadata?.services || cachedCategories?.services || [];
-        const userOtherCategories: string[] = profileRow?.other_categories || user.user_metadata?.other_categories || cachedCategories?.other_categories || [];
+        const userMediums: string[] =
+          profileRow?.art_styles ||
+          profileRow?.mediums ||
+          user.user_metadata?.art_styles ||
+          user.user_metadata?.mediums ||
+          cachedCategories?.art_styles ||
+          cachedCategories?.mediums ||
+          [];
+        const userSpecialties: string[] =
+          profileRow?.art_specialties ||
+          profileRow?.specialties ||
+          user.user_metadata?.art_specialties ||
+          user.user_metadata?.specialties ||
+          cachedCategories?.art_specialties ||
+          cachedCategories?.specialties ||
+          [];
+        const userServices: string[] =
+          profileRow?.services_offered ||
+          profileRow?.services ||
+          user.user_metadata?.services_offered ||
+          user.user_metadata?.services ||
+          cachedCategories?.services_offered ||
+          cachedCategories?.services ||
+          [];
+        const userOtherCategories: string[] =
+          profileRow?.other_categories ||
+          user.user_metadata?.other_categories ||
+          cachedCategories?.other_categories ||
+          [];
 
         const userProfile: UserProfile = {
           id: user.id,
           email: profileRow?.email || user.email || '',
           fullName,
           whatsapp_verification_status: profileRow?.whatsapp_verification_status || null,
+          art_styles: userMediums,
+          art_specialties: userSpecialties,
+          services_offered: userServices,
           mediums: userMediums,
           specialties: userSpecialties,
           services: userServices,
@@ -147,6 +193,9 @@ export default function VerifyWhatsAppPage() {
         // Ensure categories are synced to profile if available in metadata/cache
         if (userMediums.length > 0 || userSpecialties.length > 0 || userServices.length > 0) {
           persistCategoriesToProfile(user.id, {
+            art_styles: userMediums,
+            art_specialties: userSpecialties,
+            services_offered: userServices,
             mediums: userMediums,
             specialties: userSpecialties,
             services: userServices,
@@ -174,6 +223,9 @@ export default function VerifyWhatsAppPage() {
               if (newWhatsappStatus === 'verified' || newVerificationStatus === 'verified') {
                 if (userMediums.length > 0 || userSpecialties.length > 0 || userServices.length > 0) {
                   await persistCategoriesToProfile(user.id, {
+                    art_styles: userMediums,
+                    art_specialties: userSpecialties,
+                    services_offered: userServices,
                     mediums: userMediums,
                     specialties: userSpecialties,
                     services: userServices,
@@ -231,11 +283,17 @@ export default function VerifyWhatsAppPage() {
         profileRow?.verification_status === 'verified';
 
       if (isVerified) {
-        if (profile.mediums?.length || profile.specialties?.length || profile.services?.length) {
+        const styles = profile.art_styles || profile.mediums;
+        const specs = profile.art_specialties || profile.specialties;
+        const srvs = profile.services_offered || profile.services;
+        if (styles?.length || specs?.length || srvs?.length) {
           await persistCategoriesToProfile(profile.id, {
-            mediums: profile.mediums,
-            specialties: profile.specialties,
-            services: profile.services,
+            art_styles: styles,
+            art_specialties: specs,
+            services_offered: srvs,
+            mediums: styles,
+            specialties: specs,
+            services: srvs,
             other_categories: profile.other_categories,
           });
         }
@@ -275,10 +333,25 @@ export default function VerifyWhatsAppPage() {
       const updatePayload: any = {
         whatsapp_verification_status: 'pending_whatsapp',
       };
-      if (profile.mediums && profile.mediums.length > 0) updatePayload.mediums = profile.mediums;
-      if (profile.specialties && profile.specialties.length > 0) updatePayload.specialties = profile.specialties;
-      if (profile.services && profile.services.length > 0) updatePayload.services = profile.services;
-      if (profile.other_categories && profile.other_categories.length > 0) updatePayload.other_categories = profile.other_categories;
+      const styles = profile.art_styles || profile.mediums;
+      const specs = profile.art_specialties || profile.specialties;
+      const srvs = profile.services_offered || profile.services;
+
+      if (styles && styles.length > 0) {
+        updatePayload.art_styles = styles;
+        updatePayload.mediums = styles;
+      }
+      if (specs && specs.length > 0) {
+        updatePayload.art_specialties = specs;
+        updatePayload.specialties = specs;
+      }
+      if (srvs && srvs.length > 0) {
+        updatePayload.services_offered = srvs;
+        updatePayload.services = srvs;
+      }
+      if (profile.other_categories && profile.other_categories.length > 0) {
+        updatePayload.other_categories = profile.other_categories;
+      }
 
       try {
         const { error } = await supabase

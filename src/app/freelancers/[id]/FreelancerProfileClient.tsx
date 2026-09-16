@@ -20,7 +20,9 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  Palette,
   Share2,
+  Sparkles,
   Star,
   User,
 } from 'lucide-react';
@@ -204,10 +206,13 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
             taxId: null,
             timezone: null,
             verified: Boolean(data.is_verified || data.verified || false),
+            art_styles: Array.isArray(data.art_styles) ? data.art_styles : (Array.isArray(data.mediums) ? data.mediums : null),
+            art_specialties: Array.isArray(data.art_specialties) ? data.art_specialties : (Array.isArray(data.specialties) ? data.specialties : null),
+            services_offered: Array.isArray(data.services_offered) ? data.services_offered : (Array.isArray(data.services) ? data.services : null),
+            mediums: Array.isArray(data.mediums) ? data.mediums : (Array.isArray(data.art_styles) ? data.art_styles : null),
+            specialties: Array.isArray(data.specialties) ? data.specialties : (Array.isArray(data.art_specialties) ? data.art_specialties : null),
+            services: Array.isArray(data.services) ? data.services : (Array.isArray(data.services_offered) ? data.services_offered : null),
             website: null,
-            mediums: Array.isArray(data.mediums) ? data.mediums : null,
-            specialties: Array.isArray(data.specialties) ? data.specialties : null,
-            services: Array.isArray(data.services) ? data.services : null,
             other_categories: Array.isArray(data.other_categories) ? data.other_categories : null,
             experienceItems: [],
             educationItems: [],
@@ -319,9 +324,32 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
 
   const formattedSkills = useMemo(
     () =>
-      profile?.skills ? profile.skills.split(',').map((skill) => skill.trim()).filter(Boolean) : [],
+      profile?.skills
+        ? (Array.isArray(profile.skills) ? profile.skills : profile.skills.split(',').map((skill) => skill.trim()).filter(Boolean))
+        : [],
     [profile]
   );
+
+  const profileStyles = useMemo(() => {
+    const s = (profile as any)?.art_styles || (profile as any)?.mediums;
+    if (Array.isArray(s)) return s.filter(Boolean);
+    if (typeof s === 'string' && s.trim()) return s.split(',').map((x: string) => x.trim()).filter(Boolean);
+    return [];
+  }, [profile]);
+
+  const profileSpecialties = useMemo(() => {
+    const s = (profile as any)?.art_specialties || (profile as any)?.specialties;
+    if (Array.isArray(s)) return s.filter(Boolean);
+    if (typeof s === 'string' && s.trim()) return s.split(',').map((x: string) => x.trim()).filter(Boolean);
+    return [];
+  }, [profile]);
+
+  const profileServices = useMemo(() => {
+    const s = (profile as any)?.services_offered || (profile as any)?.services;
+    if (Array.isArray(s)) return s.filter(Boolean);
+    if (typeof s === 'string' && s.trim()) return s.split(',').map((x: string) => x.trim()).filter(Boolean);
+    return [];
+  }, [profile]);
 
   const shareUrl = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -696,7 +724,66 @@ Hi, I would like to connect with this artist for a commission/project.`;
                   {profile.bio || (profile as any).description}
                 </p>
 
-                {formattedSkills.length > 0 && (
+                {(profileStyles.length > 0 || profileSpecialties.length > 0 || profileServices.length > 0) ? (
+                  <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800 space-y-4">
+                    {profileStyles.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+                          <Palette className="h-3.5 w-3.5" />
+                          Art Styles &amp; Mediums
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profileStyles.map((item) => (
+                            <Badge
+                              key={`style-${item}`}
+                              className="border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300"
+                            >
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {profileSpecialties.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Specialties &amp; Art Types
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profileSpecialties.map((item) => (
+                            <Badge
+                              key={`spec-${item}`}
+                              className="border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300"
+                            >
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {profileServices.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Services Offered
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profileServices.map((item) => (
+                            <Badge
+                              key={`srv-${item}`}
+                              className="border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                            >
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : formattedSkills.length > 0 ? (
                   <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-3 flex items-center gap-2">
                       <Globe className="h-3.5 w-3.5 text-primary" />
@@ -713,30 +800,84 @@ Hi, I would like to connect with this artist for a commission/project.`;
                       ))}
                     </div>
                   </div>
-                )}
+                ) : null}
               </section>
             )}
 
-            {!(profile.bio || (profile as any).description) && formattedSkills.length > 0 && (
-              <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm hover-lift">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 icon-glow transition-all duration-300">
-                    <Globe className="h-4 w-4 text-primary" />
+            {!(profile.bio || (profile as any).description) && (profileStyles.length > 0 || profileSpecialties.length > 0 || profileServices.length > 0 || formattedSkills.length > 0) && (
+              <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm hover-lift space-y-4">
+                {profileStyles.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+                      <Palette className="h-3.5 w-3.5" />
+                      Art Styles &amp; Mediums
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {profileStyles.map((item) => (
+                        <Badge
+                          key={`style-${item}`}
+                          className="border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300"
+                        >
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                  <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                    Art Styles &amp; Mediums
-                  </h2>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {formattedSkills.map((skill) => (
-                    <Badge
-                      key={skill}
-                      className="border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
+                )}
+                {profileSpecialties.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Specialties &amp; Art Types
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {profileSpecialties.map((item) => (
+                        <Badge
+                          key={`spec-${item}`}
+                          className="border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300"
+                        >
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {profileServices.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Services Offered
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {profileServices.map((item) => (
+                        <Badge
+                          key={`srv-${item}`}
+                          className="border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                        >
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!profileStyles.length && !profileSpecialties.length && !profileServices.length && formattedSkills.length > 0 && (
+                  <div>
+                    <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-primary" />
+                      Art Styles &amp; Mediums
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {formattedSkills.map((skill) => (
+                        <Badge
+                          key={skill}
+                          className="border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200"
+                        >
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </section>
             )}
 

@@ -42,17 +42,33 @@ export async function POST(req: Request) {
     const title: string = String(body.title || (metadataRole === 'artist' ? 'Artist' : 'Buyer')).trim();
     const location: string = String(body.location || body.country || 'Sri Lanka').trim();
 
-    const mediums: string[] = Array.isArray(body.mediums)
-      ? body.mediums
-      : (Array.isArray(authUser.user_metadata?.mediums) ? authUser.user_metadata.mediums : []);
+    const art_styles: string[] = Array.isArray(body.art_styles)
+      ? body.art_styles
+      : (Array.isArray(body.mediums)
+        ? body.mediums
+        : (Array.isArray(authUser.user_metadata?.art_styles)
+          ? authUser.user_metadata.art_styles
+          : (Array.isArray(authUser.user_metadata?.mediums) ? authUser.user_metadata.mediums : [])));
 
-    const specialties: string[] = Array.isArray(body.specialties)
-      ? body.specialties
-      : (Array.isArray(authUser.user_metadata?.specialties) ? authUser.user_metadata.specialties : []);
+    const art_specialties: string[] = Array.isArray(body.art_specialties)
+      ? body.art_specialties
+      : (Array.isArray(body.specialties)
+        ? body.specialties
+        : (Array.isArray(authUser.user_metadata?.art_specialties)
+          ? authUser.user_metadata.art_specialties
+          : (Array.isArray(authUser.user_metadata?.specialties) ? authUser.user_metadata.specialties : [])));
 
-    const services: string[] = Array.isArray(body.services)
-      ? body.services
-      : (Array.isArray(authUser.user_metadata?.services) ? authUser.user_metadata.services : []);
+    const services_offered: string[] = Array.isArray(body.services_offered)
+      ? body.services_offered
+      : (Array.isArray(body.services)
+        ? body.services
+        : (Array.isArray(authUser.user_metadata?.services_offered)
+          ? authUser.user_metadata.services_offered
+          : (Array.isArray(authUser.user_metadata?.services) ? authUser.user_metadata.services : [])));
+
+    const mediums: string[] = art_styles;
+    const specialties: string[] = art_specialties;
+    const services: string[] = services_offered;
 
     const other_categories: string[] = Array.isArray(body.other_categories)
       ? body.other_categories
@@ -76,6 +92,9 @@ export async function POST(req: Request) {
           last_name: lastName || authUser.user_metadata?.last_name,
           firstName: firstName || authUser.user_metadata?.firstName,
           lastName: lastName || authUser.user_metadata?.lastName,
+          art_styles,
+          art_specialties,
+          services_offered,
           mediums,
           specialties,
           services,
@@ -125,11 +144,14 @@ export async function POST(req: Request) {
       address: location,
       location: location,
       avatar_url: avatarUrl,
+      art_styles,
+      art_specialties,
+      services_offered,
       mediums,
       specialties,
       services,
       other_categories,
-      skills: [...mediums, ...specialties],
+      skills: [...art_styles, ...art_specialties],
       is_published: true,
       updated_at: new Date().toISOString(),
     };

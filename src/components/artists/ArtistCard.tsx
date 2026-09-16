@@ -30,6 +30,14 @@ export interface ArtistProfile {
   location?: string | null;
   address?: string | null;
   skills?: string[] | string | null;
+  art_styles?: string[] | null;
+  art_specialties?: string[] | null;
+  services_offered?: string[] | null;
+  mediums?: string[] | null;
+  specialties?: string[] | null;
+  services?: string[] | null;
+  other_categories?: string[] | null;
+  display_order?: number | null;
   is_verified?: boolean;
   isVerified?: boolean;
 }
@@ -104,6 +112,29 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
     : typeof rawSkills === 'string' && rawSkills.trim()
     ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
     : [];
+
+  const rawStyles = (artist.art_styles || artist.mediums) as unknown;
+  const styles: string[] = Array.isArray(rawStyles)
+    ? rawStyles
+    : typeof rawStyles === 'string' && rawStyles.trim()
+    ? rawStyles.split(',').map((s: string) => s.trim()).filter(Boolean)
+    : [];
+
+  const rawSpecialties = (artist.art_specialties || artist.specialties) as unknown;
+  const specialties: string[] = Array.isArray(rawSpecialties)
+    ? rawSpecialties
+    : typeof rawSpecialties === 'string' && rawSpecialties.trim()
+    ? rawSpecialties.split(',').map((s: string) => s.trim()).filter(Boolean)
+    : [];
+
+  const rawServices = (artist.services_offered || artist.services) as unknown;
+  const services: string[] = Array.isArray(rawServices)
+    ? rawServices
+    : typeof rawServices === 'string' && rawServices.trim()
+    ? rawServices.split(',').map((s: string) => s.trim()).filter(Boolean)
+    : [];
+
+  const hasCategories = styles.length > 0 || specialties.length > 0 || services.length > 0;
 
   const rawAvatar =
     discoveredAvatar ||
@@ -192,7 +223,39 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
             <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 line-clamp-2">{bio}</p>
           )}
 
-          {skills.length > 0 && (
+          {hasCategories ? (
+            <div className="flex flex-wrap gap-1.5">
+              {styles.slice(0, 3).map((item) => (
+                <span
+                  key={`style-${item}`}
+                  className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+                >
+                  {item}
+                </span>
+              ))}
+              {specialties.slice(0, 3).map((item) => (
+                <span
+                  key={`spec-${item}`}
+                  className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300"
+                >
+                  {item}
+                </span>
+              ))}
+              {services.slice(0, 2).map((item) => (
+                <span
+                  key={`srv-${item}`}
+                  className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+                >
+                  {item}
+                </span>
+              ))}
+              {(styles.length + specialties.length + services.length > 8) && (
+                <span className="rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  +{styles.length + specialties.length + services.length - 8} more
+                </span>
+              )}
+            </div>
+          ) : skills.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {skills.slice(0, 8).map((skill) => (
                 <span
@@ -203,7 +266,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
                 </span>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
 
         <footer className="mt-4 flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800 pt-4">

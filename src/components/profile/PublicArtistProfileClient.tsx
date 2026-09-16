@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Mail,
   MapPin,
+  Palette,
   Share2,
   Sparkles,
   Star,
@@ -293,6 +294,9 @@ export default function PublicArtistProfileClient() {
     bio,
     location,
     skills,
+    artStyles,
+    artSpecialties,
+    servicesOffered,
     rate,
     portfolio,
     isVerified,
@@ -358,6 +362,27 @@ export default function PublicArtistProfileClient() {
       ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
       : ['Digital Painting', 'Concept Art', 'Illustration', 'Character Design'];
 
+    const rawStyles = rawProfile?.art_styles || rawProfile?.mediums || '';
+    const stylesList: string[] = Array.isArray(rawStyles)
+      ? rawStyles
+      : typeof rawStyles === 'string' && rawStyles.trim()
+      ? rawStyles.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    const rawSpecialties = rawProfile?.art_specialties || rawProfile?.specialties || '';
+    const specialtiesList: string[] = Array.isArray(rawSpecialties)
+      ? rawSpecialties
+      : typeof rawSpecialties === 'string' && rawSpecialties.trim()
+      ? rawSpecialties.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    const rawServices = rawProfile?.services_offered || rawProfile?.services || '';
+    const servicesList: string[] = Array.isArray(rawServices)
+      ? rawServices
+      : typeof rawServices === 'string' && rawServices.trim()
+      ? rawServices.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
     return {
       firstName: fName,
       lastName: lName,
@@ -368,6 +393,9 @@ export default function PublicArtistProfileClient() {
       bio: rawProfile?.bio || rawProfile?.description || 'Professional artist and digital creator on Vivid Art.',
       location: rawProfile?.location || rawProfile?.address || '',
       skills: skillsList,
+      artStyles: stylesList,
+      artSpecialties: specialtiesList,
+      servicesOffered: servicesList,
       rate: typeof rawProfile?.rate === 'number' ? rawProfile.rate : 75,
       portfolio: rawProfile?.portfolio || null,
       isVerified: Boolean(rawProfile?.is_verified || rawProfile?.verified || false),
@@ -606,18 +634,82 @@ export default function PublicArtistProfileClient() {
                 </CardTitle>
                 <CardDescription className="text-zinc-600 dark:text-zinc-400">Creative proficiencies and specialties</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill, index) => (
-                    <Badge
-                      key={index}
-                      variant="outline"
-                      className="border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary hover:bg-primary/10 transition"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
+              <CardContent className="space-y-4">
+                {(artStyles.length > 0 || artSpecialties.length > 0 || servicesOffered.length > 0) ? (
+                  <>
+                    {artStyles.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+                          <Palette className="h-3.5 w-3.5" />
+                          Art Styles &amp; Mediums
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {artStyles.map((item, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300"
+                            >
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {artSpecialties.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Specialties &amp; Art Types
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {artSpecialties.map((item, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300"
+                            >
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {servicesOffered.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Services Offered
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {servicesOffered.map((item, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                            >
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((skill, index) => (
+                      <Badge
+                        key={index}
+                        variant="outline"
+                        className="border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary hover:bg-primary/10 transition"
+                      >
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

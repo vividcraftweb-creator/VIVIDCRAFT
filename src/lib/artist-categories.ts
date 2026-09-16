@@ -1,4 +1,7 @@
 export interface ArtistCategories {
+  art_styles?: string[];
+  art_specialties?: string[];
+  services_offered?: string[];
   mediums: string[];
   specialties: string[];
   services: string[];
@@ -46,6 +49,10 @@ export const ARTIST_SERVICES = [
   'Album & Book Cover Design',
   'Art Tutoring & Workshops',
 ] as const;
+
+export const ART_STYLES_OPTIONS = ARTIST_MEDIUMS;
+export const ART_SPECIALTIES_OPTIONS = ARTIST_SPECIALTIES;
+export const SERVICES_OFFERED_OPTIONS = ARTIST_SERVICES;
 
 /**
  * Validates that all 3 required categories have at least 1 selection or custom input

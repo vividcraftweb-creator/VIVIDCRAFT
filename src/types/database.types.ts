@@ -1444,6 +1444,9 @@ export type Database = {
           is_published: boolean | null
           lastName: string | null
           location: string | null
+          art_styles?: string[] | null
+          art_specialties?: string[] | null
+          services_offered?: string[] | null
           mediums?: string[] | null
           other_categories?: string[] | null
           phone: string | null
@@ -1490,6 +1493,9 @@ export type Database = {
           is_published?: boolean | null
           lastName?: string | null
           location?: string | null
+          art_styles?: string[] | null
+          art_specialties?: string[] | null
+          services_offered?: string[] | null
           mediums?: string[] | null
           other_categories?: string[] | null
           phone?: string | null
@@ -1535,6 +1541,9 @@ export type Database = {
           isPublished?: boolean | null
           lastName?: string | null
           location?: string | null
+          art_styles?: string[] | null
+          art_specialties?: string[] | null
+          services_offered?: string[] | null
           mediums?: string[] | null
           other_categories?: string[] | null
           phone?: string | null
