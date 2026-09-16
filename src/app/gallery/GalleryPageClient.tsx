@@ -588,6 +588,11 @@ export default function GalleryPageClient() {
       setDeletingArtwork(null);
       setDeleteReason('');
       utils.artworks.getAllArtworks.invalidate();
+
+      // Wait for delete to finish, then:
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch (err: any) {
       console.error('Delete artwork error:', err);
       toast.error('Failed to remove artwork: ' + err.message);
@@ -1367,9 +1372,9 @@ export default function GalleryPageClient() {
                         const { badgeType } = getArtworkPricingDisplay(artwork);
                         if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                        const rawPhone = artwork.profiles?.phone || artwork.user?.phone || '94783813833';
-                        const cleanPhone = String(rawPhone).replace(/\D/g, ''); // Removes all spaces, plus signs, hyphens
-                        const waLink = `https://wa.me/${cleanPhone || '94783813833'}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}" (Ref: ${artwork.id})`)}`;
+                        const rawNum = artwork.profiles?.phone || artwork.user?.phone || '94783813833';
+                        const pureNum = String(rawNum).replace(/[^0-9]/g, '') || '94783813833'; // Removes +, spaces, and hyphens completely
+                        const waLink = `https://wa.me/${pureNum}`;
 
                         return (
                           <a
@@ -1604,9 +1609,9 @@ export default function GalleryPageClient() {
                     const { badgeType } = getArtworkPricingDisplay(selectedArtwork);
                     if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                    const rawPhone = (selectedArtwork as any).profiles?.phone || (selectedArtwork as any).user?.phone || '94783813833';
-                    const cleanPhone = String(rawPhone).replace(/\D/g, ''); // Removes all spaces, plus signs, hyphens
-                    const waLink = `https://wa.me/${cleanPhone || '94783813833'}?text=${encodeURIComponent(`Hi, I am interested in "${selectedArtwork.title}" (Ref: ${selectedArtwork.id})`)}`;
+                    const rawNum = (selectedArtwork as any).profiles?.phone || (selectedArtwork as any).user?.phone || '94783813833';
+                    const pureNum = String(rawNum).replace(/[^0-9]/g, '') || '94783813833'; // Removes +, spaces, and hyphens completely
+                    const waLink = `https://wa.me/${pureNum}`;
 
                     return (
                       <a

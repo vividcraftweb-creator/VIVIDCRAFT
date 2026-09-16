@@ -530,9 +530,9 @@ export function ArtworkModal({
               const { badgeType } = getArtworkPricingDisplay(artwork);
               if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-              const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '94783813833';
-              const cleanPhone = String(rawPhone).replace(/\D/g, ''); // Removes all spaces, plus signs, hyphens
-              const waLink = `https://wa.me/${cleanPhone || '94783813833'}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}" (Ref: ${artwork.id})`)}`;
+              const rawNum = artwork.profiles?.phone || (artwork as any).user?.phone || '94783813833';
+              const pureNum = String(rawNum).replace(/[^0-9]/g, '') || '94783813833'; // Removes +, spaces, and hyphens completely
+              const waLink = `https://wa.me/${pureNum}`;
 
               return (
                 <a

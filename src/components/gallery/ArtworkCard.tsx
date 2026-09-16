@@ -208,6 +208,11 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
       router.refresh();
       utils.artworks.getAllArtworks.invalidate();
       utils.artworks.getMyArtworks.invalidate();
+
+      // Wait for delete to finish, then:
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch (err: any) {
       console.error('Delete error:', err);
       toast.error('Failed to delete artwork: ' + err.message);

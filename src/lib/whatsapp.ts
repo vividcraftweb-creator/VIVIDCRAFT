@@ -42,27 +42,21 @@ export function getSafeArtworkWhatsAppUrl(
   options?: WhatsAppUrlOptions
 ): string {
   if (!artwork) {
-    return `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi, I am interested in your artwork.')}`;
+    return `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}`;
   }
 
   // 1. Extract phone number safely from artist/user profile
-  const rawPhone =
+  const rawNum =
     artwork.profiles?.phone ||
     artwork.user?.phone ||
     DEFAULT_WHATSAPP_NUMBER;
 
-  // 2. Sanitize to contain ONLY digits
-  const cleanPhone = String(rawPhone).replace(/\D/g, '');
+  // 2. Sanitize to contain ONLY digits using /[^0-9]/g
+  const pureNum = String(rawNum).replace(/[^0-9]/g, '') || DEFAULT_WHATSAPP_NUMBER;
 
-  // 3. If cleanPhone is empty or invalid, fallback to default artist/support number
-  const validPhone = (cleanPhone && cleanPhone.length >= 7)
-    ? cleanPhone
-    : DEFAULT_WHATSAPP_NUMBER;
+  if (options?.customMessage) {
+    return `https://wa.me/${pureNum}?text=${encodeURIComponent(options.customMessage)}`;
+  }
 
-  // 4. Construct URL safely
-  const title = artwork.title || 'Artwork';
-  const refId = artwork.id || artwork.art_code || '';
-  const defaultText = options?.customMessage || (refId ? `Hi, I am interested in "${title}" (Ref: ${refId})` : `Hi, I am interested in "${title}"`);
-
-  return `https://wa.me/${validPhone}?text=${encodeURIComponent(defaultText)}`;
+  return `https://wa.me/${pureNum}`;
 }
