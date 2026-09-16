@@ -441,24 +441,62 @@ export default function MessagesView() {
     setIsSending(true);
     setNewMessage('');
 
+    // Optimistically show the message immediately
+    const tempId = `temp-${Date.now()}`;
+    const tempMsg: ChatMessageItem = {
+      id: tempId,
+      sender_id: currentUserId,
+      receiver_id: activeRecipientId,
+      content: text,
+      created_at: new Date().toISOString(),
+      senderId: currentUserId,
+      receiverId: activeRecipientId,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+
     try {
-      await sendMessageMutation.mutateAsync({
-        receiverId: activeRecipientId,
-        content: text,
-        jobId: jobId || undefined,
-        proposalId: proposalId || undefined,
+      const res = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiver_id: activeRecipientId, content: text }),
       });
-    } catch (err: any) {
-      const errMsg = err?.message || '';
-      if (errMsg.includes('artist')) {
-        toast.error('Direct messaging between artists is disabled.');
-      } else if (errMsg.includes('yourself')) {
-        toast.error('You cannot send a message to yourself.');
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setNewMessage(text);
+        const errMsg = json?.error || '';
+        if (errMsg.includes('artist')) {
+          toast.error('Direct messaging between artists is disabled.');
+        } else if (errMsg.includes('yourself')) {
+          toast.error('You cannot send a message to yourself.');
+        } else {
+          console.warn('[Messaging] Send error:', errMsg, json?.details);
+          toast.error('Message could not be sent. Please try again.');
+        }
       } else {
-        console.warn('[Messaging] Send error:', errMsg);
-        toast.error('Message could not be sent. Please try again.');
+        // Replace temp message with real message from server
+        const realMsg = json.message;
+        if (realMsg) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...realMsg, sender_id: realMsg.sender_id, created_at: realMsg.created_at } : m))
+          );
+        }
+        // Background re-fetch to sync
+        setTimeout(() => fetchDirectMessages(false), 500);
+        try {
+          utils.messages.getConversationPreviews.invalidate();
+          utils.profiles.getContacts.invalidate();
+        } catch {}
       }
-      setNewMessage(text); // restore typed text on failure
+    } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setNewMessage(text);
+      console.warn('[Messaging] Network error:', err);
+      toast.error('Message could not be sent. Please check your connection.');
     } finally {
       setIsSending(false);
     }
