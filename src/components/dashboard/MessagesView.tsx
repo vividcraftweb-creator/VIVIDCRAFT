@@ -333,25 +333,19 @@ export default function MessagesView() {
     try {
       const supabase = createClient();
 
-      // 1. Direct DB Insert without complex select modifiers that trigger 403
+      // Direct DB Insert
       const { data, error } = await supabase
         .from('messages')
-        .insert([{
+        .insert({
           sender_id: currentUserId,
           receiver_id: activeRecipientId,
           content: text
-        }])
+        })
         .select();
 
-      setIsSending(false);
-
       if (error) {
-        console.error("Messaging DB Insert Error:", error);
-        return;
-      }
-
-      // 2. Append newly saved message cleanly if insert succeeded
-      if (data && data[0]) {
+        console.error("Direct Supabase Insert Error:", error);
+      } else if (data && data[0]) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === data[0].id)) return prev;
           return [...prev, data[0]];
@@ -360,9 +354,10 @@ export default function MessagesView() {
 
       utils.messages.getConversationPreviews.invalidate();
       utils.profiles.getContacts.invalidate();
-    } catch (err: any) {
-      setIsSending(false);
-      console.error("Messaging DB Insert Error:", err);
+    } catch (err) {
+      console.error("Message send catch fallback:", err);
+    } finally {
+      setIsSending(false); // ALWAYS release sending state
     }
   };
 
