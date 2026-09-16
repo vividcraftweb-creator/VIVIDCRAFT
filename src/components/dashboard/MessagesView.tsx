@@ -329,11 +329,11 @@ export default function MessagesView() {
     try {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from('messages')
+        .from('Message')
         .select('*')
-        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeRecipientId}),and(sender_id.eq.${activeRecipientId},receiver_id.eq.${currentUserId})`)
-        .gte('created_at', cutoffIso)
-        .order('created_at', { ascending: true });
+        .or(`and(senderId.eq.${currentUserId},receiverId.eq.${activeRecipientId}),and(senderId.eq.${activeRecipientId},receiverId.eq.${currentUserId})`)
+        .gte('createdAt', cutoffIso)
+        .order('createdAt', { ascending: true });
 
       if (error) {
         console.error('Supabase messages fetch error:', error);
@@ -345,7 +345,7 @@ export default function MessagesView() {
           setMessages(validTRPC);
         }
       } else if (data) {
-        const filtered = data.filter((m) => isWithin7Days(m));
+        const filtered = data.filter((m) => isWithin7Days({ ...m, created_at: m.createdAt }));
         setMessages(filtered);
       }
     } catch (err) {
@@ -389,20 +389,20 @@ export default function MessagesView() {
       .channel(`chat_${currentUserId}_${activeRecipientId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
+        { event: 'INSERT', schema: 'public', table: 'Message' },
         (payload) => {
           try {
             const m = payload.new as any;
             if (!m) return;
-            const sender = String(m.sender_id || m.senderId || '').trim();
-            const receiver = String(m.receiver_id || m.receiverId || '').trim();
+            const sender = String(m.senderId || m.sender_id || '').trim();
+            const receiver = String(m.receiverId || m.receiver_id || '').trim();
             if (
               (sender === currentUserId && receiver === activeRecipientId) ||
               (sender === activeRecipientId && receiver === currentUserId)
             ) {
               setMessages((prev) => {
                 if (prev.some((msg) => msg.id === m.id)) return prev;
-                return [...prev, m];
+                return [...prev, { ...m, created_at: m.createdAt || m.created_at }];
               });
             }
           } catch (err) {
@@ -427,9 +427,7 @@ export default function MessagesView() {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) {
-      try {
-        e.preventDefault();
-      } catch {}
+      try { e.preventDefault(); } catch {}
     }
 
     const text = newMessage.trim();
@@ -440,40 +438,27 @@ export default function MessagesView() {
       return;
     }
 
-    const msgContent = text;
-    setNewMessage('');
     setIsSending(true);
+    setNewMessage('');
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: currentUserId,
-          receiver_id: activeRecipientId,
-          content: msgContent
-        })
-        .select();
-
-      // Immediately push to local state and reset spinner
-      setIsSending(false);
-
-      if (!error && data && data[0]) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === data[0].id)) return prev;
-          return [...prev, data[0]];
-        });
-      } else if (error) {
-        console.warn("[Messaging] Supabase insert notice:", error.message || error);
+      await sendMessageMutation.mutateAsync({
+        receiverId: activeRecipientId,
+        content: text,
+        jobId: jobId || undefined,
+        proposalId: proposalId || undefined,
+      });
+    } catch (err: any) {
+      const errMsg = err?.message || '';
+      if (errMsg.includes('artist')) {
+        toast.error('Direct messaging between artists is disabled.');
+      } else if (errMsg.includes('yourself')) {
+        toast.error('You cannot send a message to yourself.');
+      } else {
+        console.warn('[Messaging] Send error:', errMsg);
+        toast.error('Message could not be sent. Please try again.');
       }
-
-      try {
-        utils.messages.getConversationPreviews.invalidate();
-        utils.profiles.getContacts.invalidate();
-      } catch {}
-    } catch (err) {
-      setIsSending(false);
-      console.warn("[Messaging] Handled dispatch notice:", err);
+      setNewMessage(text); // restore typed text on failure
     } finally {
       setIsSending(false);
     }
