@@ -329,7 +329,7 @@ export default function MessagesView() {
     try {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from('Message')
+        .from('messages')
         .select('*')
         .or(`and(senderId.eq.${currentUserId},receiverId.eq.${activeRecipientId}),and(senderId.eq.${activeRecipientId},receiverId.eq.${currentUserId})`)
         .gte('createdAt', cutoffIso)
@@ -389,7 +389,7 @@ export default function MessagesView() {
       .channel(`chat_${currentUserId}_${activeRecipientId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'Message' },
+        { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
           try {
             const m = payload.new as any;

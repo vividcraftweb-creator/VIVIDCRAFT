@@ -22,7 +22,7 @@ export const messagesRouter = router({
 
     // Get all messages where user is sender or receiver
     const { data: messages, error } = await supabase
-      .from('Message')
+      .from('messages')
       .select('*')
       .or(`senderId.eq.${userId},receiverId.eq.${userId}`)
       .order('createdAt', { ascending: false });
@@ -71,7 +71,7 @@ export const messagesRouter = router({
 
     // Get all messages where user is sender or receiver
     const { data: messages, error } = await supabase
-      .from('Message')
+      .from('messages')
       .select(`
         *,
         sender:User!Message_senderId_fkey(
@@ -164,7 +164,7 @@ export const messagesRouter = router({
 
       // Fetch messages first
       const { data: messages, error } = await supabase
-        .from('Message')
+        .from('messages')
         .select('*')
         .or(`and(senderId.eq.${userId},receiverId.eq.${input.receiverId}),and(senderId.eq.${input.receiverId},receiverId.eq.${userId})`)
         .order('createdAt', { ascending: true });
@@ -425,7 +425,7 @@ export const messagesRouter = router({
       }
 
       const { data: message, error } = await supabase
-        .from('Message')
+        .from('messages')
         .insert({
           id: crypto.randomUUID(),
           senderId: ctx.session.user.id,
@@ -535,7 +535,7 @@ export const messagesRouter = router({
     const supabase = await createClient();
 
     const { count, error } = await supabase
-      .from('Message')
+      .from('messages')
       .select('*', { count: 'exact', head: true })
       .eq('receiverId', ctx.session.user.id)
       .eq('isRead', false);
@@ -556,7 +556,7 @@ export const messagesRouter = router({
       const supabase = await createClient();
 
       const { error } = await supabase
-        .from('Message')
+        .from('messages')
         .update({
           isRead: true,
         })
