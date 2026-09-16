@@ -57,7 +57,14 @@ export function getSafeArtworkWhatsAppUrl(
   const cleanPhone = String(rawPhone).replace(/\D/g, '') || DEFAULT_WHATSAPP_NUMBER;
 
   const title = artwork.title || 'Artwork';
-  const defaultText = options?.customMessage || `Hi, I am interested in "${title}"`;
+  const rawRef = artwork.ref_id || artwork.art_code || artwork.id || 'N/A';
+  const refId = String(rawRef).replace(/^#/, '');
+  const artistName = artwork.profiles?.full_name || artwork.profiles?.display_name || artwork.artist_name || artwork.artist?.name || 'Artist';
+
+  const rawPrice = Number(artwork.price || artwork.price_amount || artwork.amount || artwork.starting_bid || 0);
+  const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
+
+  const defaultText = options?.customMessage || `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${artistName}. Listed Price: ${priceDisplay}.`;
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(defaultText)}`;
 }

@@ -70,6 +70,8 @@ export interface ArtworkItem {
     [key: string]: any;
   } | null;
   artist_phone?: string | null;
+  ref_id?: string | null;
+  artist_name?: string | null;
 }
 
 export interface ArtworkCardProps {
@@ -407,9 +409,21 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
               {/* Direct WhatsApp Action for For Sale & Bidding */}
               {(() => {
                 if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
-                const rawPhone = artwork.profiles?.phone || artwork.user?.phone || (artwork as any).artist_phone || '94783813833';
-                const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833'; // Removes +, spaces, brackets, hyphens
-                const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}"`)}`;
+                const rawPhone = artwork.profiles?.phone || artwork.user?.phone || artwork.artist_phone || '94783813833';
+                const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+
+                const title = artwork.title || 'Artwork';
+                const rawRef = artwork.ref_id || artwork.art_code || artwork.id || 'N/A';
+                const refId = String(rawRef).replace(/^#/, '');
+                const artistFullName = artwork.profiles?.full_name || artwork.profiles?.display_name || artwork.artist_name || artwork.artist?.name || 'Artist';
+
+                // Format price safely using existing price fallback values
+                const rawPrice = Number(artwork.price || artwork.price_amount || artwork.amount || artwork.starting_bid || 0);
+                const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
+
+                // Build full dynamic message string
+                const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${artistFullName}. Listed Price: ${priceDisplay}.`;
+                const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
 
                 return (
                   <a

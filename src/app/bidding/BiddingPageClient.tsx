@@ -649,8 +649,18 @@ export default function BiddingPageClient() {
   // Helper for WhatsApp inquiry URL
   const getWhatsAppBidUrl = (art: RankedArtwork) => {
     const rawPhone = art.profiles?.phone || art.user?.phone || (art as any).artist_phone || '94783813833';
-    const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833'; // Removes +, spaces, brackets, hyphens
-    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I am interested in "${art.title}"`)}`;
+    const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+
+    const title = art.title || 'Artwork';
+    const rawRef = (art as any).ref_id || (art as any).art_code || art.id || 'N/A';
+    const refId = String(rawRef).replace(/^#/, '');
+    const artistName = art.profiles?.full_name || (art as any).artist_name || art.artist?.name || 'Artist';
+
+    const rawPrice = Number(art.price || (art as any).price_amount || (art as any).amount || (art as any).starting_bid || 0);
+    const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
+
+    const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${artistName}. Listed Price: ${priceDisplay}.`;
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
     return waUrl;
   };
 
