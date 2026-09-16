@@ -1363,12 +1363,12 @@ export default function GalleryPageClient() {
                         const { badgeType } = getArtworkPricingDisplay(artwork);
                         if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                        const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '';
-                        const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+                        const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '94783813833';
+                        const digitsOnly = String(rawPhone).replace(/[^0-9]/g, '') || '94783813833';
 
                         return (
                           <a
-                            href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${artwork.title}`)}`}
+                            href={`https://wa.me/${digitsOnly}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}" (Ref: ${artwork.id})`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
@@ -1598,12 +1598,12 @@ export default function GalleryPageClient() {
                     const { badgeType } = getArtworkPricingDisplay(selectedArtwork);
                     if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                    const rawPhone = (selectedArtwork as any).profiles?.phone || (selectedArtwork as any).user?.phone || '';
-                    const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+                    const rawPhone = (selectedArtwork as any).profiles?.phone || (selectedArtwork as any).user?.phone || '94783813833';
+                    const digitsOnly = String(rawPhone).replace(/[^0-9]/g, '') || '94783813833';
 
                     return (
                       <a
-                        href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${selectedArtwork.title}`)}`}
+                        href={`https://wa.me/${digitsOnly}?text=${encodeURIComponent(`Hi, I am interested in "${selectedArtwork.title}" (Ref: ${selectedArtwork.id})`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full sm:w-auto inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm h-10 px-4 rounded-xl cursor-pointer shadow-sm transition-colors"

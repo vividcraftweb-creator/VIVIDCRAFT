@@ -648,9 +648,9 @@ export default function BiddingPageClient() {
 
   // Helper for WhatsApp inquiry URL
   const getWhatsAppBidUrl = (art: RankedArtwork) => {
-    const rawPhone = art.profiles?.phone || art.user?.phone || '';
-    const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${art.title}`)}`;
+    const rawPhone = art.profiles?.phone || art.user?.phone || '94783813833';
+    const digitsOnly = String(rawPhone).replace(/[^0-9]/g, '') || '94783813833';
+    return `https://wa.me/${digitsOnly}?text=${encodeURIComponent(`Hi, I am interested in "${art.title}" (Ref: ${art.id})`)}`;
   };
 
   return (

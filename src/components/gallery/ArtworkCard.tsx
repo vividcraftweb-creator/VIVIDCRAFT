@@ -402,18 +402,18 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
               {/* Direct WhatsApp Action for For Sale & Bidding */}
               {(() => {
                 if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
-                const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '';
-                const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+                const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '94783813833';
+                const digitsOnly = String(rawPhone).replace(/[^0-9]/g, '') || '94783813833';
 
                 return (
                   <a
-                    href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${artwork.title}`)}`}
+                    href={`https://wa.me/${digitsOnly}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}" (Ref: ${artwork.id})`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
                     title="Ask about price or buy on WhatsApp"
                   >
-                    <span>Ask Price (WhatsApp)</span>
+                    Ask Price (WhatsApp)
                   </a>
                 );
               })()}
