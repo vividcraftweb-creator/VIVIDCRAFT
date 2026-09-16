@@ -19,7 +19,8 @@ export default async function FreelancersPage() {
     const { data: artists, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('role', 'artist');
+      .eq('role', 'artist')
+      .order('display_order', { ascending: true });
 
     if (error) {
       console.error("Error fetching artists from profiles:", error);

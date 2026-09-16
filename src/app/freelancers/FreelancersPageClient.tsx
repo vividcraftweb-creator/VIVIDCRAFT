@@ -44,7 +44,8 @@ export default function FreelancersPageClient({
         const { data: artists, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('role', 'artist');
+          .eq('role', 'artist')
+          .order('display_order', { ascending: true });
 
         if (error) {
           console.error("Error fetching artists from profiles:", error);
@@ -66,10 +67,14 @@ export default function FreelancersPageClient({
                 userId: p.user_id || p.userId || key,
                 avatar_url: avatar,
                 profile_picture: avatar,
+                display_order: p.display_order ?? 999,
               });
             }
           }
-          setProfiles(Array.from(profilesMap.values()));
+          const sorted = Array.from(profilesMap.values()).sort(
+            (a, b) => (Number(a.display_order ?? 999)) - (Number(b.display_order ?? 999))
+          );
+          setProfiles(sorted);
         } else if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
           setProfiles(initialProfiles);
         }
