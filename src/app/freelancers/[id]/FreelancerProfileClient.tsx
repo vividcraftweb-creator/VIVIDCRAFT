@@ -205,12 +205,16 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
             timezone: null,
             verified: Boolean(data.is_verified || data.verified || false),
             website: null,
+            mediums: Array.isArray(data.mediums) ? data.mediums : null,
+            specialties: Array.isArray(data.specialties) ? data.specialties : null,
+            services: Array.isArray(data.services) ? data.services : null,
+            other_categories: Array.isArray(data.other_categories) ? data.other_categories : null,
             experienceItems: [],
             educationItems: [],
             portfolioItems: [],
             certifications: [],
             subscriptionPlan: data.subscription_plan || data.subscriptionPlan || 'FREELANCER_PRO',
-          } as FreelancerProfile);
+          } as unknown as FreelancerProfile);
         }
       } catch (err) {
         console.warn("Direct profile load notice:", err);

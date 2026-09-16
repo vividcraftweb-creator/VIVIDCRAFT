@@ -5,8 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Mail, Lock, User, Eye, EyeOff, Loader2, Palette, ShoppingBag, Sparkles, ArrowRight } from 'lucide-react';
-
+import { Mail, Lock, User, Eye, EyeOff, Loader2, Palette, ShoppingBag, Sparkles, ArrowRight, Check } from 'lucide-react';
+import {
+  ARTIST_MEDIUMS,
+  ARTIST_SPECIALTIES,
+  ARTIST_SERVICES,
+  validateArtistCategories,
+} from '@/lib/artist-categories';
 
 export default function SignUpContent() {
   const router = useRouter();
@@ -19,6 +24,37 @@ export default function SignUpContent() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Artist categories states
+  const [selectedMediums, setSelectedMediums] = useState<string[]>([]);
+  const [otherMedium, setOtherMedium] = useState<string>('');
+  const [showOtherMedium, setShowOtherMedium] = useState<boolean>(false);
+
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
+  const [otherSpecialty, setOtherSpecialty] = useState<string>('');
+  const [showOtherSpecialty, setShowOtherSpecialty] = useState<boolean>(false);
+
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [otherService, setOtherService] = useState<string>('');
+  const [showOtherService, setShowOtherService] = useState<boolean>(false);
+
+  const toggleMedium = (item: string) => {
+    setSelectedMediums((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    );
+  };
+
+  const toggleSpecialty = (item: string) => {
+    setSelectedSpecialties((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    );
+  };
+
+  const toggleService = (item: string) => {
+    setSelectedServices((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    );
+  };
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -100,6 +136,31 @@ export default function SignUpContent() {
     if (formData.password !== formData.confirmPassword) {
       return 'Passwords do not match';
     }
+
+    // Main category validations for Artist
+    if (selectedRole === 'artist') {
+      const catCheck = validateArtistCategories(
+        selectedMediums,
+        showOtherMedium ? otherMedium : '',
+        selectedSpecialties,
+        showOtherSpecialty ? otherSpecialty : '',
+        selectedServices,
+        showOtherService ? otherService : ''
+      );
+      if (!catCheck.isValid) {
+        return catCheck.error;
+      }
+      if (showOtherMedium && !otherMedium.trim()) {
+        return 'Please specify your custom Medium / Art Style in the input field, or uncheck Other.';
+      }
+      if (showOtherSpecialty && !otherSpecialty.trim()) {
+        return 'Please specify your custom Specialty / Art Type in the input field, or uncheck Other.';
+      }
+      if (showOtherService && !otherService.trim()) {
+        return 'Please specify your custom Service Offered in the input field, or uncheck Other.';
+      }
+    }
+
     return null;
   };
 
@@ -122,6 +183,35 @@ export default function SignUpContent() {
     const userCountry = formData.location?.trim() || 'Sri Lanka';
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
 
+    // Prepare consolidated category arrays
+    const finalMediums = [
+      ...selectedMediums,
+      ...(showOtherMedium && otherMedium.trim() ? [otherMedium.trim()] : []),
+    ];
+    const finalSpecialties = [
+      ...selectedSpecialties,
+      ...(showOtherSpecialty && otherSpecialty.trim() ? [otherSpecialty.trim()] : []),
+    ];
+    const finalServices = [
+      ...selectedServices,
+      ...(showOtherService && otherService.trim() ? [otherService.trim()] : []),
+    ];
+    const finalOtherCategories = [
+      ...(showOtherMedium && otherMedium.trim() ? [otherMedium.trim()] : []),
+      ...(showOtherSpecialty && otherSpecialty.trim() ? [otherSpecialty.trim()] : []),
+      ...(showOtherService && otherService.trim() ? [otherService.trim()] : []),
+    ];
+
+    // Store in localStorage for persistent WhatsApp verification flow
+    try {
+      localStorage.setItem('vividcraft_artist_categories', JSON.stringify({
+        mediums: finalMediums,
+        specialties: finalSpecialties,
+        services: finalServices,
+        other_categories: finalOtherCategories,
+      }));
+    } catch {}
+
     // Artist Sign-Up strictly uses 'artist' role
     const selectedRole = 'artist';
 
@@ -130,7 +220,7 @@ export default function SignUpContent() {
         ? window.location.origin
         : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
 
-      // STEP 1: Register with Supabase Auth — strictly passing selectedRole in options.data
+      // STEP 1: Register with Supabase Auth — strictly passing selectedRole and categories in options.data
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
@@ -150,6 +240,10 @@ export default function SignUpContent() {
             account_type: selectedRole,
             location: userCountry,
             country: userCountry,
+            mediums: finalMediums,
+            specialties: finalSpecialties,
+            services: finalServices,
+            other_categories: finalOtherCategories,
           },
         },
       });
@@ -181,8 +275,6 @@ export default function SignUpContent() {
       }
 
       // STEP 2: Handle session state gracefully
-      // If signUp() returns a user without an immediate session (e.g. session is null),
-      // do NOT attempt immediate login or throw an error. Show a clear success message or redirect gracefully to /login.
       if (!data?.session) {
         if (data?.user?.id) {
           try {
@@ -198,6 +290,10 @@ export default function SignUpContent() {
                 title: formData.title?.trim() || (selectedRole === 'artist' ? 'Artist' : 'Client'),
                 location: userCountry,
                 country: userCountry,
+                mediums: finalMediums,
+                specialties: finalSpecialties,
+                services: finalServices,
+                other_categories: finalOtherCategories,
               }),
             });
           } catch {}
@@ -217,32 +313,64 @@ export default function SignUpContent() {
       // STEP 2.5: Live session is present, directly update the profiles table
       const activeUserId = data.session.user.id;
       if (activeUserId) {
-        const { error: profileUpdateErr } = await supabase
-          .from('profiles')
-          .update({
-            role: selectedRole,
-            first_name: formData.firstName.trim(),
-            last_name: formData.lastName.trim(),
-            title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
-            bio: selectedRole === 'artist' ? 'Welcome to Vivid Art!' : '',
-            address: userCountry,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', activeUserId);
+        const fullProfilePayload: any = {
+          role: selectedRole,
+          first_name: formData.firstName.trim(),
+          last_name: formData.lastName.trim(),
+          title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
+          bio: selectedRole === 'artist' ? 'Welcome to Vivid Art!' : '',
+          address: userCountry,
+          mediums: finalMediums,
+          specialties: finalSpecialties,
+          services: finalServices,
+          other_categories: finalOtherCategories,
+          skills: [...finalMediums, ...finalSpecialties],
+          updated_at: new Date().toISOString(),
+        };
 
-        if (profileUpdateErr) {
-          console.warn('[signup] Direct profile update notice, attempting upsert:', profileUpdateErr.message);
-          await supabase.from('profiles').upsert({
-            id: activeUserId,
-            role: selectedRole,
-            email: formData.email.trim(),
-            first_name: formData.firstName.trim(),
-            last_name: formData.lastName.trim(),
-            title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
-            bio: selectedRole === 'artist' ? 'Welcome to Vivid Art!' : '',
-            address: userCountry,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'id' });
+        try {
+          const { error: profileUpdateErr } = await supabase
+            .from('profiles')
+            .update(fullProfilePayload)
+            .eq('id', activeUserId);
+
+          if (profileUpdateErr) {
+            console.warn('[signup] Direct profile update notice, attempting upsert:', profileUpdateErr.message);
+            const { error: upsertErr } = await supabase.from('profiles').upsert({
+              id: activeUserId,
+              ...fullProfilePayload,
+              email: formData.email.trim(),
+            }, { onConflict: 'id' });
+
+            if (upsertErr) {
+              console.warn('[signup] Fallback to basic profile upsert without categories:', upsertErr.message);
+              await supabase.from('profiles').upsert({
+                id: activeUserId,
+                role: selectedRole,
+                email: formData.email.trim(),
+                first_name: formData.firstName.trim(),
+                last_name: formData.lastName.trim(),
+                title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
+                bio: selectedRole === 'artist' ? 'Welcome to Vivid Art!' : '',
+                address: userCountry,
+                skills: [...finalMediums, ...finalSpecialties],
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'id' });
+            }
+          }
+        } catch (profileErr: any) {
+          console.warn('[signup] Profile update catch, fallback to basic update:', profileErr);
+          try {
+            await supabase.from('profiles').update({
+              role: selectedRole,
+              first_name: formData.firstName.trim(),
+              last_name: formData.lastName.trim(),
+              title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
+              address: userCountry,
+              skills: [...finalMediums, ...finalSpecialties],
+              updated_at: new Date().toISOString(),
+            }).eq('id', activeUserId);
+          } catch {}
         }
       }
 
@@ -258,6 +386,10 @@ export default function SignUpContent() {
             title: formData.title?.trim() || (selectedRole === 'artist' ? 'Artist' : 'Client'),
             location: userCountry,
             country: userCountry,
+            mediums: finalMediums,
+            specialties: finalSpecialties,
+            services: finalServices,
+            other_categories: finalOtherCategories,
           }),
         });
       } catch (provisionErr) {
@@ -302,7 +434,7 @@ export default function SignUpContent() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 p-6 sm:p-8 space-y-6 relative z-10">
+      <div className={`w-full ${selectedRole === 'artist' ? 'max-w-2xl' : 'max-w-lg'} bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 p-6 sm:p-8 space-y-6 relative z-10 transition-all duration-300`}>
         
         {/* Show Error Banner if any */}
         {errorMessage && (
@@ -559,6 +691,201 @@ export default function SignUpContent() {
                   onChange={handleChange}
                   className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
                 />
+              </div>
+            </div>
+
+            {/* Category Selections Section */}
+            <div className="space-y-4 pt-3 border-t border-slate-800">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-amber-400" />
+                    Artist Categories & Services
+                  </h3>
+                  <span className="text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    Required
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Select all that apply to help buyers discover your work. You can select unlimited items.
+                </p>
+              </div>
+
+              {/* 1. Medium / Art Style */}
+              <div className="space-y-2 p-3 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-200">
+                    1. Medium / Art Style <span className="text-amber-400">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    {selectedMediums.length + (showOtherMedium && otherMedium.trim() ? 1 : 0)} selected
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1">
+                  {ARTIST_MEDIUMS.map((medium) => {
+                    const isSelected = selectedMediums.includes(medium);
+                    return (
+                      <button
+                        type="button"
+                        key={medium}
+                        onClick={() => toggleMedium(medium)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                            : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                        {medium}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setShowOtherMedium(!showOtherMedium)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                      showOtherMedium
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                        : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherMedium ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                      {showOtherMedium ? '✓' : ''}
+                    </span>
+                    Other
+                  </button>
+                </div>
+                {showOtherMedium && (
+                  <div className="pt-1.5">
+                    <input
+                      type="text"
+                      placeholder="Specify custom medium / art style (e.g., Resin Art, Spray Paint)..."
+                      value={otherMedium}
+                      onChange={(e) => setOtherMedium(e.target.value)}
+                      className="w-full px-3 h-9 bg-slate-950 border border-amber-500/40 text-white placeholder:text-slate-500 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Specialty / Art Type */}
+              <div className="space-y-2 p-3 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-200">
+                    2. Specialty / Art Type <span className="text-amber-400">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    {selectedSpecialties.length + (showOtherSpecialty && otherSpecialty.trim() ? 1 : 0)} selected
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1">
+                  {ARTIST_SPECIALTIES.map((spec) => {
+                    const isSelected = selectedSpecialties.includes(spec);
+                    return (
+                      <button
+                        type="button"
+                        key={spec}
+                        onClick={() => toggleSpecialty(spec)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                            : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                        {spec}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setShowOtherSpecialty(!showOtherSpecialty)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                      showOtherSpecialty
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                        : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherSpecialty ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                      {showOtherSpecialty ? '✓' : ''}
+                    </span>
+                    Other
+                  </button>
+                </div>
+                {showOtherSpecialty && (
+                  <div className="pt-1.5">
+                    <input
+                      type="text"
+                      placeholder="Specify custom specialty / art type (e.g., Cyberpunk, Fantasy Portraits)..."
+                      value={otherSpecialty}
+                      onChange={(e) => setOtherSpecialty(e.target.value)}
+                      className="w-full px-3 h-9 bg-slate-950 border border-amber-500/40 text-white placeholder:text-slate-500 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Service Offered */}
+              <div className="space-y-2 p-3 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-200">
+                    3. Service Offered <span className="text-amber-400">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    {selectedServices.length + (showOtherService && otherService.trim() ? 1 : 0)} selected
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1">
+                  {ARTIST_SERVICES.map((serv) => {
+                    const isSelected = selectedServices.includes(serv);
+                    return (
+                      <button
+                        type="button"
+                        key={serv}
+                        onClick={() => toggleService(serv)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                            : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                        {serv}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setShowOtherService(!showOtherService)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                      showOtherService
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                        : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherService ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                      {showOtherService ? '✓' : ''}
+                    </span>
+                    Other
+                  </button>
+                </div>
+                {showOtherService && (
+                  <div className="pt-1.5">
+                    <input
+                      type="text"
+                      placeholder="Specify custom service offered (e.g., Album Art, Live Wedding Sketching)..."
+                      value={otherService}
+                      onChange={(e) => setOtherService(e.target.value)}
+                      className="w-full px-3 h-9 bg-slate-950 border border-amber-500/40 text-white placeholder:text-slate-500 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

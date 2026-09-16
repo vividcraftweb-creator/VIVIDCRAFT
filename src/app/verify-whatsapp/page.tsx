@@ -21,6 +21,40 @@ interface UserProfile {
   email: string;
   fullName: string;
   whatsapp_verification_status: string | null;
+  mediums?: string[];
+  specialties?: string[];
+  services?: string[];
+  other_categories?: string[];
+}
+
+async function persistCategoriesToProfile(
+  userId: string,
+  categories: {
+    mediums?: string[];
+    specialties?: string[];
+    services?: string[];
+    other_categories?: string[];
+  }
+) {
+  try {
+    const payload: any = {};
+    if (categories.mediums && categories.mediums.length > 0) payload.mediums = categories.mediums;
+    if (categories.specialties && categories.specialties.length > 0) payload.specialties = categories.specialties;
+    if (categories.services && categories.services.length > 0) payload.services = categories.services;
+    if (categories.other_categories && categories.other_categories.length > 0) payload.other_categories = categories.other_categories;
+    if (
+      (categories.mediums && categories.mediums.length > 0) ||
+      (categories.specialties && categories.specialties.length > 0)
+    ) {
+      payload.skills = [...(categories.mediums || []), ...(categories.specialties || [])];
+    }
+
+    if (Object.keys(payload).length > 0) {
+      await supabase.from('profiles').update(payload).eq('id', userId);
+    }
+  } catch (err) {
+    console.warn('[verify-whatsapp] persistCategories notice:', err);
+  }
 }
 
 export default function VerifyWhatsAppPage() {
@@ -60,11 +94,22 @@ export default function VerifyWhatsAppPage() {
           return;
         }
 
-        const { data: profileRow } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, email, whatsapp_verification_status, verification_status, role')
-          .eq('id', user.id)
-          .maybeSingle();
+        let profileRow: any = null;
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email, whatsapp_verification_status, verification_status, role, mediums, specialties, services, other_categories')
+            .eq('id', user.id)
+            .maybeSingle();
+          profileRow = data;
+        } catch {
+          const { data } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email, whatsapp_verification_status, verification_status, role')
+            .eq('id', user.id)
+            .maybeSingle();
+          profileRow = data;
+        }
 
         // Only Artists need WhatsApp verification
         if (profileRow?.role && profileRow.role !== 'artist') {
@@ -77,18 +122,42 @@ export default function VerifyWhatsAppPage() {
         const fullName =
           `${firstName} ${lastName}`.trim() || user.email?.split('@')[0] || 'Artist';
 
+        let cachedCategories: any = null;
+        try {
+          const raw = localStorage.getItem('vividcraft_artist_categories');
+          if (raw) cachedCategories = JSON.parse(raw);
+        } catch {}
+
+        const userMediums: string[] = profileRow?.mediums || user.user_metadata?.mediums || cachedCategories?.mediums || [];
+        const userSpecialties: string[] = profileRow?.specialties || user.user_metadata?.specialties || cachedCategories?.specialties || [];
+        const userServices: string[] = profileRow?.services || user.user_metadata?.services || cachedCategories?.services || [];
+        const userOtherCategories: string[] = profileRow?.other_categories || user.user_metadata?.other_categories || cachedCategories?.other_categories || [];
+
         const userProfile: UserProfile = {
           id: user.id,
           email: profileRow?.email || user.email || '',
           fullName,
           whatsapp_verification_status: profileRow?.whatsapp_verification_status || null,
+          mediums: userMediums,
+          specialties: userSpecialties,
+          services: userServices,
+          other_categories: userOtherCategories,
         };
+
+        // Ensure categories are synced to profile if available in metadata/cache
+        if (userMediums.length > 0 || userSpecialties.length > 0 || userServices.length > 0) {
+          persistCategoriesToProfile(user.id, {
+            mediums: userMediums,
+            specialties: userSpecialties,
+            services: userServices,
+            other_categories: userOtherCategories,
+          });
+        }
 
         setProfile(userProfile);
         setStatus(profileRow?.whatsapp_verification_status || null);
 
         // ─── Set up Supabase real-time subscription ──────────────────────────
-        // Subscribe to changes on this user's profile row
         const channel = supabase
           .channel(`whatsapp-verify-${user.id}`)
           .on(
@@ -99,10 +168,18 @@ export default function VerifyWhatsAppPage() {
               table: 'profiles',
               filter: `id=eq.${user.id}`,
             },
-            (payload) => {
+            async (payload) => {
               const newWhatsappStatus = (payload.new as any)?.whatsapp_verification_status;
               const newVerificationStatus = (payload.new as any)?.verification_status;
               if (newWhatsappStatus === 'verified' || newVerificationStatus === 'verified') {
+                if (userMediums.length > 0 || userSpecialties.length > 0 || userServices.length > 0) {
+                  await persistCategoriesToProfile(user.id, {
+                    mediums: userMediums,
+                    specialties: userSpecialties,
+                    services: userServices,
+                    other_categories: userOtherCategories,
+                  });
+                }
                 toast.success('🎉 Account Approved!', {
                   description: 'Your account has been verified. Redirecting to dashboard...',
                   duration: 3000,
@@ -154,6 +231,14 @@ export default function VerifyWhatsAppPage() {
         profileRow?.verification_status === 'verified';
 
       if (isVerified) {
+        if (profile.mediums?.length || profile.specialties?.length || profile.services?.length) {
+          await persistCategoriesToProfile(profile.id, {
+            mediums: profile.mediums,
+            specialties: profile.specialties,
+            services: profile.services,
+            other_categories: profile.other_categories,
+          });
+        }
         toast.success('🎉 Account Approved!', {
           description: 'Your account has been verified. Redirecting to dashboard...',
           duration: 3000,
@@ -186,19 +271,41 @@ export default function VerifyWhatsAppPage() {
     setSending(true);
 
     try {
-      // Update status to pending_whatsapp in DB
-      const { error } = await supabase
-        .from('profiles')
-        .update({ whatsapp_verification_status: 'pending_whatsapp' })
-        .eq('id', profile.id);
+      // Update status to pending_whatsapp in DB and persist categories
+      const updatePayload: any = {
+        whatsapp_verification_status: 'pending_whatsapp',
+      };
+      if (profile.mediums && profile.mediums.length > 0) updatePayload.mediums = profile.mediums;
+      if (profile.specialties && profile.specialties.length > 0) updatePayload.specialties = profile.specialties;
+      if (profile.services && profile.services.length > 0) updatePayload.services = profile.services;
+      if (profile.other_categories && profile.other_categories.length > 0) updatePayload.other_categories = profile.other_categories;
 
-      if (error) throw error;
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update(updatePayload)
+          .eq('id', profile.id);
+        if (error) throw error;
+      } catch (e) {
+        // fallback to just status update if column error
+        await supabase
+          .from('profiles')
+          .update({ whatsapp_verification_status: 'pending_whatsapp' })
+          .eq('id', profile.id);
+      }
 
       setStatus('pending_whatsapp');
 
-      // Build WhatsApp deep link with pre-filled message
+      // Build WhatsApp deep link with pre-filled message including categories
+      const specsSummary = profile.specialties?.length ? profile.specialties.slice(0, 3).join(', ') : '';
+      const mediumsSummary = profile.mediums?.length ? profile.mediums.slice(0, 3).join(', ') : '';
+      const categorySummary = [
+        mediumsSummary ? `Mediums: ${mediumsSummary}` : '',
+        specsSummary ? `Specialties: ${specsSummary}` : '',
+      ].filter(Boolean).join(' | ');
+
       const message = encodeURIComponent(
-        `Hello Admin, I just registered as an Artist. Please verify my account. Name: ${profile.fullName}, Email: ${profile.email}, User ID: ${profile.id}`
+        `Hello Admin, I just registered as an Artist. Please verify my account. Name: ${profile.fullName}, Email: ${profile.email}${categorySummary ? ` (${categorySummary})` : ''}, User ID: ${profile.id}`
       );
       const rawPhone = '94783813833';
       const cleanPhone = String(rawPhone).replace(/\D/g, '');
@@ -235,7 +342,7 @@ export default function VerifyWhatsAppPage() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-emerald-600/8 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 p-6 sm:p-8 space-y-6 relative z-10">
+      <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 p-6 sm:p-8 space-y-6 relative z-10">
 
         {/* Header */}
         <div className="text-center space-y-3">
@@ -293,6 +400,46 @@ export default function VerifyWhatsAppPage() {
               <p className="text-sm font-medium text-white">Artist / Creator</p>
             </div>
           </div>
+
+          {/* Categories Pills Rendering */}
+          {profile.mediums && profile.mediums.length > 0 && (
+            <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+              <p className="text-xs text-slate-400 font-medium">Mediums & Art Styles</p>
+              <div className="flex flex-wrap gap-1">
+                {profile.mediums.map((m) => (
+                  <span key={m} className="px-2 py-0.5 text-[11px] bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-md">
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {profile.specialties && profile.specialties.length > 0 && (
+            <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+              <p className="text-xs text-slate-400 font-medium">Specialties & Art Types</p>
+              <div className="flex flex-wrap gap-1">
+                {profile.specialties.map((s) => (
+                  <span key={s} className="px-2 py-0.5 text-[11px] bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-md">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {profile.services && profile.services.length > 0 && (
+            <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+              <p className="text-xs text-slate-400 font-medium">Services Offered</p>
+              <div className="flex flex-wrap gap-1">
+                {profile.services.map((srv) => (
+                  <span key={srv} className="px-2 py-0.5 text-[11px] bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-md">
+                    {srv}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Status / Action Area */}

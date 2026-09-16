@@ -1444,12 +1444,16 @@ export type Database = {
           is_published: boolean | null
           lastName: string | null
           location: string | null
+          mediums?: string[] | null
+          other_categories?: string[] | null
           phone: string | null
           portfolio: string | null
           profilePicture: string | null
           rate: number | null
+          services?: string[] | null
           skills: string | null
           slug: string
+          specialties?: string[] | null
           taxId: string | null
           timezone: string | null
           title: string | null
@@ -1486,12 +1490,16 @@ export type Database = {
           is_published?: boolean | null
           lastName?: string | null
           location?: string | null
+          mediums?: string[] | null
+          other_categories?: string[] | null
           phone?: string | null
           portfolio?: string | null
           profilePicture?: string | null
           rate?: number | null
+          services?: string[] | null
           skills?: string | null
           slug: string
+          specialties?: string[] | null
           taxId?: string | null
           timezone?: string | null
           title?: string | null
@@ -1527,12 +1535,16 @@ export type Database = {
           isPublished?: boolean | null
           lastName?: string | null
           location?: string | null
+          mediums?: string[] | null
+          other_categories?: string[] | null
           phone?: string | null
           portfolio?: string | null
           profilePicture?: string | null
           rate?: number | null
+          services?: string[] | null
           skills?: string | null
           slug?: string
+          specialties?: string[] | null
           taxId?: string | null
           timezone?: string | null
           title?: string | null
@@ -3290,3 +3302,4 @@ export type PortfolioItem = Database['public']['Tables']['PortfolioItem']['Row']
 export type Proposal = Database['public']['Tables']['Proposal']['Row'];
 export type NotificationType = Database['public']['Enums']['NotificationType'];
 export type Notification = Database['public']['Tables']['Notification']['Row'];
+export type { ArtistCategories } from '@/lib/artist-categories';

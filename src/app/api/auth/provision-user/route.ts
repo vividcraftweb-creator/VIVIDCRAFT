@@ -42,11 +42,27 @@ export async function POST(req: Request) {
     const title: string = String(body.title || (metadataRole === 'artist' ? 'Artist' : 'Buyer')).trim();
     const location: string = String(body.location || body.country || 'Sri Lanka').trim();
 
+    const mediums: string[] = Array.isArray(body.mediums)
+      ? body.mediums
+      : (Array.isArray(authUser.user_metadata?.mediums) ? authUser.user_metadata.mediums : []);
+
+    const specialties: string[] = Array.isArray(body.specialties)
+      ? body.specialties
+      : (Array.isArray(authUser.user_metadata?.specialties) ? authUser.user_metadata.specialties : []);
+
+    const services: string[] = Array.isArray(body.services)
+      ? body.services
+      : (Array.isArray(authUser.user_metadata?.services) ? authUser.user_metadata.services : []);
+
+    const other_categories: string[] = Array.isArray(body.other_categories)
+      ? body.other_categories
+      : (Array.isArray(authUser.user_metadata?.other_categories) ? authUser.user_metadata.other_categories : []);
+
     const adminClient = createAdminClient();
     const userId = authUser.id;
     const email = authUser.email || '';
 
-    // 2. Update auth user_metadata to stamp the role permanently
+    // 2. Update auth user_metadata to stamp the role and categories permanently
     try {
       await adminClient.auth.admin.updateUserById(userId, {
         user_metadata: {
@@ -60,6 +76,10 @@ export async function POST(req: Request) {
           last_name: lastName || authUser.user_metadata?.last_name,
           firstName: firstName || authUser.user_metadata?.firstName,
           lastName: lastName || authUser.user_metadata?.lastName,
+          mediums,
+          specialties,
+          services,
+          other_categories,
         },
       });
     } catch (metaErr) {
@@ -94,7 +114,7 @@ export async function POST(req: Request) {
     const avatarUrl = String(body.avatarUrl || body.avatar_url || authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '').trim() || null;
 
     // 5. Upsert profiles table strictly by id
-    const profilePayload = {
+    const profilePayload: any = {
       id: userId,
       email,
       role: metadataRole,
@@ -105,6 +125,27 @@ export async function POST(req: Request) {
       address: location,
       location: location,
       avatar_url: avatarUrl,
+      mediums,
+      specialties,
+      services,
+      other_categories,
+      skills: [...mediums, ...specialties],
+      is_published: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    const fallbackProfilePayload = {
+      id: userId,
+      email,
+      role: metadataRole,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      title: title || (metadataRole === 'artist' ? 'Artist' : 'Buyer'),
+      bio: metadataRole === 'artist' ? 'Welcome to Vivid Art!' : '',
+      address: location,
+      location: location,
+      avatar_url: avatarUrl,
+      skills: [...mediums, ...specialties],
       is_published: true,
       updated_at: new Date().toISOString(),
     };
@@ -117,18 +158,35 @@ export async function POST(req: Request) {
 
       if (profileUpdateErr) {
         console.warn('[provision-user] authenticated update notice, attempting upsert:', profileUpdateErr.message);
-        await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+        const { error: upsertErr } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+        if (upsertErr) {
+          console.warn('[provision-user] fallback to base profile upsert:', upsertErr.message);
+          await supabase.from('profiles').upsert(fallbackProfilePayload, { onConflict: 'id' });
+        }
       }
     } catch (profileErr) {
-      console.warn('[provision-user] profiles upsert warning:', profileErr);
+      console.warn('[provision-user] profiles upsert warning, trying fallback:', profileErr);
+      try {
+        await supabase.from('profiles').upsert(fallbackProfilePayload, { onConflict: 'id' });
+      } catch {}
     }
 
     try {
-      await (adminClient as any)
+      const { error: adminUpsertErr } = await (adminClient as any)
         .from('profiles')
         .upsert(profilePayload, { onConflict: 'id' });
+      if (adminUpsertErr) {
+        await (adminClient as any)
+          .from('profiles')
+          .upsert(fallbackProfilePayload, { onConflict: 'id' });
+      }
     } catch (adminProfileErr) {
       console.warn('[provision-user] adminClient profiles upsert warning:', adminProfileErr);
+      try {
+        await (adminClient as any)
+          .from('profiles')
+          .upsert(fallbackProfilePayload, { onConflict: 'id' });
+      } catch {}
     }
 
     return NextResponse.json({ success: true, role: dbRole, metadataRole });
