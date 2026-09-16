@@ -76,7 +76,25 @@ export default function MessagesView() {
     ? selectedUser.id.toString().trim()
     : '';
 
-  const selectedUserRole = (selectedUser?.profile as any)?.role || (selectedUser as any)?.role || '';
+  const [activeRecipientProfile, setActiveRecipientProfile] = useState<{
+    id: string;
+    full_name?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    display_name?: string | null;
+    email?: string | null;
+    avatar_url?: string | null;
+    role?: string | null;
+    [key: string]: any;
+  } | null>(null);
+
+  const [recipientProfilesMap, setRecipientProfilesMap] = useState<Record<string, any>>({});
+
+  const selectedUserRole =
+    activeRecipientProfile?.role ||
+    (selectedUser?.profile as any)?.role ||
+    (selectedUser as any)?.role ||
+    '';
   const isSelectedUserArtist = isArtistRole(selectedUserRole);
   const isSelf = Boolean(currentUserId && selectedUser?.id && currentUserId === selectedUser.id);
   const isArtistToArtist = isCurrentArtist && isSelectedUserArtist;
@@ -116,25 +134,51 @@ export default function MessagesView() {
     return () => clearTimeout(timer);
   }, [messages.length, selectedUser?.id]);
 
-  const getContactName = (contact: ContactForChat) => {
-    if (!contact) return 'User';
-    const prof = contact.profile as any;
-    if (prof?.full_name?.trim()) return prof.full_name.trim();
-    if ((contact as any)?.full_name?.trim()) return (contact as any).full_name.trim();
-    if (prof?.displayName?.trim()) return prof.displayName.trim();
-    if (prof?.display_name?.trim()) return prof.display_name.trim();
+  const getRecipientDisplayName = (contactOrId: ContactForChat | string | null, customProfile?: any) => {
+    const contact = typeof contactOrId === 'object' ? contactOrId : null;
+    const contactId = typeof contactOrId === 'string' ? contactOrId : contact?.id;
+    const mappedProf = contactId ? recipientProfilesMap[contactId] : null;
 
+    const prof = customProfile || mappedProf || contact?.profile;
+    const email = customProfile?.email || mappedProf?.email || contact?.email;
+
+    // 1. Check full_name
+    if (prof?.full_name?.trim()) return prof.full_name.trim();
+    if ((prof as any)?.fullName?.trim()) return (prof as any).fullName.trim();
+
+    // 2. Check firstName + lastName or single firstName
     const fName = (prof?.firstName || prof?.first_name || '').trim();
     const lName = (prof?.lastName || prof?.last_name || '').trim();
     const combined = `${fName} ${lName}`.trim();
     if (combined) return combined;
 
+    // 3. Check displayName / display_name
+    if (prof?.displayName?.trim()) return prof.displayName.trim();
+    if (prof?.display_name?.trim()) return prof.display_name.trim();
+
+    // 4. Fall back to email prefix before resorting to generic role strings
+    if (email && typeof email === 'string' && email.includes('@')) {
+      const emailPrefix = email.split('@')[0].trim();
+      if (emailPrefix) return emailPrefix;
+    }
+    if (email && typeof email === 'string' && email.trim()) return email.trim();
+
+    // 5. Check artist_name / username
     if (prof?.artist_name?.trim()) return prof.artist_name.trim();
     if (prof?.username?.trim()) return prof.username.trim();
-    if (contact.email?.trim()) return contact.email.trim();
-    if ((contact as any)?.email?.trim()) return (contact as any).email.trim();
+
+    // 6. Generic role fallback
+    const role = prof?.role || (contact as any)?.role;
+    if (role && typeof role === 'string') {
+      return role.toLowerCase() === 'artist' ? 'Artist' : 'Client';
+    }
 
     return 'Client';
+  };
+
+  const getContactName = (contact: ContactForChat) => {
+    if (!contact) return 'Client';
+    return getRecipientDisplayName(contact, recipientProfilesMap[contact.id]);
   };
 
   const formatJobContext = (contact: ContactForChat, messages: ChatMessageItem[]) => {
@@ -338,6 +382,107 @@ export default function MessagesView() {
       setMessage(INTERVIEW_TEMPLATE);
     }
   }, [action, selectedUser, message]);
+
+  // Explicit contact selection handler setting both activeRecipientId and activeRecipientProfile
+  const handleSelectContact = async (contact: ContactForChat) => {
+    setSelectedUser(contact);
+    const targetId = contact?.id;
+    if (!targetId || targetId === currentUserId) return;
+
+    if (recipientProfilesMap[targetId]) {
+      setActiveRecipientProfile(recipientProfilesMap[targetId]);
+    }
+
+    try {
+      const supabase = createClient();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url, role')
+        .eq('id', targetId)
+        .single();
+
+      if (profile) {
+        setActiveRecipientProfile(profile);
+        setRecipientProfilesMap((prev) => ({ ...prev, [targetId]: profile }));
+      }
+    } catch (err) {
+      console.warn('Recipient profile single fetch notice:', err);
+    }
+  };
+
+  // Hydrate all contact recipient profiles from public.profiles table
+  useEffect(() => {
+    if (!allContacts || allContacts.length === 0) return;
+    const targetIds = allContacts
+      .map((c) => c.id)
+      .filter((id) => id && id !== currentUserId && !recipientProfilesMap[id]);
+
+    if (targetIds.length === 0) return;
+
+    let isSubscribed = true;
+    const fetchProfiles = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, first_name, last_name, display_name, email, avatar_url, role')
+          .in('id', targetIds);
+
+        if (isSubscribed && data && !error) {
+          setRecipientProfilesMap((prev) => {
+            const next = { ...prev };
+            data.forEach((p: any) => {
+              if (p.id) next[p.id] = p;
+            });
+            return next;
+          });
+        }
+      } catch (err) {
+        console.warn('Hydrating contacts error:', err);
+      }
+    };
+
+    fetchProfiles();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [allContacts, currentUserId]);
+
+  // Ensure activeRecipientProfile is hydrated whenever activeRecipientId changes
+  useEffect(() => {
+    if (!activeRecipientId || activeRecipientId === currentUserId) {
+      setActiveRecipientProfile(null);
+      return;
+    }
+
+    if (recipientProfilesMap[activeRecipientId]) {
+      setActiveRecipientProfile(recipientProfilesMap[activeRecipientId]);
+    }
+
+    let isSubscribed = true;
+    const fetchActiveProfile = async () => {
+      try {
+        const supabase = createClient();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, avatar_url, role')
+          .eq('id', activeRecipientId)
+          .single();
+
+        if (isSubscribed && profile) {
+          setActiveRecipientProfile(profile);
+          setRecipientProfilesMap((prev) => ({ ...prev, [activeRecipientId]: profile }));
+        }
+      } catch (err) {
+        console.warn('Active recipient profile hydration notice:', err);
+      }
+    };
+
+    fetchActiveProfile();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [activeRecipientId, currentUserId]);
 
   const markAsReadMutation = trpc.messages.markMessagesAsRead.useMutation({
     onSuccess: () => {
@@ -615,6 +760,13 @@ export default function MessagesView() {
                   const unreadCount = preview?.unreadCount || 0;
                   const lastMessage = preview?.lastMessage;
 
+                  const contactProfile = recipientProfilesMap[contact.id] || contact.profile;
+                  const displayName = getRecipientDisplayName(contact, contactProfile);
+                  const avatarUrl =
+                    recipientProfilesMap[contact.id]?.avatar_url ||
+                    getProfilePictureUrl(contact.id, contact.profile?.profilePicture) ||
+                    undefined;
+
                   return (
                     <div
                       key={contact.id}
@@ -623,17 +775,17 @@ export default function MessagesView() {
                           ? 'bg-primary/20 border border-primary/30'
                           : 'bg-slate-950/60 hover:bg-slate-900/80 border border-slate-800'
                       }`}
-                      onClick={() => setSelectedUser(contact)}
+                      onClick={() => handleSelectContact(contact)}
                     >
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <Avatar className="h-10 w-10 border-2 border-primary/50">
                             <AvatarImage
-                              src={getProfilePictureUrl(contact.id, contact.profile?.profilePicture) || undefined}
-                              alt={getContactName(contact)}
+                              src={avatarUrl}
+                              alt={displayName}
                             />
                             <AvatarFallback className="bg-primary/30 text-white font-bold">
-                              {contact.profile?.firstName?.charAt(0) || contact.email?.charAt(0) || 'U'}
+                              {displayName.charAt(0).toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
                           {unreadCount > 0 && (
@@ -646,7 +798,7 @@ export default function MessagesView() {
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex flex-col min-w-0">
                               <p className="text-white font-semibold truncate">
-                                {getContactName(contact)}
+                                {displayName}
                               </p>
                               {contact.profile?.companyName && (
                                 <p className="text-xs text-slate-400 truncate">
@@ -700,17 +852,22 @@ export default function MessagesView() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 border-2 border-primary/50">
                     <AvatarImage
-                      src={getProfilePictureUrl(selectedUser.id, selectedUser.profile?.profilePicture) || undefined}
-                      alt={getContactName(selectedUser)}
+                      src={
+                        activeRecipientProfile?.avatar_url ||
+                        recipientProfilesMap[selectedUser.id]?.avatar_url ||
+                        getProfilePictureUrl(selectedUser.id, selectedUser.profile?.profilePicture) ||
+                        undefined
+                      }
+                      alt={getRecipientDisplayName(selectedUser, activeRecipientProfile)}
                     />
                     <AvatarFallback className="bg-primary/30 text-white font-bold text-lg">
-                      {selectedUser.profile?.firstName?.charAt(0) || selectedUser.email?.charAt(0) || 'U'}
+                      {getRecipientDisplayName(selectedUser, activeRecipientProfile).charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-white font-semibold text-lg">
-                        {getContactName(selectedUser)}
+                        {getRecipientDisplayName(selectedUser, activeRecipientProfile)}
                       </h3>
                       <Button
                         type="button"
@@ -725,6 +882,11 @@ export default function MessagesView() {
                         <span className="hidden sm:inline">Refresh</span>
                       </Button>
                     </div>
+                    {(activeRecipientProfile?.email || selectedUser.email) && (
+                      <p className="text-xs text-slate-400">
+                        {activeRecipientProfile?.email || selectedUser.email}
+                      </p>
+                    )}
                     {selectedUser.profile?.companyName && (
                       <p className="text-sm text-slate-400">
                         {selectedUser.profile.companyName}
