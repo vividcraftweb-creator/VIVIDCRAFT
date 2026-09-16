@@ -322,42 +322,48 @@ export default function MessagesView() {
 
     const text = newMessage.trim();
     const currentUser = session?.session?.user || (session as any)?.user;
-    const currentUserId = (currentUser?.id || '').toString().trim();
-    const activeRecipientId = (selectedUser?.id || '').toString().trim();
+    const activeRecipientId = selectedUser?.id;
 
-    if (!text || !activeRecipientId || !currentUserId || isSending) return;
+    if (!text || !activeRecipientId || !currentUser?.id) return;
 
-    setIsSending(true);
+    const msgContent = text;
     setNewMessage('');
+    setIsSending(true);
+
+    const tempId = 'temp-' + Date.now();
+    const tempMsg: ChatMessageItem = {
+      id: tempId,
+      sender_id: String(currentUser.id),
+      receiver_id: String(activeRecipientId),
+      content: msgContent,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, tempMsg]);
 
     try {
       const supabase = createClient();
-
-      // Direct DB Insert
       const { data, error } = await supabase
         .from('messages')
         .insert({
-          sender_id: currentUserId,
-          receiver_id: activeRecipientId,
-          content: text
+          sender_id: String(currentUser.id),
+          receiver_id: String(activeRecipientId),
+          content: msgContent
         })
         .select();
 
       if (error) {
-        console.error("Direct Supabase Insert Error:", error);
+        console.error("Message DB Send Error:", error);
       } else if (data && data[0]) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === data[0].id)) return prev;
-          return [...prev, data[0]];
-        });
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? data[0] : m)));
       }
 
       utils.messages.getConversationPreviews.invalidate();
       utils.profiles.getContacts.invalidate();
     } catch (err) {
-      console.error("Message send catch fallback:", err);
+      console.error("Failed to persist message:", err);
     } finally {
-      setIsSending(false); // ALWAYS release sending state
+      setIsSending(false);
     }
   };
 
@@ -630,11 +636,11 @@ export default function MessagesView() {
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type a message..."
                     className="flex-1 bg-slate-950 border-slate-800 text-white placeholder:text-slate-500"
-                    disabled={isSending || sendMessageMutation.isPending}
+                    disabled={isSending}
                   />
                   <Button
                     type="submit"
-                    disabled={isSending || sendMessageMutation.isPending || !message.trim()}
+                    disabled={isSending || !message.trim()}
                     className="bg-primary hover:bg-primary/90 min-w-[44px] flex items-center justify-center"
                   >
                     {isSending ? (
