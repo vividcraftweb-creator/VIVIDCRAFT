@@ -1,25 +1,23 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search,
-  MapPin,
-  CheckCircle,
-  Clock,
   Shield,
   Palette,
   Sparkles,
   Briefcase,
   ChevronDown,
-  Check,
   X,
   RotateCcw,
+  SlidersHorizontal,
+  Filter,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { createClient } from '@/lib/supabase/client';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
-import ArtistCard, { getPublicUrl } from '@/components/artists/ArtistCard';
+import ArtistCard from '@/components/artists/ArtistCard';
 import {
   ARTIST_MEDIUMS,
   ARTIST_SPECIALTIES,
@@ -35,6 +33,270 @@ function getAvatarUrl(userId?: string, raw?: string | null): string | undefined 
   return getProfilePictureUrl(userId, trimmed);
 }
 
+/**
+ * Normalizes a tag string for forgiving comparison.
+ */
+function normalizeTag(tag: unknown): string {
+  if (typeof tag !== 'string') return '';
+  return tag.toLowerCase().trim();
+}
+
+/**
+ * Safely extracts tags from string[], string (comma-separated), or null/undefined.
+ */
+function extractArtistTags(val: unknown): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    return val
+      .flatMap((item) => (typeof item === 'string' ? item.split(',') : []))
+      .map(normalizeTag)
+      .filter(Boolean);
+  }
+  if (typeof val === 'string') {
+    return val
+      .split(',')
+      .map(normalizeTag)
+      .filter(Boolean);
+  }
+  return [];
+}
+
+/**
+ * Checks if two tags match forgivingly:
+ * 1. Exact case-insensitive match (e.g. "oil painting" === "oil painting")
+ * 2. Bi-directional substring match (e.g. "digital art" matches "digital art & illustration")
+ */
+function tagMatches(artistTag: string, filterTag: string): boolean {
+  if (!artistTag || !filterTag) return false;
+  if (artistTag === filterTag) return true;
+  return artistTag.includes(filterTag) || filterTag.includes(artistTag);
+}
+
+interface FilterContentProps {
+  availableStyles: string[];
+  selectedStyles: string[];
+  toggleStyle: (val: string) => void;
+  availableSpecialties: string[];
+  selectedSpecialties: string[];
+  toggleSpecialty: (val: string) => void;
+  availableServices: string[];
+  selectedServices: string[];
+  toggleService: (val: string) => void;
+  openSections: { styles: boolean; specialties: boolean; services: boolean };
+  toggleSection: (section: 'styles' | 'specialties' | 'services') => void;
+  clearAllFilters: () => void;
+  hasActiveFilters: boolean;
+  totalActiveFilters: number;
+}
+
+function FilterContent({
+  availableStyles,
+  selectedStyles,
+  toggleStyle,
+  availableSpecialties,
+  selectedSpecialties,
+  toggleSpecialty,
+  availableServices,
+  selectedServices,
+  toggleService,
+  openSections,
+  toggleSection,
+  clearAllFilters,
+  hasActiveFilters,
+  totalActiveFilters,
+}: FilterContentProps) {
+  return (
+    <div className="flex flex-col">
+      {/* Filter Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Filters</h2>
+          {hasActiveFilters && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              {totalActiveFilters}
+            </span>
+          )}
+        </div>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="text-xs font-medium text-muted-foreground hover:text-primary transition flex items-center gap-1 cursor-pointer"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset all
+          </button>
+        )}
+      </div>
+
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+        {/* Category 1: Medium / Art Style */}
+        <div className="py-4">
+          <button
+            type="button"
+            onClick={() => toggleSection('styles')}
+            className="flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 hover:text-foreground transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-amber-500" />
+              <span>Medium / Art Style</span>
+              {selectedStyles.length > 0 && (
+                <span className="rounded-full bg-amber-500/10 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                  {selectedStyles.length}
+                </span>
+              )}
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                openSections.styles ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {openSections.styles && (
+            <div className="mt-3 max-h-60 overflow-y-auto space-y-1.5 pr-1">
+              {availableStyles.map((item) => {
+                const isChecked = selectedStyles.includes(item);
+                const inputId = `filter-style-${item.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                return (
+                  <label
+                    key={item}
+                    htmlFor={inputId}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 cursor-pointer transition select-none"
+                  >
+                    <Checkbox
+                      id={inputId}
+                      checked={isChecked}
+                      onCheckedChange={() => toggleStyle(item)}
+                      className="data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                    />
+                    <span
+                      className={`text-xs flex-1 ${
+                        isChecked ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {item}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Category 2: Specialty / Art Type */}
+        <div className="py-4">
+          <button
+            type="button"
+            onClick={() => toggleSection('specialties')}
+            className="flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 hover:text-foreground transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-500" />
+              <span>Specialty / Art Type</span>
+              {selectedSpecialties.length > 0 && (
+                <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.2 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                  {selectedSpecialties.length}
+                </span>
+              )}
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                openSections.specialties ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {openSections.specialties && (
+            <div className="mt-3 max-h-60 overflow-y-auto space-y-1.5 pr-1">
+              {availableSpecialties.map((item) => {
+                const isChecked = selectedSpecialties.includes(item);
+                const inputId = `filter-spec-${item.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                return (
+                  <label
+                    key={item}
+                    htmlFor={inputId}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 cursor-pointer transition select-none"
+                  >
+                    <Checkbox
+                      id={inputId}
+                      checked={isChecked}
+                      onCheckedChange={() => toggleSpecialty(item)}
+                      className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                    />
+                    <span
+                      className={`text-xs flex-1 ${
+                        isChecked ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {item}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Category 3: Services Offered */}
+        <div className="py-4">
+          <button
+            type="button"
+            onClick={() => toggleSection('services')}
+            className="flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 hover:text-foreground transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-emerald-500" />
+              <span>Services Offered</span>
+              {selectedServices.length > 0 && (
+                <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  {selectedServices.length}
+                </span>
+              )}
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                openSections.services ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {openSections.services && (
+            <div className="mt-3 max-h-60 overflow-y-auto space-y-1.5 pr-1">
+              {availableServices.map((item) => {
+                const isChecked = selectedServices.includes(item);
+                const inputId = `filter-srv-${item.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                return (
+                  <label
+                    key={item}
+                    htmlFor={inputId}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 cursor-pointer transition select-none"
+                  >
+                    <Checkbox
+                      id={inputId}
+                      checked={isChecked}
+                      onCheckedChange={() => toggleService(item)}
+                      className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                    />
+                    <span
+                      className={`text-xs flex-1 ${
+                        isChecked ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {item}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FreelancersPageClient({
   initialProfiles = [],
 }: {
@@ -46,31 +308,28 @@ export default function FreelancersPageClient({
     return Array.isArray(initialProfiles) ? initialProfiles : [];
   });
   const [loading, setLoading] = useState(initialProfiles.length === 0);
-  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
   // Multi-select category filter states
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [openDropdown, setOpenDropdown] = useState<'style' | 'specialty' | 'service' | null>(null);
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  // Category accordion expand/collapse state in left sidebar
+  const [openSections, setOpenSections] = useState<{
+    styles: boolean;
+    specialties: boolean;
+    services: boolean;
+  }>({
+    styles: true,
+    specialties: true,
+    services: true,
+  });
+
+  // Mobile drawer state
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
   }, []);
 
   // 1. Direct Supabase Query: Fetch all artists directly from 'profiles' table
@@ -87,7 +346,7 @@ export default function FreelancersPageClient({
           .order('display_order', { ascending: true });
 
         if (error) {
-          console.error("Error fetching artists from profiles:", error);
+          console.error('Error fetching artists from profiles:', error);
           if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
             setProfiles(initialProfiles);
           }
@@ -99,7 +358,8 @@ export default function FreelancersPageClient({
           for (const p of artists) {
             const key = p.id || p.userId || p.user_id;
             if (key) {
-              const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
+              const avatar =
+                p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
               profilesMap.set(key, {
                 ...p,
                 id: key,
@@ -114,14 +374,14 @@ export default function FreelancersPageClient({
             }
           }
           const sorted = Array.from(profilesMap.values()).sort(
-            (a, b) => (Number(a.display_order ?? 999)) - (Number(b.display_order ?? 999))
+            (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
           );
           setProfiles(sorted);
         } else if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
           setProfiles(initialProfiles);
         }
       } catch (err) {
-        console.error("Emergency load profiles error:", err);
+        console.error('Emergency load profiles error:', err);
         if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
           setProfiles(initialProfiles);
         }
@@ -154,7 +414,9 @@ export default function FreelancersPageClient({
     const set = new Set<string>(ARTIST_MEDIUMS);
     profiles.forEach((p) => {
       const arr = p.art_styles || p.mediums;
-      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x)));
+      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
+      else if (typeof arr === 'string' && arr.trim())
+        arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
   }, [profiles]);
@@ -163,7 +425,9 @@ export default function FreelancersPageClient({
     const set = new Set<string>(ARTIST_SPECIALTIES);
     profiles.forEach((p) => {
       const arr = p.art_specialties || p.specialties;
-      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x)));
+      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
+      else if (typeof arr === 'string' && arr.trim())
+        arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
   }, [profiles]);
@@ -172,7 +436,9 @@ export default function FreelancersPageClient({
     const set = new Set<string>(ARTIST_SERVICES);
     profiles.forEach((p) => {
       const arr = p.services_offered || p.services;
-      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x)));
+      if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
+      else if (typeof arr === 'string' && arr.trim())
+        arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
   }, [profiles]);
@@ -196,6 +462,13 @@ export default function FreelancersPageClient({
     );
   };
 
+  const toggleSection = (section: 'styles' | 'specialties' | 'services') => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
   const clearAllFilters = () => {
     setSelectedStyles([]);
     setSelectedSpecialties([]);
@@ -203,12 +476,11 @@ export default function FreelancersPageClient({
     setSearchQuery('');
   };
 
-  const hasActiveFilters =
-    selectedStyles.length > 0 ||
-    selectedSpecialties.length > 0 ||
-    selectedServices.length > 0;
+  const totalActiveFilters =
+    selectedStyles.length + selectedSpecialties.length + selectedServices.length;
+  const hasActiveFilters = totalActiveFilters > 0;
 
-  // 2. Filter profiles dynamically with array overlap logic while strictly preserving display_order ASC
+  // 2. Filter profiles dynamically with forgiving overlap logic while strictly preserving display_order ASC
   const displayedArtists = useMemo(() => {
     let result = profiles;
 
@@ -222,43 +494,48 @@ export default function FreelancersPageClient({
         const email = artist.email || artist.businessEmail || artist.business_email || '';
         const title = artist.title || artist.professional_title || '';
         const bio = artist.bio || artist.description || '';
-        const skills = Array.isArray(artist.skills) ? artist.skills.join(', ') : (artist.skills || '');
+        const skills = Array.isArray(artist.skills)
+          ? artist.skills.join(', ')
+          : artist.skills || '';
         const loc = artist.location || artist.address || '';
         const text = `${fName} ${lName} ${fullName} ${email} ${title} ${bio} ${skills} ${loc}`.toLowerCase();
         return text.includes(q);
       });
     }
 
-    // Art styles multi-select filter (strict array overlap logic)
-    if (selectedStyles.length > 0) {
-      result = result.filter((artist: any) => {
-        const artistStyles: string[] = [
-          ...(artist.art_styles || []),
-          ...(artist.mediums || []),
-        ].map((x: string) => String(x).toLowerCase());
-        return selectedStyles.every((s) => artistStyles.includes(s.toLowerCase()));
-      });
-    }
+    // Selected filter tags across Medium/Art Style, Specialty/Art Type, and Services Offered
+    const allSelectedTags = [
+      ...selectedStyles,
+      ...selectedSpecialties,
+      ...selectedServices,
+    ]
+      .map(normalizeTag)
+      .filter(Boolean);
 
-    // Specialties multi-select filter (strict array overlap logic)
-    if (selectedSpecialties.length > 0) {
+    // Forgiving overlap logic: check if selected filter tags match ANY of the artist's tags
+    if (allSelectedTags.length > 0) {
       result = result.filter((artist: any) => {
-        const artistSpecialties: string[] = [
-          ...(artist.art_specialties || []),
-          ...(artist.specialties || []),
-        ].map((x: string) => String(x).toLowerCase());
-        return selectedSpecialties.every((s) => artistSpecialties.includes(s.toLowerCase()));
-      });
-    }
+        // Collect all artist tags across columns with safe fallback for null/empty/varied keys
+        const artistTags: string[] = [
+          ...extractArtistTags(artist.art_styles),
+          ...extractArtistTags(artist.mediums),
+          ...extractArtistTags(artist.art_specialties),
+          ...extractArtistTags(artist.specialties),
+          ...extractArtistTags(artist.services_offered),
+          ...extractArtistTags(artist.services),
+          ...extractArtistTags(artist.other_categories),
+          ...extractArtistTags(artist.skills),
+        ];
 
-    // Services multi-select filter (strict array overlap logic)
-    if (selectedServices.length > 0) {
-      result = result.filter((artist: any) => {
-        const artistServices: string[] = [
-          ...(artist.services_offered || []),
-          ...(artist.services || []),
-        ].map((x: string) => String(x).toLowerCase());
-        return selectedServices.every((s) => artistServices.includes(s.toLowerCase()));
+        // Safe fallback: If an artist has no tags at all, do not crash; they don't match active tag filters
+        if (artistTags.length === 0) {
+          return false;
+        }
+
+        // Soft overlap: match if ANY selected tag matches ANY artist tag
+        return allSelectedTags.some((selectedTag) =>
+          artistTags.some((artistTag) => tagMatches(artistTag, selectedTag))
+        );
       });
     }
 
@@ -268,26 +545,26 @@ export default function FreelancersPageClient({
     );
   }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedServices]);
 
-  const resetSearch = () => {
-    setSearchQuery('');
-  };
-
   return (
-    <div className="min-h-screen">
-      <header className="px-4 pt-6 pb-2 sm:pt-6 sm:pb-2 sm:px-6 lg:px-8">
-        <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen pb-20">
+      {/* Top Hero / Header */}
+      <header className="px-4 pt-6 pb-4 sm:pt-8 sm:pb-6 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-7xl">
           <div className="text-center">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
               Vivid Art Marketplace
             </div>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
               Discover <span className="text-primary">Top Artists &amp; Creators</span>
             </h1>
+            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+              Browse verified creative talent, explore original mediums, and commission custom artwork.
+            </p>
           </div>
 
-          {/* Compact Search Input & Button */}
-          <div className="mx-auto mt-4 max-w-xl">
-            <div className="glass-card rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-1.5 sm:p-2 shadow-md backdrop-blur">
+          {/* Compact Search Input */}
+          <div className="mx-auto mt-5 max-w-xl">
+            <div className="glass-card rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-1.5 sm:p-2 shadow-sm backdrop-blur">
               <form
                 className="flex flex-col gap-2 sm:flex-row sm:items-center"
                 onSubmit={(event) => {
@@ -307,207 +584,85 @@ export default function FreelancersPageClient({
                 </div>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90"
+                  className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 cursor-pointer"
                 >
                   Search
                 </button>
               </form>
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* Multi-Select Category Filters */}
-          <div ref={dropdownRef} className="relative mx-auto mt-3 max-w-2xl">
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {/* Filter 1: Medium / Art Style */}
-              <div className="relative">
+      {/* Main Grid: Left Sidebar Panel (col-span-3) + Artist Grid (col-span-9) */}
+      <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* 1. Dedicated Left Sidebar Panel (col-span-3 on desktop) */}
+          <aside className="hidden lg:block lg:col-span-3 lg:sticky lg:top-24">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 p-5 shadow-sm backdrop-blur">
+              <FilterContent
+                availableStyles={availableStyles}
+                selectedStyles={selectedStyles}
+                toggleStyle={toggleStyle}
+                availableSpecialties={availableSpecialties}
+                selectedSpecialties={selectedSpecialties}
+                toggleSpecialty={toggleSpecialty}
+                availableServices={availableServices}
+                selectedServices={selectedServices}
+                toggleService={toggleService}
+                openSections={openSections}
+                toggleSection={toggleSection}
+                clearAllFilters={clearAllFilters}
+                hasActiveFilters={hasActiveFilters}
+                totalActiveFilters={totalActiveFilters}
+              />
+            </div>
+          </aside>
+
+          {/* 2. Artist Grid Section (col-span-9 on desktop) */}
+          <div className="col-span-1 lg:col-span-9 space-y-4">
+            {/* Top Results Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/60 px-4 py-3 backdrop-blur shadow-xs">
+              <div className="flex items-center gap-3">
+                {/* Mobile Filter Toggle Button */}
                 <button
                   type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'style' ? null : 'style')}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition shadow-sm cursor-pointer ${
-                    selectedStyles.length > 0
-                      ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/20'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                  }`}
+                  onClick={() => setMobileFilterOpen(true)}
+                  className="inline-flex lg:hidden items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-semibold shadow-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
                 >
-                  <Palette className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Art Style</span>
-                  {selectedStyles.length > 0 && (
-                    <span className="rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
-                      {selectedStyles.length}
+                  <Filter className="h-3.5 w-3.5 text-primary" />
+                  <span>Filters</span>
+                  {hasActiveFilters && (
+                    <span className="rounded-full bg-primary px-1.5 py-0.2 text-[10px] font-bold text-white">
+                      {totalActiveFilters}
                     </span>
                   )}
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openDropdown === 'style' ? 'rotate-180' : ''}`} />
                 </button>
 
-                {openDropdown === 'style' && (
-                  <div className="absolute left-0 sm:left-auto z-50 mt-1.5 w-64 sm:w-72 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 shadow-xl">
-                    <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-100 dark:border-zinc-800 mb-1">
-                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Medium / Art Style</span>
-                      {selectedStyles.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStyles([])}
-                          className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
-                      {availableStyles.map((item) => {
-                        const isChecked = selectedStyles.includes(item);
-                        return (
-                          <label
-                            key={item}
-                            onClick={() => toggleStyle(item)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer select-none"
-                          >
-                            <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${
-                              isChecked
-                                ? 'bg-amber-500 border-amber-500 text-white'
-                                : 'border-zinc-300 dark:border-zinc-700 bg-transparent'
-                            }`}>
-                              {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                            </div>
-                            <span className={`flex-1 ${isChecked ? 'font-semibold text-amber-700 dark:text-amber-300' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                              {item}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                  {mounted
+                    ? `Showing ${displayedArtists.length} ${
+                        displayedArtists.length === 1 ? 'artist' : 'artists'
+                      }`
+                    : 'Showing artists'}
+                </p>
               </div>
 
-              {/* Filter 2: Specialty / Art Type */}
-              <div className="relative">
+              {(searchQuery || hasActiveFilters) && (
                 <button
                   type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'specialty' ? null : 'specialty')}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition shadow-sm cursor-pointer ${
-                    selectedSpecialties.length > 0
-                      ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                  }`}
+                  onClick={clearAllFilters}
+                  className="text-xs font-semibold text-primary transition hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Specialty</span>
-                  {selectedSpecialties.length > 0 && (
-                    <span className="rounded-full bg-indigo-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
-                      {selectedSpecialties.length}
-                    </span>
-                  )}
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openDropdown === 'specialty' ? 'rotate-180' : ''}`} />
+                  <RotateCcw className="h-3 w-3" />
+                  Clear all filters
                 </button>
-
-                {openDropdown === 'specialty' && (
-                  <div className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 z-50 mt-1.5 w-64 sm:w-72 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 shadow-xl">
-                    <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-100 dark:border-zinc-800 mb-1">
-                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Specialty / Art Type</span>
-                      {selectedSpecialties.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSpecialties([])}
-                          className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
-                      {availableSpecialties.map((item) => {
-                        const isChecked = selectedSpecialties.includes(item);
-                        return (
-                          <label
-                            key={item}
-                            onClick={() => toggleSpecialty(item)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer select-none"
-                          >
-                            <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${
-                              isChecked
-                                ? 'bg-indigo-500 border-indigo-500 text-white'
-                                : 'border-zinc-300 dark:border-zinc-700 bg-transparent'
-                            }`}>
-                              {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                            </div>
-                            <span className={`flex-1 ${isChecked ? 'font-semibold text-indigo-700 dark:text-indigo-300' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                              {item}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Filter 3: Services Offered */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'service' ? null : 'service')}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition shadow-sm cursor-pointer ${
-                    selectedServices.length > 0
-                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                  }`}
-                >
-                  <Briefcase className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Services Offered</span>
-                  {selectedServices.length > 0 && (
-                    <span className="rounded-full bg-emerald-500 px-1.5 py-0.2 text-[10px] font-bold text-white">
-                      {selectedServices.length}
-                    </span>
-                  )}
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openDropdown === 'service' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {openDropdown === 'service' && (
-                  <div className="absolute right-0 z-50 mt-1.5 w-64 sm:w-72 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 shadow-xl">
-                    <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-100 dark:border-zinc-800 mb-1">
-                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Services Offered</span>
-                      {selectedServices.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedServices([])}
-                          className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
-                      {availableServices.map((item) => {
-                        const isChecked = selectedServices.includes(item);
-                        return (
-                          <label
-                            key={item}
-                            onClick={() => toggleService(item)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer select-none"
-                          >
-                            <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${
-                              isChecked
-                                ? 'bg-emerald-500 border-emerald-500 text-white'
-                                : 'border-zinc-300 dark:border-zinc-700 bg-transparent'
-                            }`}>
-                              {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                            </div>
-                            <span className={`flex-1 ${isChecked ? 'font-semibold text-emerald-700 dark:text-emerald-300' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                              {item}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Active Filters Display & Reset */}
+            {/* Active Filter Chips Row */}
             {hasActiveFilters && (
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 {selectedStyles.map((style) => (
                   <button
                     key={`chip-style-${style}`}
@@ -547,72 +702,135 @@ export default function FreelancersPageClient({
                   className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-foreground transition cursor-pointer"
                 >
                   <RotateCcw className="h-3 w-3" />
-                  Clear all
+                  Reset
+                </button>
+              </div>
+            )}
+
+            {/* Artist Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-2">
+              {loading && (!displayedArtists || displayedArtists.length === 0) &&
+                Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="glass-card rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6"
+                  >
+                    <Skeleton className="mb-4 h-10 w-10 rounded-full" />
+                    <Skeleton className="mb-2 h-4 w-32" />
+                    <Skeleton className="mb-4 h-3 w-48" />
+                    <Skeleton className="mb-2 h-3 w-full" />
+                    <Skeleton className="mb-2 h-3 w-3/4" />
+                    <Skeleton className="mt-4 h-10 w-full rounded-lg" />
+                  </div>
+                ))}
+
+              {Array.isArray(displayedArtists) &&
+                displayedArtists.length > 0 &&
+                displayedArtists.map((artist: any) => (
+                  <ArtistCard
+                    key={artist.id || artist.userId || Math.random().toString()}
+                    artist={artist}
+                  />
+                ))}
+            </div>
+
+            {/* Empty State */}
+            {!loading && displayedArtists.length === 0 && (
+              <div className="col-span-full mt-8 rounded-3xl border border-primary/20 bg-primary/5 p-10 text-center shadow-inner">
+                <Shield className="mx-auto mb-4 h-10 w-10 text-primary" />
+                <h3 className="mb-2 text-xl font-semibold text-foreground">No artists found</h3>
+                <p className="mb-6 text-sm text-muted-foreground max-w-md mx-auto">
+                  We couldn&apos;t find any artists matching your active filters. Try adjusting your selections or clearing filters.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 cursor-pointer"
+                >
+                  Show all artists
                 </button>
               </div>
             )}
           </div>
         </div>
-      </header>
-
-      <main className="container mx-auto max-w-6xl px-4 pt-2 pb-20 sm:px-6 lg:px-8">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">
-            {mounted
-              ? `Showing ${displayedArtists.length} ${displayedArtists.length === 1 ? 'artist' : 'artists'}`
-              : 'Showing artists'}
-          </p>
-          {(searchQuery || hasActiveFilters) && (
-            <button
-              onClick={clearAllFilters}
-              className="text-xs font-semibold text-primary transition hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Clear all filters
-            </button>
-          )}
-        </div>
-
-        {/* 3. Direct Card Grid Rendering */}
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {loading && (!displayedArtists || displayedArtists.length === 0) &&
-            Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="glass-card rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6">
-                <Skeleton className="mb-4 h-10 w-10 rounded-full" />
-                <Skeleton className="mb-2 h-4 w-32" />
-                <Skeleton className="mb-4 h-3 w-48" />
-                <Skeleton className="mb-2 h-3 w-full" />
-                <Skeleton className="mb-2 h-3 w-3/4" />
-                <Skeleton className="mt-4 h-10 w-full rounded-lg" />
-              </div>
-            ))}
-
-          {Array.isArray(displayedArtists) && displayedArtists.length > 0 &&
-            displayedArtists.map((artist: any) => (
-              <ArtistCard
-                key={artist.id || artist.userId || Math.random().toString()}
-                artist={artist}
-              />
-            ))}
-        </div>
-
-        {!loading && displayedArtists.length === 0 && (
-          <div className="col-span-full mt-12 rounded-3xl border border-primary/20 bg-primary/5 p-10 text-center shadow-inner">
-            <Shield className="mx-auto mb-4 h-10 w-10 text-primary" />
-            <h3 className="mb-2 text-xl font-semibold text-foreground">No artists found</h3>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Try adjusting your search or category filters to view all artists.
-            </p>
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 cursor-pointer"
-            >
-              Show all artists
-            </button>
-          </div>
-        )}
       </main>
+
+      {/* Mobile Drawer / Expandable Overlay */}
+      {mobileFilterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileFilterOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="fixed inset-y-0 left-0 w-full max-w-xs sm:max-w-sm bg-white dark:bg-zinc-900 shadow-2xl flex flex-col z-10 border-r border-zinc-200 dark:border-zinc-800">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-primary" />
+                <span className="font-bold text-sm text-foreground uppercase tracking-wider">
+                  Filter Artists
+                </span>
+                {hasActiveFilters && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {totalActiveFilters}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Drawer Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <FilterContent
+                availableStyles={availableStyles}
+                selectedStyles={selectedStyles}
+                toggleStyle={toggleStyle}
+                availableSpecialties={availableSpecialties}
+                selectedSpecialties={selectedSpecialties}
+                toggleSpecialty={toggleSpecialty}
+                availableServices={availableServices}
+                selectedServices={selectedServices}
+                toggleService={toggleService}
+                openSections={openSections}
+                toggleSection={toggleSection}
+                clearAllFilters={clearAllFilters}
+                hasActiveFilters={hasActiveFilters}
+                totalActiveFilters={totalActiveFilters}
+              />
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 py-2.5 text-xs font-semibold text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                Reset All
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen(false)}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition cursor-pointer"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// Named exports for explicit imports
+export { FreelancersPageClient as ArtistsPage, FreelancersPageClient as ArtistsPageClient };
