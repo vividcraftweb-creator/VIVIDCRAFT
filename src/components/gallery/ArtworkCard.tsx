@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { ArtworkModal } from './ArtworkModal';
+import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay } from '@/lib/artworks';
 
@@ -189,33 +190,38 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
     }
 
     try {
-      const res = await fetch('/api/admin/delete-artwork', {
+      const supabase = createClient();
+
+      try {
+        await supabase.from('artwork_likes').delete().eq('artwork_id', artwork.id);
+      } catch {}
+      try {
+        await supabase.from('artwork_ratings').delete().eq('artwork_id', artwork.id);
+      } catch {}
+      try {
+        await supabase.from('artwork_comments').delete().eq('artwork_id', artwork.id);
+      } catch {}
+
+      const { error } = await supabase.from('artworks').delete().eq('id', artwork.id);
+
+      // Async trigger admin server route for cleanup/revalidation
+      fetch('/api/admin/delete-artwork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artworkId: artwork.id, artistId: artwork.artist_id }),
-      });
+      }).catch(() => {});
 
-      if (!res.ok) {
-        // Fallback to /api/artworks/delete
-        await fetch('/api/artworks/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ artworkId: artwork.id }),
-        });
-      }
-
-      toast.success('Artwork deleted successfully');
-      router.refresh();
-      utils.artworks.getAllArtworks.invalidate();
-      utils.artworks.getMyArtworks.invalidate();
-
-      // Wait for delete to finish, then:
-      if (typeof window !== 'undefined') {
-        window.location.reload();
+      if (error) {
+        console.error('Delete error:', error);
+        alert('Delete failed: ' + error.message);
+        setIsDeleted(false);
+      } else {
+        // Force window reload to immediately purge client/server cache across all sessions
+        window.location.href = window.location.pathname + '?refresh=' + Date.now();
       }
     } catch (err: any) {
       console.error('Delete error:', err);
-      toast.error('Failed to delete artwork: ' + err.message);
+      alert('Delete failed: ' + (err?.message || 'Unknown error'));
       setIsDeleted(false);
     }
   };
@@ -393,6 +399,25 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* Direct WhatsApp Action for For Sale & Bidding */}
+              {(() => {
+                if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+                const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '';
+                const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+
+                return (
+                  <a
+                    href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${artwork.title}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
+                    title="Ask about price or buy on WhatsApp"
+                  >
+                    <span>Ask Price (WhatsApp)</span>
+                  </a>
+                );
+              })()}
+
               {/* Expand / Details CTA */}
               <button
                 type="button"
@@ -409,8 +434,8 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  aria-label="Delete artwork"
-                  title="Delete artwork"
+                  aria-label="Delete Post"
+                  title="Delete Post"
                   className="inline-flex items-center justify-center p-1.5 rounded-full text-xs font-medium text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 transition-colors cursor-pointer"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

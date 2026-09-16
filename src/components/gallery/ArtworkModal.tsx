@@ -530,18 +530,17 @@ export function ArtworkModal({
               const { badgeType } = getArtworkPricingDisplay(artwork);
               if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-              const rawNum = artwork.profiles?.phone || (artwork as any).user?.phone || '94783813833';
-              const pureNum = String(rawNum).replace(/[^0-9]/g, '') || '94783813833'; // Removes +, spaces, and hyphens completely
-              const waLink = `https://wa.me/${pureNum}`;
+              const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '';
+              const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
 
               return (
                 <a
-                  href={waLink}
+                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${artwork.title}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all cursor-pointer"
                 >
-                  <span>{badgeType === 'BIDDING' ? 'Ask About Price / Place Bid (WhatsApp)' : 'Inquire via WhatsApp'}</span>
+                  Ask Price (WhatsApp)
                 </a>
               );
             })()}

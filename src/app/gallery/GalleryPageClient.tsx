@@ -553,7 +553,21 @@ export default function GalleryPageClient() {
     const reason = deleteReason.trim() || 'Content removed by administrator in violation of community guidelines.';
 
     try {
-      const res = await fetch('/api/admin/delete-artwork', {
+      const supabase = createClient();
+      try {
+        await supabase.from('artwork_likes').delete().eq('artwork_id', deletingArtwork.id);
+      } catch {}
+      try {
+        await supabase.from('artwork_ratings').delete().eq('artwork_id', deletingArtwork.id);
+      } catch {}
+      try {
+        await supabase.from('artwork_comments').delete().eq('artwork_id', deletingArtwork.id);
+      } catch {}
+
+      const { error } = await supabase.from('artworks').delete().eq('id', deletingArtwork.id);
+
+      // Also trigger admin server action for notification/cleanup
+      fetch('/api/admin/delete-artwork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -561,41 +575,18 @@ export default function GalleryPageClient() {
           artistId: deletingArtwork.artist_id,
           reason,
         }),
-      });
+      }).catch(() => {});
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Failed to delete artwork');
-      }
-
-      const deletedId = deletingArtwork.id;
-
-      // Optimistic UI removal without breaking page state
-      setLocalArtworks((prev) => prev.filter((a) => a.id !== deletedId));
-      if (selectedArtwork && selectedArtwork.id === deletedId) {
-        setSelectedArtwork(null);
-      }
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('artwork-deleted', { detail: { id: deletedId } }));
-      }
-      router.refresh();
-
-      toast.success('Artwork Removed by Admin', {
-        description: `"${deletingArtwork.title}" was removed. Deletion reason was dispatched to the artist.`,
-      });
-
-      setDeletingArtwork(null);
-      setDeleteReason('');
-      utils.artworks.getAllArtworks.invalidate();
-
-      // Wait for delete to finish, then:
-      if (typeof window !== 'undefined') {
-        window.location.reload();
+      if (error) {
+        console.error('Delete error:', error);
+        alert('Delete failed: ' + error.message);
+      } else {
+        // Force window reload to immediately purge client/server cache across all sessions
+        window.location.href = window.location.pathname + '?refresh=' + Date.now();
       }
     } catch (err: any) {
       console.error('Delete artwork error:', err);
-      toast.error('Failed to remove artwork: ' + err.message);
+      alert('Delete failed: ' + (err?.message || 'Unknown error'));
     } finally {
       setIsDeleting(false);
     }
@@ -1372,20 +1363,18 @@ export default function GalleryPageClient() {
                         const { badgeType } = getArtworkPricingDisplay(artwork);
                         if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                        const rawNum = artwork.profiles?.phone || artwork.user?.phone || '94783813833';
-                        const pureNum = String(rawNum).replace(/[^0-9]/g, '') || '94783813833'; // Removes +, spaces, and hyphens completely
-                        const waLink = `https://wa.me/${pureNum}`;
+                        const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '';
+                        const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
 
                         return (
                           <a
-                            href={waLink}
+                            href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${artwork.title}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
                             title="Ask about price or buy on WhatsApp"
                           >
-                            <span>Ask Price (WhatsApp)</span>
+                            Ask Price (WhatsApp)
                           </a>
                         );
                       })()}
@@ -1609,20 +1598,17 @@ export default function GalleryPageClient() {
                     const { badgeType } = getArtworkPricingDisplay(selectedArtwork);
                     if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                    const rawNum = (selectedArtwork as any).profiles?.phone || (selectedArtwork as any).user?.phone || '94783813833';
-                    const pureNum = String(rawNum).replace(/[^0-9]/g, '') || '94783813833'; // Removes +, spaces, and hyphens completely
-                    const waLink = `https://wa.me/${pureNum}`;
+                    const rawPhone = (selectedArtwork as any).profiles?.phone || (selectedArtwork as any).user?.phone || '';
+                    const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
 
                     return (
                       <a
-                        href={waLink}
+                        href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${selectedArtwork.title}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm h-10 px-4 rounded-xl cursor-pointer shadow-sm transition-colors"
                       >
-                        <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 h-10 px-4 cursor-pointer shadow-sm">
-                          <span>Ask Price (WhatsApp)</span>
-                        </Button>
+                        Ask Price (WhatsApp)
                       </a>
                     );
                   })()}

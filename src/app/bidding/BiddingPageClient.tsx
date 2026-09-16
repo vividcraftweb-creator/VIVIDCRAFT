@@ -648,10 +648,9 @@ export default function BiddingPageClient() {
 
   // Helper for WhatsApp inquiry URL
   const getWhatsAppBidUrl = (art: RankedArtwork) => {
-    const rawNum = art.profiles?.phone || art.user?.phone || '94783813833';
-    const pureNum = String(rawNum).replace(/[^0-9]/g, '') || '94783813833'; // Removes +, spaces, and hyphens completely
-    const waLink = `https://wa.me/${pureNum}`;
-    return waLink;
+    const rawPhone = art.profiles?.phone || art.user?.phone || '';
+    const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hi, I'm interested in ${art.title}`)}`;
   };
 
   return (

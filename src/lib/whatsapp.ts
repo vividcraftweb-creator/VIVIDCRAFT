@@ -46,17 +46,16 @@ export function getSafeArtworkWhatsAppUrl(
   }
 
   // 1. Extract phone number safely from artist/user profile
-  const rawNum =
+  const rawPhone =
     artwork.profiles?.phone ||
     artwork.user?.phone ||
     DEFAULT_WHATSAPP_NUMBER;
 
-  // 2. Sanitize to contain ONLY digits using /[^0-9]/g
-  const pureNum = String(rawNum).replace(/[^0-9]/g, '') || DEFAULT_WHATSAPP_NUMBER;
+  // 2. Sanitize to contain ONLY digits using /\D/g
+  const cleanPhone = String(rawPhone).replace(/\D/g, '') || DEFAULT_WHATSAPP_NUMBER;
 
-  if (options?.customMessage) {
-    return `https://wa.me/${pureNum}?text=${encodeURIComponent(options.customMessage)}`;
-  }
+  const title = artwork.title || 'Artwork';
+  const defaultText = options?.customMessage || `Hi, I'm interested in ${title}`;
 
-  return `https://wa.me/${pureNum}`;
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(defaultText)}`;
 }
