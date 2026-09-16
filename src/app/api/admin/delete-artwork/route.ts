@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
@@ -73,6 +74,15 @@ export async function POST(request: NextRequest) {
     try {
       await adminClient.from('Artwork').delete().eq('id', artworkId);
     } catch {}
+
+    // Instant cache revalidation across gallery, home, and admin
+    try {
+      revalidatePath('/gallery');
+      revalidatePath('/');
+      revalidatePath('/admin');
+    } catch (revalErr) {
+      console.warn('[delete-artwork] revalidation warning:', revalErr);
+    }
 
     return NextResponse.json({
       success: true,

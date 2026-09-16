@@ -279,21 +279,41 @@ export function ArtworkModal({
             <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap pt-0.5">
               {(() => {
                 const resolvedArtist =
-                  artwork.profiles?.artist_name ||
                   artwork.profiles?.full_name ||
+                  artwork.profiles?.display_name ||
+                  artwork.profiles?.username ||
+                  artwork.user_name ||
+                  artwork.profiles?.artist_name ||
                   artistName ||
                   artwork.artist?.name ||
                   'Artist';
+                const avatar = artwork.profiles?.avatar_url || artwork.artist?.avatar_url;
                 return (
-                  <span>
-                    By{' '}
-                    <Link
-                      href={`/freelancers/${artwork.artist_id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
-                    >
-                      {resolvedArtist}
-                    </Link>
+                  <span className="inline-flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5">
+                      {avatar && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatar}
+                          alt={resolvedArtist}
+                          className="w-4 h-4 rounded-full object-cover border border-amber-300/60 shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      By{' '}
+                      <Link
+                        href={`/freelancers/${artwork.artist_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                      >
+                        {resolvedArtist}
+                      </Link>
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-1.5 py-0.5 rounded-md">
+                      Verified Artist
+                    </span>
                   </span>
                 );
               })()}

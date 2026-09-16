@@ -1,5 +1,6 @@
 import { router, publicProcedure, protectedProcedure } from '../trpc';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { TRPCError } from '@trpc/server';
@@ -45,6 +46,16 @@ export const artworksRouter = router({
         .select('artwork_id, rating')
         .in('artwork_id', artworkIds);
 
+      // Fetch artist profile
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', artistId)
+        .maybeSingle();
+
+      const profileFullName = (myProfile?.full_name || '').trim();
+      const artistNameField = (myProfile?.artist_name || '').trim();
+
       return artworks.map((art: any, index: number) => {
         const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
         const artRatings = (ratings || []).filter((r: any) => r.artwork_id === art.id);
@@ -86,6 +97,16 @@ export const artworksRouter = router({
           price: effectivePrice,
           starting_bid: effectiveBid,
           art_code: artCode,
+          profiles: myProfile ? {
+            full_name: profileFullName || null,
+            display_name: (myProfile as any).display_name || profileFullName || artistNameField || null,
+            username: (myProfile as any).username || null,
+            user_name: (myProfile as any).user_name || (myProfile as any).username || null,
+            artist_name: artistNameField || null,
+            avatar_url: myProfile.avatar_url || null,
+            role: myProfile.role || 'artist',
+          } : null,
+          user_name: (myProfile as any)?.user_name || (myProfile as any)?.username || profileFullName || artistNameField || null,
         };
       });
     } catch (err) {
@@ -311,14 +332,27 @@ export const artworksRouter = router({
       const supabase = await getAuthenticatedClient(ctx);
 
       // Delete child likes and ratings first
-      await supabase.from('artwork_likes').delete().eq('artwork_id', input.id);
-      await supabase.from('artwork_ratings').delete().eq('artwork_id', input.id);
+      try {
+        await supabase.from('artwork_likes').delete().eq('artwork_id', input.id);
+      } catch {}
+      try {
+        await supabase.from('artwork_ratings').delete().eq('artwork_id', input.id);
+      } catch {}
+      try {
+        await supabase.from('artwork_comments').delete().eq('artwork_id', input.id);
+      } catch {}
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('artworks')
         .delete()
         .eq('id', input.id)
-        .eq('artist_id', artistId);
+        .or(`artist_id.eq.${artistId},user_id.eq.${artistId}`);
+
+      if (error) {
+        // Fallback to eq artist_id
+        const fb = await supabase.from('artworks').delete().eq('id', input.id).eq('artist_id', artistId);
+        error = fb.error;
+      }
 
       if (error) {
         console.error('deleteArtwork error:', error);
@@ -326,6 +360,20 @@ export const artworksRouter = router({
           code: 'INTERNAL_SERVER_ERROR',
           message: error.message || 'Failed to delete artwork',
         });
+      }
+
+      // Fallback delete from Artwork table if present
+      try {
+        await supabase.from('Artwork').delete().eq('id', input.id);
+      } catch {}
+
+      // Instant cache revalidation across gallery, home, and admin
+      try {
+        revalidatePath('/gallery');
+        revalidatePath('/');
+        revalidatePath('/admin');
+      } catch (revalErr) {
+        console.warn('revalidatePath error in deleteArtwork:', revalErr);
       }
 
       return { success: true };
@@ -381,14 +429,14 @@ export const artworksRouter = router({
             .in('artwork_id', artworkIds),
           supabase
             .from('profiles')
-            .select('id, full_name, artist_name, avatar_url, role, title')
+            .select('id, full_name, display_name, username, artist_name, avatar_url, role, title')
             .eq('id', artistId)
             .maybeSingle(),
         ]);
 
         const ratings = ratingsRes.data || [];
         const artistProf = profileRes.data || null;
-        const artistName = artistProf?.artist_name?.trim() || artistProf?.full_name?.trim() || 'Verified Artist';
+        const artistName = artistProf?.full_name?.trim() || (artistProf as any)?.display_name?.trim() || (artistProf as any)?.username?.trim() || artistProf?.artist_name?.trim() || 'Verified Artist';
 
         return artworks.map((art: any, index: number) => {
           const artLikes = (likes || []).filter((l: any) => l.artwork_id === art.id);
@@ -435,12 +483,16 @@ export const artworksRouter = router({
             price,
             starting_bid: startingBid,
             art_code: artCode,
-            profiles: artistProf ? {
-              full_name: artistProf.full_name || null,
-              artist_name: artistProf.artist_name || null,
-              avatar_url: artistProf.avatar_url || null,
-              role: artistProf.role || 'artist',
+            profiles: (artistProf || art.profiles) ? {
+              full_name: artistProf?.full_name || (art.profiles as any)?.full_name || null,
+              display_name: (artistProf as any)?.display_name || (art.profiles as any)?.display_name || artistProf?.artist_name || artistProf?.full_name || null,
+              username: (artistProf as any)?.username || (art.profiles as any)?.username || null,
+              user_name: (artistProf as any)?.user_name || (art.profiles as any)?.user_name || (artistProf as any)?.username || null,
+              artist_name: artistProf?.artist_name || (art.profiles as any)?.artist_name || null,
+              avatar_url: artistProf?.avatar_url || (art.profiles as any)?.avatar_url || null,
+              role: artistProf?.role || (art.profiles as any)?.role || 'artist',
             } : null,
+            user_name: (artistProf as any)?.user_name || (art.profiles as any)?.user_name || (artistProf as any)?.username || artistProf?.full_name || artistProf?.artist_name || null,
             artist: {
               id: artistId,
               name: artistName,
@@ -471,13 +523,35 @@ export const artworksRouter = router({
         const supabase = await getAuthenticatedClient(ctx);
         const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
 
-        // 1. Fetch all artworks
-        let { data: artworks, error } = await supabase
-          .from('artworks')
-          .select('*')
-          .order('created_at', { ascending: false });
+        // 1. Fetch all artworks explicitly joining profiles
+        let artworks: any[] | null = null;
+        let queryError: any = null;
 
-        if (error || !artworks || artworks.length === 0) {
+        try {
+          const res = await supabase
+            .from('artworks')
+            .select('*, profiles(*)')
+            .order('created_at', { ascending: false });
+          if (!res.error && res.data && res.data.length > 0) {
+            artworks = res.data;
+          } else if (res.error) {
+            queryError = res.error;
+          }
+        } catch (e) {
+          queryError = e;
+        }
+
+        if (!artworks || artworks.length === 0) {
+          const fallbackRes = await supabase
+            .from('artworks')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (fallbackRes.data && fallbackRes.data.length > 0) {
+            artworks = fallbackRes.data;
+          }
+        }
+
+        if (!artworks || artworks.length === 0) {
           // Fallback to Artwork table if artworks is empty
           try {
             const fallback = await supabase
@@ -512,7 +586,7 @@ export const artworksRouter = router({
           supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artworkIds),
           supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artworkIds),
           artistIds.length > 0
-            ? supabase.from('profiles').select('id, first_name, last_name, full_name, artist_name, avatar_url, role, title, location, bio, phone, whatsapp_number, email').in('id', artistIds)
+            ? supabase.from('profiles').select('id, first_name, last_name, full_name, display_name, username, artist_name, avatar_url, role, title, location, bio, phone, whatsapp_number, email').in('id', artistIds)
             : Promise.resolve({ data: [] }),
         ]);
 
@@ -547,9 +621,11 @@ export const artworksRouter = router({
           const artistProfile = profilesMap.get(art.artist_id);
           const artistNameField = (artistProfile?.artist_name || '').trim();
           const profileFullName = (artistProfile?.full_name || '').trim();
+          const profileDisplayName = (artistProfile?.display_name || '').trim();
+          const profileUsername = (artistProfile?.username || '').trim();
           const combinedFirstLast = [artistProfile?.first_name, artistProfile?.last_name].filter(Boolean).join(' ').trim();
           const emailPrefix = artistProfile?.email ? artistProfile.email.split('@')[0] : '';
-          const artistName = artistNameField || profileFullName || combinedFirstLast || emailPrefix || 'Verified Artist';
+          const artistName = profileFullName || profileDisplayName || profileUsername || artistNameField || combinedFirstLast || emailPrefix || (art.profiles as any)?.full_name || (art.profiles as any)?.display_name || art.user_name || 'Verified Artist';
 
           // Formatted Artwork ID (e.g. #ART-104)
           const rawArtCode = art.art_code;
@@ -605,12 +681,16 @@ export const artworksRouter = router({
               phone: artistProfile?.phone || null,
               whatsapp_number: artistProfile?.whatsapp_number || artistProfile?.phone || null,
             },
-            profiles: artistProfile ? {
-              full_name: profileFullName,
-              artist_name: artistNameField || null,
-              avatar_url: artistProfile?.avatar_url || null,
-              role: artistProfile?.role || 'artist',
+            profiles: (artistProfile || art.profiles) ? {
+              full_name: profileFullName || (art.profiles as any)?.full_name || null,
+              display_name: (artistProfile as any)?.display_name || (art.profiles as any)?.display_name || profileFullName || artistNameField || null,
+              username: (artistProfile as any)?.username || (art.profiles as any)?.username || null,
+              user_name: (artistProfile as any)?.user_name || (art.profiles as any)?.user_name || (artistProfile as any)?.username || null,
+              artist_name: artistNameField || (art.profiles as any)?.artist_name || null,
+              avatar_url: artistProfile?.avatar_url || (art.profiles as any)?.avatar_url || null,
+              role: artistProfile?.role || (art.profiles as any)?.role || 'artist',
             } : null,
+            user_name: (artistProfile as any)?.user_name || (art.profiles as any)?.user_name || (artistProfile as any)?.username || profileFullName || artistNameField || null,
           };
         });
 

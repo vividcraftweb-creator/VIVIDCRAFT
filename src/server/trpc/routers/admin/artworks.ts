@@ -1,5 +1,6 @@
 import { router, adminProcedure } from '../../trpc';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 export const adminArtworksRouter = router({
   getArtworks: adminProcedure
@@ -69,9 +70,24 @@ export const adminArtworksRouter = router({
       const supabase = ctx.adminSupabase;
       if (!supabase) throw new Error('Supabase admin client not found');
 
+      try {
+        await (supabase as any).from('artwork_likes').delete().eq('artwork_id', input.id);
+        await (supabase as any).from('artwork_ratings').delete().eq('artwork_id', input.id);
+        await (supabase as any).from('artwork_comments').delete().eq('artwork_id', input.id);
+      } catch {}
+
       const { error } = await (supabase as any).from('artworks').delete().eq('id', input.id);
       if (error) {
         await supabase.from('Artwork').delete().eq('id', input.id);
+      }
+
+      // Revalidate cache across gallery, home, and admin
+      try {
+        revalidatePath('/gallery');
+        revalidatePath('/');
+        revalidatePath('/admin');
+      } catch (revalErr) {
+        console.warn('revalidatePath warning in admin deleteArtwork:', revalErr);
       }
       
       return { success: true };

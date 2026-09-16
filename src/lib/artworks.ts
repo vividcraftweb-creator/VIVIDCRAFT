@@ -5,6 +5,9 @@ export type PricingType = 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
 export interface ArtworkProfile {
   id?: string;
   full_name?: string | null;
+  display_name?: string | null;
+  username?: string | null;
+  user_name?: string | null;
   artist_name?: string | null;
   avatar_url?: string | null;
   role?: string | null;
@@ -21,6 +24,7 @@ export interface ArtworkWithProfile {
   id: string;
   artist_id: string;
   user_id?: string;
+  user_name?: string | null;
   title: string;
   description?: string | null;
   category?: string | null;
@@ -156,15 +160,24 @@ export function inferArtworkPricing(artwork: any): {
  * artwork.profiles?.artist_name || artwork.profiles?.full_name || artwork.artist_name || artwork.user_name || artwork.user?.full_name || artwork.user?.email?.split('@')[0] || 'Unknown Creator'
  */
 export function extractArtistName(artwork: any, artistNameProp?: string): string {
+  // Requirement 2: Render artist full name dynamically
+  const dynamicArtistName =
+    artwork?.profiles?.full_name ||
+    artwork?.profiles?.display_name ||
+    artwork?.profiles?.username ||
+    artwork?.user_name;
+
+  if (dynamicArtistName && typeof dynamicArtistName === 'string' && dynamicArtistName.trim()) {
+    return dynamicArtistName.trim();
+  }
+
   if (artistNameProp && artistNameProp.trim() && artistNameProp !== 'Artist' && artistNameProp !== 'Artist / Creator' && artistNameProp !== 'Verified Artist') {
     return artistNameProp.trim();
   }
 
   const candidate =
     artwork?.profiles?.artist_name ||
-    artwork?.profiles?.full_name ||
     artwork?.artist_name ||
-    artwork?.user_name ||
     artwork?.user?.full_name ||
     (artwork?.user?.email ? artwork.user.email.split('@')[0] : null) ||
     artwork?.artist?.name ||
@@ -174,7 +187,7 @@ export function extractArtistName(artwork: any, artistNameProp?: string): string
 
   if (candidate && typeof candidate === 'string') {
     const trimmed = candidate.trim();
-    if (trimmed && trimmed !== 'Artist' && trimmed !== 'Artist / Creator') {
+    if (trimmed && trimmed !== 'Artist' && trimmed !== 'Artist / Creator' && trimmed !== 'Verified Artist') {
       return trimmed;
     }
   }
@@ -200,17 +213,31 @@ export async function getArtworks(options?: {
 
   let data: any[] | null = null;
 
-  // 1. Primary: relational query joining profiles via artist_id foreign key constraint
+  // 1. Primary: explicit join on profiles table
   try {
     const res = await supabase
       .from('artworks')
-      .select('*, profiles!artworks_artist_id_fkey(full_name, artist_name, avatar_url, bio)')
+      .select('*, profiles(*)')
       .order('created_at', { ascending: false });
 
     if (!res.error && res.data && res.data.length > 0) {
       data = res.data;
     }
   } catch {}
+
+  // 2. Relational query joining profiles via artist_id foreign key constraint
+  if (!data) {
+    try {
+      const res = await supabase
+        .from('artworks')
+        .select('*, profiles!artworks_artist_id_fkey(full_name, artist_name, avatar_url, bio)')
+        .order('created_at', { ascending: false });
+
+      if (!res.error && res.data && res.data.length > 0) {
+        data = res.data;
+      }
+    } catch {}
+  }
 
   // 2. Fallback: try column-based relational query joining profiles via artist_id
   if (!data) {

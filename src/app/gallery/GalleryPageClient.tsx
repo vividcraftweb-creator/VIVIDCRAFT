@@ -74,10 +74,13 @@ interface RankedArtwork {
   art_code?: string;
   profiles?: {
     full_name?: string | null;
+    display_name?: string | null;
+    username?: string | null;
     artist_name?: string | null;
     avatar_url?: string | null;
     role?: string | null;
   } | null;
+  user_name?: string | null;
   artist: ArtworkArtist;
 }
 
@@ -182,6 +185,23 @@ export default function GalleryPageClient() {
     };
   }, [selectedArtwork]);
 
+  // Listen for instant artwork deletion events across the entire app
+  useEffect(() => {
+    const handleArtworkDeleted = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id: string }>;
+      const deletedId = customEvent.detail?.id;
+      if (deletedId) {
+        setLocalArtworks((prev) => prev.filter((a) => a.id !== deletedId));
+        setSelectedArtwork((prev) => (prev && prev.id === deletedId ? null : prev));
+      }
+    };
+
+    window.addEventListener('artwork-deleted', handleArtworkDeleted);
+    return () => {
+      window.removeEventListener('artwork-deleted', handleArtworkDeleted);
+    };
+  }, []);
+
   // Fetch via tRPC procedure
   const { data: remoteArtworks, isLoading, refetch } = trpc.artworks.getAllArtworks.useQuery(
     { sort: activeSort, search: searchQuery, mode: 'ALL' },
@@ -241,7 +261,7 @@ export default function GalleryPageClient() {
               supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artIds),
               supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artIds),
               artistIds.length > 0
-                ? supabase.from('profiles').select('id, first_name, last_name, full_name, artist_name, avatar_url, role, title, bio, location, phone, whatsapp_number, email').in('id', artistIds)
+                ? supabase.from('profiles').select('id, first_name, last_name, full_name, display_name, username, artist_name, avatar_url, role, title, bio, location, phone, whatsapp_number, email').in('id', artistIds)
                 : Promise.resolve({ data: [] }),
             ]);
 
@@ -260,11 +280,13 @@ export default function GalleryPageClient() {
               const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
               const avg = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
               const prof = pMap.get(art.artist_id);
-              const artistNameField = (prof?.artist_name || '').trim();
               const profileFullName = (prof?.full_name || '').trim();
+              const profileDisplayName = (prof?.display_name || '').trim();
+              const profileUsername = (prof?.username || '').trim();
+              const artistNameField = (prof?.artist_name || '').trim();
               const combinedFirstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(' ').trim();
               const emailPrefix = prof?.email ? prof.email.split('@')[0] : '';
-              const artistName = artistNameField || profileFullName || combinedFirstLast || emailPrefix || 'Verified Artist';
+              const artistName = profileFullName || profileDisplayName || profileUsername || artistNameField || combinedFirstLast || emailPrefix || art.user_name || 'Verified Artist';
 
 
               const rawArtCode = art.art_code;
@@ -303,11 +325,14 @@ export default function GalleryPageClient() {
                 starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
                 art_code: artCode,
                 profiles: prof ? {
-                  full_name: profileFullName,
+                  full_name: profileFullName || null,
+                  display_name: profileDisplayName || null,
+                  username: profileUsername || null,
                   artist_name: artistNameField || null,
                   avatar_url: prof?.avatar_url || null,
                   role: prof?.role || 'artist',
                 } : null,
+                user_name: art.user_name || artistName,
                 artist: {
                   id: art.artist_id,
                   name: artistName,
@@ -536,11 +561,18 @@ export default function GalleryPageClient() {
         throw new Error(errJson.error || 'Failed to delete artwork');
       }
 
+      const deletedId = deletingArtwork.id;
+
       // Optimistic UI removal without breaking page state
-      setLocalArtworks((prev) => prev.filter((a) => a.id !== deletingArtwork.id));
-      if (selectedArtwork && selectedArtwork.id === deletingArtwork.id) {
+      setLocalArtworks((prev) => prev.filter((a) => a.id !== deletedId));
+      if (selectedArtwork && selectedArtwork.id === deletedId) {
         setSelectedArtwork(null);
       }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artwork-deleted', { detail: { id: deletedId } }));
+      }
+      router.refresh();
 
       toast.success('Artwork Removed by Admin', {
         description: `"${deletingArtwork.title}" was removed. Deletion reason was dispatched to the artist.`,
@@ -1073,8 +1105,9 @@ export default function GalleryPageClient() {
               });
 
               const safeImg = getSafeArtworkUrl(artwork.image_url);
-              const artistAvatar = getProfilePictureUrl(artwork.artist_id, artwork.artist.avatar_url);
-              const initials = artwork.artist.name
+              const dynamicArtistName = (artwork.profiles?.full_name || artwork.profiles?.display_name || artwork.profiles?.username || artwork.profiles?.artist_name || artwork.user_name || artwork.artist?.name || 'Artist').trim();
+              const artistAvatar = getProfilePictureUrl(artwork.artist_id, artwork.profiles?.avatar_url || artwork.artist?.avatar_url);
+              const initials = (dynamicArtistName || 'Artist')
                 .split(' ')
                 .map((n) => n[0])
                 .join('')
@@ -1259,7 +1292,7 @@ export default function GalleryPageClient() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Avatar className="w-7 h-7 ring-1 ring-amber-500/30 group-hover/avatar:ring-amber-400 transition-all">
-                              {artistAvatar && <AvatarImage src={artistAvatar} alt={artwork.artist.name} />}
+                              {artistAvatar && <AvatarImage src={artistAvatar} alt={dynamicArtistName} />}
                               <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200 text-xs font-semibold">
                                 {initials || <User className="w-3.5 h-3.5" />}
                               </AvatarFallback>
@@ -1272,13 +1305,11 @@ export default function GalleryPageClient() {
                               onClick={(e) => e.stopPropagation()}
                               className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-amber-600 dark:hover:text-amber-400 truncate block transition-colors"
                             >
-                              {(() => {
-                                const rawName = artwork.profiles?.artist_name || artwork.profiles?.full_name || artwork.artist?.name;
-                                return (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
-                              })()}
+                              {dynamicArtistName}
                             </Link>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                              {artwork.artist.title && artwork.artist.title !== 'Artist / Creator' ? artwork.artist.title : 'Verified Artist'}
+                            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium truncate flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                              <span>Verified Artist</span>
                             </p>
                           </div>
                         </div>
@@ -1364,15 +1395,18 @@ export default function GalleryPageClient() {
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/50">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="w-10 h-10 ring-1 ring-amber-500/30 flex-shrink-0">
-                    <AvatarImage
-                      src={getProfilePictureUrl(selectedArtwork.artist_id, selectedArtwork.artist.avatar_url)}
-                      alt={selectedArtwork.artist.name}
-                    />
-                    <AvatarFallback className="bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-xs font-bold">
-                      {selectedArtwork.artist.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  {(() => {
+                    const modalArtistName = ((selectedArtwork as any).profiles?.full_name || (selectedArtwork as any).profiles?.display_name || (selectedArtwork as any).profiles?.username || (selectedArtwork as any).profiles?.artist_name || (selectedArtwork as any).user_name || selectedArtwork.artist?.name || 'Artist').trim();
+                    const modalAvatarUrl = getProfilePictureUrl(selectedArtwork.artist_id, (selectedArtwork as any).profiles?.avatar_url || selectedArtwork.artist.avatar_url);
+                    return (
+                      <Avatar className="w-10 h-10 ring-1 ring-amber-500/30 flex-shrink-0">
+                        {modalAvatarUrl && <AvatarImage src={modalAvatarUrl} alt={modalArtistName} />}
+                        <AvatarFallback className="bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-xs font-bold">
+                          {(modalArtistName || 'AR').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    );
+                  })()}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       {(() => {
@@ -1407,7 +1441,8 @@ export default function GalleryPageClient() {
                         className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:underline font-medium"
                       >
                         by {(() => {
-                          const rawName = (selectedArtwork as any).profiles?.artist_name || (selectedArtwork as any).profiles?.full_name || selectedArtwork.artist?.name;
+                          const p = (selectedArtwork as any).profiles;
+                          const rawName = p?.full_name || p?.display_name || p?.username || p?.artist_name || (selectedArtwork as any).user_name || selectedArtwork.artist?.name;
                           return (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
                         })()}
                       </Link>
@@ -1558,10 +1593,12 @@ export default function GalleryPageClient() {
                   {(() => {
                     const { badgeType, displayPrice } = getArtworkPricingDisplay(selectedArtwork);
                     if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+                    const p = (selectedArtwork as any).profiles;
+                    const inquiryArtistName = (p?.full_name || p?.display_name || p?.username || p?.artist_name || (selectedArtwork as any).user_name || selectedArtwork.artist.name || 'Artist').trim();
                     return (
                       <a
                         href={`https://wa.me/${selectedArtwork.artist.whatsapp_number ? selectedArtwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
-                          `Hello! I would like to inquire about Artwork '${selectedArtwork.title}' (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${selectedArtwork.artist.name}. Status: ${displayPrice}.`
+                          `Hello! I would like to inquire about Artwork '${selectedArtwork.title}' (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${inquiryArtistName}. Status: ${displayPrice}.`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"

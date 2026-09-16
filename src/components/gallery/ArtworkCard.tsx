@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Heart, ZoomIn, Star, User } from 'lucide-react';
+import { Heart, ZoomIn, Star, User, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,8 +34,12 @@ export interface ArtworkItem {
   price_amount?: number | null;
   starting_bid?: number | null;
   art_code?: string;
+  user_name?: string | null;
   profiles?: {
     full_name?: string | null;
+    display_name?: string | null;
+    username?: string | null;
+    user_name?: string | null;
     artist_name?: string | null;
     avatar_url?: string | null;
     role?: string | null;
@@ -62,12 +66,13 @@ export interface ArtworkItem {
   };
 }
 
-interface ArtworkCardProps {
+export interface ArtworkCardProps {
   artwork: ArtworkItem;
   artistName?: string;
+  onDelete?: (artworkId: string) => void;
 }
 
-export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
+export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: ArtworkCardProps) {
   // Step 2: Log artwork database object directly to console to verify column names
   console.log('Artwork database object (ArtworkCard):', {
     id: artwork?.id,
@@ -78,17 +83,51 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
     amount: (artwork as any)?.amount,
   });
 
-  // Retrieve price safely per user specification
+  // Requirement 1: Instant deletion state across gallery
+  const [isDeleted, setIsDeleted] = useState(false);
+
+  useEffect(() => {
+    const handleArtworkDeleted = (e: Event) => {
+      const customEvent = e as CustomEvent<{ id: string }>;
+      if (customEvent.detail?.id === artwork.id) {
+        setIsDeleted(true);
+      }
+    };
+    window.addEventListener('artwork-deleted', handleArtworkDeleted);
+    return () => window.removeEventListener('artwork-deleted', handleArtworkDeleted);
+  }, [artwork.id]);
+
+  // Retrieve price safely per user specification (preserved untouched)
   const displayPrice = Number(artwork.price || artwork.amount || artwork.price_amount || 0);
 
-  // Dynamic Pricing & Status Badge Evaluation
+  // Dynamic Pricing & Status Badge Evaluation (preserved untouched)
   const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
 
-  const resolvedArtistName = extractArtistName(artwork, artistName);
+  // Requirement 2: Render artist full name dynamically strictly per user specification
+  const artistName =
+    artwork.profiles?.full_name ||
+    artwork.profiles?.display_name ||
+    artwork.profiles?.username ||
+    artwork.user_name ||
+    artwork.profiles?.artist_name ||
+    extractArtistName(artwork, artistNameProp) ||
+    artwork.artist?.name ||
+    artistNameProp ||
+    'Artist';
+
+  const artistAvatarUrl =
+    artwork.profiles?.avatar_url ||
+    artwork.artist?.avatar_url ||
+    null;
 
   const router = useRouter();
   const { data: session, status } = useAuth();
   const isAuthenticated = status === 'authenticated' && !!session?.session?.user;
+  const currentUserId = session?.session?.user?.id;
+  const userMetaRole = (session?.session?.user?.user_metadata?.role || '').toString().toUpperCase();
+  const isAdmin = userMetaRole === 'ADMIN' || session?.session?.user?.email === 'vividcraftweb@gmail.com';
+  const isOwner = Boolean(currentUserId && (artwork.artist_id === currentUserId || artwork.user_id === currentUserId));
+  const canDelete = isOwner || isAdmin;
 
   // Local optimistic state for instant feedback
   const [likesCount, setLikesCount] = useState<number>(artwork.likesCount);
@@ -137,6 +176,46 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
 
     toggleLikeMutation.mutate({ artworkId: artwork.id });
   };
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete "${artwork.title}"?`)) return;
+
+    // Instant optimistic removal from UI
+    setIsDeleted(true);
+    if (onDelete) onDelete(artwork.id);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('artwork-deleted', { detail: { id: artwork.id } }));
+    }
+
+    try {
+      const res = await fetch('/api/admin/delete-artwork', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artworkId: artwork.id, artistId: artwork.artist_id }),
+      });
+
+      if (!res.ok) {
+        // Fallback to /api/artworks/delete
+        await fetch('/api/artworks/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ artworkId: artwork.id }),
+        });
+      }
+
+      toast.success('Artwork deleted successfully');
+      router.refresh();
+      utils.artworks.getAllArtworks.invalidate();
+      utils.artworks.getMyArtworks.invalidate();
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      toast.error('Failed to delete artwork: ' + err.message);
+      setIsDeleted(false);
+    }
+  };
+
+  if (isDeleted) return null;
 
   const safeImg = getSafeArtworkUrl(artwork.image_url);
 
@@ -237,10 +316,26 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
 
             {/* Artist & Lower Metadata Row with Ref ID */}
             <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[170px]">
-                  <User className="w-3 h-3 text-amber-500 shrink-0" />
-                  <span className="truncate">{resolvedArtistName}</span>
+                  {artistAvatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={artistAvatarUrl}
+                      alt={artistName}
+                      className="w-3.5 h-3.5 rounded-full object-cover shrink-0 border border-amber-300/60"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <User className="w-3 h-3 text-amber-500 shrink-0" />
+                  )}
+                  <span className="truncate">{artistName}</span>
+                </span>
+                {/* Secondary sub-badge: only use 'Verified Artist' as a secondary sub-badge/subtitle, not replacing the artist's real name */}
+                <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-1.5 py-0.5 rounded-md shrink-0">
+                  Verified Artist
                 </span>
               </div>
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
@@ -292,16 +387,31 @@ export function ArtworkCard({ artwork, artistName }: ArtworkCardProps) {
               )}
             </div>
 
-            {/* Expand / Details CTA */}
-            <button
-              type="button"
-              onClick={() => setIsZoomOpen(true)}
-              aria-label="View artwork details and comments"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-white/80 dark:bg-slate-800/80 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 cursor-pointer"
-            >
-              <ZoomIn className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Details</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              {/* Expand / Details CTA */}
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(true)}
+                aria-label="View artwork details and comments"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-white/80 dark:bg-slate-800/80 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 cursor-pointer"
+              >
+                <ZoomIn className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Details</span>
+              </button>
+
+              {/* Owner / Admin Delete Button */}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={handleDeleteClick}
+                  aria-label="Delete artwork"
+                  title="Delete artwork"
+                  className="inline-flex items-center justify-center p-1.5 rounded-full text-xs font-medium text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
