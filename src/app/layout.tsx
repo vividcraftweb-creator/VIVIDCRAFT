@@ -186,20 +186,13 @@ export default async function RootLayout({
       {
         '@type': 'SiteNavigationElement',
         position: 2,
-        name: 'Explore Art',
-        description: 'Browse and discover original artwork',
-        url: `${siteUrl}/jobs`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 3,
         name: 'Discover Artists',
         description: 'Find and connect with talented independent artists',
         url: `${siteUrl}/freelancers`,
       },
       {
         '@type': 'SiteNavigationElement',
-        position: 4,
+        position: 3,
         name: 'How It Works',
         description: 'Learn how Vivid Art connects artists with collectors',
         url: `${siteUrl}/how-it-works`,
