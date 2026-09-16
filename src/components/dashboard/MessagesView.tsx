@@ -51,7 +51,9 @@ export default function MessagesView() {
 
   const [selectedUser, setSelectedUser] = useState<ContactForChat | null>(null);
   const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState<ChatMessageItem[]>([]);
+  const [messages, setMessages] = useState<ChatMessageItem[]>([]);
+  const chatHistory = messages;
+  const setChatHistory = setMessages;
   const [isSending, setIsSending] = useState(false);
   const markedAsReadRef = useRef<Set<string>>(new Set());
 
@@ -215,30 +217,11 @@ export default function MessagesView() {
   // Fetch chat messages real-time / on select
   useEffect(() => {
     if (messagesQuery.data) {
-      setChatHistory((prev) => {
-        const seen = new Set<string>();
-        const merged: ChatMessageItem[] = [];
-
-        for (const msg of messagesQuery.data) {
-          if (!seen.has(msg.id)) {
-            seen.add(msg.id);
-            merged.push(msg);
-          }
-        }
-
-        // Retain any pending optimistic messages that haven't landed yet
-        const pending = prev.filter((p) => p.pending);
-        for (const p of pending) {
-          const alreadyInQuery = merged.some(
-            (m) => m.content === p.content && m.senderId === p.senderId
-          );
-          if (!alreadyInQuery && !seen.has(p.id)) {
-            seen.add(p.id);
-            merged.push(p);
-          }
-        }
-
-        return merged;
+      setMessages((prev) => {
+        const combined = [...prev, ...messagesQuery.data];
+        return combined.filter((msg, index, self) =>
+          index === self.findIndex((m) => m.id === msg.id)
+        );
       });
 
       // Mark messages as read when viewing conversation (only once per conversation)
@@ -278,30 +261,11 @@ export default function MessagesView() {
             proposal: null,
           }));
 
-          setChatHistory((prev) => {
-            const seen = new Set<string>();
-            const result: ChatMessageItem[] = [];
-
-            for (const item of normalized) {
-              if (!seen.has(item.id)) {
-                seen.add(item.id);
-                result.push(item);
-              }
-            }
-
-            // Retain any in-flight pending optimistic messages that haven't landed in DB yet
-            const pending = prev.filter((p) => p.pending);
-            for (const p of pending) {
-              const alreadyLanded = result.some(
-                (r) => r.content === p.content && r.senderId === p.senderId
-              );
-              if (!alreadyLanded && !seen.has(p.id)) {
-                seen.add(p.id);
-                result.push(p);
-              }
-            }
-
-            return result;
+          setMessages((prev) => {
+            const combined = [...prev, ...normalized];
+            return combined.filter((msg, index, self) =>
+              index === self.findIndex((m) => m.id === msg.id)
+            );
           });
         }
       } catch (err) {
@@ -323,7 +287,7 @@ export default function MessagesView() {
             (m.sender_id === currentUserId && m.receiver_id === activeRecipientId) ||
             (m.sender_id === activeRecipientId && m.receiver_id === currentUserId)
           ) {
-            const incomingMsg: ChatMessageItem = {
+            const newMsg: ChatMessageItem = {
               id: m.id,
               content: m.content,
               senderId: m.sender_id,
@@ -336,25 +300,12 @@ export default function MessagesView() {
               proposal: null,
             };
 
-            setChatHistory((prev) => {
-              // Deduplicate: check if message with this id already exists
-              const exists = prev.some((existing) => existing.id === incomingMsg.id);
-              if (exists) return prev;
-
-              // Check if matching pending optimistic message exists to replace
-              const pendingIdx = prev.findIndex(
-                (existing) =>
-                  existing.pending &&
-                  existing.senderId === incomingMsg.senderId &&
-                  existing.content === incomingMsg.content
+            // Enforce unique message objects inside setMessages
+            setMessages((prev) => {
+              const combined = [...prev, newMsg];
+              return combined.filter((msg, index, self) => 
+                index === self.findIndex((m) => m.id === msg.id)
               );
-              if (pendingIdx !== -1) {
-                const next = [...prev];
-                next[pendingIdx] = incomingMsg;
-                return next;
-              }
-
-              return [...prev, incomingMsg];
             });
           }
         }
@@ -387,36 +338,13 @@ export default function MessagesView() {
     }
 
     setIsSending(true);
-
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const outgoingContent = trimmedMessage;
 
     // Reset input immediately for responsive UX
     setMessage('');
 
-    // 2. Add optimistic UI update: Show message in chat bubble immediately with pending state
-    const optimisticMsg: ChatMessageItem = {
-      id: tempId,
-      content: outgoingContent,
-      senderId: currentUserId,
-      receiverId: activeRecipientId,
-      createdAt: new Date().toISOString(),
-      isRead: false,
-      jobId: jobId || null,
-      proposalId: proposalId || null,
-      job: null,
-      proposal: null,
-      pending: true,
-      status: 'pending',
-    };
+    // Removed manual optimistic push to setMessages to prevent duplicate rendering with Realtime/.select()
 
-    setChatHistory((prev) => {
-      const exists = prev.some((m) => m.id === tempId);
-      if (exists) return prev;
-      return [...prev, optimisticMsg];
-    });
-
-    // 3. Surround Supabase insert query with try-catch block to handle non-critical warnings gracefully
     try {
       const supabase = createClient();
 
@@ -434,28 +362,27 @@ export default function MessagesView() {
       }
 
       if (!error && data && data.length > 0) {
-        // Deduplicate local state by unique message.id
-        const confirmed = data[0];
-        setChatHistory((prev) => {
-          const alreadyExists = prev.some((m) => m.id === confirmed.id && m.id !== tempId);
-          if (alreadyExists) {
-            // Realtime channel already added it; clean up the temp optimistic message
-            return prev.filter((m) => m.id !== tempId);
-          }
-          return prev.map((m) =>
-            m.id === tempId
-              ? {
-                  ...m,
-                  id: confirmed.id,
-                  senderId: confirmed.sender_id || currentUserId,
-                  receiverId: confirmed.receiver_id || activeRecipientId,
-                  createdAt: confirmed.created_at || m.createdAt,
-                  pending: false,
-                  status: 'sent',
-                }
-              : m
+        const newMsg: ChatMessageItem = {
+          id: data[0].id,
+          content: data[0].content,
+          senderId: data[0].sender_id || currentUserId,
+          receiverId: data[0].receiver_id || activeRecipientId,
+          createdAt: data[0].created_at || new Date().toISOString(),
+          isRead: false,
+          jobId: data[0].job_id || null,
+          proposalId: data[0].proposal_id || null,
+          job: null,
+          proposal: null,
+        };
+
+        // Enforce unique message objects inside setMessages
+        setMessages((prev) => {
+          const combined = [...prev, newMsg];
+          return combined.filter((msg, index, self) =>
+            index === self.findIndex((m) => m.id === msg.id)
           );
         });
+
         utils.messages.getConversationPreviews.invalidate();
         utils.profiles.getContacts.invalidate();
         return;
@@ -499,34 +426,11 @@ export default function MessagesView() {
         }
       }
 
-      // Remove pending flag once handled without alert dialogs
-      setChatHistory((prev) =>
-        prev.map((m) =>
-          m.id === tempId
-            ? {
-                ...m,
-                pending: false,
-                status: 'sent',
-              }
-            : m
-        )
-      );
       utils.messages.getConversationPreviews.invalidate();
       utils.profiles.getContacts.invalidate();
     } catch (err: any) {
       // Cleanly log in console.error without popping up browser alerts
       console.error('Message dispatch error:', err?.message || err);
-      setChatHistory((prev) =>
-        prev.map((m) =>
-          m.id === tempId
-            ? {
-                ...m,
-                pending: false,
-                status: 'sent',
-              }
-            : m
-        )
-      );
     } finally {
       setIsSending(false);
     }

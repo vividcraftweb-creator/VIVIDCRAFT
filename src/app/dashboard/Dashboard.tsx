@@ -134,6 +134,8 @@ export default function Dashboard({ session }: { session: AppSession }) {
     session?.user?.email?.split('@')[0] ||
     'User';
 
+  const displayRole = (profile as any)?.role || (session?.user as any)?.user_metadata?.role || session?.user?.role || role || 'CLIENT';
+
   const rawAvatarPic =
     profile?.profilePicture ||
     (profile as any)?.avatar_url ||
@@ -384,7 +386,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   {session.user?.email}
                 </p>
                 <Badge className={`w-fit text-xs mt-1 ${getRoleColor()}`}>
-                  {role === 'CLIENT' ? 'CLIENT' : 'ARTIST'}
+                  <span className="text-xs text-slate-400 capitalize">{displayRole.toLowerCase()}</span>
                 </Badge>
               </div>
             </div>
