@@ -52,6 +52,7 @@ export default function MessagesView() {
   const [selectedUser, setSelectedUser] = useState<ContactForChat | null>(null);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessageItem[]>([]);
+  const [isSending, setIsSending] = useState(false);
   const markedAsReadRef = useRef<Set<string>>(new Set());
 
   const getContactName = (contact: ContactForChat) => {
@@ -214,7 +215,31 @@ export default function MessagesView() {
   // Fetch chat messages real-time / on select
   useEffect(() => {
     if (messagesQuery.data) {
-      setChatHistory(messagesQuery.data);
+      setChatHistory((prev) => {
+        const seen = new Set<string>();
+        const merged: ChatMessageItem[] = [];
+
+        for (const msg of messagesQuery.data) {
+          if (!seen.has(msg.id)) {
+            seen.add(msg.id);
+            merged.push(msg);
+          }
+        }
+
+        // Retain any pending optimistic messages that haven't landed yet
+        const pending = prev.filter((p) => p.pending);
+        for (const p of pending) {
+          const alreadyInQuery = merged.some(
+            (m) => m.content === p.content && m.senderId === p.senderId
+          );
+          if (!alreadyInQuery && !seen.has(p.id)) {
+            seen.add(p.id);
+            merged.push(p);
+          }
+        }
+
+        return merged;
+      });
 
       // Mark messages as read when viewing conversation (only once per conversation)
       if (selectedUser &&
@@ -240,7 +265,7 @@ export default function MessagesView() {
           .order('created_at', { ascending: true });
 
         if (!error && data && data.length > 0 && isMounted) {
-          const normalized: MessageForChat[] = data.map((m: any) => ({
+          const normalized: ChatMessageItem[] = data.map((m: any) => ({
             id: m.id || `msg-${Date.now()}`,
             content: m.content || '',
             senderId: m.sender_id || m.senderId || currentUserId,
@@ -252,7 +277,32 @@ export default function MessagesView() {
             job: null,
             proposal: null,
           }));
-          setChatHistory(normalized);
+
+          setChatHistory((prev) => {
+            const seen = new Set<string>();
+            const result: ChatMessageItem[] = [];
+
+            for (const item of normalized) {
+              if (!seen.has(item.id)) {
+                seen.add(item.id);
+                result.push(item);
+              }
+            }
+
+            // Retain any in-flight pending optimistic messages that haven't landed in DB yet
+            const pending = prev.filter((p) => p.pending);
+            for (const p of pending) {
+              const alreadyLanded = result.some(
+                (r) => r.content === p.content && r.senderId === p.senderId
+              );
+              if (!alreadyLanded && !seen.has(p.id)) {
+                seen.add(p.id);
+                result.push(p);
+              }
+            }
+
+            return result;
+          });
         }
       } catch (err) {
         console.warn('Direct chat fetch notice:', err);
@@ -261,7 +311,7 @@ export default function MessagesView() {
 
     fetchDirectMessages();
 
-    // Subscribe to realtime changes
+    // Subscribe to realtime changes with unique id deduplication
     const channel = supabase
       .channel(`chat_${currentUserId}_${activeRecipientId}`)
       .on(
@@ -273,21 +323,39 @@ export default function MessagesView() {
             (m.sender_id === currentUserId && m.receiver_id === activeRecipientId) ||
             (m.sender_id === activeRecipientId && m.receiver_id === currentUserId)
           ) {
-            setChatHistory((prev) => [
-              ...prev,
-              {
-                id: m.id,
-                content: m.content,
-                senderId: m.sender_id,
-                receiverId: m.receiver_id,
-                createdAt: m.created_at,
-                isRead: Boolean(m.is_read),
-                jobId: m.job_id || null,
-                proposalId: m.proposal_id || null,
-                job: null,
-                proposal: null,
-              },
-            ]);
+            const incomingMsg: ChatMessageItem = {
+              id: m.id,
+              content: m.content,
+              senderId: m.sender_id,
+              receiverId: m.receiver_id,
+              createdAt: m.created_at,
+              isRead: Boolean(m.is_read),
+              jobId: m.job_id || null,
+              proposalId: m.proposal_id || null,
+              job: null,
+              proposal: null,
+            };
+
+            setChatHistory((prev) => {
+              // Deduplicate: check if message with this id already exists
+              const exists = prev.some((existing) => existing.id === incomingMsg.id);
+              if (exists) return prev;
+
+              // Check if matching pending optimistic message exists to replace
+              const pendingIdx = prev.findIndex(
+                (existing) =>
+                  existing.pending &&
+                  existing.senderId === incomingMsg.senderId &&
+                  existing.content === incomingMsg.content
+              );
+              if (pendingIdx !== -1) {
+                const next = [...prev];
+                next[pendingIdx] = incomingMsg;
+                return next;
+              }
+
+              return [...prev, incomingMsg];
+            });
           }
         }
       )
@@ -302,6 +370,8 @@ export default function MessagesView() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSending) return;
+
     const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id || '').toString().trim();
     const activeRecipientId = (selectedUser?.id || '').toString().trim();
     const trimmedMessage = message.trim();
@@ -315,6 +385,8 @@ export default function MessagesView() {
       });
       return;
     }
+
+    setIsSending(true);
 
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const outgoingContent = trimmedMessage;
@@ -338,7 +410,11 @@ export default function MessagesView() {
       status: 'pending',
     };
 
-    setChatHistory((prev) => [...prev, optimisticMsg]);
+    setChatHistory((prev) => {
+      const exists = prev.some((m) => m.id === tempId);
+      if (exists) return prev;
+      return [...prev, optimisticMsg];
+    });
 
     // 3. Surround Supabase insert query with try-catch block to handle non-critical warnings gracefully
     try {
@@ -352,15 +428,25 @@ export default function MessagesView() {
         created_at: new Date().toISOString(),
       }).select();
 
+      if (error) {
+        // Cleanly log in console.error without popping up browser alerts
+        console.error('Supabase message insert error:', error.message || error);
+      }
+
       if (!error && data && data.length > 0) {
-        // Remove pending flag once DB insert succeeds
+        // Deduplicate local state by unique message.id
         const confirmed = data[0];
-        setChatHistory((prev) =>
-          prev.map((m) =>
+        setChatHistory((prev) => {
+          const alreadyExists = prev.some((m) => m.id === confirmed.id && m.id !== tempId);
+          if (alreadyExists) {
+            // Realtime channel already added it; clean up the temp optimistic message
+            return prev.filter((m) => m.id !== tempId);
+          }
+          return prev.map((m) =>
             m.id === tempId
               ? {
                   ...m,
-                  id: confirmed.id || m.id,
+                  id: confirmed.id,
                   senderId: confirmed.sender_id || currentUserId,
                   receiverId: confirmed.receiver_id || activeRecipientId,
                   createdAt: confirmed.created_at || m.createdAt,
@@ -368,17 +454,15 @@ export default function MessagesView() {
                   status: 'sent',
                 }
               : m
-          )
-        );
+          );
+        });
         utils.messages.getConversationPreviews.invalidate();
         utils.profiles.getContacts.invalidate();
         return;
       }
 
-      // 4. Handle foreign key mismatch: If Supabase returns an error, fallback to sending message
-      // payload using email or basic profile reference without throwing disruptive alert dialogs
-      console.warn('[Messaging] Supabase insert notice, attempting fallback:', error?.message || error);
-
+      // 4. Handle foreign key mismatch / Supabase error:
+      // Fallback cleanly without throwing disruptive alert dialogs
       let fallbackSuccess = false;
 
       // Fallback A: TRPC sendMessage mutation (handles Prisma/Postgres relations)
@@ -391,7 +475,7 @@ export default function MessagesView() {
         });
         fallbackSuccess = true;
       } catch (trpcErr: any) {
-        console.warn('[Messaging] TRPC fallback notice:', trpcErr?.message || trpcErr);
+        console.error('TRPC fallback send error:', trpcErr?.message || trpcErr);
       }
 
       // Fallback B: If not resolved, attempt insert with email / profile metadata
@@ -411,7 +495,7 @@ export default function MessagesView() {
             fallbackSuccess = true;
           }
         } catch (emailFallbackErr: any) {
-          console.warn('[Messaging] Email fallback notice:', emailFallbackErr?.message || emailFallbackErr);
+          console.error('Email fallback error:', emailFallbackErr?.message || emailFallbackErr);
         }
       }
 
@@ -430,8 +514,8 @@ export default function MessagesView() {
       utils.messages.getConversationPreviews.invalidate();
       utils.profiles.getContacts.invalidate();
     } catch (err: any) {
-      // Non-critical warnings handled gracefully without blocking UI or throwing disruptive alerts
-      console.warn('[Messaging] Non-critical warning during message dispatch:', err?.message || err);
+      // Cleanly log in console.error without popping up browser alerts
+      console.error('Message dispatch error:', err?.message || err);
       setChatHistory((prev) =>
         prev.map((m) =>
           m.id === tempId
@@ -443,6 +527,8 @@ export default function MessagesView() {
             : m
         )
       );
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -704,14 +790,18 @@ export default function MessagesView() {
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type a message..."
                     className="flex-1 bg-slate-950 border-slate-800 text-white placeholder:text-slate-500"
-                    disabled={sendMessageMutation.isPending}
+                    disabled={isSending || sendMessageMutation.isPending}
                   />
                   <Button
                     type="submit"
-                    disabled={sendMessageMutation.isPending || !message.trim()}
-                    className="bg-primary hover:bg-primary/90"
+                    disabled={isSending || sendMessageMutation.isPending || !message.trim()}
+                    className="bg-primary hover:bg-primary/90 min-w-[44px] flex items-center justify-center"
                   >
-                    <Send className="h-4 w-4" />
+                    {isSending ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </form>
               )}
@@ -734,3 +824,5 @@ export default function MessagesView() {
     </div>
   );
 }
+
+export { MessagesView as ChatComponent };
