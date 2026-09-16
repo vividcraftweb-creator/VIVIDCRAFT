@@ -320,73 +320,49 @@ export default function MessagesView() {
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (isSending) return;
-
     const text = newMessage.trim();
     const currentUser = session?.session?.user || (session as any)?.user;
     const currentUserId = (currentUser?.id || '').toString().trim();
     const activeRecipientId = (selectedUser?.id || '').toString().trim();
 
-    if (!text || !activeRecipientId || !currentUserId) return;
+    if (!text || !activeRecipientId || !currentUserId || isSending) return;
 
     setIsSending(true);
-
-    // Temporary UI add
-    const tempId = Date.now().toString();
-    const newMsgObj: ChatMessageItem = {
-      id: tempId,
-      sender_id: currentUserId,
-      senderId: currentUserId,
-      receiver_id: activeRecipientId,
-      receiverId: activeRecipientId,
-      content: text,
-      created_at: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      pending: true,
-    };
-
-    setMessages((prev) => [...prev, newMsgObj]);
     setNewMessage('');
 
     try {
       const supabase = createClient();
 
-      // Direct Supabase DB Insert
-      const { data, error } = await supabase.from('messages').insert([{
-        sender_id: currentUserId,
-        receiver_id: activeRecipientId,
-        content: text
-      }]).select();
+      // 1. Direct DB Insert without complex select modifiers that trigger 403
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([{
+          sender_id: currentUserId,
+          receiver_id: activeRecipientId,
+          content: text
+        }])
+        .select();
+
+      setIsSending(false);
 
       if (error) {
-        console.error("Supabase insert failure:", error);
-        // Silent fallback to TRPC mutation if available
-        try {
-          await sendMessageMutation.mutateAsync({
-            receiverId: activeRecipientId,
-            content: text,
-            jobId: jobId || undefined,
-            proposalId: proposalId || undefined,
-          });
-        } catch (trpcErr) {
-          console.error("TRPC fallback send error:", trpcErr);
-        }
-      } else if (data && data[0]) {
-        // Replace temporary message with actual DB object
+        console.error("Messaging DB Insert Error:", error);
+        return;
+      }
+
+      // 2. Append newly saved message cleanly if insert succeeded
+      if (data && data[0]) {
         setMessages((prev) => {
-          const updated = prev.some((m) => m.id === data[0].id)
-            ? prev.filter((m) => m.id !== tempId)
-            : prev.map((m) => (m.id === tempId ? data[0] : m));
-          return updated.filter((msg, index, self) => index === self.findIndex((m) => m.id === msg.id));
+          if (prev.some((m) => m.id === data[0].id)) return prev;
+          return [...prev, data[0]];
         });
       }
 
       utils.messages.getConversationPreviews.invalidate();
       utils.profiles.getContacts.invalidate();
     } catch (err: any) {
-      console.error("Message dispatch error:", err?.message || err);
-    } finally {
       setIsSending(false);
+      console.error("Messaging DB Insert Error:", err);
     }
   };
 
@@ -591,7 +567,9 @@ export default function MessagesView() {
               <div className="space-y-4">
                 {chatHistory.length > 0 ? (
                   <div className="space-y-4">
-                    {chatHistory.map((chat, index) => {
+                    {chatHistory
+                      .filter((msg, index, self) => index === self.findIndex((m) => m.id === msg.id))
+                      .map((chat, index) => {
                       const senderId = chat.sender_id || chat.senderId;
                       const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id);
                       const isOwn = senderId === currentUserId;
