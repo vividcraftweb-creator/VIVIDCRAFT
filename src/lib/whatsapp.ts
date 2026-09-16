@@ -49,14 +49,10 @@ export function getSafeArtworkWhatsAppUrl(
   const rawPhone =
     artwork.profiles?.phone ||
     artwork.user?.phone ||
-    artwork.profiles?.whatsapp_number ||
-    (artwork as any).profiles?.display_phone ||
-    artwork.artist?.whatsapp_number ||
-    artwork.artist?.phone ||
-    '';
+    DEFAULT_WHATSAPP_NUMBER;
 
   // 2. Sanitize to contain ONLY digits
-  const cleanPhone = sanitizePhoneNumber(rawPhone);
+  const cleanPhone = String(rawPhone).replace(/\D/g, '');
 
   // 3. If cleanPhone is empty or invalid, fallback to default artist/support number
   const validPhone = (cleanPhone && cleanPhone.length >= 7)
@@ -65,7 +61,8 @@ export function getSafeArtworkWhatsAppUrl(
 
   // 4. Construct URL safely
   const title = artwork.title || 'Artwork';
-  const defaultText = options?.customMessage || `Hi, I am interested in ${title}`;
+  const refId = artwork.id || artwork.art_code || '';
+  const defaultText = options?.customMessage || (refId ? `Hi, I am interested in "${title}" (Ref: ${refId})` : `Hi, I am interested in "${title}"`);
 
   return `https://wa.me/${validPhone}?text=${encodeURIComponent(defaultText)}`;
 }

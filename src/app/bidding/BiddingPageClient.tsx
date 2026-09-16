@@ -648,26 +648,10 @@ export default function BiddingPageClient() {
 
   // Helper for WhatsApp inquiry URL
   const getWhatsAppBidUrl = (art: RankedArtwork) => {
-    // Extract phone number safely from artist/user profile
-    const rawPhone =
-      art.profiles?.phone ||
-      (art as any).user?.phone ||
-      (art.profiles as any)?.whatsapp_number ||
-      art.artist.whatsapp_number ||
-      art.artist.phone ||
-      '';
-
-    // Sanitize the phone string to contain ONLY digits
-    const cleanPhone = rawPhone.replace(/\D/g, '');
-
-    // If cleanPhone is empty or invalid, fallback to default artist/support number
-    const validPhone = (cleanPhone && cleanPhone.length >= 7) ? cleanPhone : '94783813833';
-
-    const artistName = art.artist.name || 'Artist';
-    const artId = art.art_code || '#ART-104';
-    const bidAmount = Number(art.starting_bid || 0).toLocaleString();
-    const text = `Hi, I am interested in ${art.title} (ID: ${artId}) by artist ${artistName}. Listed Status: Starting Bid LKR ${bidAmount}.`;
-    return `https://wa.me/${validPhone}?text=${encodeURIComponent(text)}`;
+    const rawPhone = art.profiles?.phone || art.user?.phone || '94783813833';
+    const cleanPhone = String(rawPhone).replace(/\D/g, ''); // Removes all spaces, plus signs, hyphens
+    const waLink = `https://wa.me/${cleanPhone || '94783813833'}?text=${encodeURIComponent(`Hi, I am interested in "${art.title}" (Ref: ${art.id})`)}`;
+    return waLink;
   };
 
   return (

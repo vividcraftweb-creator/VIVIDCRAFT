@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Revalidate Next.js cache
-    revalidatePath('/gallery');
-    revalidatePath('/');
-    revalidatePath('/admin');
+    revalidatePath('/gallery', 'page');
+    revalidatePath('/admin', 'page');
+    revalidatePath('/', 'page');
 
     return NextResponse.json({ success: true, artworkId });
   } catch (err: any) {

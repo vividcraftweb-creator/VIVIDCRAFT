@@ -77,9 +77,9 @@ export async function POST(request: NextRequest) {
 
     // Instant cache revalidation across gallery, home, and admin
     try {
-      revalidatePath('/gallery');
-      revalidatePath('/');
-      revalidatePath('/admin');
+      revalidatePath('/gallery', 'page');
+      revalidatePath('/admin', 'page');
+      revalidatePath('/', 'page');
     } catch (revalErr) {
       console.warn('[delete-artwork] revalidation warning:', revalErr);
     }

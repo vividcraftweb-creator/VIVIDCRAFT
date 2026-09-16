@@ -527,34 +527,16 @@ export function ArtworkModal({
           <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0">
             {/* WhatsApp Action Button */}
             {(() => {
-              const { badgeType, displayPrice } = getArtworkPricingDisplay(artwork);
+              const { badgeType } = getArtworkPricingDisplay(artwork);
               if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-              // Extract phone number safely from artist/user profile
-              const rawPhone =
-                artwork.profiles?.phone ||
-                (artwork as any).user?.phone ||
-                artwork.profiles?.whatsapp_number ||
-                artwork.artist?.whatsapp_number ||
-                artwork.artist?.phone ||
-                '';
-
-              // Sanitize the phone string to contain ONLY digits
-              const cleanPhone = rawPhone.replace(/\D/g, '');
-
-              // If cleanPhone is empty or invalid, fallback to default artist/support number
-              const validPhone = (cleanPhone && cleanPhone.length >= 7) ? cleanPhone : '94783813833';
-
-              // Construct URL safely
-              const message = badgeType === 'BIDDING'
-                ? `Hi, I am interested in ${artwork.title} (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Listed Status: ${displayPrice}.`
-                : `Hi, I am interested in ${artwork.title} (ID: ${artwork.art_code || '#ART-101'}) by artist ${artistName || 'Artist'}. Price: ${displayPrice}.`;
-
-              const waUrl = `https://wa.me/${validPhone}?text=${encodeURIComponent(message)}`;
+              const rawPhone = artwork.profiles?.phone || (artwork as any).user?.phone || '94783813833';
+              const cleanPhone = String(rawPhone).replace(/\D/g, ''); // Removes all spaces, plus signs, hyphens
+              const waLink = `https://wa.me/${cleanPhone || '94783813833'}?text=${encodeURIComponent(`Hi, I am interested in "${artwork.title}" (Ref: ${artwork.id})`)}`;
 
               return (
                 <a
-                  href={waUrl}
+                  href={waLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all cursor-pointer"

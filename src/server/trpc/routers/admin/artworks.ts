@@ -83,9 +83,9 @@ export const adminArtworksRouter = router({
 
       // Revalidate cache across gallery, home, and admin
       try {
-        revalidatePath('/gallery');
-        revalidatePath('/');
-        revalidatePath('/admin');
+        revalidatePath('/gallery', 'page');
+        revalidatePath('/admin', 'page');
+        revalidatePath('/', 'page');
       } catch (revalErr) {
         console.warn('revalidatePath warning in admin deleteArtwork:', revalErr);
       }

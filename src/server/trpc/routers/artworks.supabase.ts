@@ -369,9 +369,9 @@ export const artworksRouter = router({
 
       // Instant cache revalidation across gallery, home, and admin
       try {
-        revalidatePath('/gallery');
-        revalidatePath('/');
-        revalidatePath('/admin');
+        revalidatePath('/gallery', 'page');
+        revalidatePath('/admin', 'page');
+        revalidatePath('/', 'page');
       } catch (revalErr) {
         console.warn('revalidatePath error in deleteArtwork:', revalErr);
       }

@@ -72,9 +72,9 @@ export async function deleteArtwork(artworkId: string, reason?: string): Promise
     } catch {}
 
     // 4. Instant cache revalidation across gallery, home, and admin
-    revalidatePath('/gallery');
-    revalidatePath('/');
-    revalidatePath('/admin');
+    revalidatePath('/gallery', 'page');
+    revalidatePath('/admin', 'page');
+    revalidatePath('/', 'page');
 
     return { success: true, artworkId };
   } catch (err: any) {
