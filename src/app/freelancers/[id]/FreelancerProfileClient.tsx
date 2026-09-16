@@ -43,6 +43,7 @@ import { getPublicUrl } from '@/components/artists/ArtistCard';
 import { createClient } from '@/lib/supabase/client';
 import { ArtworkCard, type ArtworkItem } from '@/components/gallery/ArtworkCard';
 import { ArtistReviewsSection, type ArtistReviewItem } from '@/components/reviews/ArtistReviewsSection';
+import { isArtistRole } from '@/lib/artist-filter';
 import { isValidImageUrl } from '@/lib/image-placeholders';
 
 type FreelancerProfile = ProfileRow & {
@@ -426,14 +427,25 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     }
   };
 
+  const currentUserId = session?.session?.user?.id;
+  const currentUserRole = session?.session?.user?.role;
+  const isViewerArtist = isArtistRole(currentUserRole);
+  const targetRole = (profile as any)?.role || (profile as any)?.user_type || 'ARTIST';
+  const isTargetArtist = isArtistRole(targetRole) || true;
+  const isOwnProfile = Boolean(currentUserId && (currentUserId === artistId || currentUserId === resolvedParams.id));
+
+  // Artists can ONLY exchange messages with CLIENT users; prevent self-chat
+  const canMessage = !isOwnProfile && (!isViewerArtist || !isTargetArtist);
+
   const handleMessage = () => {
-    if (!profile) return;
+    if (!profile || !canMessage) return;
 
     // Wait for auth status to be determined
     if (status === 'loading') return;
 
     // Destination URL with recipient pre-selected
     const targetId = profile.userId || profile.id || resolvedParams.id;
+    if (!targetId || targetId === currentUserId) return;
     const messageUrl = `/dashboard/messages?recipientId=${targetId}`;
 
     if (status === 'authenticated' && session?.session?.user) {
@@ -639,15 +651,17 @@ Hi, I would like to connect with this artist for a commission/project.`;
                     <Share2 className="h-4 w-4" />
                     {copied ? 'Link copied' : 'Share profile'}
                   </Button>
-                  <Button
-                    asChild
-                    className="h-11 sm:h-10 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 button-ripple interactive-scale flex-1 cursor-pointer"
-                  >
-                    <Link href={`/dashboard/messages?recipientId=${artistId}`}>
-                      <Mail className="h-4 w-4" />
-                      Message
-                    </Link>
-                  </Button>
+                  {canMessage && (
+                    <Button
+                      asChild
+                      className="h-11 sm:h-10 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 button-ripple interactive-scale flex-1 cursor-pointer"
+                    >
+                      <Link href={`/dashboard/messages?recipientId=${artistId}`}>
+                        <Mail className="h-4 w-4" />
+                        Message
+                      </Link>
+                    </Button>
+                  )}
                 </div>
                 <Button
                   className="w-full h-auto py-2.5 sm:py-3 px-4 gap-2 bg-[#25D366] hover:bg-[#1ebe57] text-white font-medium text-sm shadow-lg shadow-[#25D366]/20 hover:shadow-xl hover:shadow-[#25D366]/30 button-ripple interactive-scale justify-center"

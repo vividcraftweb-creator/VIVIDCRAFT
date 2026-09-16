@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArtistReviewsSection, type ArtistReviewItem } from '@/components/reviews/ArtistReviewsSection';
+import { isArtistRole } from '@/lib/artist-filter';
 import { toast } from 'sonner';
 
 export default function PublicArtistProfileClient() {
@@ -389,7 +390,16 @@ export default function PublicArtistProfileClient() {
     return 'SO';
   }, [fullName, firstName, lastName]);
 
-  const isOwnProfile = session?.session?.user?.id === id || session?.session?.user?.email === rawProfile?.email;
+  const currentUserId = session?.session?.user?.id;
+  const currentUserRole = session?.session?.user?.role;
+  const isViewerArtist = isArtistRole(currentUserRole);
+  const isTargetArtist = isArtistRole(rawProfile?.role) || true; // PublicArtistProfile represents an artist
+  const isOwnProfile =
+    (currentUserId && (currentUserId === id || currentUserId === targetArtistId || currentUserId === rawProfile?.id || currentUserId === rawProfile?.userId)) ||
+    session?.session?.user?.email === rawProfile?.email;
+
+  // Artists can ONLY exchange messages with CLIENT users; prevent self-chat
+  const canMessage = !isOwnProfile && (!isViewerArtist || !isTargetArtist);
 
   const handleShare = async () => {
     if (isSharing) return;
@@ -422,8 +432,9 @@ export default function PublicArtistProfileClient() {
   };
 
   const handleContact = () => {
-    if (authStatus === 'loading') return;
+    if (authStatus === 'loading' || !canMessage) return;
     const recipientId = targetArtistId || rawProfile?.id || rawProfile?.userId || id;
+    if (!recipientId || recipientId === currentUserId) return;
     const messageUrl = `/dashboard/messages?recipientId=${recipientId}`;
 
     if (authStatus === 'authenticated' && session?.session?.user) {
@@ -567,12 +578,14 @@ export default function PublicArtistProfileClient() {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row md:flex-col gap-3 w-full sm:w-auto md:min-w-[170px] justify-center">
-              <Button asChild className="gap-2 shadow-lg shadow-primary/20 cursor-pointer">
-                <Link href={`/dashboard/messages?recipientId=${targetArtistId}`}>
-                  <Mail className="h-4 w-4" />
-                  Message
-                </Link>
-              </Button>
+              {canMessage && (
+                <Button asChild className="gap-2 shadow-lg shadow-primary/20 cursor-pointer">
+                  <Link href={`/dashboard/messages?recipientId=${targetArtistId}`}>
+                    <Mail className="h-4 w-4" />
+                    Message
+                  </Link>
+                </Button>
+              )}
               <Button variant="outline" onClick={handleShare} className="gap-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
                 <Share2 className="h-4 w-4" />
                 {copied ? 'Copied!' : 'Share Profile'}

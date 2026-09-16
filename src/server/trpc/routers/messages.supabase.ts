@@ -10,6 +10,7 @@ import { TRPCError } from '@trpc/server';
 import type { Database } from '@/types/database.types';
 import { emailTemplates } from '@/lib/email-edge';
 import { scanContentForScams } from '@/lib/fraud-detection';
+import { isArtistRole } from '@/lib/artist-filter';
 
 type MessageRow = Database['public']['Tables']['Message']['Row'];
 
@@ -217,9 +218,24 @@ export const messagesRouter = router({
   canChat: protectedProcedure
     .input(z.object({ partnerId: z.string() }))
     .query(async ({ ctx, input }) => {
+      if (input.partnerId === ctx.session.user.id) return false;
       if (ctx.session.user.role === 'ADMIN') return true;
 
       const supabase = createAdminClient();
+
+      // Check artist-to-artist restriction
+      const isCurrentArtist = isArtistRole(ctx.session.user.role);
+      if (isCurrentArtist) {
+        const { data: partnerProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', input.partnerId)
+          .maybeSingle();
+
+        if (isArtistRole(partnerProfile?.role)) {
+          return false;
+        }
+      }
       
       const { data, error } = await supabase
         .from('ChatConnection')
@@ -260,7 +276,28 @@ export const messagesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.receiverId === ctx.session.user.id) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'You cannot message yourself.' });
+      }
+
       if (ctx.session.user.role !== 'ADMIN') {
+        const isCurrentArtist = isArtistRole(ctx.session.user.role);
+        if (isCurrentArtist) {
+          const adminClient = createAdminClient();
+          const { data: partnerProfile } = await adminClient
+            .from('profiles')
+            .select('role')
+            .eq('id', input.receiverId)
+            .maybeSingle();
+
+          if (isArtistRole(partnerProfile?.role)) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Direct messaging between artists is disabled. Artists can only exchange messages with clients.',
+            });
+          }
+        }
+
         const adminClient = createAdminClient();
         let { data: chatAccess } = await adminClient
           .from('ChatConnection')

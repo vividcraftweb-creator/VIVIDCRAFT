@@ -33,3 +33,15 @@ export function isArtistProfile(p: any): boolean {
   return false;
 }
 
+export function isArtistRole(role?: string | null): boolean {
+  if (!role) return false;
+  const r = role.trim().toUpperCase();
+  return r === 'ARTIST' || r === 'FREELANCER' || r === 'CREATOR';
+}
+
+export function isClientRole(role?: string | null): boolean {
+  if (!role) return false;
+  const r = role.trim().toUpperCase();
+  return r === 'CLIENT' || r === 'BUYER';
+}
+

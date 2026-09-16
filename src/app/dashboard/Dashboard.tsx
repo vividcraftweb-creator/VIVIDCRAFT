@@ -479,7 +479,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
             </Button>
             <div className="flex-1">
               <h1 className="text-lg font-semibold text-white">
-                {role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
+                {currentView === 'messages' ? 'My Messages' : (role === 'CLIENT' ? 'Client Dashboard' : 'Artist Dashboard')}
               </h1>
             </div>
             <NotificationDropdown />
@@ -494,7 +494,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">
-                    {role === 'CLIENT' ? (currentView === 'messages' ? 'My Messages' : 'Client Dashboard') : 'Artist Dashboard'}
+                    {currentView === 'messages' ? 'My Messages' : (role === 'CLIENT' ? 'Client Dashboard' : 'Artist Dashboard')}
                   </h1>
                   <p className="text-slate-400 text-lg">
                     Welcome back, {greetingName}

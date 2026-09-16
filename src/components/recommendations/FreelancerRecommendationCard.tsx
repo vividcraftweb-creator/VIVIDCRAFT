@@ -19,6 +19,8 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
+import { isArtistRole } from '@/lib/artist-filter';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
 interface FreelancerRecommendationCardProps {
@@ -32,6 +34,15 @@ export default function FreelancerRecommendationCard({
 }: FreelancerRecommendationCardProps) {
   const { freelancer, matchPercentage, breakdown } = recommendation;
   const profile = freelancer.profile;
+
+  const { data: session } = useAuth();
+  const currentUserId = session?.session?.user?.id;
+  const currentUserRole = session?.session?.user?.role;
+  const isViewerArtist = isArtistRole(currentUserRole);
+  const targetRole = (freelancer as any)?.role || 'ARTIST';
+  const isTargetArtist = isArtistRole(targetRole);
+  const isSelf = Boolean(currentUserId && currentUserId === freelancer.id);
+  const canMessage = !isSelf && (!isViewerArtist || !isTargetArtist);
 
   // Get initials for avatar fallback
   const getInitials = () => {
@@ -241,17 +252,19 @@ export default function FreelancerRecommendationCard({
               View Profile
             </Link>
           </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="flex-1 glass-button"
-          >
-            <Link href={`/messages?userId=${freelancer.id}`}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Message
-            </Link>
-          </Button>
+          {canMessage && (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="flex-1 glass-button"
+            >
+              <Link href={`/messages?userId=${freelancer.id}`}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Message
+              </Link>
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

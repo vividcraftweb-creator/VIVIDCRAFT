@@ -20,6 +20,8 @@ import {
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import { createClient } from '@/lib/supabase/client';
 import { parseISO, format, isToday, isYesterday, isThisWeek } from 'date-fns';
+import { toast } from 'sonner';
+import { isArtistRole } from '@/lib/artist-filter';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '@/server/trpc/router';
 
@@ -64,7 +66,21 @@ export default function MessagesView() {
   const jobId = searchParams.get('jobId');
   const proposalId = searchParams.get('proposalId');
 
+  const currentUser = session?.session?.user || (session as any)?.user;
+  const currentUserId = (currentUser?.id || '').toString().trim();
+  const currentUserRole = currentUser?.role || '';
+  const isCurrentArtist = isArtistRole(currentUserRole);
+
   const [selectedUser, setSelectedUser] = useState<ContactForChat | null>(null);
+  const activeRecipientId = (selectedUser?.id && selectedUser.id !== currentUserId)
+    ? selectedUser.id.toString().trim()
+    : '';
+
+  const selectedUserRole = (selectedUser?.profile as any)?.role || (selectedUser as any)?.role || '';
+  const isSelectedUserArtist = isArtistRole(selectedUserRole);
+  const isSelf = Boolean(currentUserId && selectedUser?.id && currentUserId === selectedUser.id);
+  const isArtistToArtist = isCurrentArtist && isSelectedUserArtist;
+
   const [message, setMessage] = useState('');
   const newMessage = message;
   const setNewMessage = setMessage;
@@ -137,16 +153,16 @@ export default function MessagesView() {
   );
 
   const messagesQuery = trpc.messages.getMessages.useQuery(
-    { receiverId: selectedUser?.id || '' },
-    { enabled: !!selectedUser && !!session }
+    { receiverId: activeRecipientId || '' },
+    { enabled: !!activeRecipientId && !!session && !isSelf && !isArtistToArtist }
   );
 
   const canChatQuery = trpc.messages.canChat.useQuery(
-    { partnerId: selectedUser?.id || '' },
-    { enabled: !!selectedUser && !!session }
+    { partnerId: activeRecipientId || '' },
+    { enabled: !!activeRecipientId && !!session && !isSelf && !isArtistToArtist }
   );
 
-  const canChat = canChatQuery.data ?? false;
+  const canChat = Boolean(activeRecipientId && !isSelf && !isArtistToArtist && (canChatQuery.data ?? true));
 
   const utils = trpc.useUtils();
 
@@ -208,40 +224,61 @@ export default function MessagesView() {
     }
   });
 
-  // Merge contacts with userById
+  // Merge contacts with userById (excluding self and artist-to-artist)
   const allContacts = useMemo(() => {
-    const contactsList = contacts || [];
-    if (userById && !contactsList.some(c => c.id === userById.id)) {
-      // Add userById to contacts if not already present
-      return [{
-        id: userById.id,
-        email: userById.email,
-        profile: userById.Profile ? (Array.isArray(userById.Profile) ? userById.Profile[0] : userById.Profile) : null,
-      }, ...contactsList];
+    let contactsList = (contacts || []).filter((c) => {
+      if (!c.id || c.id === currentUserId) return false;
+      if (isCurrentArtist) {
+        const contactRole = (c.profile as any)?.role || (c as any)?.role;
+        if (isArtistRole(contactRole)) return false;
+      }
+      return true;
+    });
+
+    if (userById && userById.id !== currentUserId && !contactsList.some(c => c.id === userById.id)) {
+      const contactRole = (userById.Profile as any)?.role || (userById as any)?.role;
+      if (!isCurrentArtist || !isArtistRole(contactRole)) {
+        contactsList = [{
+          id: userById.id,
+          email: userById.email,
+          profile: userById.Profile ? (Array.isArray(userById.Profile) ? userById.Profile[0] : userById.Profile) : null,
+        }, ...contactsList];
+      }
     }
     return contactsList;
-  }, [contacts, userById]);
+  }, [contacts, userById, currentUserId, isCurrentArtist]);
 
   // Auto-select user from URL parameter (recipientId or userId)
   useEffect(() => {
-    if (recipientId) {
-      if (allContacts.length > 0) {
-        const user = allContacts.find(c => c.id === recipientId);
-        if (user && (!selectedUser || selectedUser.id !== recipientId)) {
-          setSelectedUser(user);
-          return;
-        }
+    if (!recipientId || recipientId === currentUserId) {
+      if (selectedUser?.id === currentUserId) {
+        setSelectedUser(null);
       }
-      if (userById && (!selectedUser || selectedUser.id !== recipientId)) {
-        const prof = userById.Profile ? (Array.isArray(userById.Profile) ? userById.Profile[0] : userById.Profile) : null;
-        setSelectedUser({
-          id: userById.id,
-          email: userById.email,
-          profile: prof,
-        });
+      return;
+    }
+
+    if (allContacts.length > 0) {
+      const user = allContacts.find(c => c.id === recipientId);
+      if (user && (!selectedUser || selectedUser.id !== recipientId)) {
+        setSelectedUser(user);
+        return;
       }
     }
-  }, [recipientId, allContacts, userById, selectedUser]);
+    if (userById && userById.id !== currentUserId && (!selectedUser || selectedUser.id !== recipientId)) {
+      const contactRole = (userById.Profile as any)?.role || (userById as any)?.role;
+      if (isCurrentArtist && isArtistRole(contactRole)) {
+        setSelectedUser(null);
+        toast.error('Artists can only exchange messages with clients.');
+        return;
+      }
+      const prof = userById.Profile ? (Array.isArray(userById.Profile) ? userById.Profile[0] : userById.Profile) : null;
+      setSelectedUser({
+        id: userById.id,
+        email: userById.email,
+        profile: prof,
+      });
+    }
+  }, [recipientId, allContacts, userById, selectedUser, currentUserId, isCurrentArtist]);
 
   // Pre-fill message if action=schedule
   useEffect(() => {
@@ -258,9 +295,10 @@ export default function MessagesView() {
   });
 
   const fetchDirectMessages = async (showLoadingSpinner = false) => {
-    const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id || '').toString().trim();
-    const activeRecipientId = (selectedUser?.id || '').toString().trim();
-    if (!activeRecipientId || !currentUserId) return;
+    if (!activeRecipientId || !currentUserId || activeRecipientId === currentUserId) {
+      setMessages([]);
+      return;
+    }
 
     if (showLoadingSpinner) {
       setIsRefreshing(true);
@@ -310,9 +348,10 @@ export default function MessagesView() {
 
   // Fetch chat messages real-time / on select
   useEffect(() => {
-    const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id || '').toString().trim();
-    const activeRecipientId = (selectedUser?.id || '').toString().trim();
-    if (!activeRecipientId || !currentUserId) return;
+    if (!activeRecipientId || !currentUserId || activeRecipientId === currentUserId) {
+      setMessages([]);
+      return;
+    }
 
     fetchDirectMessages(false);
 
@@ -366,7 +405,7 @@ export default function MessagesView() {
         supabase.removeChannel(channel);
       } catch {}
     };
-  }, [selectedUser?.id, session?.session?.user?.id, messagesQuery.data, markAsReadMutation]);
+  }, [selectedUser?.id, activeRecipientId, currentUserId, messagesQuery.data, markAsReadMutation]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) {
@@ -376,11 +415,12 @@ export default function MessagesView() {
     }
 
     const text = newMessage.trim();
-    const currentUser = session?.session?.user || (session as any)?.user;
-    const currentUserId = (currentUser?.id || '').toString().trim();
-    const activeRecipientId = (selectedUser?.id || '').toString().trim();
+    if (!text || !activeRecipientId || !currentUserId || activeRecipientId === currentUserId || isSending) return;
 
-    if (!text || !activeRecipientId || !currentUserId || isSending) return;
+    if (isArtistToArtist) {
+      toast.error('Direct messaging between artists is disabled. Artists can only exchange messages with clients.');
+      return;
+    }
 
     const msgContent = text;
     setNewMessage('');
@@ -442,9 +482,16 @@ export default function MessagesView() {
   };
 
   return (
-    <div className="h-[calc(100vh-200px)] flex gap-6">
-      {/* Contacts Sidebar */}
-      <Card className="w-1/3 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col">
+    <div className="h-[calc(100vh-200px)] flex flex-col gap-4">
+      {/* 7-Day Retention Notice Banner */}
+      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-4 py-2.5 text-center text-xs sm:text-sm text-slate-400 flex items-center justify-center gap-2 flex-shrink-0 shadow-sm">
+        <span>ℹ️</span>
+        <span>Messages are automatically cleared after 7 days.</span>
+      </div>
+
+      <div className="flex-1 flex gap-6 min-h-0">
+        {/* Contacts Sidebar */}
+        <Card className="w-1/3 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col min-h-0">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
@@ -631,12 +678,6 @@ export default function MessagesView() {
               </div>
             </CardHeader>
 
-            {/* 7-Day Retention Notice Banner */}
-            <div className="bg-slate-950/70 border-b border-slate-800/60 px-4 py-2 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5 flex-shrink-0">
-              <span>ℹ️</span>
-              <span>Messages are automatically cleared after 7 days.</span>
-            </div>
-
             {/* Messages List */}
             <CardContent className="flex-1 p-4 overflow-y-auto">
               <div className="space-y-4">
@@ -700,8 +741,12 @@ export default function MessagesView() {
             {/* Message Input */}
             <div className="border-t border-slate-800 p-4 flex-shrink-0">
               {!canChat ? (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center text-sm text-red-300">
-                  Chat disabled for this connection. Please contact the administrator.
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center text-sm text-amber-300">
+                  {isSelf
+                    ? 'You cannot send messages to yourself.'
+                    : isArtistToArtist
+                      ? 'Direct messaging between artists is disabled. Artists can only exchange messages with clients.'
+                      : 'Chat is disabled for this conversation.'}
                 </div>
               ) : (
                 <form onSubmit={handleSendMessage} className="flex gap-2">
@@ -743,6 +788,7 @@ export default function MessagesView() {
           </div>
         )}
       </Card>
+      </div>
     </div>
   );
 }
