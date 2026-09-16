@@ -143,22 +143,24 @@ export function ArtworkModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-[100000] grid grid-cols-1 md:grid-cols-2 my-auto"
+        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-2xl grid grid-cols-1 md:grid-cols-2 my-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 z-30 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/20 transition-colors focus:outline-none cursor-pointer"
-          aria-label="Close artwork dialog"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {/* Sticky Close Button pinned at the top */}
+        <div className="sticky top-0 z-50 col-span-full flex justify-end p-3 pointer-events-none h-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pointer-events-auto p-2 rounded-full bg-black/70 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition-colors focus:outline-none cursor-pointer shadow-lg"
+            aria-label="Close artwork dialog"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
         {/* LEFT COLUMN: Modern Framed Artwork Preview with Matte Background */}
         <div className="relative bg-zinc-950 flex items-center justify-center p-6 md:p-8 overflow-hidden min-h-[340px] md:min-h-[580px] h-full">
@@ -196,9 +198,9 @@ export function ArtworkModal({
         </div>
 
         {/* RIGHT COLUMN: Details, Metadata, Comments & WhatsApp Action Button */}
-        <div className="flex flex-col h-full max-h-[580px] md:max-h-[640px] bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="flex flex-col h-full md:max-h-[640px] bg-white dark:bg-neutral-900 md:overflow-hidden">
           {/* Header Section: Status, Title, Artist, Ref ID, Date, Likes */}
-          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0 bg-white dark:bg-slate-900 overflow-y-auto max-h-[300px]">
+          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0 bg-white dark:bg-neutral-900 overflow-y-auto max-h-[300px]">
             {/* Status Badges & Likes Counter Row */}
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">
