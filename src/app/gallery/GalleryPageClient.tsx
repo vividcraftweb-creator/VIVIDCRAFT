@@ -76,9 +76,16 @@ interface RankedArtwork {
     full_name?: string | null;
     display_name?: string | null;
     username?: string | null;
+    phone?: string | null;
+    whatsapp_number?: string | null;
     artist_name?: string | null;
     avatar_url?: string | null;
     role?: string | null;
+    [key: string]: any;
+  } | null;
+  user?: {
+    phone?: string | null;
+    [key: string]: any;
   } | null;
   user_name?: string | null;
   artist: ArtworkArtist;
@@ -1359,11 +1366,30 @@ export default function GalleryPageClient() {
                       {(() => {
                         const { badgeType, displayPrice } = getArtworkPricingDisplay(artwork);
                         if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+
+                        // Extract phone number safely from artist/user profile
+                        const rawPhone =
+                          artwork.profiles?.phone ||
+                          (artwork as any).user?.phone ||
+                          artwork.profiles?.whatsapp_number ||
+                          artwork.artist?.whatsapp_number ||
+                          artwork.artist?.phone ||
+                          '';
+
+                        // Sanitize the phone string to contain ONLY digits
+                        const cleanPhone = rawPhone.replace(/\D/g, '');
+
+                        // If cleanPhone is empty or invalid, fallback to default artist/support number
+                        const validPhone = (cleanPhone && cleanPhone.length >= 7) ? cleanPhone : '94783813833';
+
+                        // Construct URL safely
+                        const waUrl = `https://wa.me/${validPhone}?text=${encodeURIComponent(
+                          `Hi, I am interested in ${artwork.title} (ID: ${artwork.art_code || '#ART-101'}) by artist ${dynamicArtistName}. Status: ${displayPrice}.`
+                        )}`;
+
                         return (
                           <a
-                            href={`https://wa.me/${artwork.artist.whatsapp_number ? artwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
-                              `Hello! I would like to inquire about Artwork '${artwork.title}' (ID: ${artwork.art_code || '#ART-101'}) by artist ${artwork.artist.name}. Status: ${displayPrice}.`
-                            )}`}
+                            href={waUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -1595,11 +1621,30 @@ export default function GalleryPageClient() {
                     if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
                     const p = (selectedArtwork as any).profiles;
                     const inquiryArtistName = (p?.full_name || p?.display_name || p?.username || p?.artist_name || (selectedArtwork as any).user_name || selectedArtwork.artist.name || 'Artist').trim();
+
+                    // Extract phone number safely from artist/user profile
+                    const rawPhone =
+                      p?.phone ||
+                      (selectedArtwork as any).user?.phone ||
+                      p?.whatsapp_number ||
+                      selectedArtwork.artist?.whatsapp_number ||
+                      selectedArtwork.artist?.phone ||
+                      '';
+
+                    // Sanitize the phone string to contain ONLY digits
+                    const cleanPhone = rawPhone.replace(/\D/g, '');
+
+                    // If cleanPhone is empty or invalid, fallback to default artist/support number
+                    const validPhone = (cleanPhone && cleanPhone.length >= 7) ? cleanPhone : '94783813833';
+
+                    // Construct URL safely
+                    const waUrl = `https://wa.me/${validPhone}?text=${encodeURIComponent(
+                      `Hi, I am interested in ${selectedArtwork.title} (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${inquiryArtistName}. Status: ${displayPrice}.`
+                    )}`;
+
                     return (
                       <a
-                        href={`https://wa.me/${selectedArtwork.artist.whatsapp_number ? selectedArtwork.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833'}?text=${encodeURIComponent(
-                          `Hello! I would like to inquire about Artwork '${selectedArtwork.title}' (ID: ${selectedArtwork.art_code || '#ART-101'}) by artist ${inquiryArtistName}. Status: ${displayPrice}.`
-                        )}`}
+                        href={waUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full sm:w-auto"

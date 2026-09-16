@@ -70,6 +70,19 @@ interface RankedArtwork {
   price?: number | null;
   starting_bid?: number | null;
   art_code?: string;
+  profiles?: {
+    full_name?: string | null;
+    display_name?: string | null;
+    username?: string | null;
+    phone?: string | null;
+    whatsapp_number?: string | null;
+    avatar_url?: string | null;
+    [key: string]: any;
+  } | null;
+  user?: {
+    phone?: string | null;
+    [key: string]: any;
+  } | null;
   artist: ArtworkArtist;
 }
 
@@ -635,12 +648,26 @@ export default function BiddingPageClient() {
 
   // Helper for WhatsApp inquiry URL
   const getWhatsAppBidUrl = (art: RankedArtwork) => {
-    const rawNumber = art.artist.whatsapp_number ? art.artist.whatsapp_number.replace(/[^0-9]/g, '') : '94783813833';
+    // Extract phone number safely from artist/user profile
+    const rawPhone =
+      art.profiles?.phone ||
+      (art as any).user?.phone ||
+      (art.profiles as any)?.whatsapp_number ||
+      art.artist.whatsapp_number ||
+      art.artist.phone ||
+      '';
+
+    // Sanitize the phone string to contain ONLY digits
+    const cleanPhone = rawPhone.replace(/\D/g, '');
+
+    // If cleanPhone is empty or invalid, fallback to default artist/support number
+    const validPhone = (cleanPhone && cleanPhone.length >= 7) ? cleanPhone : '94783813833';
+
     const artistName = art.artist.name || 'Artist';
     const artId = art.art_code || '#ART-104';
     const bidAmount = Number(art.starting_bid || 0).toLocaleString();
-    const text = `Hello! I would like to inquire about Artwork '${art.title}' (ID: ${artId}) by artist ${artistName}. Listed Status: Starting Bid LKR ${bidAmount}.`;
-    return `https://wa.me/${rawNumber}?text=${encodeURIComponent(text)}`;
+    const text = `Hi, I am interested in ${art.title} (ID: ${artId}) by artist ${artistName}. Listed Status: Starting Bid LKR ${bidAmount}.`;
+    return `https://wa.me/${validPhone}?text=${encodeURIComponent(text)}`;
   };
 
   return (

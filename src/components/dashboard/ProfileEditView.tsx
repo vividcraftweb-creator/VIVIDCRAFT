@@ -72,7 +72,23 @@ export default function ProfileEditView() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      // Enforce international format validation for the phone field (e.g., must start with country code like 94771234567 without spaces/hyphens)
+      const phoneVal = (profile.phone || '').trim();
+      if (phoneVal) {
+        const internationalPhoneRegex = /^[1-9]\d{7,14}$/;
+        if (!internationalPhoneRegex.test(phoneVal)) {
+          toast.error('Invalid phone number format', {
+            description: 'Phone number must be in international format starting with country code without spaces, hyphens, or "+" (e.g., 94771234567).',
+          });
+          return;
+        }
+      }
+
       const profileData = { ...profile };
+      if (phoneVal) {
+        profileData.phone = phoneVal.replace(/\D/g, '');
+      }
+
       // Convert null values to undefined to match Zod schema
       Object.keys(profileData).forEach((key) => {
         if (profileData[key as keyof typeof profileData] === null) {
@@ -183,16 +199,19 @@ export default function ProfileEditView() {
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
                   <Phone className="h-4 w-4 text-blue-400" />
-                  Phone Number
+                  Phone Number (International Format)
                 </Label>
                 <Input
                   id="phone"
                   name="phone"
                   value={profile.phone || ''}
                   onChange={handleChange}
-                  placeholder="+1 (555) 123-4567"
+                  placeholder="e.g. 94771234567"
                   className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                 />
+                <p className="text-xs text-slate-400">
+                  Must start with country code without &apos;+&apos; or spaces (e.g. 94771234567)
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -280,16 +299,19 @@ export default function ProfileEditView() {
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="text-white font-medium flex items-center gap-2">
                     <Phone className="h-4 w-4 text-blue-400" />
-                    WhatsApp Number
+                    WhatsApp Number (International Format)
                   </Label>
                   <Input
                     id="phone"
                     name="phone"
                     value={profile.phone || profile.businessPhone || ''}
                     onChange={handleChange}
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="e.g. 94771234567"
                     className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
                   />
+                  <p className="text-xs text-slate-400">
+                    Must start with country code without &apos;+&apos; or spaces (e.g. 94771234567)
+                  </p>
                 </div>
 
                 <div className="space-y-2">

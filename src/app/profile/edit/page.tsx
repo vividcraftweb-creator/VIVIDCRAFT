@@ -97,6 +97,21 @@ export default function EditProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Enforce international format validation for the phone field (e.g., must start with country code like 94771234567 without spaces/hyphens)
+      const phoneVal = (formData.whatsappNumber || '').trim();
+      if (phoneVal) {
+        const internationalPhoneRegex = /^[1-9]\d{7,14}$/;
+        if (!internationalPhoneRegex.test(phoneVal)) {
+          toast.error('Invalid phone number format', {
+            description: 'Phone number must be in international format starting with country code without spaces, hyphens, or "+" (e.g., 94771234567).',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const cleanPhone = phoneVal ? phoneVal.replace(/\D/g, '') : '';
+
       // Direct upsert to profiles table
       const { error } = await supabase
         .from('profiles')
@@ -105,7 +120,8 @@ export default function EditProfilePage() {
           first_name: formData.firstName,
           last_name: formData.lastName,
           address: formData.address,
-          whatsapp_number: formData.whatsappNumber,
+          whatsapp_number: cleanPhone || null,
+          phone: cleanPhone || null,
           email: formData.email,
           updated_at: new Date().toISOString(),
         });
@@ -237,7 +253,7 @@ export default function EditProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="whatsappNumber" className="text-sm font-medium text-slate-300">
-                    WhatsApp Number
+                    WhatsApp Number (International Format)
                   </Label>
                   <div className="relative">
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -247,10 +263,13 @@ export default function EditProfilePage() {
                       type="tel"
                       value={formData.whatsappNumber}
                       onChange={handleChange}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="e.g. 94771234567"
                       className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
                     />
                   </div>
+                  <p className="text-xs text-slate-400">
+                    Must start with country code without &apos;+&apos; or spaces (e.g. 94771234567)
+                  </p>
                 </div>
 
                 <div className="space-y-2">

@@ -386,3 +386,11 @@ export async function getGalleryArtworks(options?: {
 
   return artworks.filter((a) => a.pricing_type === options.category);
 }
+
+// Re-export WhatsApp utilities
+export {
+  DEFAULT_WHATSAPP_NUMBER,
+  sanitizePhoneNumber,
+  isValidInternationalPhone,
+  getSafeArtworkWhatsAppUrl,
+} from './whatsapp';

@@ -95,7 +95,10 @@ export async function POST(request: NextRequest) {
     const firstName = body.first_name ?? body.firstName ?? null;
     const lastName = body.last_name ?? body.lastName ?? null;
     const address = body.address ?? body.location ?? body.businessAddressLine1 ?? null;
-    const whatsappNumber = body.whatsapp_number ?? body.whatsappNumber ?? body.phone ?? body.businessPhone ?? null;
+    const rawWhatsappNumber = body.whatsapp_number ?? body.whatsappNumber ?? body.phone ?? body.businessPhone ?? null;
+    const whatsappNumber = (rawWhatsappNumber !== null && rawWhatsappNumber !== undefined)
+      ? String(rawWhatsappNumber).replace(/\D/g, '') || null
+      : null;
     const email = body.email ?? body.businessEmail ?? null;
 
     // 4. Check for existing profile

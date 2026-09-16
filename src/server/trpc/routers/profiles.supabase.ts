@@ -912,9 +912,10 @@ export const profilesRouter = router({
           ? (input.address || input.location)
           : (existingProfile?.address || existingProfile?.location || null);
 
-        const whatsappVal = (input.whatsappNumber || input.phone) !== undefined
+        const rawWhatsapp = (input.whatsappNumber || input.phone) !== undefined
           ? (input.whatsappNumber || input.phone)
           : (existingProfile?.whatsapp_number || existingProfile?.phone || null);
+        const whatsappVal = rawWhatsapp ? String(rawWhatsapp).replace(/\D/g, '') || null : null;
 
         const emailVal = (input.email || input.businessEmail) !== undefined
           ? (input.email || input.businessEmail)
