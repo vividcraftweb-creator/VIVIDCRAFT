@@ -1402,15 +1402,15 @@ export default function GalleryPageClient() {
         {/* Lightbox / Modal View */}
         {selectedArtwork && (
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200"
+            className="fixed inset-0 z-[99999] flex items-start justify-center bg-black/80 p-4 pt-24 md:pt-28 overflow-y-auto animate-in fade-in duration-200"
             onClick={() => setSelectedArtwork(null)}
           >
             <div
-              className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-2xl flex flex-col my-auto"
+              className="relative w-full max-w-4xl max-h-[80vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] dark shadow-2xl border border-white/10 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 z-30 flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-neutral-800 bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md">
+              <div className="sticky top-0 z-30 flex items-center justify-between p-4 sm:p-5 border-b border-white/10 bg-[#0f172a]/95 backdrop-blur-md">
                 <div className="flex items-center gap-3 min-w-0">
                   {(() => {
                     const modalArtistName = ((selectedArtwork as any).profiles?.full_name || (selectedArtwork as any).profiles?.display_name || (selectedArtwork as any).profiles?.username || (selectedArtwork as any).profiles?.artist_name || (selectedArtwork as any).user_name || selectedArtwork.artist?.name || 'Artist').trim();
@@ -1572,7 +1572,7 @@ export default function GalleryPageClient() {
               </div>
 
               {/* Modal Actions Footer */}
-              <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="p-4 sm:p-5 border-t border-white/10 bg-[#0f172a]/95 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
                   {/* Like Button */}
                   <Button

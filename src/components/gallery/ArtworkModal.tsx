@@ -143,11 +143,11 @@ export function ArtworkModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] flex items-start justify-center bg-black/80 p-4 pt-24 md:pt-28 overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-2xl grid grid-cols-1 md:grid-cols-2 my-auto"
+        className="relative w-full max-w-4xl max-h-[80vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] dark shadow-2xl border border-white/10 grid grid-cols-1 md:grid-cols-2"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Close Button pinned at the top */}
@@ -198,9 +198,9 @@ export function ArtworkModal({
         </div>
 
         {/* RIGHT COLUMN: Details, Metadata, Comments & WhatsApp Action Button */}
-        <div className="flex flex-col h-full md:max-h-[640px] bg-white dark:bg-neutral-900 md:overflow-hidden">
+        <div className="flex flex-col h-full md:max-h-[640px] bg-[#0f172a] md:overflow-hidden">
           {/* Header Section: Status, Title, Artist, Ref ID, Date, Likes */}
-          <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0 bg-white dark:bg-neutral-900 overflow-y-auto max-h-[300px]">
+          <div className="p-5 sm:p-6 border-b border-white/10 space-y-3 shrink-0 bg-[#0f172a] overflow-y-auto max-h-[300px]">
             {/* Status Badges & Likes Counter Row */}
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">

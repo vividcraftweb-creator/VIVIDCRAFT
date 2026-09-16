@@ -214,7 +214,7 @@ const Header = () => {
     <>
       {/* Header - Visible on all screen sizes */}
       <header
-        className={`fixed left-0 right-0 z-50 px-4 pt-6 sm:px-6 transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 right-0 z-40 px-4 pt-6 sm:px-6 transition-transform duration-300 ease-in-out ${
           visible ? 'top-0 translate-y-0' : '-top-32 -translate-y-full'
         }`}
       >
