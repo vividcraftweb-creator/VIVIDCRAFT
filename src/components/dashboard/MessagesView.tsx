@@ -117,10 +117,24 @@ export default function MessagesView() {
   }, [messages.length, selectedUser?.id]);
 
   const getContactName = (contact: ContactForChat) => {
-    if (contact.profile?.firstName && contact.profile?.lastName) {
-      return `${contact.profile.firstName} ${contact.profile.lastName}`;
-    }
-    return contact.email || 'Unknown User';
+    if (!contact) return 'User';
+    const prof = contact.profile as any;
+    if (prof?.full_name?.trim()) return prof.full_name.trim();
+    if ((contact as any)?.full_name?.trim()) return (contact as any).full_name.trim();
+    if (prof?.displayName?.trim()) return prof.displayName.trim();
+    if (prof?.display_name?.trim()) return prof.display_name.trim();
+
+    const fName = (prof?.firstName || prof?.first_name || '').trim();
+    const lName = (prof?.lastName || prof?.last_name || '').trim();
+    const combined = `${fName} ${lName}`.trim();
+    if (combined) return combined;
+
+    if (prof?.artist_name?.trim()) return prof.artist_name.trim();
+    if (prof?.username?.trim()) return prof.username.trim();
+    if (contact.email?.trim()) return contact.email.trim();
+    if ((contact as any)?.email?.trim()) return (contact as any).email.trim();
+
+    return 'Client';
   };
 
   const formatJobContext = (contact: ContactForChat, messages: ChatMessageItem[]) => {

@@ -946,10 +946,20 @@ export function FreelancerDashboard({ view = 'dashboard' }: FreelancerDashboardP
 
   const renderMessagesContent = () => {
     const getContactName = (contact: ContactListItem) => {
-      if (contact.profile?.firstName && contact.profile?.lastName) {
-        return `${contact.profile.firstName} ${contact.profile.lastName}`;
-      }
-      return contact.email || 'Unknown User';
+      if (!contact) return 'Client';
+      const prof = contact.profile as any;
+      if (prof?.full_name?.trim()) return prof.full_name.trim();
+      if ((contact as any)?.full_name?.trim()) return (contact as any).full_name.trim();
+      if (prof?.displayName?.trim()) return prof.displayName.trim();
+      if (prof?.display_name?.trim()) return prof.display_name.trim();
+
+      const fName = (prof?.firstName || prof?.first_name || '').trim();
+      const lName = (prof?.lastName || prof?.last_name || '').trim();
+      const combined = `${fName} ${lName}`.trim();
+      if (combined) return combined;
+
+      if (contact.email?.trim()) return contact.email.trim();
+      return 'Client';
     };
 
     const safeContacts = Array.isArray(contacts) ? contacts : [];
