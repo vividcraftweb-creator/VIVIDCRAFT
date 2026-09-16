@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageSquare, Clock, MoreHorizontal } from 'lucide-react';
+import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,8 +72,19 @@ export default function MessagesView() {
   const chatHistory = messages;
   const setChatHistory = setMessages;
   const [isSending, setIsSending] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isWithin7Days = (msg: ChatMessageItem) => {
+    const rawDate = msg.created_at || msg.createdAt;
+    if (!rawDate) return true;
+    const msgDate = new Date(rawDate);
+    if (isNaN(msgDate.getTime())) return true;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return msgDate >= sevenDaysAgo;
+  };
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     try {
@@ -246,43 +257,64 @@ export default function MessagesView() {
     }
   });
 
+  const fetchDirectMessages = async (showLoadingSpinner = false) => {
+    const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id || '').toString().trim();
+    const activeRecipientId = (selectedUser?.id || '').toString().trim();
+    if (!activeRecipientId || !currentUserId) return;
+
+    if (showLoadingSpinner) {
+      setIsRefreshing(true);
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const cutoffIso = sevenDaysAgo.toISOString();
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeRecipientId}),and(sender_id.eq.${activeRecipientId},receiver_id.eq.${currentUserId})`)
+        .gte('created_at', cutoffIso)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Supabase messages fetch error:', error);
+        if (messagesQuery.data) {
+          const validTRPC = messagesQuery.data.filter((m) => {
+            const rawDate = m.createdAt || (m as any).created_at;
+            return !rawDate || new Date(rawDate) >= sevenDaysAgo;
+          });
+          setMessages(validTRPC);
+        }
+      } else if (data) {
+        const filtered = data.filter((m) => isWithin7Days(m));
+        setMessages(filtered);
+      }
+    } catch (err) {
+      console.error('Direct chat fetch notice:', err);
+    } finally {
+      if (showLoadingSpinner) {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    await fetchDirectMessages(true);
+    try {
+      utils.messages.getConversationPreviews.invalidate();
+    } catch {}
+  };
+
   // Fetch chat messages real-time / on select
   useEffect(() => {
     const currentUserId = (session?.session?.user?.id || (session as any)?.user?.id || '').toString().trim();
     const activeRecipientId = (selectedUser?.id || '').toString().trim();
     if (!activeRecipientId || !currentUserId) return;
 
-    let isMounted = true;
-    const supabase = createClient();
-
-    async function fetchDirectMessages() {
-      try {
-        const { data, error } = await supabase
-          .from('messages')
-          .select('*')
-          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeRecipientId}),and(sender_id.eq.${activeRecipientId},receiver_id.eq.${currentUserId})`)
-          .order('created_at', { ascending: true });
-
-        if (error) {
-          console.error('Supabase messages fetch error:', error);
-          if (messagesQuery.data && isMounted) {
-            setMessages(messagesQuery.data);
-          }
-        } else if (data && isMounted) {
-          if (data.length > 0) {
-            setMessages(data);
-          } else if (messagesQuery.data && messagesQuery.data.length > 0) {
-            setMessages(messagesQuery.data);
-          } else {
-            setMessages([]);
-          }
-        }
-      } catch (err) {
-        console.error('Direct chat fetch notice:', err);
-      }
-    }
-
-    fetchDirectMessages();
+    fetchDirectMessages(false);
 
     // Mark messages as read when viewing conversation (only once per conversation)
     if (
@@ -295,6 +327,7 @@ export default function MessagesView() {
     }
 
     // Subscribe to realtime changes with unique id deduplication
+    const supabase = createClient();
     const channel = supabase
       .channel(`chat_${currentUserId}_${activeRecipientId}`)
       .on(
@@ -324,11 +357,10 @@ export default function MessagesView() {
 
     // Resilient background sync so incoming messages append without page reloads
     const pollInterval = setInterval(() => {
-      fetchDirectMessages();
+      fetchDirectMessages(false);
     }, 4000);
 
     return () => {
-      isMounted = false;
       clearInterval(pollInterval);
       try {
         supabase.removeChannel(channel);
@@ -535,9 +567,23 @@ export default function MessagesView() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-white font-semibold text-lg">
-                      {getContactName(selectedUser)}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-white font-semibold text-lg">
+                        {getContactName(selectedUser)}
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleManualRefresh}
+                        disabled={isRefreshing}
+                        className="h-8 px-2 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 text-xs rounded-md"
+                        title="Refresh conversation"
+                      >
+                        <RotateCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+                        <span className="hidden sm:inline">Refresh</span>
+                      </Button>
+                    </div>
                     {selectedUser.profile?.companyName && (
                       <p className="text-sm text-slate-400">
                         {selectedUser.profile.companyName}
@@ -585,12 +631,19 @@ export default function MessagesView() {
               </div>
             </CardHeader>
 
+            {/* 7-Day Retention Notice Banner */}
+            <div className="bg-slate-950/70 border-b border-slate-800/60 px-4 py-2 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5 flex-shrink-0">
+              <span>ℹ️</span>
+              <span>Messages are automatically cleared after 7 days.</span>
+            </div>
+
             {/* Messages List */}
             <CardContent className="flex-1 p-4 overflow-y-auto">
               <div className="space-y-4">
                 {chatHistory.length > 0 ? (
                   <div className="space-y-4">
                     {chatHistory
+                      .filter((msg) => isWithin7Days(msg))
                       .filter((msg, index, self) => index === self.findIndex((m) => m.id === msg.id))
                       .map((chat, index) => {
                       const senderId = chat.sender_id || chat.senderId;
