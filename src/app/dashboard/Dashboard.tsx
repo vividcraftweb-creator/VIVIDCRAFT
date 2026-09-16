@@ -41,6 +41,8 @@ import type { AppSession } from '@/types/session';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
 import ArtistDashboard from '@/components/dashboard/ArtistDashboard';
+import ClientDashboard from '@/components/dashboard/ClientDashboard';
+import MessagesView from '@/components/dashboard/MessagesView';
 const GalleryView = dynamic(() => import('@/components/dashboard/GalleryView'), {
   loading: () => <div className="text-white p-8 animate-pulse">Loading gallery...</div>,
   ssr: false,
@@ -85,9 +87,16 @@ export default function Dashboard({ session }: { session: AppSession }) {
   const profileRole = (profile?.role || '').toString().trim().toUpperCase();
   const sessionRole = (session?.user?.role || '').toString().trim().toUpperCase();
   const isAdminRole = profileRole === 'ADMIN' || sessionRole === 'ADMIN';
+  const isClientRole = !isAdminRole && (
+    profileRole === 'CLIENT' ||
+    profileRole === 'BUYER' ||
+    profileRole === 'COLLECTOR' ||
+    sessionRole === 'CLIENT' ||
+    sessionRole === 'BUYER' ||
+    sessionRole === 'COLLECTOR'
+  );
 
-  // Force ARTIST as the default fallback profile state regardless of user role (e.g. COLLECTOR / CLIENT)
-  const role: 'ARTIST' | 'ADMIN' = isAdminRole ? 'ADMIN' : 'ARTIST';
+  const role: 'ARTIST' | 'CLIENT' | 'ADMIN' = isAdminRole ? 'ADMIN' : isClientRole ? 'CLIENT' : 'ARTIST';
 
   useEffect(() => {
     setMounted(true);
@@ -161,6 +170,18 @@ export default function Dashboard({ session }: { session: AppSession }) {
         { name: 'Messages', icon: MessageSquare, href: '/messages' },
         { name: 'Profile', icon: User, href: '/profile/edit' },
         { name: 'Settings', icon: Settings, href: '/settings' },
+        { name: 'Sign Out', icon: LogOut, action: 'signout' },
+      ];
+    }
+
+    if (role === 'CLIENT') {
+      return [
+        { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
+        { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
+        { name: 'Messages', icon: MessageSquare, href: '/dashboard?tab=messages', view: 'messages' },
+        { name: 'Saved Artworks', icon: ImageIcon, href: '/gallery' },
+        { name: 'Profile', icon: User, href: '/dashboard?tab=profile', view: 'profile' },
+        { name: 'Settings', icon: Settings, href: '/dashboard?tab=settings', view: 'settings' },
         { name: 'Sign Out', icon: LogOut, action: 'signout' },
       ];
     }
@@ -244,6 +265,12 @@ export default function Dashboard({ session }: { session: AppSession }) {
   const renderDashboardContent = () => {
     try {
       const activeView = currentView === 'overview' ? 'dashboard' : currentView;
+      if (activeView === 'messages') {
+        return <MessagesView />;
+      }
+      if (role === 'CLIENT') {
+        return <ClientDashboard />;
+      }
       return <ArtistDashboard view={activeView} />;
     } catch (err) {
       console.error('Error rendering dashboard content:', err);
@@ -254,6 +281,9 @@ export default function Dashboard({ session }: { session: AppSession }) {
   const getRoleColor = () => {
     if (role === 'ADMIN') {
       return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    }
+    if (role === 'CLIENT') {
+      return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
     }
     return 'bg-green-500/20 text-green-300 border-green-500/30';
   };
@@ -338,7 +368,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   {session.user?.email}
                 </p>
                 <Badge className={`w-fit text-xs mt-1 ${getRoleColor()}`}>
-                  {role === 'ADMIN' ? 'ADMIN' : 'ARTIST'}
+                  {role === 'ADMIN' ? 'ADMIN' : role === 'CLIENT' ? 'CLIENT' : 'ARTIST'}
                 </Badge>
               </div>
             </div>
@@ -429,7 +459,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
             </Button>
             <div className="flex-1">
               <h1 className="text-lg font-semibold text-white">
-                {role === 'ADMIN' ? 'Admin' : 'Artist'} Dashboard
+                {role === 'ADMIN' ? 'Admin' : role === 'CLIENT' ? 'Client' : 'Artist'} Dashboard
               </h1>
             </div>
             <NotificationDropdown />
@@ -444,7 +474,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">
-                    {role === 'ADMIN' ? 'Admin' : 'Artist'} Dashboard
+                    {role === 'ADMIN' ? 'Admin' : role === 'CLIENT' ? 'Client' : 'Artist'} Dashboard
                   </h1>
                   <p className="text-slate-400 text-lg">
                     Welcome back, {userFirstName}

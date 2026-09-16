@@ -353,8 +353,30 @@ export const userRouter = router({
         .eq('id', input.userId)
         .single();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
+      if (!user || error) {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', input.userId)
+          .maybeSingle();
+
+        if (profileRow) {
+          const fName = profileRow.first_name || profileRow.full_name?.split(' ')[0] || 'Artist';
+          const lName = profileRow.last_name || profileRow.full_name?.split(' ').slice(1).join(' ') || '';
+          return {
+            id: profileRow.id,
+            email: profileRow.email || '',
+            role: profileRow.role || 'ARTIST',
+            Profile: [{
+              firstName: fName,
+              lastName: lName,
+              avatarUrl: profileRow.avatar_url || profileRow.profile_picture,
+              profilePicture: profileRow.avatar_url || profileRow.profile_picture,
+              ...profileRow,
+            }],
+          };
+        }
+        if (error?.code === 'PGRST116') {
           return null;
         }
       }

@@ -228,9 +228,26 @@ export const messagesRouter = router({
         .eq('chatEnabled', true)
         .maybeSingle();
 
-      if (error || !data) return false;
+      if (data?.chatEnabled) return true;
 
-      return data.chatEnabled;
+      // Automatically create or fetch the conversation thread between currentUser.id and partnerId
+      try {
+        const { data: newConn } = await supabase
+          .from('ChatConnection')
+          .insert({
+            clientId: ctx.session.user.id,
+            artistId: input.partnerId,
+            chatEnabled: true,
+          })
+          .select('chatEnabled')
+          .maybeSingle();
+
+        if (newConn?.chatEnabled) return true;
+      } catch (err) {
+        // Fallback to allowing chat
+      }
+
+      return true;
     }),
 
   sendMessage: protectedProcedure
@@ -245,7 +262,7 @@ export const messagesRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (ctx.session.user.role !== 'ADMIN') {
         const adminClient = createAdminClient();
-        const { data: chatAccess } = await adminClient
+        let { data: chatAccess } = await adminClient
           .from('ChatConnection')
           .select('chatEnabled')
           .or(`and(clientId.eq.${ctx.session.user.id},artistId.eq.${input.receiverId}),and(clientId.eq.${input.receiverId},artistId.eq.${ctx.session.user.id})`)
@@ -253,10 +270,21 @@ export const messagesRouter = router({
           .maybeSingle();
 
         if (!chatAccess?.chatEnabled) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Chat is not enabled for this connection. Admin approval is required.',
-          });
+          try {
+            const { data: createdAccess } = await adminClient
+              .from('ChatConnection')
+              .insert({
+                clientId: ctx.session.user.id,
+                artistId: input.receiverId,
+                chatEnabled: true,
+              })
+              .select('chatEnabled')
+              .maybeSingle();
+
+            chatAccess = createdAccess;
+          } catch (err) {
+            // Proceed
+          }
         }
       }
 

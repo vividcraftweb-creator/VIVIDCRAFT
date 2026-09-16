@@ -423,8 +423,8 @@ export default function PublicArtistProfileClient() {
 
   const handleContact = () => {
     if (authStatus === 'loading') return;
-    const recipientId = rawProfile?.id || id;
-    const messageUrl = `/dashboard?tab=messages&userId=${recipientId}`;
+    const recipientId = targetArtistId || rawProfile?.id || rawProfile?.userId || id;
+    const messageUrl = `/dashboard/messages?recipientId=${recipientId}`;
 
     if (authStatus === 'authenticated' && session?.session?.user) {
       router.push(messageUrl);
@@ -567,9 +567,11 @@ export default function PublicArtistProfileClient() {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row md:flex-col gap-3 w-full sm:w-auto md:min-w-[170px] justify-center">
-              <Button onClick={handleContact} className="gap-2 shadow-lg shadow-primary/20">
-                <Mail className="h-4 w-4" />
-                Contact Artist
+              <Button asChild className="gap-2 shadow-lg shadow-primary/20 cursor-pointer">
+                <Link href={`/dashboard/messages?recipientId=${targetArtistId}`}>
+                  <Mail className="h-4 w-4" />
+                  Message
+                </Link>
               </Button>
               <Button variant="outline" onClick={handleShare} className="gap-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
                 <Share2 className="h-4 w-4" />

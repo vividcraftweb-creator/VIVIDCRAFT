@@ -433,7 +433,8 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     if (status === 'loading') return;
 
     // Destination URL with recipient pre-selected
-    const messageUrl = `/dashboard?tab=messages&userId=${profile.userId}`;
+    const targetId = profile.userId || profile.id || resolvedParams.id;
+    const messageUrl = `/dashboard/messages?recipientId=${targetId}`;
 
     if (status === 'authenticated' && session?.session?.user) {
       // User is authenticated - go directly to messages
@@ -639,12 +640,13 @@ Hi, I would like to connect with this artist for a commission/project.`;
                     {copied ? 'Link copied' : 'Share profile'}
                   </Button>
                   <Button
-                    className="h-11 sm:h-10 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 button-ripple interactive-scale flex-1"
-                    onClick={handleMessage}
-                    disabled={status === 'loading'}
+                    asChild
+                    className="h-11 sm:h-10 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 button-ripple interactive-scale flex-1 cursor-pointer"
                   >
-                    <Mail className="h-4 w-4" />
-                    Message
+                    <Link href={`/dashboard/messages?recipientId=${artistId}`}>
+                      <Mail className="h-4 w-4" />
+                      Message
+                    </Link>
                   </Button>
                 </div>
                 <Button

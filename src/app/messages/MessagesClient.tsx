@@ -8,13 +8,14 @@ function MessagesRedirect() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Redirect to dashboard messages tab, preserving any query parameters
     const userId = searchParams.get('userId');
+    const recipientId = searchParams.get('recipientId');
     const action = searchParams.get('action');
 
     let redirectUrl = '/dashboard?tab=messages';
-    if (userId) {
-      redirectUrl += `&userId=${userId}`;
+    const targetRecipient = recipientId || userId;
+    if (targetRecipient) {
+      redirectUrl += `&recipientId=${targetRecipient}&userId=${targetRecipient}`;
     }
     if (action) {
       redirectUrl += `&action=${action}`;

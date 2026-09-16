@@ -177,16 +177,20 @@ export default async function DashboardPage({
           } catch {}
         }
 
-        // Set ARTIST as the default fallback profile state regardless of client/collector role
+        // Resolve role dynamically from profiles.role, user_metadata, or fallback
         const rawRoleStr = (
           dbRole ||
           authUser.user_metadata?.role ||
           authUser.user_metadata?.userRole ||
           authUser.user_metadata?.user_type ||
-          'ARTIST'
+          'CLIENT'
         ).toString().trim().toUpperCase();
 
-        const role = rawRoleStr === 'ADMIN' ? 'ADMIN' : 'ARTIST';
+        const role = rawRoleStr === 'ADMIN'
+          ? 'ADMIN'
+          : (rawRoleStr === 'CLIENT' || rawRoleStr === 'BUYER' || rawRoleStr === 'COLLECTOR')
+          ? 'CLIENT'
+          : 'ARTIST';
 
         activeSession.user.role = role;
 
@@ -208,7 +212,7 @@ export default async function DashboardPage({
   }
 
   if (!activeSession.user.role || activeSession.user.role === 'undefined') {
-    activeSession.user.role = 'ARTIST';
+    activeSession.user.role = 'CLIENT';
   }
 
   return <DashboardWrapper session={activeSession} />;

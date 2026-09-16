@@ -37,7 +37,8 @@ Looking forward to speaking with you!`;
 export default function MessagesView() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
-  const userId = searchParams.get('userId');
+  const recipientId = searchParams.get('recipientId') || searchParams.get('userId');
+  const userId = recipientId;
   const action = searchParams.get('action');
   const jobId = searchParams.get('jobId');
   const proposalId = searchParams.get('proposalId');
@@ -169,15 +170,26 @@ export default function MessagesView() {
     return contactsList;
   }, [contacts, userById]);
 
-  // Auto-select user from URL parameter
+  // Auto-select user from URL parameter (recipientId or userId)
   useEffect(() => {
-    if (userId && allContacts.length > 0) {
-      const user = allContacts.find(c => c.id === userId);
-      if (user && (!selectedUser || selectedUser.id !== userId)) {
-        setSelectedUser(user);
+    if (recipientId) {
+      if (allContacts.length > 0) {
+        const user = allContacts.find(c => c.id === recipientId);
+        if (user && (!selectedUser || selectedUser.id !== recipientId)) {
+          setSelectedUser(user);
+          return;
+        }
+      }
+      if (userById && (!selectedUser || selectedUser.id !== recipientId)) {
+        const prof = userById.Profile ? (Array.isArray(userById.Profile) ? userById.Profile[0] : userById.Profile) : null;
+        setSelectedUser({
+          id: userById.id,
+          email: userById.email,
+          profile: prof,
+        });
       }
     }
-  }, [userId, allContacts, selectedUser]);
+  }, [recipientId, allContacts, userById, selectedUser]);
 
   // Pre-fill message if action=schedule
   useEffect(() => {
