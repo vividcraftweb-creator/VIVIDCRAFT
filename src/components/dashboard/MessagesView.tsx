@@ -331,9 +331,9 @@ export default function MessagesView() {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`and(senderId.eq.${currentUserId},receiverId.eq.${activeRecipientId}),and(senderId.eq.${activeRecipientId},receiverId.eq.${currentUserId})`)
-        .gte('createdAt', cutoffIso)
-        .order('createdAt', { ascending: true });
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeRecipientId}),and(sender_id.eq.${activeRecipientId},receiver_id.eq.${currentUserId})`)
+        .gte('created_at', cutoffIso)
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Supabase messages fetch error:', error);
@@ -345,7 +345,7 @@ export default function MessagesView() {
           setMessages(validTRPC);
         }
       } else if (data) {
-        const filtered = data.filter((m) => isWithin7Days({ ...m, created_at: m.createdAt }));
+        const filtered = data.filter((m) => isWithin7Days({ ...m, created_at: (m as any).created_at }));
         setMessages(filtered);
       }
     } catch (err) {
