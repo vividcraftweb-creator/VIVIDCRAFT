@@ -1015,22 +1015,31 @@ export const profilesRouter = router({
         if (data && !error) contracts = data;
       } catch {}
 
-      let messages: any[] = [];
+      // Fetch messages using correct snake_case columns from public.messages table
+      let partnerIds: string[] = [];
       try {
         const { data, error } = await supabase
-          .from('Message')
-          .select(`
-            *,
-            sender:User!Message_senderId_fkey(id, email, Profile(firstName, lastName, profilePicture, companyName)),
-            receiver:User!Message_receiverId_fkey(id, email, Profile(firstName, lastName, profilePicture, companyName))
-          `)
-          .or(`senderId.eq.${userId},receiverId.eq.${userId}`)
-          .order('createdAt', { ascending: false })
+          .from('messages')
+          .select('sender_id, receiver_id')
+          .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+          .order('created_at', { ascending: false })
           .limit(200);
-        if (data && !error) messages = data;
+
+        if (data && !error) {
+          const seen = new Set<string>();
+          data.forEach((msg: any) => {
+            const partnerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+            if (partnerId && partnerId !== userId && !seen.has(partnerId)) {
+              seen.add(partnerId);
+              partnerIds.push(partnerId);
+            }
+          });
+        }
       } catch {}
 
       const contactsMap = new Map<string, ContactUserSummary>();
+
+      // Add contract contacts
       (contracts ?? []).forEach((contract: any) => {
         if (contract.clientId !== userId && !contactsMap.has(contract.clientId)) {
           contactsMap.set(contract.clientId, contract.client);
@@ -1040,26 +1049,30 @@ export const profilesRouter = router({
         }
       });
 
-      (messages ?? []).forEach((message: any) => {
+      // Fetch User profiles for message partners not already in contactsMap
+      const missingIds = partnerIds.filter((id) => !contactsMap.has(id));
+      if (missingIds.length > 0) {
         try {
-          if (!message || !message.sender || !message.receiver) return;
-          const partnerId = message.senderId === userId ? message.receiverId : message.senderId;
-          const partner = message.senderId === userId ? message.receiver : message.sender;
-          if (!partner || !partnerId || contactsMap.has(partnerId)) return;
+          const { data: users } = await supabase
+            .from('User')
+            .select('id, email, Profile(firstName, lastName, profilePicture, companyName)')
+            .in('id', missingIds);
 
-          const profile = Array.isArray(partner.Profile) ? partner.Profile[0] : partner.Profile;
-          contactsMap.set(partnerId, {
-            id: partner.id,
-            email: partner.email || null,
-            profile: profile ? {
-              firstName: profile.firstName || null,
-              lastName: profile.lastName || null,
-              profilePicture: profile.profilePicture || null,
-              companyName: profile.companyName || null,
-            } : null,
+          (users ?? []).forEach((user: any) => {
+            const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
+            contactsMap.set(user.id, {
+              id: user.id,
+              email: user.email || null,
+              profile: profile ? {
+                firstName: profile.firstName || null,
+                lastName: profile.lastName || null,
+                profilePicture: profile.profilePicture || null,
+                companyName: profile.companyName || null,
+              } : null,
+            });
           });
         } catch {}
-      });
+      }
 
       return Array.from(contactsMap.values());
     } catch (err) {
