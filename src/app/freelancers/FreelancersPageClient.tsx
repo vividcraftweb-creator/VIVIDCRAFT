@@ -129,48 +129,40 @@ export default function FreelancersPageClient({
 
   return (
     <div className="min-h-screen">
-      <header className="px-4 pb-12 pt-6 sm:pb-16 sm:pt-8 sm:px-6 lg:px-8">
+      <header className="px-4 pt-6 pb-2 sm:pt-6 sm:pb-2 sm:px-6 lg:px-8">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-primary">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
               Vivid Art Marketplace
             </div>
-            <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               Discover <span className="text-primary">Top Artists &amp; Creators</span>
             </h1>
-            <p className="mx-auto mt-4 max-w-3xl text-base text-muted-foreground sm:text-lg">
-              Discover verified artists and creative professionals ready to bring your artistic visions to life. Search by artist name, style, or skills in seconds.
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {mounted && displayedArtists.length > 0
-                ? `${displayedArtists.length} ${displayedArtists.length === 1 ? 'artist' : 'artists'} available`
-                : 'Discover amazing creative talent'}
-            </p>
           </div>
 
-          {/* Simple Search Input & Button */}
-          <div className="mx-auto mt-10 max-w-3xl">
-            <div className="glass-card rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-4 shadow-xl dark:shadow-[0_30px_120px_rgba(15,23,42,0.35)] backdrop-blur">
+          {/* Compact Search Input & Button */}
+          <div className="mx-auto mt-4 max-w-xl">
+            <div className="glass-card rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-1.5 sm:p-2 shadow-md backdrop-blur">
               <form
-                className="flex flex-col gap-3 sm:flex-row sm:items-center"
+                className="flex flex-col gap-2 sm:flex-row sm:items-center"
                 onSubmit={(event) => {
                   event.preventDefault();
                   setSearchQuery((prev) => prev.trim());
                 }}
               >
                 <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Search by artist name, style, or skills…"
-                    className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-3 pl-12 pr-4 text-sm text-foreground shadow-sm transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-2 pl-10 pr-3 text-sm text-foreground shadow-sm transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center rounded-2xl bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:bg-primary/90"
+                  className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90"
                 >
                   Search
                 </button>
@@ -180,8 +172,8 @@ export default function FreelancersPageClient({
         </div>
       </header>
 
-      <main className="container mx-auto max-w-6xl px-4 pb-24 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center justify-between">
+      <main className="container mx-auto max-w-6xl px-4 pt-2 pb-20 sm:px-6 lg:px-8">
+        <div className="mb-4 flex items-center justify-between">
           <p className="text-sm font-medium text-muted-foreground">
             {mounted
               ? `Showing ${displayedArtists.length} ${displayedArtists.length === 1 ? 'artist' : 'artists'}`
