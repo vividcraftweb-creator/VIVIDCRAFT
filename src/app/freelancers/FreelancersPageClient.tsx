@@ -69,8 +69,9 @@ export const parseTags = (data: any): string[] => {
       .filter(Boolean);
   }
   if (typeof data === 'string') {
-    return data
-      .replace(/["\[\]{}]/g, '')
+    const cleaned = data.replace(/["\[\]{}]/g, '').trim();
+    if (!cleaned) return [];
+    return cleaned
       .split(',')
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
@@ -86,13 +87,9 @@ export function normalizeArtistProfile(p: any) {
   const key = p.id || p.userId || p.user_id;
   const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
 
-  const rawStyles = p.art_styles ?? p.mediums ?? [];
-  const rawSpecialties = p.art_specialties ?? p.specialties ?? [];
-  const rawServices = p.services_offered ?? p.services ?? [];
-
-  const stylesArr = parseTags(rawStyles);
-  const specialtiesArr = parseTags(rawSpecialties);
-  const servicesArr = parseTags(rawServices);
+  const stylesArr = parseTags(p.art_styles);
+  const specialtiesArr = parseTags(p.art_specialties);
+  const servicesArr = parseTags(p.services_offered);
 
   return {
     ...p,
@@ -103,9 +100,6 @@ export function normalizeArtistProfile(p: any) {
     art_styles: stylesArr,
     art_specialties: specialtiesArr,
     services_offered: servicesArr,
-    mediums: stylesArr,
-    specialties: specialtiesArr,
-    services: servicesArr,
     display_order: p.display_order ?? 999,
   };
 }
@@ -404,7 +398,7 @@ export default function FreelancersPageClient({
   const availableStyles = useMemo(() => {
     const set = new Set<string>(ARTIST_MEDIUMS);
     profiles.forEach((p) => {
-      const arr = p.art_styles || p.mediums;
+      const arr = p.art_styles;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
@@ -415,7 +409,7 @@ export default function FreelancersPageClient({
   const availableSpecialties = useMemo(() => {
     const set = new Set<string>(ARTIST_SPECIALTIES);
     profiles.forEach((p) => {
-      const arr = p.art_specialties || p.specialties;
+      const arr = p.art_specialties;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
@@ -426,7 +420,7 @@ export default function FreelancersPageClient({
   const availableServices = useMemo(() => {
     const set = new Set<string>(ARTIST_SERVICES);
     profiles.forEach((p) => {
-      const arr = p.services_offered || p.services;
+      const arr = p.services_offered;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
@@ -497,18 +491,9 @@ export default function FreelancersPageClient({
 
     // 1. FORGIVING CATEGORY FILTERING: MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED TAGS (OR FILTER)
     result = result.filter((artist: any) => {
-      const artistStyles = [
-        ...parseTags(artist.art_styles),
-        ...parseTags(artist.mediums),
-      ];
-      const artistSpecs = [
-        ...parseTags(artist.art_specialties),
-        ...parseTags(artist.specialties),
-      ];
-      const artistServices = [
-        ...parseTags(artist.services_offered),
-        ...parseTags(artist.services),
-      ];
+      const artistStyles = parseTags(artist.art_styles);
+      const artistSpecs = parseTags(artist.art_specialties);
+      const artistServices = parseTags(artist.services_offered);
 
       // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED STYLES
       const matchesStyle =

@@ -114,9 +114,9 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
     ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
     : [];
 
-  const styles: string[] = parseTags(artist.art_styles || artist.mediums);
-  const specialties: string[] = parseTags(artist.art_specialties || artist.specialties);
-  const services: string[] = parseTags(artist.services_offered || artist.services);
+  const styles: string[] = parseTags(artist.art_styles);
+  const specialties: string[] = parseTags(artist.art_specialties);
+  const services: string[] = parseTags(artist.services_offered);
 
   const hasCategories = styles.length > 0 || specialties.length > 0 || services.length > 0;
 
