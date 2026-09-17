@@ -117,6 +117,7 @@ import { auth } from '@/lib/auth';
 import { Toaster } from '@/components/ui/sonner';
 import ConditionalLayout from '@/components/layout/ConditionalLayout';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import WhatsAppFloat from '@/components/WhatsAppFloat';
 
 export default async function RootLayout({
   children,
@@ -411,6 +412,7 @@ export default async function RootLayout({
               <ConditionalLayout session={session}>
                 {children}
               </ConditionalLayout>
+              <WhatsAppFloat />
               <Toaster />
             </Provider>
           </SessionProvider>
