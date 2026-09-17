@@ -360,7 +360,7 @@ export default function PublicArtistProfileClient() {
       ? rawSkills
       : typeof rawSkills === 'string' && rawSkills.trim()
       ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
-      : ['Digital Painting', 'Concept Art', 'Illustration', 'Character Design'];
+      : [];
 
     const rawStyles = rawProfile?.art_styles || rawProfile?.mediums || '';
     const stylesList: string[] = Array.isArray(rawStyles)

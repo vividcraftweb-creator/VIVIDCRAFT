@@ -239,17 +239,6 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
                 </span>
               )}
             </div>
-          ) : skills.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {skills.slice(0, 8).map((skill) => (
-                <span
-                  key={skill}
-                  className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
           ) : null}
         </div>
 

@@ -500,17 +500,14 @@ export default function FreelancersPageClient({
       const artistStyles = [
         ...parseTags(artist.art_styles),
         ...parseTags(artist.mediums),
-        ...(artist.skills ? parseTags(artist.skills) : []),
       ];
       const artistSpecs = [
         ...parseTags(artist.art_specialties),
         ...parseTags(artist.specialties),
-        ...(artist.skills ? parseTags(artist.skills) : []),
       ];
       const artistServices = [
         ...parseTags(artist.services_offered),
         ...parseTags(artist.services),
-        ...(artist.skills ? parseTags(artist.skills) : []),
       ];
 
       // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED STYLES
