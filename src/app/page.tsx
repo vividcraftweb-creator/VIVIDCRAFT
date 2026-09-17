@@ -24,7 +24,7 @@ export const metadata: Metadata = createPageMetadata({
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen w-full bg-background text-foreground overflow-hidden">
+    <div className="relative min-h-screen w-full bg-background text-foreground overflow-x-hidden">
       <HomeHero />
       <Benefits />
       {/* RED SECTION - Infinite Horizontal Crew Marquee */}

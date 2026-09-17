@@ -422,10 +422,17 @@ export default async function RootLayout({
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              html {
+                overflow-x: hidden;
+                overflow-y: auto !important;
+                scroll-behavior: smooth;
+              }
               body {
                 top: 0px !important;
                 position: static !important;
                 min-height: 100vh;
+                overflow-x: hidden;
+                overflow-y: auto !important;
               }
               .goog-te-banner-frame {
                 display: none !important;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -34,10 +34,38 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
   const router = useRouter();
   const [banners, setBanners] = useState<BannerSlide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Responsive cards-per-view: 1 on mobile, 2 on sm, 3 on md, 4 on lg/xl
+  const [cardsPerView, setCardsPerView] = useState(1);
+
+  // Slider animation and positioning state
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [withTransition, setWithTransition] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+
+  // Mobile Touch Swipe Handling
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+
+  // Measure window for cardsPerView
+  useEffect(() => {
+    const handleResize = () => {
+      const w = window.innerWidth;
+      if (w >= 1200) {
+        setCardsPerView(4);
+      } else if (w >= 850) {
+        setCardsPerView(3);
+      } else if (w >= 600) {
+        setCardsPerView(2);
+      } else {
+        setCardsPerView(1);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch dynamic banners directly from Supabase advertisements table
   useEffect(() => {
@@ -45,7 +73,6 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
     async function loadBanners() {
       try {
         const supabase = createClient();
-        // Simplified query to avoid 400 Bad Request
         const { data, error } = await supabase
           .from('advertisements')
           .select('*')
@@ -63,7 +90,7 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
             target_route: b.target_route || b.link_url || '/gallery',
             image_url: b.image_url || '',
             accent: b.accent || 'from-amber-500/20 to-orange-500/10',
-            offer_code: b.offer_code || '',
+            offer_code: b.offer_code || 'OFFER-7842',
             is_active: b.is_active !== false,
             display_order: b.display_order ?? 0,
           }));
@@ -89,7 +116,7 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
                 target_route: b.target_route || b.link_url || '/gallery',
                 image_url: b.image_url || '',
                 accent: b.accent || 'from-amber-500/20 to-orange-500/10',
-                offer_code: b.offer_code || '',
+                offer_code: b.offer_code || 'OFFER-7842',
                 is_active: b.is_active !== false,
                 display_order: b.display_order ?? 0,
               }));
@@ -110,30 +137,79 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
     };
   }, []);
 
-  const totalSlides = banners.length || 1;
+  // Build repeatable chain of cards so multiple cards wrap seamlessly around
+  const baseList = useMemo(() => {
+    if (banners.length === 0) return [];
+    let list = [...banners];
+    // Ensure base list has at least 6 items so 4-card desktop views always have ample items
+    while (list.length < 6) {
+      list = [...list, ...banners];
+    }
+    return list;
+  }, [banners]);
+
+  // Triple the list: [Set A, Set B, Set C]. We operate primarily in Set B.
+  const displayItems = useMemo(() => {
+    if (baseList.length <= 1) return baseList;
+    return [...baseList, ...baseList, ...baseList];
+  }, [baseList]);
+
+  // Set initial position to the beginning of Set B
+  useEffect(() => {
+    if (baseList.length > 1) {
+      setWithTransition(false);
+      setCurrentIndex(baseList.length);
+    }
+  }, [baseList.length]);
+
+  // Handle seamless infinite loop reset when sliding into Set A or Set C
+  const handleTransitionEnd = () => {
+    if (baseList.length <= 1) return;
+
+    if (currentIndex >= baseList.length * 2) {
+      setWithTransition(false);
+      setCurrentIndex(currentIndex - baseList.length);
+    } else if (currentIndex < baseList.length) {
+      setWithTransition(false);
+      setCurrentIndex(currentIndex + baseList.length);
+    }
+  };
+
+  // Re-enable transition on the next animation frame after an instant reset
+  useEffect(() => {
+    if (!withTransition) {
+      const raf = requestAnimationFrame(() => {
+        setWithTransition(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [withTransition]);
 
   // Navigation handlers
-  const handlePrev = useCallback(() => {
-    setCurrentSlide((prev) => (prev === 0 ? totalSlides - 1 : prev - 1));
-  }, [totalSlides]);
-
   const handleNext = useCallback(() => {
-    setCurrentSlide((prev) => (prev === totalSlides - 1 ? 0 : prev + 1));
-  }, [totalSlides]);
+    setWithTransition(true);
+    setCurrentIndex((prev) => prev + 1);
+  }, []);
 
-  // Auto-play sliding every 4 seconds with pause-on-hover
+  const handlePrev = useCallback(() => {
+    setWithTransition(true);
+    setCurrentIndex((prev) => prev - 1);
+  }, []);
+
+  // Auto-play sliding every 3.5 seconds with pause-on-hover
   useEffect(() => {
-    if (isPaused || totalSlides <= 1) return;
+    if (isPaused || baseList.length <= 1) return;
 
     const timer = setInterval(() => {
       handleNext();
-    }, 4000);
+    }, 3500);
 
     return () => clearInterval(timer);
-  }, [isPaused, handleNext, totalSlides]);
+  }, [isPaused, handleNext, baseList.length]);
 
   // Mobile Touch Swipe Handling
   const handleTouchStart = (e: React.TouchEvent) => {
+    setIsPaused(true);
     touchStartX.current = e.touches[0].clientX;
   };
 
@@ -142,33 +218,24 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
   };
 
   const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const diff = touchStartX.current - touchEndX.current;
-    if (diff > 50) {
-      handleNext();
-    } else if (diff < -50) {
-      handlePrev();
+    if (touchStartX.current !== null && touchEndX.current !== null) {
+      const diff = touchStartX.current - touchEndX.current;
+      if (diff > 40) {
+        handleNext();
+      } else if (diff < -40) {
+        handlePrev();
+      }
     }
     touchStartX.current = null;
     touchEndX.current = null;
+    setTimeout(() => setIsPaused(false), 2000);
   };
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') handlePrev();
-      if (e.key === 'ArrowRight') handleNext();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePrev, handleNext]);
 
   // Handle "Get Offer" WhatsApp Claim
   const handleClaimOffer = (e: React.MouseEvent, banner: BannerSlide) => {
     e.stopPropagation();
     const offerCode = banner.offer_code || 'OFFER-7842';
 
-    // Support phone number resolution
     const configuredPhone =
       process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ||
       process.env.NEXT_PUBLIC_WHATSAPP_PHONE ||
@@ -176,7 +243,6 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
       '94783813833';
     const cleanPhone = String(configuredPhone).replace(/\D/g, '') || '94783813833';
 
-    // Build standard wa.me URL
     const message = `Hi, I want to claim this offer code: ${offerCode}`;
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 
@@ -189,118 +255,171 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
     return null;
   }
 
+  // Loading Skeleton: Row of compact cards
   if (isLoading && banners.length === 0) {
     return (
       <div className={`w-full ${className}`}>
-        <div className="relative w-full h-[280px] sm:h-[380px] md:h-[440px] lg:h-[490px] rounded-2xl sm:rounded-3xl border border-slate-800 bg-slate-900/60 animate-pulse" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-[200px] sm:h-[215px] md:h-[225px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 animate-pulse"
+            />
+          ))}
+        </div>
       </div>
     );
   }
 
+  // Single Banner Card display (no carousel needed)
+  if (banners.length === 1) {
+    const single = banners[0];
+    return (
+      <div className={`w-full max-w-sm sm:max-w-md mx-auto ${className}`}>
+        <div
+          onClick={() => {
+            if (single.link_url || single.target_route) {
+              router.push(single.link_url || single.target_route || '/gallery');
+            }
+          }}
+          className="relative h-[200px] sm:h-[215px] md:h-[225px] rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-900 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer"
+        >
+          <img
+            src={single.image_url}
+            alt={single.title || 'Special Offer'}
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+          <div className="absolute bottom-3 left-3 z-20">
+            <button
+              type="button"
+              onClick={(e) => handleClaimOffer(e, single)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-black/40 transition-all duration-200 hover:scale-105 cursor-pointer"
+              aria-label={`Get Offer for ${single.offer_code}`}
+            >
+              <MessageCircle className="w-3.5 h-3.5 fill-slate-950 text-transparent" />
+              <span>Get Offer</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Multi-Card Auto-Swiper Chain
+  const activeDotIndex = banners.length > 0 ? currentIndex % banners.length : 0;
+
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`relative w-full ${className}`}>
+      {/* Slider Track Container */}
       <div
-        className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl shadow-amber-950/10 dark:shadow-black/40 bg-slate-900 group"
+        className="relative w-full overflow-hidden py-1 group/slider"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Banner Aspect Ratio Container */}
-        <div className="relative w-full h-[280px] sm:h-[380px] md:h-[440px] lg:h-[490px] overflow-hidden">
-          {banners.map((banner, index) => {
-            const isActive = index === currentSlide;
+        {/* Horizontal sliding track */}
+        <div
+          onTransitionEnd={handleTransitionEnd}
+          className="flex gap-4"
+          style={{
+            transform: `translateX(calc(-${currentIndex} * (100% + 16px) / ${cardsPerView}))`,
+            transition: withTransition ? 'transform 500ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+          }}
+        >
+          {displayItems.map((banner, idx) => (
+            <div
+              key={`${banner.id}-${idx}`}
+              onClick={() => {
+                if (banner.link_url || banner.target_route) {
+                  router.push(banner.link_url || banner.target_route || '/gallery');
+                }
+              }}
+              style={{
+                flex: `0 0 calc(${100 / cardsPerView}% - ${(cardsPerView - 1) * 16 / cardsPerView}px)`,
+              }}
+              className="relative h-[200px] sm:h-[215px] md:h-[225px] rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-900 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer flex-shrink-0"
+            >
+              {/* 100% Bright, Crisp Image Without Dark Overlays */}
+              <img
+                src={banner.image_url}
+                alt={banner.title || 'Special Offer'}
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
+              />
 
-            return (
-              <div
-                key={banner.id || index}
-                onClick={() => {
-                  if (banner.link_url) {
-                    router.push(banner.link_url);
-                  }
-                }}
-                className={`absolute inset-0 w-full h-full transition-all duration-700 ease-out cursor-pointer ${
-                  isActive
-                    ? 'opacity-100 scale-100 z-10 pointer-events-auto'
-                    : 'opacity-0 scale-105 z-0 pointer-events-none'
-                }`}
-              >
-                {/* Background Image - 100% bright and crisp without dark filter */}
-                <img
-                  src={banner.image_url}
-                  alt={banner.title || 'Banner'}
-                  className="w-full h-full object-cover object-center transition-transform duration-7000 ease-out group-hover:scale-105"
-                />
-
-                {/* Only the "Get Offer →" Button positioned neatly on top of the banner */}
-                <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-20">
-                  <button
-                    type="button"
-                    onClick={(e) => handleClaimOffer(e, banner)}
-                    className="inline-flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-black/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-                    aria-label={`Get Offer for ${banner.offer_code}`}
-                  >
-                    <MessageCircle className="w-4 h-4 fill-slate-950 text-transparent" />
-                    <span>Get Offer</span>
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </button>
-                </div>
+              {/* Retain ONLY the neat "Get Offer →" button positioned at bottom-left */}
+              <div className="absolute bottom-3 left-3 z-20">
+                <button
+                  type="button"
+                  onClick={(e) => handleClaimOffer(e, banner)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-black/40 transition-all duration-200 hover:scale-105 cursor-pointer"
+                  aria-label={`Get Offer for ${banner.offer_code}`}
+                >
+                  <MessageCircle className="w-3.5 h-3.5 fill-slate-950 text-transparent" />
+                  <span>Get Offer</span>
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                </button>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
 
-        {/* Left Navigation Arrow */}
+        {/* Left Arrow Button */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             handlePrev();
           }}
-          aria-label="Previous slide"
-          className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-75 sm:opacity-90 hover:opacity-100"
+          aria-label="Previous card"
+          className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-950/75 hover:bg-slate-900 text-white backdrop-blur-md border border-slate-700/80 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-70 group-hover/slider:opacity-100"
         >
-          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
-        {/* Right Navigation Arrow */}
+        {/* Right Arrow Button */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             handleNext();
           }}
-          aria-label="Next slide"
-          className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-75 sm:opacity-90 hover:opacity-100"
+          aria-label="Next card"
+          className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-950/75 hover:bg-slate-900 text-white backdrop-blur-md border border-slate-700/80 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-70 group-hover/slider:opacity-100"
         >
-          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
+      </div>
 
-        {/* Bottom-Center Pagination Dots */}
-        <div className="absolute bottom-3.5 sm:bottom-5 left-1/2 -translate-y-0 -translate-x-1/2 z-30 flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-          {banners.map((_, dotIndex) => {
-            const isCurrent = dotIndex === currentSlide;
-
+      {/* Subtle Pagination Indicators */}
+      {banners.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5 mt-3">
+          {banners.map((_, dotIdx) => {
+            const isDotActive = dotIdx === activeDotIndex;
             return (
               <button
-                key={dotIndex}
+                key={dotIdx}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentSlide(dotIndex);
+                onClick={() => {
+                  setWithTransition(true);
+                  // Jump closest to Set B corresponding dot
+                  setCurrentIndex(baseList.length + dotIdx);
                 }}
-                aria-label={`Go to slide ${dotIndex + 1}`}
+                aria-label={`Go to slide ${dotIdx + 1}`}
                 className={`transition-all duration-300 rounded-full cursor-pointer ${
-                  isCurrent
-                    ? 'w-7 h-2 bg-amber-500 shadow-md shadow-amber-500/50'
-                    : 'w-2 h-2 bg-white/50 hover:bg-white/80'
+                  isDotActive
+                    ? 'w-6 h-1.5 bg-amber-500 shadow-sm shadow-amber-500/50'
+                    : 'w-1.5 h-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-500'
                 }`}
               />
             );
           })}
         </div>
-      </div>
+      )}
     </div>
   );
 }

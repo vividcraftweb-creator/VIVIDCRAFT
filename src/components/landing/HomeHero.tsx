@@ -158,7 +158,7 @@ export function HomeHero() {
 
   return (
     <section
-      className="relative overflow-hidden bg-gradient-to-b from-background via-background/95 to-background pt-4 pb-16 sm:pt-6 sm:pb-20"
+      className="relative overflow-x-hidden bg-gradient-to-b from-background via-background/95 to-background pt-4 pb-16 sm:pt-6 sm:pb-20"
       suppressHydrationWarning
     >
       {/* Background atmospheric ambient gradients */}
@@ -171,8 +171,8 @@ export function HomeHero() {
         />
       </div>
 
-      <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 space-y-10 sm:space-y-14">
-        {/* 100% FULL-WIDTH ADVERTISING BANNER SLIDER WITH GET OFFER WHATSAPP CLAIM */}
+      <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
+        {/* COMPACT AUTO-SWIPING CARD CAROUSEL WITH GET OFFER WHATSAPP CLAIM */}
         <HomeHeroSlider />
 
         {/* Compact Search Bar Row directly below full-width hero slider */}
