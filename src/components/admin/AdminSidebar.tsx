@@ -23,6 +23,8 @@ import {
   LogOut,
   Tag,
   Gavel,
+  MessageSquareQuote,
+  UserCheck,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trpc } from '@/utils/trpc';
@@ -130,6 +132,18 @@ export default function AdminSidebar() {
       href: '/admin/banners',
       icon: Tag,
       description: 'Promotional banners & offer codes',
+    },
+    {
+      title: 'Crew Management',
+      href: '/admin/crew',
+      icon: UserCheck,
+      description: 'Curation crew & stories',
+    },
+    {
+      title: 'Reviews Management',
+      href: '/admin/reviews',
+      icon: MessageSquareQuote,
+      description: 'Client reviews & testimonials',
     },
     {
       title: 'Bidding / Auctions',

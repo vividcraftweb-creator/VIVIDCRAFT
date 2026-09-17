@@ -23,6 +23,7 @@ import {
   Tag,
   MessageSquare,
   Gavel,
+  Star,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,8 @@ import AdminArtworksTab from './AdminArtworksTab';
 import AdminConnectionsTab from './AdminConnectionsTab';
 import AdminBannersTab from '../admin/AdminBannersTab';
 import AdminAuctionsTab from '../admin/AdminAuctionsTab';
+import AdminCrewTab from '../admin/AdminCrewTab';
+import AdminReviewsTab from '../admin/AdminReviewsTab';
 import {
   ComposedChart,
   Bar,
@@ -639,6 +642,14 @@ export default function AdminDashboard() {
                 <Tag className="h-3 w-3 text-amber-400" />
                 Offers &amp; Banners
               </TabsTrigger>
+              <TabsTrigger value="crew" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs flex items-center gap-1">
+                <Users className="h-3 w-3 text-rose-400" />
+                Crew Members
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs flex items-center gap-1">
+                <Star className="h-3 w-3 text-amber-400" />
+                Manual Reviews
+              </TabsTrigger>
               <TabsTrigger value="connections" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Connections & Chat
               </TabsTrigger>
@@ -646,6 +657,14 @@ export default function AdminDashboard() {
                 Payments
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="crew" className="mt-3">
+              <AdminCrewTab />
+            </TabsContent>
+
+            <TabsContent value="reviews" className="mt-3">
+              <AdminReviewsTab />
+            </TabsContent>
 
             <TabsContent value="bidding" className="mt-3">
               <AdminAuctionsTab />
