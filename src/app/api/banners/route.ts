@@ -5,29 +5,37 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Try querying active banners from /api/admin/banners directly or Supabase
     const supabase = await createClient();
-    const { data, error } = await supabase
+    let result = await supabase
       .from('banners')
       .select('*')
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      return NextResponse.json({ banners: data });
+    if (result.error && (result.error.code === '42P01' || result.error.message?.includes('does not exist'))) {
+      result = await supabase
+        .from('advertisements')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false });
+    }
+
+    if (!result.error && Array.isArray(result.data)) {
+      return NextResponse.json({ banners: result.data });
     }
   } catch (e) {
     // Graceful fallback
   }
 
-  // Fallback to internal API route
+  // Fallback to internal admin API route
   try {
     const internalUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/banners`;
     const res = await fetch(internalUrl, { cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
-      if (json?.banners) {
+      if (json?.banners && Array.isArray(json.banners)) {
         const active = json.banners.filter((b: any) => b.is_active !== false);
         return NextResponse.json({ banners: active });
       }

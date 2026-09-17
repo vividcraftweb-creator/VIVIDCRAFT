@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import {
   ChevronLeft,
   ChevronRight,
@@ -84,20 +85,52 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  // Fetch dynamic banners from backend API
+  // Fetch dynamic banners from Supabase database live rows
   useEffect(() => {
     let isMounted = true;
     async function loadBanners() {
       try {
+        // 1. Direct Supabase live query
+        const supabase = createClient();
+        let { data, error } = await supabase
+          .from('banners')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false });
+
+        if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
+          const adRes = await supabase
+            .from('advertisements')
+            .select('*')
+            .eq('is_active', true)
+            .order('display_order', { ascending: true })
+            .order('created_at', { ascending: false });
+          if (!adRes.error) {
+            data = adRes.data;
+            error = null;
+          }
+        }
+
+        if (!error && Array.isArray(data) && isMounted) {
+          if (data.length > 0) {
+            setBanners(data as BannerSlide[]);
+            return;
+          }
+        }
+
+        // 2. Fallback to API route
         const res = await fetch('/api/banners');
         if (res.ok) {
           const json = await res.json();
-          if (json?.banners && json.banners.length > 0 && isMounted) {
-            setBanners(json.banners);
+          if (json?.banners && Array.isArray(json.banners) && isMounted) {
+            if (json.banners.length > 0) {
+              setBanners(json.banners);
+            }
           }
         }
       } catch (e) {
-        // Silently retain DEFAULT_ADVERTISING_BANNERS on fetch error
+        // Silently retain current banners on network failure
       }
     }
     loadBanners();

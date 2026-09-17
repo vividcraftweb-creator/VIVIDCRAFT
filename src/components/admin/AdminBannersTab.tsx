@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import {
   Tag,
   Plus,
@@ -14,6 +16,9 @@ import {
   Image as ImageIcon,
   MessageCircle,
   Sparkles,
+  Upload,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +56,9 @@ export function generateOfferCode(prefix = 'OFFER'): string {
 }
 
 export default function AdminBannersTab() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [banners, setBanners] = useState<BannerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -58,6 +66,7 @@ export default function AdminBannersTab() {
   // Modal create state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Form fields
   const [formTitle, setFormTitle] = useState('');
@@ -75,14 +84,48 @@ export default function AdminBannersTab() {
     '94783813833';
   const cleanPhone = String(supportPhone).replace(/\D/g, '') || '94783813833';
 
-  // Load banners
+  // Load banners - checks live database rows first
   const fetchBanners = async () => {
     setLoading(true);
     try {
+      const supabase = createClient();
+      let liveData: BannerItem[] | null = null;
+
+      // Query banners table
+      let { data, error } = await supabase
+        .from('banners')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false });
+
+      // If banners table does not exist, query advertisements table
+      if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
+        const adRes = await supabase
+          .from('advertisements')
+          .select('*')
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false });
+        if (!adRes.error) {
+          data = adRes.data;
+          error = null;
+        }
+      }
+
+      if (!error && Array.isArray(data)) {
+        liveData = data as BannerItem[];
+      }
+
+      // If live table exists and returned results, use them directly
+      if (liveData !== null) {
+        setBanners(liveData);
+        return;
+      }
+
+      // Otherwise query through API
       const res = await fetch('/api/admin/banners');
       if (res.ok) {
         const json = await res.json();
-        if (json?.banners) {
+        if (json?.banners && Array.isArray(json.banners)) {
           setBanners(json.banners);
         }
       }
@@ -97,6 +140,66 @@ export default function AdminBannersTab() {
   useEffect(() => {
     fetchBanners();
   }, []);
+
+  // Direct file upload to Supabase storage bucket 'banners'
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (JPEG, PNG, WEBP)');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    const toastId = toast.loading('Uploading banner image to Supabase Storage...');
+
+    try {
+      const supabase = createClient();
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `banner_${Date.now()}.${fileExt}`;
+
+      let publicUrl = '';
+
+      // Direct client upload to 'banners' storage bucket
+      const { data, error } = await supabase.storage.from('banners').upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+      if (!error) {
+        const { data: publicUrlData } = supabase.storage.from('banners').getPublicUrl(fileName);
+        publicUrl = publicUrlData?.publicUrl || '';
+      } else {
+        console.warn('Direct client Supabase storage upload failed, using server fallback:', error);
+        // Fallback to server route with service role key
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/admin/banners/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const resJson = await res.json();
+        if (!res.ok || resJson.error) {
+          throw new Error(error.message || resJson.error || 'Failed to upload image');
+        }
+        publicUrl = resJson.url;
+      }
+
+      if (publicUrl) {
+        setFormImageUrl(publicUrl);
+        toast.success('Image uploaded successfully!', { id: toastId });
+      } else {
+        throw new Error('Unable to retrieve public URL for uploaded banner');
+      }
+    } catch (err: any) {
+      console.error('Upload exception:', err);
+      toast.error(err?.message || 'Failed to upload image. You can also paste an image URL.', { id: toastId });
+    } finally {
+      setIsUploadingImage(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   // Open create dialog with newly generated offer code
   const handleOpenCreate = () => {
@@ -124,27 +227,41 @@ export default function AdminBannersTab() {
       return;
     }
     if (!formImageUrl.trim()) {
-      toast.error('Please provide an image URL');
+      toast.error('Please upload an image or provide an image URL');
       return;
     }
 
     const code = formOfferCode.trim().toUpperCase() || generateOfferCode();
-
     setSubmitting(true);
+
     try {
+      const bannerPayload = {
+        title: formTitle.trim(),
+        subtitle: formSubtitle.trim(),
+        badge: formBadge.trim() || 'Special Offer',
+        cta_text: 'Get Offer',
+        link_url: formLinkUrl.trim() || '/gallery',
+        image_url: formImageUrl.trim(),
+        offer_code: code,
+        is_active: formIsActive,
+        display_order: banners.length + 1,
+      };
+
+      // Direct client Supabase insert attempt
+      try {
+        const supabase = createClient();
+        await Promise.allSettled([
+          supabase.from('advertisements').insert([bannerPayload]),
+          supabase.from('banners').insert([bannerPayload]),
+        ]);
+      } catch (err) {
+        console.warn('Client direct insert caught error:', err);
+      }
+
       const res = await fetch('/api/admin/banners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formTitle.trim(),
-          subtitle: formSubtitle.trim(),
-          badge: formBadge.trim() || 'Special Offer',
-          cta_text: 'Get Offer',
-          link_url: formLinkUrl.trim() || '/gallery',
-          image_url: formImageUrl.trim(),
-          offer_code: code,
-          is_active: formIsActive,
-        }),
+        body: JSON.stringify(bannerPayload),
       });
 
       const json = await res.json();
@@ -152,11 +269,19 @@ export default function AdminBannersTab() {
         throw new Error(json.error || 'Failed to create banner');
       }
 
+      // Immediately update local React state
+      if (json.banner) {
+        setBanners((prev) => [json.banner, ...prev.filter((b) => b.id !== json.banner.id)]);
+      }
+
       toast.success('Banner & Offer created successfully!', {
         description: `Offer Code: ${code} has been assigned.`,
       });
       setIsCreateOpen(false);
-      fetchBanners();
+
+      // Revalidate and refetch
+      router.refresh();
+      await fetchBanners();
     } catch (err: any) {
       toast.error(err.message || 'Error saving banner');
     } finally {
@@ -168,6 +293,12 @@ export default function AdminBannersTab() {
   const handleToggleActive = async (banner: BannerItem) => {
     const newStatus = !banner.is_active;
     try {
+      const supabase = createClient();
+      await Promise.allSettled([
+        supabase.from('advertisements').update({ is_active: newStatus }).eq('id', banner.id),
+        supabase.from('banners').update({ is_active: newStatus }).eq('id', banner.id),
+      ]);
+
       const res = await fetch('/api/admin/banners', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -178,26 +309,42 @@ export default function AdminBannersTab() {
           prev.map((b) => (b.id === banner.id ? { ...b, is_active: newStatus } : b))
         );
         toast.success(newStatus ? 'Banner activated' : 'Banner paused');
+        router.refresh();
       }
     } catch (e) {
       toast.error('Failed to update status');
     }
   };
 
-  // Delete banner
+  // Delete banner with explicit Supabase query and instant state update
   const handleDelete = async (id: string, code: string) => {
     if (!confirm(`Are you sure you want to delete banner with Offer Code "${code}"?`)) return;
 
+    // 1. Immediately update local React state
+    setBanners((prev) => prev.filter((b) => b.id !== id));
+
     try {
-      const res = await fetch(`/api/admin/banners?id=${encodeURIComponent(id)}`, {
+      // 2. Execute explicit Supabase delete query on advertisements and banners tables
+      const supabase = createClient();
+      await Promise.allSettled([
+        supabase.from('advertisements').delete().eq('id', id),
+        supabase.from('banners').delete().eq('id', id),
+      ]);
+
+      // 3. Ensure server-side deletion & in-memory sync
+      await fetch(`/api/admin/banners?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
-      if (res.ok) {
-        setBanners((prev) => prev.filter((b) => b.id !== id));
-        toast.success(`Banner ${code} deleted`);
-      }
+
+      toast.success(`Banner ${code} deleted`);
+
+      // 4. Revalidate and refetch live rows
+      router.refresh();
+      await fetchBanners();
     } catch (e) {
+      console.error('Failed to delete banner:', e);
       toast.error('Failed to delete banner');
+      fetchBanners();
     }
   };
 
@@ -507,16 +654,92 @@ export default function AdminBannersTab() {
               </p>
             </div>
 
-            {/* Image URL */}
-            <div className="space-y-1">
-              <Label className="text-xs text-slate-300 font-semibold">Image URL *</Label>
-              <Input
-                placeholder="https://images.unsplash.com/photo-..."
-                value={formImageUrl}
-                onChange={(e) => setFormImageUrl(e.target.value)}
-                required
-                className="bg-slate-950 border-slate-800 text-xs h-9"
+            {/* Direct File Upload & Image URL */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
+                  <ImageIcon className="h-3.5 w-3.5 text-amber-500" />
+                  Banner Image *
+                </Label>
+                {formImageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormImageUrl('')}
+                    className="text-[11px] text-rose-400 hover:text-rose-300 transition"
+                  >
+                    Remove Image
+                  </button>
+                )}
+              </div>
+
+              {/* Hidden File Picker */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
               />
+
+              {/* Upload Box / Drag & Click Area */}
+              <div
+                onClick={() => !isUploadingImage && fileInputRef.current?.click()}
+                className={`relative border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
+                  formImageUrl
+                    ? 'border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500/60'
+                    : 'border-slate-700 hover:border-amber-500/50 bg-slate-950/60 hover:bg-slate-950'
+                }`}
+              >
+                {isUploadingImage ? (
+                  <div className="py-4 flex flex-col items-center gap-2 text-amber-400">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="text-xs font-medium">Uploading to Supabase Storage (banners)...</span>
+                  </div>
+                ) : formImageUrl ? (
+                  <div className="w-full space-y-2">
+                    <div className="relative w-full h-28 rounded-lg overflow-hidden border border-slate-700 bg-slate-900">
+                      <img
+                        src={formImageUrl}
+                        alt="Banner preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                        <Check className="h-3.5 w-3.5" />
+                        Image Uploaded
+                      </span>
+                      <span className="text-[11px] text-slate-400 hover:text-white underline">
+                        Click to choose another image
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-3 flex flex-col items-center gap-1.5 text-slate-400">
+                    <div className="p-2 rounded-full bg-slate-900 border border-slate-700 text-amber-500">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <p className="text-xs font-semibold text-white">Click to upload banner image</p>
+                    <p className="text-[10px] text-slate-500">
+                      PNG, JPG, WEBP (uploads directly to Supabase storage)
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Direct URL input fallback */}
+              <div className="space-y-1 pt-1">
+                <Label className="text-[11px] text-slate-400">Or paste image URL directly</Label>
+                <Input
+                  placeholder="https://images.unsplash.com/photo-..."
+                  value={formImageUrl}
+                  onChange={(e) => setFormImageUrl(e.target.value)}
+                  className="bg-slate-950 border-slate-800 text-xs h-8 text-slate-300 font-mono"
+                />
+              </div>
             </div>
 
             {/* Link URL */}

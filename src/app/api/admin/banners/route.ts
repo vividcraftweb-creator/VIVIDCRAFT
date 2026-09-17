@@ -87,17 +87,27 @@ export function generateUniqueOfferCode(): string {
 export async function GET() {
   try {
     const adminClient = createAdminClient();
-    const { data, error } = await adminClient
+    let result = await adminClient
       .from('banners')
       .select('*')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      return NextResponse.json({ banners: data });
+    // If banners relation doesn't exist, try advertisements table
+    if (result.error && (result.error.code === '42P01' || result.error.message?.includes('does not exist'))) {
+      result = await adminClient
+        .from('advertisements')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false });
     }
 
-    // Return fallback list
+    // When the table exists, return real live database rows (even if empty)
+    if (!result.error && Array.isArray(result.data)) {
+      return NextResponse.json({ banners: result.data });
+    }
+
+    // Only return fallback list if database is unreachable or unmigrated
     return NextResponse.json({ banners: fallbackBanners });
   } catch (err: any) {
     console.warn('Fallback: Error querying supabase banners table:', err?.message);
@@ -150,21 +160,37 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     };
 
-    // Try inserting into Supabase
+    // Try inserting into Supabase (both banners and advertisements tables)
     try {
       const adminClient = createAdminClient();
-      const { data, error } = await adminClient
+      let insertedData: any = null;
+
+      const { data: bData, error: bErr } = await adminClient
         .from('banners')
         .insert([newBannerRecord])
         .select()
         .single();
 
-      if (!error && data) {
-        fallbackBanners.unshift(data);
-        return NextResponse.json({ banner: data, success: true }, { status: 201 });
+      if (!bErr && bData) {
+        insertedData = bData;
+      }
+
+      const { data: aData, error: aErr } = await adminClient
+        .from('advertisements')
+        .insert([newBannerRecord])
+        .select()
+        .single();
+
+      if (!insertedData && !aErr && aData) {
+        insertedData = aData;
+      }
+
+      if (insertedData) {
+        fallbackBanners.unshift(insertedData);
+        return NextResponse.json({ banner: insertedData, success: true }, { status: 201 });
       }
     } catch (dbErr) {
-      console.warn('Could not insert to Supabase banners table, saving to fallback:', dbErr);
+      console.warn('Could not insert to Supabase banners/advertisements table, saving to fallback:', dbErr);
     }
 
     // Save to local fallback array
@@ -188,7 +214,7 @@ export async function PATCH(req: Request) {
 
     let updatedRecord: any = null;
 
-    // Try updating Supabase
+    // Try updating Supabase tables
     try {
       const adminClient = createAdminClient();
       const updatePayload: any = {};
@@ -201,15 +227,15 @@ export async function PATCH(req: Request) {
       if (image_url) updatePayload.image_url = image_url.trim();
       updatePayload.updated_at = new Date().toISOString();
 
-      const { data, error } = await adminClient
-        .from('banners')
-        .update(updatePayload)
-        .eq('id', id)
-        .select()
-        .single();
+      const [resBanners, resAds] = await Promise.allSettled([
+        adminClient.from('banners').update(updatePayload).eq('id', id).select().single(),
+        adminClient.from('advertisements').update(updatePayload).eq('id', id).select().single(),
+      ]);
 
-      if (!error && data) {
-        updatedRecord = data;
+      if (resBanners.status === 'fulfilled' && !resBanners.value.error && resBanners.value.data) {
+        updatedRecord = resBanners.value.data;
+      } else if (resAds.status === 'fulfilled' && !resAds.value.error && resAds.value.data) {
+        updatedRecord = resAds.value.data;
       }
     } catch (e) {
       console.warn('Supabase update skipped/failed, updating fallback');
@@ -249,17 +275,20 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Banner ID is required' }, { status: 400 });
     }
 
-    // Try deleting from Supabase
+    // Explicitly delete from Supabase 'banners' and 'advertisements' tables
     try {
       const adminClient = createAdminClient();
-      await adminClient.from('banners').delete().eq('id', id);
+      await Promise.allSettled([
+        adminClient.from('banners').delete().eq('id', id),
+        adminClient.from('advertisements').delete().eq('id', id),
+      ]);
     } catch (e) {
       console.warn('Supabase delete skipped/failed');
     }
 
     fallbackBanners = fallbackBanners.filter((b) => b.id !== id);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deletedId: id });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Failed to delete banner' }, { status: 500 });
   }
