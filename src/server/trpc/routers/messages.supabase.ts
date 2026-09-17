@@ -10,6 +10,7 @@ import { TRPCError } from '@trpc/server';
 import { emailTemplates } from '@/lib/email-edge';
 import { scanContentForScams } from '@/lib/fraud-detection';
 import { isArtistRole } from '@/lib/artist-filter';
+import { getChatCode } from '@/lib/chat-code';
 
 export const messagesRouter = router({
   getConversationPreviews: protectedProcedure.query(async ({ ctx }) => {
@@ -217,22 +218,36 @@ export const messagesRouter = router({
       // Use admin client to bypass RLS for the insert
       const adminInsertClient = createAdminClient();
 
-      // Try full insert first
+      // Try full insert first with chat_code
+      const computedChatCode = getChatCode(ctx.session.user.id, input.receiverId);
       let insertPayload: Record<string, any> = {
         sender_id: ctx.session.user.id,
         receiver_id: input.receiverId,
         content: input.content,
+        chat_code: computedChatCode,
       };
 
       // Conditionally add optional fields (only if columns exist in the table)
       if (input.jobId) insertPayload.job_id = input.jobId;
       if (input.proposalId) insertPayload.proposal_id = input.proposalId;
 
-      const { data: message, error } = await adminInsertClient
+      let { data: message, error } = await adminInsertClient
         .from('messages')
         .insert(insertPayload)
         .select()
         .single();
+
+      // Graceful fallback if chat_code column doesn't exist yet
+      if (error && (error.message?.includes('chat_code') || error.code === '42703')) {
+        delete insertPayload.chat_code;
+        const retryRes = await adminInsertClient
+          .from('messages')
+          .insert(insertPayload)
+          .select()
+          .single();
+        message = retryRes.data;
+        error = retryRes.error;
+      }
 
       if (error || !message) {
         console.error('[sendMessage] Insert error:', JSON.stringify(error));

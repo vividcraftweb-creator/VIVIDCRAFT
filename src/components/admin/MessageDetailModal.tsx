@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Flag,
   X,
+  History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
@@ -220,6 +221,85 @@ export default function MessageDetailModal({
               {message.content || 'No content available'}
             </div>
           </div>
+
+          {/* Full Conversation History Thread */}
+          {Array.isArray((message as any).conversation) && (message as any).conversation.length > 0 && (
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-blue-400" />
+                  <span className="text-sm font-semibold text-white">
+                    Full Conversation Thread
+                  </span>
+                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">
+                    {(message as any).conversation.length} {(message as any).conversation.length === 1 ? 'Message' : 'Messages'}
+                  </Badge>
+                </div>
+                <span className="text-xs text-slate-400">
+                  Chat Code: <span className="font-mono text-blue-400">{chatCode}</span>
+                </span>
+              </div>
+
+              <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1 border border-white/5 rounded-lg p-3 bg-slate-950/60">
+                {(message as any).conversation.map((threadMsg: any, idx: number) => {
+                  const isCurrent = threadMsg.id === message.id;
+                  const isFromSender = threadMsg.isSender;
+                  const timeFormatted = threadMsg.createdAt
+                    ? new Date(threadMsg.createdAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'N/A';
+
+                  return (
+                    <div
+                      key={threadMsg.id || idx}
+                      className={`p-3 rounded-lg border transition-all ${
+                        isCurrent
+                          ? 'bg-blue-950/40 border-blue-500/40 shadow-sm'
+                          : 'bg-white/[0.03] border-white/5 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              isFromSender ? 'bg-blue-400' : 'bg-green-400'
+                            }`}
+                          />
+                          <span className="font-medium text-white">
+                            {threadMsg.senderName}
+                          </span>
+                          <span className="text-slate-400 text-[11px]">
+                            → {threadMsg.receiverName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+                          {threadMsg.flagged && (
+                            <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-[10px] py-0 h-4">
+                              Flagged
+                            </Badge>
+                          )}
+                          {isCurrent && (
+                            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-[10px] py-0 h-4">
+                              Selected
+                            </Badge>
+                          )}
+                          <span>{timeFormatted}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                        {threadMsg.content || '(empty)'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

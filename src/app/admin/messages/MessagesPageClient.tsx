@@ -16,20 +16,34 @@ import {
   Filter,
   Flag,
   ArrowRight,
+  Copy,
+  X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import MessageDetailModal from '@/components/admin/MessageDetailModal';
 import { getChatCode, matchesChatCode } from '@/lib/chat-code';
 
 export default function AdminMessagesPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams?.get('chatCode') || searchParams?.get('search') || '';
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const codeFromUrl = searchParams?.get('chatCode') || searchParams?.get('search');
+    if (codeFromUrl && codeFromUrl !== searchTerm) {
+      setSearchTerm(codeFromUrl);
+      setCurrentPage(1);
+    }
+  }, [searchParams]);
+
   const pageSize = 20;
 
-  // Get messages from actual database
+  // Get messages from actual database with search query passed to backend
   const {
     data: messagesData,
     isLoading: messagesLoading,
@@ -38,6 +52,7 @@ export default function AdminMessagesPage() {
     page: currentPage,
     limit: pageSize,
     flaggedOnly: showFlaggedOnly,
+    searchQuery: searchTerm.trim() || undefined,
   });
 
   // Get real statistics
@@ -180,12 +195,31 @@ export default function AdminMessagesPage() {
                 type="text"
                 placeholder="Search messages by content, user email, or Chat Code (e.g. CHAT-XXXXXX)..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-8 pr-8 py-1.5 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <Button
-              onClick={() => setShowFlaggedOnly(!showFlaggedOnly)}
+              onClick={() => {
+                setShowFlaggedOnly(!showFlaggedOnly);
+                setCurrentPage(1);
+              }}
               variant={showFlaggedOnly ? 'default' : 'outline'}
               size="sm"
               className={
@@ -287,12 +321,32 @@ export default function AdminMessagesPage() {
                           </div>
                         </td>
                         <td className="py-2 px-3">
-                          <Badge
-                            variant="outline"
-                            className="font-mono text-[11px] bg-blue-500/10 text-blue-400 border-blue-500/30 whitespace-nowrap tracking-wide"
-                          >
-                            {chatCode}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-[11px] bg-blue-500/10 text-blue-400 border-blue-500/30 whitespace-nowrap tracking-wide cursor-pointer hover:bg-blue-500/20 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(chatCode);
+                                toast.success(`Copied chat code: ${chatCode}`);
+                              }}
+                              title="Click to copy Chat Code"
+                            >
+                              {chatCode}
+                            </Badge>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(chatCode);
+                                toast.success(`Copied chat code: ${chatCode}`);
+                              }}
+                              className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
+                              title="Copy Chat Code"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </div>
                         </td>
                         <td className="py-2 px-3">
                           <div className="text-xs text-white font-medium truncate max-w-[150px]">

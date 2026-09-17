@@ -21,6 +21,7 @@ import {
   Settings,
   UserCheck,
   Tag,
+  MessageSquare,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -461,6 +462,17 @@ export default function AdminDashboard() {
                 <Link href="/admin/banners">
                   <Tag className="h-3.5 w-3.5 mr-2 text-amber-400" />
                   Offers &amp; Banners
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                size="sm"
+                className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
+              >
+                <Link href="/admin/messages">
+                  <MessageSquare className="h-3.5 w-3.5 mr-2 text-blue-400" />
+                  Chat Monitoring &amp; Codes
                 </Link>
               </Button>
 

@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { trpc } from '@/utils/trpc';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Lock, Unlock, Loader2, ArrowRight } from 'lucide-react';
+import { MessageSquare, Lock, Unlock, Loader2, ArrowRight, Search, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export default function AdminConnectionsTab() {
   const utils = trpc.useUtils();
   const [page, setPage] = useState(0);
+  const [searchChatCode, setSearchChatCode] = useState('');
 
   const { data, isLoading } = trpc.admin.chatConnections.getConnections.useQuery({
     limit: 50,
@@ -32,12 +34,44 @@ export default function AdminConnectionsTab() {
   const connections = data?.items || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h3 className="text-lg font-medium text-white">Chat Connections</h3>
-          <p className="text-slate-400 text-sm">Manage direct messaging permissions between artists and clients.</p>
+          <h3 className="text-lg font-medium text-white">Chat Connections &amp; Monitoring</h3>
+          <p className="text-slate-400 text-xs">Manage permissions and monitor conversations across the platform.</p>
         </div>
+        <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8">
+          <Link href="/admin/messages" className="flex items-center gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5" />
+            All Messages &amp; Chat Codes
+            <ExternalLink className="h-3 w-3 ml-0.5" />
+          </Link>
+        </Button>
+      </div>
+
+      {/* Chat Code Quick Lookup Box */}
+      <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-3 flex flex-col sm:flex-row gap-2 items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by Chat Code (e.g. CHAT-XXXXXX)..."
+            value={searchChatCode}
+            onChange={(e) => setSearchChatCode(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-900 border border-slate-700/80 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+        <Button
+          asChild
+          size="sm"
+          disabled={!searchChatCode.trim()}
+          className="bg-blue-600/90 hover:bg-blue-600 text-white text-xs h-8 whitespace-nowrap w-full sm:w-auto"
+        >
+          <Link href={`/admin/messages?chatCode=${encodeURIComponent(searchChatCode.trim())}`}>
+            <Search className="h-3.5 w-3.5 mr-1" />
+            Inspect Chat Code
+          </Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
