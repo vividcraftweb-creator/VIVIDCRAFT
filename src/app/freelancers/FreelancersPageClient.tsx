@@ -159,7 +159,7 @@ function FilterContent({
             className="text-xs font-medium text-muted-foreground hover:text-primary transition flex items-center gap-1 cursor-pointer"
           >
             <RotateCcw className="h-3 w-3" />
-            Reset all
+            Clear all filters
           </button>
         )}
       </div>
@@ -818,7 +818,7 @@ export default function FreelancersPageClient({
                 onClick={clearAllFilters}
                 className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 py-2.5 text-xs font-semibold text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
               >
-                Reset All
+                Clear all filters
               </button>
               <button
                 type="button"
