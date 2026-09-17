@@ -53,6 +53,52 @@ function isValidArtist(p: any): boolean {
 }
 
 /**
+ * Safe parser helper for tags that handles null, undefined, raw arrays, or JSON stringified arrays
+ */
+export const parseTags = (data: any): string[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) {
+    return data
+      .flatMap((i) => {
+        if (typeof i === 'string' && (i.startsWith('[') || i.startsWith('{'))) {
+          try {
+            const p = JSON.parse(i);
+            if (Array.isArray(p)) return p.map((x) => String(x).toLowerCase().trim());
+          } catch {}
+        }
+        return [String(i).toLowerCase().trim()];
+      })
+      .filter(Boolean);
+  }
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    if (!trimmed || trimmed === '{}' || trimmed === '[]') return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed)
+        ? parsed.map((i) => String(i).toLowerCase().trim()).filter(Boolean)
+        : [String(parsed).toLowerCase().trim()];
+    } catch {
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        return trimmed
+          .slice(1, -1)
+          .split(',')
+          .map((s) => s.replace(/^["']|["']$/g, '').toLowerCase().trim())
+          .filter(Boolean);
+      }
+      if (trimmed.includes(',')) {
+        return trimmed
+          .split(',')
+          .map((s) => s.replace(/^["']|["']$/g, '').toLowerCase().trim())
+          .filter(Boolean);
+      }
+      return [trimmed.toLowerCase().trim()];
+    }
+  }
+  return [];
+};
+
+/**
  * Populates default array columns and normalizes an artist profile object
  */
 export function normalizeArtistProfile(p: any) {
@@ -60,35 +106,13 @@ export function normalizeArtistProfile(p: any) {
   const key = p.id || p.userId || p.user_id;
   const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
 
-  const stylesArr: string[] = Array.isArray(p.art_styles)
-    ? p.art_styles
-    : Array.isArray(p.mediums)
-    ? p.mediums
-    : typeof p.art_styles === 'string' && p.art_styles.trim()
-    ? p.art_styles.split(',').map((s: string) => s.trim())
-    : typeof p.mediums === 'string' && p.mediums.trim()
-    ? p.mediums.split(',').map((s: string) => s.trim())
-    : [];
+  const rawStyles = p.art_styles ?? p.mediums ?? [];
+  const rawSpecialties = p.art_specialties ?? p.specialties ?? [];
+  const rawServices = p.services_offered ?? p.services ?? [];
 
-  const specialtiesArr: string[] = Array.isArray(p.art_specialties)
-    ? p.art_specialties
-    : Array.isArray(p.specialties)
-    ? p.specialties
-    : typeof p.art_specialties === 'string' && p.art_specialties.trim()
-    ? p.art_specialties.split(',').map((s: string) => s.trim())
-    : typeof p.specialties === 'string' && p.specialties.trim()
-    ? p.specialties.split(',').map((s: string) => s.trim())
-    : [];
-
-  const servicesArr: string[] = Array.isArray(p.services_offered)
-    ? p.services_offered
-    : Array.isArray(p.services)
-    ? p.services
-    : typeof p.services_offered === 'string' && p.services_offered.trim()
-    ? p.services_offered.split(',').map((s: string) => s.trim())
-    : typeof p.services === 'string' && p.services.trim()
-    ? p.services.split(',').map((s: string) => s.trim())
-    : [];
+  const stylesArr = parseTags(rawStyles);
+  const specialtiesArr = parseTags(rawSpecialties);
+  const servicesArr = parseTags(rawServices);
 
   return {
     ...p,
@@ -375,8 +399,8 @@ export default function FreelancersPageClient({
       try {
         const { data: artists, error } = await supabase
           .from('profiles')
-          .select('*')
-          .or('role.eq.artist,role.eq.ARTIST,role.ilike.artist')
+          .select('*, art_styles, art_specialties, services_offered')
+          .or('role.eq.ARTIST,role.eq.artist')
           .order('display_order', { ascending: true });
 
         if (!error && artists && Array.isArray(artists) && artists.length > 0) {
@@ -491,50 +515,60 @@ export default function FreelancersPageClient({
       });
     }
 
-    // Forgiving Category Filtering with Array Matching
+    // Forgiving Category Filtering with Array Matching & Fuzzy Matching
     result = result.filter((artist: any) => {
       const artistStyles: string[] = [
-        ...(artist.art_styles || []),
-        ...(artist.mediums || []),
+        ...parseTags(artist.art_styles),
+        ...parseTags(artist.mediums),
+        ...parseTags(artist.skills),
       ];
       const artistSpecialties: string[] = [
-        ...(artist.art_specialties || []),
-        ...(artist.specialties || []),
+        ...parseTags(artist.art_specialties),
+        ...parseTags(artist.specialties),
+        ...parseTags(artist.skills),
       ];
       const artistServices: string[] = [
-        ...(artist.services_offered || []),
-        ...(artist.services || []),
+        ...parseTags(artist.services_offered),
+        ...parseTags(artist.services),
+        ...parseTags(artist.skills),
       ];
+
+      const fallbackText = `${artist.first_name || ''} ${artist.last_name || ''} ${artist.full_name || ''} ${artist.title || ''} ${artist.bio || ''}`.toLowerCase();
+
+      const matchesTagFuzzy = (target: string, tags: string[]) => {
+        const t = target.toLowerCase().trim();
+        const targetWords = t.split(/[^a-z0-9]+/i).filter((w) => w.length >= 3 && w !== 'and');
+
+        // 1. Check if any parsed tag matches or overlaps with target
+        const tagMatched = tags.some((s: string) => {
+          const a = s.toLowerCase().trim();
+          if (a === t || a.includes(t) || t.includes(a)) return true;
+          const tagWords = a.split(/[^a-z0-9]+/i).filter((w) => w.length >= 3 && w !== 'and');
+          return targetWords.some((tw) => tagWords.some((aw) => aw.includes(tw) || tw.includes(aw)));
+        });
+
+        if (tagMatched) return true;
+
+        // 2. If artist has no tags at all in this category, fuzzy match against fallbackText (bio, title)
+        if (tags.length === 0 && fallbackText) {
+          if (fallbackText.includes(t)) return true;
+          return targetWords.some((tw) => fallbackText.includes(tw));
+        }
+
+        return false;
+      };
 
       const matchesStyle =
         selectedStyles.length === 0 ||
-        selectedStyles.some((style) =>
-          artistStyles.some((s: string) => {
-            const a = s.toLowerCase().trim();
-            const b = style.toLowerCase().trim();
-            return a === b || a.includes(b) || b.includes(a);
-          })
-        );
+        selectedStyles.some((style) => matchesTagFuzzy(style, artistStyles));
 
       const matchesSpecialty =
         selectedSpecialties.length === 0 ||
-        selectedSpecialties.some((spec) =>
-          artistSpecialties.some((s: string) => {
-            const a = s.toLowerCase().trim();
-            const b = spec.toLowerCase().trim();
-            return a === b || a.includes(b) || b.includes(a);
-          })
-        );
+        selectedSpecialties.some((spec) => matchesTagFuzzy(spec, artistSpecialties));
 
       const matchesService =
         selectedServices.length === 0 ||
-        selectedServices.some((service) =>
-          artistServices.some((s: string) => {
-            const a = s.toLowerCase().trim();
-            const b = service.toLowerCase().trim();
-            return a === b || a.includes(b) || b.includes(a);
-          })
-        );
+        selectedServices.some((service) => matchesTagFuzzy(service, artistServices));
 
       return matchesStyle && matchesSpecialty && matchesService;
     });

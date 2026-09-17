@@ -1,3 +1,4 @@
 'use client';
 
-export { default, ArtistsPage, ArtistsPageClient } from '@/app/freelancers/FreelancersPageClient';
+export { default, ArtistsPage, ArtistsPageClient, parseTags, normalizeArtistProfile } from '@/app/freelancers/FreelancersPageClient';
+

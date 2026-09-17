@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, CheckCircle, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { parseTags } from '@/app/freelancers/FreelancersPageClient';
 
 export interface ArtistProfile {
   id: string;
@@ -113,26 +114,9 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
     ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
     : [];
 
-  const rawStyles = (artist.art_styles || artist.mediums) as unknown;
-  const styles: string[] = Array.isArray(rawStyles)
-    ? rawStyles
-    : typeof rawStyles === 'string' && rawStyles.trim()
-    ? rawStyles.split(',').map((s: string) => s.trim()).filter(Boolean)
-    : [];
-
-  const rawSpecialties = (artist.art_specialties || artist.specialties) as unknown;
-  const specialties: string[] = Array.isArray(rawSpecialties)
-    ? rawSpecialties
-    : typeof rawSpecialties === 'string' && rawSpecialties.trim()
-    ? rawSpecialties.split(',').map((s: string) => s.trim()).filter(Boolean)
-    : [];
-
-  const rawServices = (artist.services_offered || artist.services) as unknown;
-  const services: string[] = Array.isArray(rawServices)
-    ? rawServices
-    : typeof rawServices === 'string' && rawServices.trim()
-    ? rawServices.split(',').map((s: string) => s.trim()).filter(Boolean)
-    : [];
+  const styles: string[] = parseTags(artist.art_styles || artist.mediums);
+  const specialties: string[] = parseTags(artist.art_specialties || artist.specialties);
+  const services: string[] = parseTags(artist.services_offered || artist.services);
 
   const hasCategories = styles.length > 0 || specialties.length > 0 || services.length > 0;
 
@@ -228,7 +212,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
               {styles.slice(0, 3).map((item) => (
                 <span
                   key={`style-${item}`}
-                  className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+                  className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 capitalize"
                 >
                   {item}
                 </span>
@@ -236,7 +220,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
               {specialties.slice(0, 3).map((item) => (
                 <span
                   key={`spec-${item}`}
-                  className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300"
+                  className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 capitalize"
                 >
                   {item}
                 </span>
@@ -244,7 +228,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
               {services.slice(0, 2).map((item) => (
                 <span
                   key={`srv-${item}`}
-                  className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+                  className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 capitalize"
                 >
                   {item}
                 </span>
