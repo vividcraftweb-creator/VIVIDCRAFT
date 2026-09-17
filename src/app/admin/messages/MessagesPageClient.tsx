@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import MessageDetailModal from '@/components/admin/MessageDetailModal';
+import { getChatCode, matchesChatCode } from '@/lib/chat-code';
 
 export default function AdminMessagesPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,15 +53,19 @@ export default function AdminMessagesPage() {
     handleRefresh();
   };
 
-  // Filter messages by search term
+  // Filter messages by search term or Chat Code
   const filteredMessages =
     (messagesData?.messages || []).filter((msg) => {
       const searchLower = searchTerm.toLowerCase();
       const senderEmail = msg.sender?.email?.toLowerCase() || '';
       const receiverEmail = msg.receiver?.email?.toLowerCase() || '';
       const content = msg.content?.toLowerCase() || '';
+      const senderId = (msg as any).senderId || msg.sender?.id;
+      const receiverId = (msg as any).receiverId || msg.receiver?.id;
+      const chatCode = getChatCode(senderId, receiverId);
 
       return (
+        matchesChatCode(chatCode, searchTerm) ||
         senderEmail.includes(searchLower) ||
         receiverEmail.includes(searchLower) ||
         content.includes(searchLower)
@@ -173,7 +178,7 @@ export default function AdminMessagesPage() {
               <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search messages..."
+                placeholder="Search messages by content, user email, or Chat Code (e.g. CHAT-XXXXXX)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
@@ -220,6 +225,9 @@ export default function AdminMessagesPage() {
                       Date
                     </th>
                     <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                      Chat Code
+                    </th>
+                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
                       From
                     </th>
                     <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
@@ -254,6 +262,10 @@ export default function AdminMessagesPage() {
                         ? `${receiverProfile.firstName || ''} ${receiverProfile.lastName || ''}`.trim()
                         : null;
 
+                    const senderId = (message as any).senderId || message.sender?.id;
+                    const receiverId = (message as any).receiverId || message.receiver?.id;
+                    const chatCode = getChatCode(senderId, receiverId);
+
                     return (
                       <tr
                         key={message.id}
@@ -273,6 +285,14 @@ export default function AdminMessagesPage() {
                               minute: '2-digit',
                             })}
                           </div>
+                        </td>
+                        <td className="py-2 px-3">
+                          <Badge
+                            variant="outline"
+                            className="font-mono text-[11px] bg-blue-500/10 text-blue-400 border-blue-500/30 whitespace-nowrap tracking-wide"
+                          >
+                            {chatCode}
+                          </Badge>
                         </td>
                         <td className="py-2 px-3">
                           <div className="text-xs text-white font-medium truncate max-w-[150px]">

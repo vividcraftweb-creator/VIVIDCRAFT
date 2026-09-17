@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw } from 'lucide-react';
+import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw, Search, Copy, Check, Tag, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import { createClient } from '@/lib/supabase/client';
+import { getChatCode, matchesChatCode, normalizeChatCode } from '@/lib/chat-code';
 import { parseISO, format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { toast } from 'sonner';
 import { isArtistRole } from '@/lib/artist-filter';
@@ -109,6 +110,20 @@ export default function MessagesView() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Chat Code search & copy state
+  const [chatCodeSearch, setChatCodeSearch] = useState('');
+  const [copiedChatCode, setCopiedChatCode] = useState<string | null>(null);
+
+  const handleCopyChatCode = (code: string) => {
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    setCopiedChatCode(code);
+    toast.success(`Chat Code copied: ${code}`);
+    setTimeout(() => {
+      setCopiedChatCode(null);
+    }, 2000);
+  };
 
   const isWithin7Days = (msg: ChatMessageItem) => {
     const rawDate = msg.created_at || msg.createdAt;
@@ -325,6 +340,59 @@ export default function MessagesView() {
 
     return contactsList;
   }, [contacts, userById, currentUserId, isCurrentArtist, conversationPreviews]);
+
+  // Filter contacts by Chat Code or Name/Email
+  const filteredContacts = useMemo(() => {
+    if (!chatCodeSearch.trim()) return allContacts;
+    const q = chatCodeSearch.trim();
+
+    return allContacts.filter((contact) => {
+      const code = getChatCode(currentUserId, contact.id);
+      if (matchesChatCode(code, q)) return true;
+
+      const contactProfile = recipientProfilesMap[contact.id] || contact.profile;
+      const displayName = getRecipientDisplayName(contact, contactProfile).toLowerCase();
+      const email = (recipientProfilesMap[contact.id]?.email || contact.email || '').toLowerCase();
+      const qLower = q.toLowerCase();
+
+      return displayName.includes(qLower) || email.includes(qLower);
+    });
+  }, [allContacts, chatCodeSearch, currentUserId, recipientProfilesMap]);
+
+  // Directly select the matching conversation upon pressing Enter or Search
+  const handleChatCodeSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const q = chatCodeSearch.trim();
+    if (!q) return;
+
+    // 1. Check for exact or normalized Chat Code match
+    const normalized = normalizeChatCode(q);
+    const exactMatch = allContacts.find((c) => {
+      const code = getChatCode(currentUserId, c.id);
+      return (
+        code.toUpperCase() === normalized.toUpperCase() ||
+        code.toUpperCase() === q.toUpperCase() ||
+        matchesChatCode(code, q)
+      );
+    });
+
+    if (exactMatch) {
+      handleSelectContact(exactMatch);
+      toast.success(`Opened conversation (${getChatCode(currentUserId, exactMatch.id)})`);
+      return;
+    }
+
+    // 2. If single contact matches in filtered list
+    if (filteredContacts.length === 1) {
+      handleSelectContact(filteredContacts[0]);
+      toast.success(`Selected ${getRecipientDisplayName(filteredContacts[0], recipientProfilesMap[filteredContacts[0].id])}`);
+      return;
+    }
+
+    if (filteredContacts.length === 0) {
+      toast.error(`No conversation found matching "${q}"`);
+    }
+  };
 
   // Prevent activeRecipientId from defaulting to currentUser.id upon role or dashboard switching
   useEffect(() => {
@@ -731,208 +799,311 @@ export default function MessagesView() {
       <div className="flex-1 flex gap-6 min-h-0">
         {/* Contacts Sidebar */}
         <Card className="w-1/3 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col min-h-0">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            Conversations
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          <div className="h-full overflow-y-auto">
-            {contactsLoading ? (
-              <div className="space-y-1 p-4">
-                {[...Array(5)].map((_, index) => (
-                  <div key={index} className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-slate-800" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-slate-800 rounded w-3/4" />
-                        <div className="h-3 bg-slate-800 rounded w-1/2" />
+          <CardHeader className="pb-3 border-b border-slate-800/80 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center gap-2 text-base">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                Conversations
+              </CardTitle>
+              {allContacts.length > 0 && (
+                <span className="text-[11px] text-slate-400 font-mono bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                  {allContacts.length}
+                </span>
+              )}
+            </div>
+
+            {/* Chat Code Search Input bar */}
+            <form onSubmit={handleChatCodeSearchSubmit} className="relative w-full">
+              <div className="relative flex items-center">
+                <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Search Chat Code (e.g. CHAT-8A3F12)..."
+                  value={chatCodeSearch}
+                  onChange={(e) => setChatCodeSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleChatCodeSearchSubmit();
+                    }
+                  }}
+                  className="w-full bg-slate-950/90 border-slate-800 text-xs pl-8 pr-16 h-8 rounded-lg placeholder:text-slate-500 text-slate-200 focus:border-amber-500/50 focus:ring-amber-500/20 font-mono"
+                />
+                <div className="absolute right-1 flex items-center gap-1">
+                  {chatCodeSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setChatCodeSearch('')}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-1.5 text-[10px] font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded cursor-pointer"
+                  >
+                    Search
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </CardHeader>
+          <CardContent className="flex-1 p-0 overflow-hidden">
+            <div className="h-full overflow-y-auto">
+              {contactsLoading ? (
+                <div className="space-y-1 p-4">
+                  {[...Array(5)].map((_, index) => (
+                    <div key={index} className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-slate-800" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-slate-800 rounded w-3/4" />
+                          <div className="h-3 bg-slate-800 rounded w-1/2" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : allContacts && allContacts.length > 0 ? (
-              <div className="space-y-1 p-4">
-                {allContacts.map((contact) => {
-                  const preview = conversationPreviews?.[contact.id];
-                  const unreadCount = preview?.unreadCount || 0;
-                  const lastMessage = preview?.lastMessage;
+                  ))}
+                </div>
+              ) : filteredContacts && filteredContacts.length > 0 ? (
+                <div className="space-y-1 p-3">
+                  {filteredContacts.map((contact) => {
+                    const preview = conversationPreviews?.[contact.id];
+                    const unreadCount = preview?.unreadCount || 0;
+                    const lastMessage = preview?.lastMessage;
 
-                  const contactProfile = recipientProfilesMap[contact.id] || contact.profile;
-                  const displayName = getRecipientDisplayName(contact, contactProfile);
-                  const avatarUrl =
-                    recipientProfilesMap[contact.id]?.avatar_url ||
-                    getProfilePictureUrl(contact.id, contact.profile?.profilePicture) ||
-                    undefined;
+                    const contactProfile = recipientProfilesMap[contact.id] || contact.profile;
+                    const displayName = getRecipientDisplayName(contact, contactProfile);
+                    const contactChatCode = getChatCode(currentUserId, contact.id);
+                    const avatarUrl =
+                      recipientProfilesMap[contact.id]?.avatar_url ||
+                      getProfilePictureUrl(contact.id, contact.profile?.profilePicture) ||
+                      undefined;
 
-                  return (
-                    <div
-                      key={contact.id}
-                      className={`p-3 rounded-lg cursor-pointer transition-all ${
-                        selectedUser?.id === contact.id
-                          ? 'bg-primary/20 border border-primary/30'
-                          : 'bg-slate-950/60 hover:bg-slate-900/80 border border-slate-800'
-                      }`}
-                      onClick={() => handleSelectContact(contact)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Avatar className="h-10 w-10 border-2 border-primary/50">
-                            <AvatarImage
-                              src={avatarUrl}
-                              alt={displayName}
-                            />
-                            <AvatarFallback className="bg-primary/30 text-white font-bold">
-                              {displayName.charAt(0).toUpperCase() || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          {unreadCount > 0 && (
-                            <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">
-                              {unreadCount > 9 ? '9+' : unreadCount}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex flex-col min-w-0">
-                              <p className="text-white font-semibold truncate">
-                                {displayName}
-                              </p>
-                              {contact.profile?.companyName && (
-                                <p className="text-xs text-slate-400 truncate">
-                                  {contact.profile.companyName}
+                    return (
+                      <div
+                        key={contact.id}
+                        className={`p-3 rounded-xl cursor-pointer transition-all ${
+                          selectedUser?.id === contact.id
+                            ? 'bg-primary/20 border border-primary/40 shadow-sm'
+                            : 'bg-slate-950/60 hover:bg-slate-900/80 border border-slate-800/80'
+                        }`}
+                        onClick={() => handleSelectContact(contact)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="relative shrink-0">
+                            <Avatar className="h-10 w-10 border-2 border-primary/50">
+                              <AvatarImage
+                                src={avatarUrl}
+                                alt={displayName}
+                              />
+                              <AvatarFallback className="bg-primary/30 text-white font-bold">
+                                {displayName.charAt(0).toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            {unreadCount > 0 && (
+                              <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1 gap-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-white font-semibold truncate text-xs sm:text-sm">
+                                  {displayName}
                                 </p>
+                                <span className="font-mono text-[9px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1 py-0.5 rounded shrink-0">
+                                  {contactChatCode}
+                                </span>
+                              </div>
+                              {lastMessage && (
+                                <span className="text-[10px] text-slate-500 shrink-0">
+                                  {formatTimestamp(lastMessage.createdAt)}
+                                </span>
                               )}
                             </div>
                             {lastMessage && (
-                              <span className="text-xs text-slate-500 ml-2 flex-shrink-0">
-                                {formatTimestamp(lastMessage.createdAt)}
-                              </span>
+                              <p className={`text-xs truncate ${unreadCount > 0 ? 'text-white font-medium' : 'text-slate-400'}`}>
+                                {lastMessage.senderId === session?.session?.user?.id ? 'You: ' : ''}
+                                {lastMessage.content}
+                              </p>
                             )}
                           </div>
-                          {lastMessage && (
-                            <p className={`text-sm truncate ${unreadCount > 0 ? 'text-white font-medium' : 'text-slate-400'}`}>
-                              {lastMessage.senderId === session?.session?.user?.id ? 'You: ' : ''}
-                              {lastMessage.content}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : chatCodeSearch.trim() ? (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                  <Search className="h-8 w-8 text-slate-600 mb-2" />
+                  <p className="text-white font-medium text-xs mb-1">No conversation found</p>
+                  <p className="text-[11px] text-slate-400 mb-3">
+                    No chat matches &quot;{chatCodeSearch}&quot;
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setChatCodeSearch('')}
+                    className="h-7 text-xs border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  >
+                    Clear Search
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                  <MessageSquare className="h-12 w-12 text-slate-600 mb-3" />
+                  <p className="text-white font-medium mb-2">No contacts yet</p>
+                  <p className="text-sm text-slate-400 mb-4 max-w-xs">
+                    Start a conversation by sending a message to an artist from their profile
+                  </p>
+                  <Link href="/freelancers">
+                    <Button className="bg-primary hover:bg-primary/90 text-white">
+                      Browse Artists
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Chat Area */}
+        <Card className="flex-1 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col">
+          {selectedUser ? (
+            <>
+              {/* Chat Header with prominent Chat Code & Copy button */}
+              {(() => {
+                const activeChatCode = getChatCode(currentUserId, selectedUser.id);
+                const jobContext = formatJobContext(selectedUser, chatHistory);
+
+                return (
+                  <CardHeader className="border-b border-slate-800 flex-shrink-0 py-3 sm:py-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-11 w-11 sm:h-12 sm:w-12 border-2 border-primary/50 shrink-0">
+                          <AvatarImage
+                            src={
+                              activeRecipientProfile?.avatar_url ||
+                              recipientProfilesMap[selectedUser.id]?.avatar_url ||
+                              getProfilePictureUrl(selectedUser.id, selectedUser.profile?.profilePicture) ||
+                              undefined
+                            }
+                            alt={getRecipientDisplayName(selectedUser, activeRecipientProfile)}
+                          />
+                          <AvatarFallback className="bg-primary/30 text-white font-bold text-base sm:text-lg">
+                            {getRecipientDisplayName(selectedUser, activeRecipientProfile).charAt(0).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-semibold text-base sm:text-lg truncate">
+                              {getRecipientDisplayName(selectedUser, activeRecipientProfile)}
+                            </h3>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleManualRefresh}
+                              disabled={isRefreshing}
+                              className="h-7 px-2 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 text-xs rounded-md cursor-pointer"
+                              title="Refresh conversation"
+                            >
+                              <RotateCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+                              <span className="hidden sm:inline">Refresh</span>
+                            </Button>
+                          </div>
+                          {(activeRecipientProfile?.email || selectedUser.email) && (
+                            <p className="text-xs text-slate-400 truncate">
+                              {activeRecipientProfile?.email || selectedUser.email}
+                            </p>
+                          )}
+                          {selectedUser.profile?.companyName && (
+                            <p className="text-xs text-slate-400 truncate">
+                              {selectedUser.profile.companyName}
+                            </p>
+                          )}
+                          {jobContext && (
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">
+                              {jobContext.contactName} from{' '}
+                              <Link
+                                href={jobContext.jobLink}
+                                className="text-primary hover:text-primary/80 hover:underline transition-colors"
+                              >
+                                {jobContext.jobTitle}
+                              </Link>
                             </p>
                           )}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                <MessageSquare className="h-12 w-12 text-slate-600 mb-3" />
-                <p className="text-white font-medium mb-2">No contacts yet</p>
-                <p className="text-sm text-slate-400 mb-4 max-w-xs">
-                  Start a conversation by sending a message to an artist from their profile
-                </p>
-                <Link href="/freelancers">
-                  <Button className="bg-primary hover:bg-primary/90 text-white">
-                    Browse Artists
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Chat Area */}
-      <Card className="flex-1 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col">
-        {selectedUser ? (
-          <>
-            {/* Chat Header */}
-            <CardHeader className="border-b border-slate-800 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border-2 border-primary/50">
-                    <AvatarImage
-                      src={
-                        activeRecipientProfile?.avatar_url ||
-                        recipientProfilesMap[selectedUser.id]?.avatar_url ||
-                        getProfilePictureUrl(selectedUser.id, selectedUser.profile?.profilePicture) ||
-                        undefined
-                      }
-                      alt={getRecipientDisplayName(selectedUser, activeRecipientProfile)}
-                    />
-                    <AvatarFallback className="bg-primary/30 text-white font-bold text-lg">
-                      {getRecipientDisplayName(selectedUser, activeRecipientProfile).charAt(0).toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-white font-semibold text-lg">
-                        {getRecipientDisplayName(selectedUser, activeRecipientProfile)}
-                      </h3>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleManualRefresh}
-                        disabled={isRefreshing}
-                        className="h-8 px-2 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 text-xs rounded-md"
-                        title="Refresh conversation"
-                      >
-                        <RotateCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-                        <span className="hidden sm:inline">Refresh</span>
-                      </Button>
-                    </div>
-                    {(activeRecipientProfile?.email || selectedUser.email) && (
-                      <p className="text-xs text-slate-400">
-                        {activeRecipientProfile?.email || selectedUser.email}
-                      </p>
-                    )}
-                    {selectedUser.profile?.companyName && (
-                      <p className="text-sm text-slate-400">
-                        {selectedUser.profile.companyName}
-                      </p>
-                    )}
-                    {(() => {
-                      const jobContext = formatJobContext(selectedUser, chatHistory);
-                      return jobContext ? (
-                        <p className="text-sm text-slate-400 mt-1">
-                          {jobContext.contactName} from{' '}
-                          <Link
-                            href={jobContext.jobLink}
-                            className="text-primary hover:text-primary/80 hover:underline transition-colors"
+                      <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                        {/* PROMINENT CHAT CODE WITH COPY BUTTON */}
+                        <div className="flex items-center gap-2 bg-slate-950/90 border border-amber-500/35 rounded-xl px-3 py-1.5 shadow-sm">
+                          <div className="flex flex-col text-left">
+                            <span className="text-[9px] uppercase tracking-wider font-bold text-amber-500/90 flex items-center gap-1">
+                              <Tag className="w-2.5 h-2.5 text-amber-500" />
+                              Chat Code
+                            </span>
+                            <span className="font-mono font-black text-xs sm:text-sm text-amber-300 tracking-wider">
+                              {activeChatCode}
+                            </span>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopyChatCode(activeChatCode)}
+                            className="h-7 px-2 text-xs text-amber-300 hover:text-white hover:bg-amber-500/20 rounded-lg flex items-center gap-1.5 transition-colors border border-amber-500/25 cursor-pointer"
+                            title="Copy Chat Code"
                           >
-                            {jobContext.jobTitle}
-                          </Link>
-                        </p>
-                      ) : null;
-                    })()}
-                  </div>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-slate-400 hover:text-white hover:bg-slate-800"
-                    >
-                      <MoreHorizontal className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
-                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
-                      Delete conversation
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
-                      Block user
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-800" />
-                    <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
-                      Report user
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
+                            {copiedChatCode === activeChatCode ? (
+                              <>
+                                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                <span className="text-emerald-400 font-bold text-[11px]">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3.5 w-3.5 text-amber-400" />
+                                <span className="font-semibold text-[11px]">Copy Code</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-slate-400 hover:text-white hover:bg-slate-800 h-8 w-8 p-0"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
+                            <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
+                              Delete conversation
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer">
+                              Block user
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-slate-800" />
+                            <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
+                              Report user
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </CardHeader>
+                );
+              })()}
 
             {/* Messages List */}
             <CardContent className="flex-1 p-4 overflow-y-auto">

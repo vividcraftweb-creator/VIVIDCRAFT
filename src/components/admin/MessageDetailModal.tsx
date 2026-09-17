@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { getChatCode } from '@/lib/chat-code';
 
 interface MessageDetailModalProps {
   messageId: string;
@@ -91,6 +92,10 @@ export default function MessageDetailModal({
     ? `${receiverProfile.firstName || ''} ${receiverProfile.lastName || ''}`.trim() || 'Unknown User'
     : message.receiver?.email || 'Unknown User';
 
+  const senderId = (message as any).senderId || message.sender?.id;
+  const receiverId = (message as any).receiverId || message.receiver?.id;
+  const chatCode = getChatCode(senderId, receiverId);
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-slate-900 border-white/10 text-white p-0">
@@ -108,7 +113,12 @@ export default function MessageDetailModal({
                 <MessageSquare className="h-5 w-5 text-blue-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-white">Message Details</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-white">Message Details</h2>
+                  <Badge variant="outline" className="font-mono text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">
+                    {chatCode}
+                  </Badge>
+                </div>
                 <div className="text-xs text-slate-400 mt-0.5 font-mono truncate">
                   ID: {message.id}
                 </div>

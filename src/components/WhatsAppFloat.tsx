@@ -72,13 +72,13 @@ export function WhatsAppFloat({
   return (
     <div
       aria-label="WhatsApp Support Floating Widget"
-      className="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-50 flex items-end sm:items-center gap-2.5 pointer-events-auto select-none group"
+      className="fixed bottom-4 right-3 sm:bottom-5 sm:right-5 z-50 flex items-end sm:items-center gap-2 pointer-events-auto select-none group"
     >
-      {/* Animated Multi-Language Tooltip Bubble */}
+      {/* Compact Animated Multi-Language Tooltip Bubble */}
       {!isDismissed && (
         <div
           role="tooltip"
-          className="relative max-w-[250px] sm:max-w-[300px] p-3 pr-7 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-2xl shadow-black/15 text-slate-800 dark:text-slate-100 transition-all duration-300 animate-in fade-in slide-in-from-right-4"
+          className="relative max-w-[190px] sm:max-w-[220px] p-2 pr-5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-lg text-slate-800 dark:text-slate-100 transition-all duration-300 animate-in fade-in slide-in-from-right-3"
         >
           {/* Dismiss button */}
           <button
@@ -88,25 +88,25 @@ export function WhatsAppFloat({
               setIsDismissed(true);
             }}
             aria-label="Dismiss message"
-            className="absolute top-2 right-2 p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="absolute top-1 right-1 p-0.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3 h-3" />
           </button>
 
           {/* Language indicator badge */}
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="relative flex h-2 w-2">
+          <div className="flex items-center gap-1 mb-0.5">
+            <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#25D366]" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#25D366]" />
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               {currentMsg.label}
             </span>
           </div>
 
           {/* Rotating Text with smooth fade transition */}
           <p
-            className={`text-xs leading-relaxed font-medium transition-opacity duration-200 ${
+            className={`text-[11px] sm:text-xs leading-snug font-medium text-slate-700 dark:text-slate-200 line-clamp-3 transition-opacity duration-200 ${
               isFading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
             }`}
           >
@@ -114,24 +114,24 @@ export function WhatsAppFloat({
           </p>
 
           {/* Triangle arrow pointer towards the WhatsApp button */}
-          <div className="hidden sm:block absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white/95 dark:bg-slate-900/95 border-t border-r border-slate-200/90 dark:border-slate-800 rotate-45 pointer-events-none" />
+          <div className="hidden sm:block absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-white/95 dark:bg-slate-900/95 border-t border-r border-slate-200/80 dark:border-slate-800 rotate-45 pointer-events-none" />
         </div>
       )}
 
-      {/* Floating WhatsApp Action Button */}
+      {/* Compact Floating WhatsApp Action Button (44px - 48px) */}
       <a
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat with us on WhatsApp"
-        className="relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white shadow-xl shadow-emerald-600/35 hover:shadow-emerald-600/50 hover:scale-110 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-emerald-400/40 cursor-pointer shrink-0"
+        className="relative flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/40 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 cursor-pointer shrink-0"
       >
         {/* Subtle breathing glow ring */}
         <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-30 animate-ping -z-10" />
 
         {/* WhatsApp Official Icon SVG */}
         <svg
-          className="w-8 h-8 sm:w-9 sm:h-9 fill-current filter drop-shadow"
+          className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current filter drop-shadow"
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
         >
