@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { createClient } from '@/lib/supabase/client';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import ArtistCard from '@/components/artists/ArtistCard';
+import { isArtistProfile } from '@/lib/artist-filter';
 import {
   ARTIST_MEDIUMS,
   ARTIST_SPECIALTIES,
@@ -68,8 +69,10 @@ function extractArtistTags(val: unknown): string[] {
  */
 function tagMatches(artistTag: string, filterTag: string): boolean {
   if (!artistTag || !filterTag) return false;
-  if (artistTag === filterTag) return true;
-  return artistTag.includes(filterTag) || filterTag.includes(artistTag);
+  const a = normalizeTag(artistTag);
+  const b = normalizeTag(filterTag);
+  if (a === b) return true;
+  return a.includes(b) || b.includes(a);
 }
 
 interface FilterContentProps {
@@ -307,6 +310,9 @@ export default function FreelancersPageClient({
   const [profiles, setProfiles] = useState<any[]>(() => {
     return Array.isArray(initialProfiles) ? initialProfiles : [];
   });
+  const [allKnownProfiles, setAllKnownProfiles] = useState<any[]>(() => {
+    return Array.isArray(initialProfiles) ? initialProfiles : [];
+  });
   const [loading, setLoading] = useState(initialProfiles.length === 0);
 
   // Multi-select category filter states
@@ -332,20 +338,93 @@ export default function FreelancersPageClient({
     setMounted(true);
   }, []);
 
-  // 1. Direct Supabase Query: Fetch all artists directly from 'profiles' table
+  // 1. Direct Supabase Query: Fetch artists from 'profiles' table using .contains() on array columns
   useEffect(() => {
     const supabase = createClient();
 
-    async function loadAllProfiles() {
+    async function loadFilteredProfiles() {
       setLoading(true);
       try {
-        const { data: artists, error } = await supabase
+        const hasCategoryFilters =
+          selectedStyles.length > 0 ||
+          selectedSpecialties.length > 0 ||
+          selectedServices.length > 0;
+
+        // Base query strictly targeting active artists
+        let query = supabase
           .from('profiles')
           .select('*')
-          .eq('role', 'artist')
-          .order('display_order', { ascending: true });
+          .or('role.eq.artist,role.eq.ARTIST,role.ilike.artist');
 
-        if (error) {
+        // Apply array column filters (.contains) instead of .eq()
+        // Ensure string matching is exact-trimmed to match category strings stored during signup
+        if (hasCategoryFilters) {
+          if (selectedStyles.length > 0) {
+            for (const style of selectedStyles) {
+              const trimmed = style.trim();
+              if (trimmed) {
+                query = query.contains('mediums', [trimmed]);
+              }
+            }
+          }
+
+          if (selectedSpecialties.length > 0) {
+            for (const specialty of selectedSpecialties) {
+              const trimmed = specialty.trim();
+              if (trimmed) {
+                query = query.contains('specialties', [trimmed]);
+              }
+            }
+          }
+
+          if (selectedServices.length > 0) {
+            for (const service of selectedServices) {
+              const trimmed = service.trim();
+              if (trimmed) {
+                query = query.contains('services', [trimmed]);
+              }
+            }
+          }
+        }
+
+        query = query.order('display_order', { ascending: true });
+
+        let { data: artists, error } = await query;
+
+        // Fallback: If strict DB array .contains() returned 0 results because of case-sensitivity
+        // or column naming (mediums vs art_styles), query all active artists and apply
+        // forgiving case-insensitive / trimmed matching to prevent false empty results!
+        if (hasCategoryFilters && (!artists || artists.length === 0)) {
+          const { data: allArtists, error: allErr } = await supabase
+            .from('profiles')
+            .select('*')
+            .or('role.eq.artist,role.eq.ARTIST,role.ilike.artist')
+            .order('display_order', { ascending: true });
+
+          if (!allErr && allArtists && allArtists.length > 0) {
+            const allSelected = [
+              ...selectedStyles,
+              ...selectedSpecialties,
+              ...selectedServices,
+            ].map(normalizeTag).filter(Boolean);
+
+            artists = allArtists.filter((p: any) => {
+              const tags = [
+                ...extractArtistTags(p.mediums),
+                ...extractArtistTags(p.art_styles),
+                ...extractArtistTags(p.specialties),
+                ...extractArtistTags(p.art_specialties),
+                ...extractArtistTags(p.services),
+                ...extractArtistTags(p.services_offered),
+                ...extractArtistTags(p.other_categories),
+                ...extractArtistTags(p.skills),
+              ];
+              return allSelected.some((sel) => tags.some((t) => tagMatches(t, sel)));
+            });
+          }
+        }
+
+        if (error && !artists) {
           console.error('Error fetching artists from profiles:', error);
           if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
             setProfiles(initialProfiles);
@@ -356,6 +435,7 @@ export default function FreelancersPageClient({
         if (artists && Array.isArray(artists)) {
           const profilesMap = new Map<string, any>();
           for (const p of artists) {
+            if (!isArtistProfile(p)) continue;
             const key = p.id || p.userId || p.user_id;
             if (key) {
               const avatar =
@@ -366,6 +446,9 @@ export default function FreelancersPageClient({
                 userId: p.user_id || p.userId || key,
                 avatar_url: avatar,
                 profile_picture: avatar,
+                mediums: p.mediums || p.art_styles || [],
+                specialties: p.specialties || p.art_specialties || [],
+                services: p.services || p.services_offered || [],
                 art_styles: p.art_styles || p.mediums || [],
                 art_specialties: p.art_specialties || p.specialties || [],
                 services_offered: p.services_offered || p.services || [],
@@ -377,6 +460,11 @@ export default function FreelancersPageClient({
             (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
           );
           setProfiles(sorted);
+
+          // If no filters active, update allKnownProfiles to ensure all category options remain available
+          if (!hasCategoryFilters) {
+            setAllKnownProfiles(sorted);
+          }
         } else if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
           setProfiles(initialProfiles);
         }
@@ -390,7 +478,7 @@ export default function FreelancersPageClient({
       }
     }
 
-    loadAllProfiles();
+    loadFilteredProfiles();
 
     // Subscribe to realtime database updates
     const channel = supabase
@@ -399,7 +487,7 @@ export default function FreelancersPageClient({
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
-          loadAllProfiles();
+          loadFilteredProfiles();
         }
       )
       .subscribe();
@@ -407,41 +495,41 @@ export default function FreelancersPageClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [selectedStyles, selectedSpecialties, selectedServices]);
 
-  // Compute available category options dynamically from constants + loaded profiles
+  // Compute available category options dynamically from constants + all known profiles
   const availableStyles = useMemo(() => {
     const set = new Set<string>(ARTIST_MEDIUMS);
-    profiles.forEach((p) => {
+    allKnownProfiles.forEach((p) => {
       const arr = p.art_styles || p.mediums;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
-  }, [profiles]);
+  }, [allKnownProfiles]);
 
   const availableSpecialties = useMemo(() => {
     const set = new Set<string>(ARTIST_SPECIALTIES);
-    profiles.forEach((p) => {
+    allKnownProfiles.forEach((p) => {
       const arr = p.art_specialties || p.specialties;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
-  }, [profiles]);
+  }, [allKnownProfiles]);
 
   const availableServices = useMemo(() => {
     const set = new Set<string>(ARTIST_SERVICES);
-    profiles.forEach((p) => {
+    allKnownProfiles.forEach((p) => {
       const arr = p.services_offered || p.services;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
-  }, [profiles]);
+  }, [allKnownProfiles]);
 
   // Category selection toggle handlers
   const toggleStyle = (val: string) => {
@@ -480,7 +568,7 @@ export default function FreelancersPageClient({
     selectedStyles.length + selectedSpecialties.length + selectedServices.length;
   const hasActiveFilters = totalActiveFilters > 0;
 
-  // 2. Filter profiles dynamically with forgiving overlap logic while strictly preserving display_order ASC
+  // Filter profiles dynamically while strictly preserving display_order ASC
   const displayedArtists = useMemo(() => {
     let result = profiles;
 
@@ -503,7 +591,7 @@ export default function FreelancersPageClient({
       });
     }
 
-    // Selected filter tags across Medium/Art Style, Specialty/Art Type, and Services Offered
+    // Selected filter tags across categories
     const allSelectedTags = [
       ...selectedStyles,
       ...selectedSpecialties,
@@ -512,27 +600,24 @@ export default function FreelancersPageClient({
       .map(normalizeTag)
       .filter(Boolean);
 
-    // Forgiving overlap logic: check if selected filter tags match ANY of the artist's tags
+    // Ensure forgiving overlap matching with case-insensitive and trimmed comparison
     if (allSelectedTags.length > 0) {
       result = result.filter((artist: any) => {
-        // Collect all artist tags across columns with safe fallback for null/empty/varied keys
         const artistTags: string[] = [
-          ...extractArtistTags(artist.art_styles),
           ...extractArtistTags(artist.mediums),
-          ...extractArtistTags(artist.art_specialties),
+          ...extractArtistTags(artist.art_styles),
           ...extractArtistTags(artist.specialties),
-          ...extractArtistTags(artist.services_offered),
+          ...extractArtistTags(artist.art_specialties),
           ...extractArtistTags(artist.services),
+          ...extractArtistTags(artist.services_offered),
           ...extractArtistTags(artist.other_categories),
           ...extractArtistTags(artist.skills),
         ];
 
-        // Safe fallback: If an artist has no tags at all, do not crash; they don't match active tag filters
         if (artistTags.length === 0) {
           return false;
         }
 
-        // Soft overlap: match if ANY selected tag matches ANY artist tag
         return allSelectedTags.some((selectedTag) =>
           artistTags.some((artistTag) => tagMatches(artistTag, selectedTag))
         );
