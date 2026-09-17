@@ -100,18 +100,32 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     };
 
-    // Insert into Supabase advertisements table ONLY
+    // Insert into Supabase advertisements table ONLY with validated columns
     try {
       const adminClient = createAdminClient();
+      const insertPayload: any = {
+        title: newBannerRecord.title,
+        image_url: newBannerRecord.image_url,
+        offer_code: newBannerRecord.offer_code,
+        target_route: newBannerRecord.target_route || newBannerRecord.link_url || '/gallery',
+        link_url: newBannerRecord.link_url || '/gallery',
+        badge: newBannerRecord.badge || 'Special Offer',
+        cta_text: newBannerRecord.cta_text || 'Get Offer',
+        category: newBannerRecord.badge || 'Special Offer',
+        is_active: newBannerRecord.is_active,
+        display_order: newBannerRecord.display_order,
+      };
+
       const { data: aData, error: aErr } = await adminClient
         .from('advertisements')
-        .insert([newBannerRecord])
+        .insert([insertPayload])
         .select()
         .single();
 
       if (!aErr && aData) {
         const mapped = {
           ...aData,
+          subtitle: subtitle?.trim() || aData.subtitle || '',
           link_url: aData.target_route || aData.link_url || '/gallery',
           target_route: aData.target_route || aData.link_url || '/gallery',
         };
@@ -150,8 +164,10 @@ export async function PATCH(req: Request) {
       if (typeof is_active === 'boolean') updatePayload.is_active = is_active;
       if (offer_code) updatePayload.offer_code = offer_code.trim().toUpperCase();
       if (title) updatePayload.title = title.trim();
-      if (badge) updatePayload.badge = badge.trim();
-      if (subtitle !== undefined) updatePayload.subtitle = subtitle.trim();
+      if (badge) {
+        updatePayload.badge = badge.trim();
+        updatePayload.category = badge.trim();
+      }
       if (link_url) {
         updatePayload.link_url = link_url.trim();
         updatePayload.target_route = link_url.trim();
@@ -169,6 +185,7 @@ export async function PATCH(req: Request) {
       if (!resAds.error && resAds.data) {
         updatedRecord = {
           ...resAds.data,
+          subtitle: subtitle?.trim() || resAds.data.subtitle || '',
           link_url: resAds.data.target_route || resAds.data.link_url || '/gallery',
           target_route: resAds.data.target_route || resAds.data.link_url || '/gallery',
         };

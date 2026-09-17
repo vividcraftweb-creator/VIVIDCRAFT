@@ -247,15 +247,16 @@ export default function AdminBannersTab() {
     setSubmitting(true);
 
     try {
-      const bannerPayload = {
+      // Clean payload with only columns verified in Supabase advertisements table
+      const bannerPayload: any = {
         title: formTitle.trim(),
-        subtitle: formSubtitle.trim(),
         image_url: formImageUrl.trim(),
         offer_code: code,
         target_route: formLinkUrl.trim() || '/gallery',
         link_url: formLinkUrl.trim() || '/gallery',
         badge: formBadge.trim() || 'Special Offer',
         cta_text: 'Get Offer',
+        category: formBadge.trim() || 'Special Offer',
         is_active: formIsActive,
         display_order: banners.length + 1,
       };
@@ -263,6 +264,7 @@ export default function AdminBannersTab() {
       let createdBanner: BannerItem = {
         id: `banner-${Date.now()}`,
         ...bannerPayload,
+        subtitle: formSubtitle.trim(),
         created_at: new Date().toISOString(),
       };
 
@@ -278,6 +280,7 @@ export default function AdminBannersTab() {
         if (!dbErr && dbData) {
           createdBanner = {
             ...dbData,
+            subtitle: formSubtitle.trim() || dbData.subtitle || '',
             link_url: dbData.target_route || dbData.link_url || '/gallery',
             target_route: dbData.target_route || dbData.link_url || '/gallery',
           };
@@ -291,13 +294,17 @@ export default function AdminBannersTab() {
         const res = await fetch('/api/admin/banners', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bannerPayload),
+          body: JSON.stringify({
+            ...bannerPayload,
+            subtitle: formSubtitle.trim(),
+          }),
         });
         if (res.ok) {
           const json = await res.json();
           if (json?.banner) {
             createdBanner = {
               ...json.banner,
+              subtitle: formSubtitle.trim() || json.banner.subtitle || '',
               link_url: json.banner.target_route || json.banner.link_url || '/gallery',
               target_route: json.banner.target_route || json.banner.link_url || '/gallery',
             };
