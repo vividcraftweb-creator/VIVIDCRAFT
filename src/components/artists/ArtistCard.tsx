@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, CheckCircle, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { parseTags } from '@/app/freelancers/FreelancersPageClient';
+import { normalizeTags, parseTags } from '@/app/freelancers/FreelancersPageClient';
 
 export interface ArtistProfile {
   id: string;
@@ -114,9 +114,9 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
     ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
     : [];
 
-  const styles: string[] = parseTags(artist.art_styles);
-  const specialties: string[] = parseTags(artist.art_specialties);
-  const services: string[] = parseTags(artist.services_offered);
+  const styles: string[] = normalizeTags(artist.art_styles);
+  const specialties: string[] = normalizeTags(artist.art_specialties);
+  const services: string[] = normalizeTags(artist.services_offered);
 
   const hasCategories = styles.length > 0 || specialties.length > 0 || services.length > 0;
 

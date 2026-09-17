@@ -53,31 +53,33 @@ function isValidArtist(p: any): boolean {
 }
 
 /**
- * Safe parser helper for tags that handles null, undefined, raw arrays, or JSON stringified arrays
+ * Safe parser helper for tags that handles null, undefined, raw arrays, or PostgreSQL array literal formats safely
  */
-export const parseTags = (data: any): string[] => {
-  if (!data) return [];
-  if (Array.isArray(data)) {
-    return data
-      .flatMap((i) => {
-        if (typeof i === 'string' && (i.includes(',') || i.includes('[') || i.includes('{'))) {
-          return i.replace(/["\[\]{}]/g, '').split(',');
+export const normalizeTags = (tags: any): string[] => {
+  if (!tags) return [];
+  if (Array.isArray(tags)) {
+    return tags
+      .flatMap((t) => {
+        if (typeof t === 'string' && (t.includes('{') || t.includes('['))) {
+          return t.replace(/[\{\}\"\[\]]/g, '').split(',');
         }
-        return [String(i)];
+        return [String(t)];
       })
-      .map((s) => String(s).trim().toLowerCase())
+      .map((t) => String(t).toLowerCase().trim())
       .filter(Boolean);
   }
-  if (typeof data === 'string') {
-    const cleaned = data.replace(/["\[\]{}]/g, '').trim();
-    if (!cleaned) return [];
-    return cleaned
+  if (typeof tags === 'string') {
+    // Clean PostgreSQL array literal format e.g. '{"Oil Painting","Acrylic Painting"}'
+    return tags
+      .replace(/[\{\}\"\[\]]/g, '')
       .split(',')
-      .map((s) => s.trim().toLowerCase())
+      .map((t) => t.toLowerCase().trim())
       .filter(Boolean);
   }
   return [];
 };
+
+export const parseTags = normalizeTags;
 
 /**
  * Populates default array columns and normalizes an artist profile object
@@ -87,9 +89,9 @@ export function normalizeArtistProfile(p: any) {
   const key = p.id || p.userId || p.user_id;
   const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
 
-  const stylesArr = parseTags(p.art_styles);
-  const specialtiesArr = parseTags(p.art_specialties);
-  const servicesArr = parseTags(p.services_offered);
+  const stylesArr = normalizeTags(p.art_styles);
+  const specialtiesArr = normalizeTags(p.art_specialties);
+  const servicesArr = normalizeTags(p.services_offered);
 
   return {
     ...p,
@@ -360,6 +362,14 @@ export default function FreelancersPageClient({
     setMounted(true);
   }, []);
 
+  // Ensure hydration synchronization if initialProfiles is provided or updated
+  useEffect(() => {
+    if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
+      setProfiles(initialProfiles.map(normalizeArtistProfile).filter(Boolean));
+      setLoading(false);
+    }
+  }, [initialProfiles]);
+
   // Fetch profiles on client only if initialProfiles was empty, never overriding populated initialProfiles
   useEffect(() => {
     if (profiles.length > 0) {
@@ -489,46 +499,46 @@ export default function FreelancersPageClient({
       });
     }
 
-    // 1. FORGIVING CATEGORY FILTERING: MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED TAGS (OR FILTER)
+    // 1. SAFE ARRAY FILTERING & CATEGORY MATCHING: MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED TAGS (OR FILTER)
     result = result.filter((artist: any) => {
-      const artistStyles = parseTags(artist.art_styles);
-      const artistSpecs = parseTags(artist.art_specialties);
-      const artistServices = parseTags(artist.services_offered);
+      const styles = normalizeTags(artist.art_styles);
+      const specialties = normalizeTags(artist.art_specialties);
+      const services = normalizeTags(artist.services_offered);
 
       // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED STYLES
-      const matchesStyle =
+      const matchStyle =
         selectedStyles.length === 0 ||
         selectedStyles.some((s) => {
           const target = s.toLowerCase().trim();
           return (
-            artistStyles.includes(target) ||
-            artistStyles.some((item) => item.includes(target) || target.includes(item))
+            styles.includes(target) ||
+            styles.some((item) => item.includes(target) || target.includes(item))
           );
         });
 
       // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED SPECIALTIES
-      const matchesSpecialty =
+      const matchSpec =
         selectedSpecialties.length === 0 ||
         selectedSpecialties.some((s) => {
           const target = s.toLowerCase().trim();
           return (
-            artistSpecs.includes(target) ||
-            artistSpecs.some((item) => item.includes(target) || target.includes(item))
+            specialties.includes(target) ||
+            specialties.some((item) => item.includes(target) || target.includes(item))
           );
         });
 
       // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED SERVICES
-      const matchesService =
+      const matchServ =
         selectedServices.length === 0 ||
         selectedServices.some((s) => {
           const target = s.toLowerCase().trim();
           return (
-            artistServices.includes(target) ||
-            artistServices.some((item) => item.includes(target) || target.includes(item))
+            services.includes(target) ||
+            services.some((item) => item.includes(target) || target.includes(item))
           );
         });
 
-      return matchesStyle && matchesSpecialty && matchesService;
+      return matchStyle && matchSpec && matchServ;
     });
 
     // 3. ABSOLUTE GUARDRAILS: Strictly leave display_order manual sorting untouched
