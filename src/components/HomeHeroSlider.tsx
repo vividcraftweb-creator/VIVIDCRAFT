@@ -45,30 +45,15 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
     async function loadBanners() {
       try {
         const supabase = createClient();
-        // 1. Query ONLY advertisements table
-        let { data, error } = await supabase
+        // Simplified query to avoid 400 Bad Request
+        const { data, error } = await supabase
           .from('advertisements')
-          .select('id, title, subtitle, image_url, offer_code, target_route, link_url, is_active, display_order')
-          .eq('is_active', true)
-          .order('display_order', { ascending: true })
+          .select('*')
           .order('created_at', { ascending: false });
 
-        // Fallback if target_route column is not yet migrated on remote instance
-        if (error && (error.code === '42703' || error.message?.includes('target_route'))) {
-          const fallbackRes = await supabase
-            .from('advertisements')
-            .select('*')
-            .eq('is_active', true)
-            .order('display_order', { ascending: true })
-            .order('created_at', { ascending: false });
-          if (!fallbackRes.error) {
-            data = fallbackRes.data;
-            error = null;
-          }
-        }
-
         if (!error && Array.isArray(data) && isMounted) {
-          const mapped: BannerSlide[] = data.map((b: any) => ({
+          const activeOnly = data.filter((b: any) => b.is_active !== false);
+          const mapped: BannerSlide[] = activeOnly.map((b: any) => ({
             id: b.id,
             badge: b.badge || 'Special Offer',
             title: b.title || '',
@@ -92,20 +77,22 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
         if (res.ok) {
           const json = await res.json();
           if (json?.banners && Array.isArray(json.banners) && isMounted) {
-            const mapped: BannerSlide[] = json.banners.map((b: any) => ({
-              id: b.id,
-              badge: b.badge || 'Special Offer',
-              title: b.title || '',
-              subtitle: b.subtitle || '',
-              cta_text: b.cta_text || 'Get Offer',
-              link_url: b.target_route || b.link_url || '/gallery',
-              target_route: b.target_route || b.link_url || '/gallery',
-              image_url: b.image_url || '',
-              accent: b.accent || 'from-amber-500/20 to-orange-500/10',
-              offer_code: b.offer_code || '',
-              is_active: b.is_active !== false,
-              display_order: b.display_order ?? 0,
-            }));
+            const mapped: BannerSlide[] = json.banners
+              .filter((b: any) => b.is_active !== false)
+              .map((b: any) => ({
+                id: b.id,
+                badge: b.badge || 'Special Offer',
+                title: b.title || '',
+                subtitle: b.subtitle || '',
+                cta_text: b.cta_text || 'Get Offer',
+                link_url: b.target_route || b.link_url || '/gallery',
+                target_route: b.target_route || b.link_url || '/gallery',
+                image_url: b.image_url || '',
+                accent: b.accent || 'from-amber-500/20 to-orange-500/10',
+                offer_code: b.offer_code || '',
+                is_active: b.is_active !== false,
+                display_order: b.display_order ?? 0,
+              }));
             setBanners(mapped);
           }
         }

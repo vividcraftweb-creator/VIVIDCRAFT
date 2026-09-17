@@ -31,20 +31,10 @@ export function generateUniqueOfferCode(): string {
 export async function GET() {
   try {
     const adminClient = createAdminClient();
-    let result = await adminClient
+    const result = await adminClient
       .from('advertisements')
-      .select('id, title, subtitle, image_url, offer_code, target_route, link_url, is_active, display_order')
-      .order('display_order', { ascending: true })
+      .select('*')
       .order('created_at', { ascending: false });
-
-    // If target_route column is not yet present on remote DB, fallback to select('*')
-    if (result.error && (result.error.code === '42703' || result.error.message?.includes('target_route'))) {
-      result = await adminClient
-        .from('advertisements')
-        .select('*')
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: false });
-    }
 
     // When the table exists, return real live database rows (even if empty)
     if (!result.error && Array.isArray(result.data)) {

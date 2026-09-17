@@ -6,24 +6,14 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const supabase = await createClient();
-    let result = await supabase
+    const result = await supabase
       .from('advertisements')
-      .select('id, title, subtitle, image_url, offer_code, target_route, link_url, is_active, display_order')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true })
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (result.error && (result.error.code === '42703' || result.error.message?.includes('target_route'))) {
-      result = await supabase
-        .from('advertisements')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: false });
-    }
-
     if (!result.error && Array.isArray(result.data)) {
-      const mapped = result.data.map((item: any) => ({
+      const active = result.data.filter((b: any) => b.is_active !== false);
+      const mapped = active.map((item: any) => ({
         ...item,
         link_url: item.target_route || item.link_url || '/gallery',
         target_route: item.target_route || item.link_url || '/gallery',
