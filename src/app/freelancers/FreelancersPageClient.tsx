@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   Shield,
@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { createClient } from '@/lib/supabase/client';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 import ArtistCard from '@/components/artists/ArtistCard';
-import { isArtistProfile } from '@/lib/artist-filter';
+import { isArtistProfile, isArtistRole } from '@/lib/artist-filter';
 import {
   ARTIST_MEDIUMS,
   ARTIST_SPECIALTIES,
@@ -32,6 +32,24 @@ function getAvatarUrl(userId?: string, raw?: string | null): string | undefined 
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
   return getProfilePictureUrl(userId, trimmed);
+}
+
+/**
+ * Validates that a profile is a legitimate artist (not a client or admin)
+ */
+function isValidArtist(p: any): boolean {
+  if (!p) return false;
+  const role = String(p.role || p.user_type || p.account_type || '').toLowerCase().trim();
+  if (
+    role === 'client' ||
+    role.includes('client') ||
+    role === 'buyer' ||
+    role === 'admin' ||
+    role === 'employer'
+  ) {
+    return false;
+  }
+  return isArtistProfile(p) || isArtistRole(p.role) || role === 'artist' || role === 'freelancer';
 }
 
 /**
@@ -307,13 +325,22 @@ export default function FreelancersPageClient({
 }) {
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Initial profiles passed from the server
   const [profiles, setProfiles] = useState<any[]>(() => {
     return Array.isArray(initialProfiles) ? initialProfiles : [];
   });
+
+  // Keep master list of all known profiles so category options remain populated and as a persistent fallback
   const [allKnownProfiles, setAllKnownProfiles] = useState<any[]>(() => {
     return Array.isArray(initialProfiles) ? initialProfiles : [];
   });
-  const [loading, setLoading] = useState(initialProfiles.length === 0);
+
+  // Track if this is the very first render cycle
+  const isFirstMount = useRef(true);
+
+  // Loading indicator for active filtering queries
+  const [isFilterPending, setIsFilterPending] = useState(false);
 
   // Multi-select category filter states
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
@@ -338,19 +365,40 @@ export default function FreelancersPageClient({
     setMounted(true);
   }, []);
 
-  // 1. Direct Supabase Query: Fetch artists from 'profiles' table using .contains() on array columns
+  const totalActiveFilters =
+    selectedStyles.length + selectedSpecialties.length + selectedServices.length;
+  const hasActiveFilters = totalActiveFilters > 0;
+
+  // Supabase filtering query effect: only runs when filters are intentionally applied by the user
   useEffect(() => {
+    // 1. On initial mount with no active filters, strictly preserve the server-provided initialProfiles
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
+        setProfiles(initialProfiles);
+        setAllKnownProfiles(initialProfiles);
+        return;
+      }
+    }
+
+    // 2. If no filters are selected, restore all active artists as normal without overriding with empty array
+    if (!hasActiveFilters) {
+      if (allKnownProfiles.length > 0) {
+        setProfiles(allKnownProfiles);
+        return;
+      }
+      if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
+        setProfiles(initialProfiles);
+        return;
+      }
+    }
+
+    // 3. When active filters are applied, query Supabase using .contains() on array columns
     const supabase = createClient();
 
     async function loadFilteredProfiles() {
-      setLoading(true);
+      setIsFilterPending(true);
       try {
-        const hasCategoryFilters =
-          selectedStyles.length > 0 ||
-          selectedSpecialties.length > 0 ||
-          selectedServices.length > 0;
-
-        // Base query strictly targeting active artists
         let query = supabase
           .from('profiles')
           .select('*')
@@ -358,31 +406,29 @@ export default function FreelancersPageClient({
 
         // Apply array column filters (.contains) instead of .eq()
         // Ensure string matching is exact-trimmed to match category strings stored during signup
-        if (hasCategoryFilters) {
-          if (selectedStyles.length > 0) {
-            for (const style of selectedStyles) {
-              const trimmed = style.trim();
-              if (trimmed) {
-                query = query.contains('mediums', [trimmed]);
-              }
+        if (selectedStyles.length > 0) {
+          for (const style of selectedStyles) {
+            const trimmed = style.trim();
+            if (trimmed) {
+              query = query.contains('mediums', [trimmed]);
             }
           }
+        }
 
-          if (selectedSpecialties.length > 0) {
-            for (const specialty of selectedSpecialties) {
-              const trimmed = specialty.trim();
-              if (trimmed) {
-                query = query.contains('specialties', [trimmed]);
-              }
+        if (selectedSpecialties.length > 0) {
+          for (const specialty of selectedSpecialties) {
+            const trimmed = specialty.trim();
+            if (trimmed) {
+              query = query.contains('specialties', [trimmed]);
             }
           }
+        }
 
-          if (selectedServices.length > 0) {
-            for (const service of selectedServices) {
-              const trimmed = service.trim();
-              if (trimmed) {
-                query = query.contains('services', [trimmed]);
-              }
+        if (selectedServices.length > 0) {
+          for (const service of selectedServices) {
+            const trimmed = service.trim();
+            if (trimmed) {
+              query = query.contains('services', [trimmed]);
             }
           }
         }
@@ -392,23 +438,21 @@ export default function FreelancersPageClient({
         let { data: artists, error } = await query;
 
         // Fallback: If strict DB array .contains() returned 0 results because of case-sensitivity
-        // or column naming (mediums vs art_styles), query all active artists and apply
+        // or column naming (mediums vs art_styles), use allKnownProfiles / initialProfiles with
         // forgiving case-insensitive / trimmed matching to prevent false empty results!
-        if (hasCategoryFilters && (!artists || artists.length === 0)) {
-          const { data: allArtists, error: allErr } = await supabase
-            .from('profiles')
-            .select('*')
-            .or('role.eq.artist,role.eq.ARTIST,role.ilike.artist')
-            .order('display_order', { ascending: true });
+        if (!artists || artists.length === 0) {
+          const sourceList =
+            allKnownProfiles.length > 0 ? allKnownProfiles : (initialProfiles || []);
+          const allSelected = [
+            ...selectedStyles,
+            ...selectedSpecialties,
+            ...selectedServices,
+          ]
+            .map(normalizeTag)
+            .filter(Boolean);
 
-          if (!allErr && allArtists && allArtists.length > 0) {
-            const allSelected = [
-              ...selectedStyles,
-              ...selectedSpecialties,
-              ...selectedServices,
-            ].map(normalizeTag).filter(Boolean);
-
-            artists = allArtists.filter((p: any) => {
+          if (allSelected.length > 0 && sourceList.length > 0) {
+            artists = sourceList.filter((p: any) => {
               const tags = [
                 ...extractArtistTags(p.mediums),
                 ...extractArtistTags(p.art_styles),
@@ -424,18 +468,10 @@ export default function FreelancersPageClient({
           }
         }
 
-        if (error && !artists) {
-          console.error('Error fetching artists from profiles:', error);
-          if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
-            setProfiles(initialProfiles);
-          }
-          return;
-        }
-
         if (artists && Array.isArray(artists)) {
           const profilesMap = new Map<string, any>();
           for (const p of artists) {
-            if (!isArtistProfile(p)) continue;
+            if (!isValidArtist(p)) continue;
             const key = p.id || p.userId || p.user_id;
             if (key) {
               const avatar =
@@ -460,42 +496,16 @@ export default function FreelancersPageClient({
             (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
           );
           setProfiles(sorted);
-
-          // If no filters active, update allKnownProfiles to ensure all category options remain available
-          if (!hasCategoryFilters) {
-            setAllKnownProfiles(sorted);
-          }
-        } else if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
-          setProfiles(initialProfiles);
         }
       } catch (err) {
-        console.error('Emergency load profiles error:', err);
-        if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
-          setProfiles(initialProfiles);
-        }
+        console.error('Error applying category filter:', err);
       } finally {
-        setLoading(false);
+        setIsFilterPending(false);
       }
     }
 
     loadFilteredProfiles();
-
-    // Subscribe to realtime database updates
-    const channel = supabase
-      .channel('realtime-all-profiles')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          loadFilteredProfiles();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedStyles, selectedSpecialties, selectedServices]);
+  }, [selectedStyles, selectedSpecialties, selectedServices, hasActiveFilters]);
 
   // Compute available category options dynamically from constants + all known profiles
   const availableStyles = useMemo(() => {
@@ -564,15 +574,11 @@ export default function FreelancersPageClient({
     setSearchQuery('');
   };
 
-  const totalActiveFilters =
-    selectedStyles.length + selectedSpecialties.length + selectedServices.length;
-  const hasActiveFilters = totalActiveFilters > 0;
-
   // Filter profiles dynamically while strictly preserving display_order ASC
   const displayedArtists = useMemo(() => {
     let result = profiles;
 
-    // Search query filter
+    // Search query filter (only active when user typed text into search)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter((artist: any) => {
@@ -591,44 +597,47 @@ export default function FreelancersPageClient({
       });
     }
 
-    // Selected filter tags across categories
-    const allSelectedTags = [
-      ...selectedStyles,
-      ...selectedSpecialties,
-      ...selectedServices,
-    ]
-      .map(normalizeTag)
-      .filter(Boolean);
+    // Strictly ensure client-side filter only runs when active filters are intentionally applied
+    if (hasActiveFilters) {
+      const allSelectedTags = [
+        ...selectedStyles,
+        ...selectedSpecialties,
+        ...selectedServices,
+      ]
+        .map(normalizeTag)
+        .filter(Boolean);
 
-    // Ensure forgiving overlap matching with case-insensitive and trimmed comparison
-    if (allSelectedTags.length > 0) {
-      result = result.filter((artist: any) => {
-        const artistTags: string[] = [
-          ...extractArtistTags(artist.mediums),
-          ...extractArtistTags(artist.art_styles),
-          ...extractArtistTags(artist.specialties),
-          ...extractArtistTags(artist.art_specialties),
-          ...extractArtistTags(artist.services),
-          ...extractArtistTags(artist.services_offered),
-          ...extractArtistTags(artist.other_categories),
-          ...extractArtistTags(artist.skills),
-        ];
+      if (allSelectedTags.length > 0) {
+        result = result.filter((artist: any) => {
+          const artistTags: string[] = [
+            ...extractArtistTags(artist.mediums),
+            ...extractArtistTags(artist.art_styles),
+            ...extractArtistTags(artist.specialties),
+            ...extractArtistTags(artist.art_specialties),
+            ...extractArtistTags(artist.services),
+            ...extractArtistTags(artist.services_offered),
+            ...extractArtistTags(artist.other_categories),
+            ...extractArtistTags(artist.skills),
+          ];
 
-        if (artistTags.length === 0) {
-          return false;
-        }
+          if (artistTags.length === 0) {
+            return false;
+          }
 
-        return allSelectedTags.some((selectedTag) =>
-          artistTags.some((artistTag) => tagMatches(artistTag, selectedTag))
-        );
-      });
+          return allSelectedTags.some((selectedTag) =>
+            artistTags.some((artistTag) => tagMatches(artistTag, selectedTag))
+          );
+        });
+      }
     }
 
     // Strictly preserve manual artist ordering (display_order ASC)
     return result.sort(
       (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
     );
-  }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedServices]);
+  }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedServices, hasActiveFilters]);
+
+  const isResolving = isFilterPending;
 
   return (
     <div className="min-h-screen pb-20">
@@ -725,11 +734,11 @@ export default function FreelancersPageClient({
                 </button>
 
                 <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                  {mounted
+                  {mounted && !isResolving
                     ? `Showing ${displayedArtists.length} ${
                         displayedArtists.length === 1 ? 'artist' : 'artists'
                       }`
-                    : 'Showing artists'}
+                    : 'Showing artists...'}
                 </p>
               </div>
 
@@ -794,10 +803,11 @@ export default function FreelancersPageClient({
 
             {/* Artist Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-2">
-              {loading && (!displayedArtists || displayedArtists.length === 0) &&
+              {/* Proper loading skeleton state while Supabase response is resolving */}
+              {isResolving &&
                 Array.from({ length: 6 }).map((_, index) => (
                   <div
-                    key={index}
+                    key={`skeleton-${index}`}
                     className="glass-card rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6"
                   >
                     <Skeleton className="mb-4 h-10 w-10 rounded-full" />
@@ -809,7 +819,9 @@ export default function FreelancersPageClient({
                   </div>
                 ))}
 
-              {Array.isArray(displayedArtists) &&
+              {/* Resolved artist cards */}
+              {!isResolving &&
+                Array.isArray(displayedArtists) &&
                 displayedArtists.length > 0 &&
                 displayedArtists.map((artist: any) => (
                   <ArtistCard
@@ -819,8 +831,8 @@ export default function FreelancersPageClient({
                 ))}
             </div>
 
-            {/* Empty State */}
-            {!loading && displayedArtists.length === 0 && (
+            {/* Empty State: Only shown when response has fully resolved and 0 artists match */}
+            {!isResolving && displayedArtists.length === 0 && (
               <div className="col-span-full mt-8 rounded-3xl border border-primary/20 bg-primary/5 p-10 text-center shadow-inner">
                 <Shield className="mx-auto mb-4 h-10 w-10 text-primary" />
                 <h3 className="mb-2 text-xl font-semibold text-foreground">No artists found</h3>
