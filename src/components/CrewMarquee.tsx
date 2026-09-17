@@ -2,25 +2,26 @@
 
 import React, { useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import { CrewMember, FALLBACK_CREW } from '@/types/crew';
+import { CrewMember } from '@/types/crew';
 import { createClient } from '@/lib/supabase/client';
 
 export function CrewMarquee() {
-  const [crew, setCrew] = useState<CrewMember[]>(FALLBACK_CREW);
+  const [crew, setCrew] = useState<CrewMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+    const supabase = createClient();
+
     async function loadCrew() {
       try {
-        const supabase = createClient();
         const { data, error } = await supabase
           .from('crew_members')
           .select('*')
           .order('display_order', { ascending: true })
           .order('created_at', { ascending: false });
 
-        if (!error && Array.isArray(data) && data.length > 0 && isMounted) {
+        if (!error && Array.isArray(data) && isMounted) {
           setCrew(data);
           setIsLoading(false);
           return;
@@ -29,7 +30,7 @@ export function CrewMarquee() {
         const res = await fetch('/api/crew');
         if (res.ok) {
           const json = await res.json();
-          if (json?.crew && Array.isArray(json.crew) && json.crew.length > 0 && isMounted) {
+          if (json?.crew && Array.isArray(json.crew) && isMounted) {
             setCrew(json.crew);
           }
         }
@@ -41,10 +42,58 @@ export function CrewMarquee() {
     }
 
     loadCrew();
+
+    // Enable Supabase Realtime subscription for instant live updates
+    const channel = supabase
+      .channel('crew_marquee_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crew_members' },
+        () => {
+          loadCrew();
+        }
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, []);
+
+  // If loading and no crew loaded yet, display sleek pulse skeleton loader
+  if (isLoading && crew.length === 0) {
+    return (
+      <section className="relative w-full py-10 sm:py-14 overflow-hidden bg-gradient-to-b from-slate-950 via-rose-950/20 to-slate-950 border-y border-rose-900/30">
+        <div className="container mx-auto px-4 mb-6 sm:mb-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold mb-2 animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+            <span>Meet Our Curation Crew</span>
+          </div>
+          <div className="h-6 w-64 bg-slate-800/80 rounded-md mx-auto animate-pulse" />
+        </div>
+        <div className="flex gap-4 sm:gap-6 px-4 overflow-hidden justify-center">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3.5 w-[280px] sm:w-[330px] p-3.5 sm:p-4 rounded-2xl bg-slate-900/60 border border-rose-950/40 animate-pulse flex-shrink-0"
+            >
+              <div className="w-12 h-12 rounded-full bg-slate-800 flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-slate-800 rounded w-3/4" />
+                <div className="h-3 bg-slate-800/60 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // If not loading and no crew in database, do not render empty container
+  if (crew.length === 0) {
+    return null;
+  }
 
   // Duplicate crew array to create a seamless infinite loop
   const marqueeItems = [...crew, ...crew, ...crew];

@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { ManualReview, FALLBACK_REVIEWS } from '@/types/reviews';
+import { ManualReview } from '@/types/reviews';
 
 export const dynamic = 'force-dynamic';
-
-export type { ManualReview };
-export { FALLBACK_REVIEWS };
 
 export async function GET() {
   try {
@@ -17,12 +14,12 @@ export async function GET() {
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data)) {
       return NextResponse.json({ reviews: data });
     }
   } catch (e) {
     console.warn('API reviews GET error:', e);
   }
 
-  return NextResponse.json({ reviews: FALLBACK_REVIEWS });
+  return NextResponse.json({ reviews: [] });
 }

@@ -29,13 +29,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ManualReview, FALLBACK_REVIEWS } from '@/types/reviews';
+import { ManualReview } from '@/types/reviews';
 
 export default function AdminReviewsTab() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [reviews, setReviews] = useState<ManualReview[]>(FALLBACK_REVIEWS);
+  const [reviews, setReviews] = useState<ManualReview[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal states
@@ -63,7 +63,7 @@ export default function AdminReviewsTab() {
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data) && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         setReviews(data);
         return;
       }
@@ -84,6 +84,22 @@ export default function AdminReviewsTab() {
 
   useEffect(() => {
     fetchReviews();
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel('admin_reviews_tab_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'manual_reviews' },
+        () => {
+          fetchReviews();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Upload avatar image to Supabase Storage
@@ -450,7 +466,7 @@ export default function AdminReviewsTab() {
             <div className="space-y-1.5">
               <Label className="text-xs text-slate-300">Author Name *</Label>
               <Input
-                placeholder="e.g. Victoria Sterling"
+                placeholder="e.g. Author Name"
                 value={formAuthorName}
                 onChange={(e) => setFormAuthorName(e.target.value)}
                 className="bg-slate-950 border-slate-800 text-sm"

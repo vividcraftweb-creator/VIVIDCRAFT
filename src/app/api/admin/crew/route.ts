@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { FALLBACK_CREW, CrewMember } from '@/types/crew';
+import { CrewMember } from '@/types/crew';
 
 export const dynamic = 'force-dynamic';
 
-let memoryCrew: CrewMember[] = [...FALLBACK_CREW];
+let memoryCrew: CrewMember[] = [];
 
 // GET all crew members
 export async function GET() {

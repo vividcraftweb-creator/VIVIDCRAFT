@@ -22,7 +22,7 @@ export interface BannerRecord {
 // In-memory fallback list if Supabase table is not yet migrated
 let fallbackBanners: BannerRecord[] = [];
 
-export function generateUniqueOfferCode(): string {
+function generateUniqueOfferCode(): string {
   const randomNum = Math.floor(1000 + Math.random() * 9000);
   return `OFFER-${randomNum}`;
 }

@@ -28,13 +28,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { CrewMember, FALLBACK_CREW } from '@/types/crew';
+import { CrewMember } from '@/types/crew';
 
 export default function AdminCrewTab() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [crew, setCrew] = useState<CrewMember[]>(FALLBACK_CREW);
+  const [crew, setCrew] = useState<CrewMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal states
@@ -62,7 +62,7 @@ export default function AdminCrewTab() {
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data) && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         setCrew(data);
         return;
       }
@@ -83,6 +83,22 @@ export default function AdminCrewTab() {
 
   useEffect(() => {
     fetchCrew();
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel('admin_crew_tab_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crew_members' },
+        () => {
+          fetchCrew();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Direct file upload to Supabase Storage
@@ -493,7 +509,7 @@ export default function AdminCrewTab() {
             <div className="space-y-1.5">
               <Label className="text-xs text-slate-300">Member Name *</Label>
               <Input
-                placeholder="e.g. Elena Rostova"
+                placeholder="e.g. Full Name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 className="bg-slate-950 border-slate-800 text-sm"

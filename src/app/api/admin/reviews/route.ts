@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { FALLBACK_REVIEWS, ManualReview } from '@/types/reviews';
+import { ManualReview } from '@/types/reviews';
 
 export const dynamic = 'force-dynamic';
 
-let memoryReviews: ManualReview[] = [...FALLBACK_REVIEWS];
+let memoryReviews: ManualReview[] = [];
 
 // GET all reviews (including inactive)
 export async function GET() {
