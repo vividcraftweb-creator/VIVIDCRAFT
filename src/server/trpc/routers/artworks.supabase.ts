@@ -86,6 +86,7 @@ export const artworksRouter = router({
           description: art.description || null,
           category: art.category || null,
           medium: art.medium || null,
+          technique: art.technique || null,
           tags: art.tags || [],
           image_url: art.image_url,
           created_at: art.created_at,
@@ -122,6 +123,7 @@ export const artworksRouter = router({
         description: z.string().nullable().optional(),
         category: z.string().nullable().optional(),
         medium: z.string().nullable().optional(),
+        technique: z.string().nullable().optional(),
         tags: z.union([z.array(z.string()), z.string()]).nullable().optional(),
         imageUrl: z.string().url('A valid image URL is required'),
         sellingMode: z.enum(['FIXED_PRICE', 'BIDDING', 'NOT_FOR_SALE']).default('NOT_FOR_SALE').optional(),
@@ -160,8 +162,9 @@ export const artworksRouter = router({
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
       const medium = input.medium?.trim() || null;
+      const technique = input.technique?.trim() || null;
       const tags = Array.isArray(input.tags)
-        ? input.tags
+        ? input.tags.map((t) => String(t).trim()).filter(Boolean)
         : typeof input.tags === 'string'
         ? input.tags.split(',').map((t) => t.trim()).filter(Boolean)
         : [];
@@ -184,15 +187,45 @@ export const artworksRouter = router({
         image_url: input.imageUrl,
         pricing_type: pricingType,
         user_id: artistId,
+        category,
+        medium,
+        technique,
+        tags,
       };
       if (priceValue > 0) {
         insertData.price = priceValue;
         insertData.amount = priceValue;
       }
 
-      // Explicit insert query candidates with graceful fallback column names if 'price' or 'user_id' fails in schema cache
+      // Explicit insert query candidates with graceful fallback column names if 'price', 'user_id', or 'technique' fails in schema cache
       const candidateInserts: any[] = [
-        // Candidate 1: Full payload with BOTH price and amount, user_id, and artist_id
+        // Candidate 1: Full payload with BOTH price and amount, user_id, artist_id, category, medium, technique, tags
+        {
+          id,
+          artist_id: artistId,
+          user_id: artistId,
+          title: input.title.trim(),
+          description,
+          category,
+          medium,
+          technique,
+          tags,
+          pricing_type: pricingType,
+          selling_mode: pricingType,
+          starting_bid: startingBidVal,
+          image_url: input.imageUrl,
+          created_at: new Date().toISOString(),
+          art_code: artCode,
+          ...(priceValue > 0 ? { price: priceValue, amount: priceValue } : {}),
+        },
+        // Candidate 2: Strict user insertData sending BOTH price and amount
+        insertData,
+        // Candidate 3: Strict user insertData with artist_id
+        {
+          ...insertData,
+          artist_id: artistId,
+        },
+        // Candidate 4: Fallback without technique (in case technique column is pending schema cache reload)
         {
           id,
           artist_id: artistId,
@@ -209,13 +242,6 @@ export const artworksRouter = router({
           created_at: new Date().toISOString(),
           art_code: artCode,
           ...(priceValue > 0 ? { price: priceValue, amount: priceValue } : {}),
-        },
-        // Candidate 2: Strict user insertData sending BOTH price and amount
-        insertData,
-        // Candidate 3: Strict user insertData with artist_id
-        {
-          ...insertData,
-          artist_id: artistId,
         },
         // Candidate 4: Fallback if 'amount' fails: use 'price' only
         {
@@ -471,6 +497,10 @@ export const artworksRouter = router({
             artist_id: art.artist_id,
             title: art.title,
             description: art.description || null,
+            category: art.category || null,
+            medium: art.medium || null,
+            technique: art.technique || null,
+            tags: art.tags || [],
             image_url: art.image_url,
             created_at: art.created_at,
             likesCount: artLikes.length,
@@ -657,6 +687,14 @@ export const artworksRouter = router({
             artist_id: art.artist_id,
             title: art.title || 'Untitled Artwork',
             description: art.description || null,
+            category: art.category || null,
+            medium: art.medium || null,
+            technique: art.technique || null,
+            tags: Array.isArray(art.tags)
+              ? art.tags
+              : typeof art.tags === 'string'
+              ? art.tags.replace(/[\{\}\"\[\]]/g, '').split(',').map((t: string) => t.trim()).filter(Boolean)
+              : [],
             image_url: art.image_url,
             created_at: art.created_at,
             likesCount,
@@ -701,14 +739,20 @@ export const artworksRouter = router({
           list = list.filter((item: any) => item.selling_mode === 'BIDDING' || (item as any).pricing_type === 'BIDDING');
         }
 
-        // 4. Search filtering
+        // 4. Search filtering across title, description, category, medium, technique, tags, artist name, art code
         if (input?.search?.trim()) {
-          const s = input.search.trim().toLowerCase();
-          list = list.filter(
-            (item: any) =>
-              item.title.toLowerCase().includes(s) ||
-              item.artist.name.toLowerCase().includes(s) ||
-              item.art_code.toLowerCase().includes(s)
+          const searchLower = input.search.trim().toLowerCase();
+          list = list.filter((artwork: any) =>
+            [
+              artwork.title,
+              artwork.description,
+              artwork.category,
+              artwork.medium,
+              artwork.technique,
+              artwork.artist?.name,
+              artwork.art_code,
+              ...(Array.isArray(artwork.tags) ? artwork.tags : []),
+            ].some((field) => field && String(field).toLowerCase().includes(searchLower))
           );
         }
 

@@ -20,6 +20,7 @@ export interface ArtworkItem {
   description?: string | null;
   category?: string | null;
   medium?: string | null;
+  technique?: string | null;
   tags?: string[] | string | null;
   image_url: string;
   created_at: string;
@@ -319,6 +320,12 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
             {badgeType === 'NOT_FOR_SALE' && (
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
                 {fallbackDisplayPrice}
+              </p>
+            )}
+
+            {artwork.medium && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5" title={artwork.medium}>
+                {artwork.medium}
               </p>
             )}
 

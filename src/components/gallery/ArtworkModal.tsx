@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { X, Heart, Send, Loader2, MessageSquare, LogIn, MapPin, Palette, User, Tag, ExternalLink } from 'lucide-react';
+import { X, Heart, Send, Loader2, MessageSquare, LogIn, MapPin, Palette, User, Tag, ExternalLink, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -333,20 +333,51 @@ export function ArtworkModal({
                   No description provided for this piece.
                 </p>
               )}
-              {(artwork.category || artwork.medium) && (
-                <div className="flex items-center gap-3 mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
-                  {artwork.category && (
-                    <span className="inline-flex items-center gap-1 font-medium">
-                      <Palette className="w-3 h-3 text-amber-500" />
-                      Category: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.category}</span>
-                    </span>
-                  )}
-                  {artwork.medium && (
-                    <span className="inline-flex items-center gap-1 font-medium">
-                      <Tag className="w-3 h-3 text-amber-500" />
-                      Medium: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.medium}</span>
-                    </span>
-                  )}
+              {(artwork.category || artwork.medium || artwork.technique || (artwork.tags && (Array.isArray(artwork.tags) ? artwork.tags.length > 0 : String(artwork.tags).trim().length > 0))) && (
+                <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
+                  <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+                    {artwork.category && (
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <Palette className="w-3 h-3 text-amber-500" />
+                        Category: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.category}</span>
+                      </span>
+                    )}
+                    {artwork.medium && (
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <Tag className="w-3 h-3 text-amber-500" />
+                        Medium: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.medium}</span>
+                      </span>
+                    )}
+                    {artwork.technique && (
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        Technique: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.technique}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Artwork Tags */}
+                  {(() => {
+                    const rawTags = artwork.tags;
+                    const tagList = Array.isArray(rawTags)
+                      ? rawTags
+                      : typeof rawTags === 'string'
+                      ? rawTags.replace(/[\{\}\"\[\]]/g, '').split(',').map((t: string) => t.trim()).filter(Boolean)
+                      : [];
+                    if (tagList.length === 0) return null;
+                    return (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        {tagList.map((tag: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

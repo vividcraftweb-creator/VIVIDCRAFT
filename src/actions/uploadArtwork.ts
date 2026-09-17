@@ -6,6 +6,9 @@ export interface UploadArtworkFormData {
   title: string;
   description?: string | null;
   category?: string | null;
+  medium?: string | string[] | null;
+  technique?: string | string[] | null;
+  tags?: string[] | string | null;
   pricingType?: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
   pricing_type?: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
   selling_mode?: 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
@@ -34,6 +37,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
   let title = '';
   let description = '';
   let category = '';
+  let medium = '';
+  let technique = '';
+  let tags: string[] = [];
   let pricingType = 'FIXED_PRICE';
   let priceVal: number | null = null;
   let startingBidVal: number | null = null;
@@ -47,6 +53,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       title: formData.get('title'),
       description: formData.get('description'),
       category: formData.get('category'),
+      medium: formData.get('medium'),
+      technique: formData.get('technique'),
+      tags: formData.get('tags'),
       pricing_type: formData.get('pricing_type') || formData.get('pricingType') || formData.get('selling_mode') || formData.get('selling_type'),
       price: formData.get('price'),
       amount: formData.get('amount') || formData.get('priceAmount') || formData.get('price_amount'),
@@ -55,6 +64,14 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     title = String(payload.title || '').trim();
     description = String(payload.description || '').trim();
     category = String(payload.category || '').trim();
+    medium = String(payload.medium || '').trim();
+    technique = String(payload.technique || '').trim();
+    const formTags = payload.tags;
+    if (typeof formTags === 'string') {
+      tags = formTags.split(',').map((t) => t.trim()).filter(Boolean);
+    } else if (Array.isArray(formTags)) {
+      tags = formTags.map((t) => String(t).trim()).filter(Boolean);
+    }
 
     pricingType = String(payload.pricing_type || 'FIXED_PRICE').toUpperCase().trim();
     priceVal = payload.price ? parseFloat(String(payload.price)) : 0;
@@ -71,6 +88,13 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     title = String(payload.title || '').trim();
     description = String(payload.description || '').trim();
     category = String(payload.category || '').trim();
+    medium = Array.isArray(payload.medium) ? payload.medium.join(', ').trim() : String(payload.medium || '').trim();
+    technique = Array.isArray(payload.technique) ? payload.technique.join(', ').trim() : String(payload.technique || '').trim();
+    if (Array.isArray(payload.tags)) {
+      tags = payload.tags.map((t: any) => String(t).trim()).filter(Boolean);
+    } else if (typeof payload.tags === 'string') {
+      tags = payload.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+    }
 
     pricingType = String(payload.pricing_type || payload.pricingType || payload.selling_mode || 'FIXED_PRICE').toUpperCase().trim();
     priceVal = payload.price ? parseFloat(String(payload.price)) : 0;
@@ -125,15 +149,19 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     image_url: uploadedImageUrl,
     pricing_type: pricingType || 'FIXED_PRICE',
     user_id: currentUserId,
+    category: category || null,
+    medium: medium || null,
+    technique: technique || null,
+    tags,
   };
   if (priceValue > 0) {
     insertData.price = priceValue;
     insertData.amount = priceValue;
   }
 
-  // Graceful fallback candidates if 'price' or 'amount' fails in schema cache:
+  // Graceful fallback candidates if 'price', 'amount', or 'technique' fails in schema cache:
   const candidatePayloads: any[] = [
-    // 1. Comprehensive payload with BOTH price and amount, id, art_code, user_id, artist_id
+    // 1. Comprehensive payload with BOTH price and amount, id, art_code, user_id, artist_id, medium, technique, tags
     {
       id,
       title,
@@ -144,6 +172,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       user_id: currentUserId,
       artist_id: currentUserId,
       category: category || null,
+      medium: medium || null,
+      technique: technique || null,
+      tags,
       art_code: randomCode,
       starting_bid: startingBidVal,
       created_at: new Date().toISOString(),
@@ -156,7 +187,25 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       ...insertData,
       artist_id: currentUserId,
     },
-    // 4. Fallback if 'amount' column doesn't exist in schema cache: use 'price' only
+    // 4. Fallback without technique (in case technique column is pending schema reload)
+    {
+      id,
+      title,
+      description: description || '',
+      image_url: uploadedImageUrl,
+      pricing_type: pricingType || 'FIXED_PRICE',
+      selling_mode: pricingType || 'FIXED_PRICE',
+      user_id: currentUserId,
+      artist_id: currentUserId,
+      category: category || null,
+      medium: medium || null,
+      tags,
+      art_code: randomCode,
+      starting_bid: startingBidVal,
+      created_at: new Date().toISOString(),
+      ...(priceValue > 0 ? { price: priceValue, amount: priceValue } : {}),
+    },
+    // 5. Fallback if 'amount' column doesn't exist in schema cache: use 'price' only
     {
       id,
       title,
@@ -169,10 +218,13 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       user_id: currentUserId,
       artist_id: currentUserId,
       category: category || null,
+      medium: medium || null,
+      technique: technique || null,
+      tags,
       art_code: randomCode,
       created_at: new Date().toISOString(),
     },
-    // 5. Fallback if 'price' column schema cache error: use 'amount' only
+    // 6. Fallback if 'price' column schema cache error: use 'amount' only
     {
       id,
       title,
@@ -185,6 +237,9 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       user_id: currentUserId,
       artist_id: currentUserId,
       category: category || null,
+      medium: medium || null,
+      technique: technique || null,
+      tags,
       art_code: randomCode,
       created_at: new Date().toISOString(),
     },

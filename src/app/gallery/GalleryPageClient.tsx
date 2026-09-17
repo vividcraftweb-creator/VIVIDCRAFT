@@ -26,6 +26,7 @@ import {
   Tag,
   Gavel,
   Filter,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,10 @@ interface RankedArtwork {
   artist_id: string;
   title: string;
   description?: string | null;
+  category?: string | null;
+  medium?: string | null;
+  technique?: string | null;
+  tags?: string[] | null;
   image_url: string;
   created_at: string;
   likesCount: number;
@@ -96,6 +101,7 @@ export default function GalleryPageClient() {
   const [mounted, setMounted] = useState(false);
   const [activeSort, setActiveSort] = useState<SortOption>('popular');
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('ALL');
+  const [selectedMedium, setSelectedMedium] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArtwork, setSelectedArtwork] = useState<RankedArtwork | null>(null);
   const [hoveredRating, setHoveredRating] = useState<{ [key: string]: number }>({});
@@ -114,6 +120,10 @@ export default function GalleryPageClient() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadCategory, setUploadCategory] = useState('');
+  const [uploadMedium, setUploadMedium] = useState('');
+  const [uploadTechnique, setUploadTechnique] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
   const [uploadImageUrl, setUploadImageUrl] = useState('');
   const [uploadArtistName, setUploadArtistName] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -318,6 +328,14 @@ export default function GalleryPageClient() {
                 artist_id: art.artist_id,
                 title: art.title || 'Untitled Artwork',
                 description: art.description || null,
+                category: art.category || null,
+                medium: art.medium || null,
+                technique: art.technique || null,
+                tags: Array.isArray(art.tags)
+                  ? art.tags
+                  : typeof art.tags === 'string'
+                  ? art.tags.replace(/[\{\}\"\[\]]/g, '').split(',').map((t: string) => t.trim()).filter(Boolean)
+                  : [],
                 image_url: art.image_url,
                 created_at: art.created_at,
                 likesCount: artLikes.length,
@@ -363,6 +381,31 @@ export default function GalleryPageClient() {
     }
   }, [isLoading, remoteArtworks, currentUserId]);
 
+  // Dynamic medium list combining loaded artwork mediums + standard mediums
+  const availableMediums = useMemo(() => {
+    const set = new Set<string>();
+    localArtworks.forEach((art) => {
+      if (art.medium && typeof art.medium === 'string') {
+        art.medium.split(',').forEach((m) => {
+          const trimmed = m.trim();
+          if (trimmed) set.add(trimmed);
+        });
+      }
+    });
+
+    const standard = [
+      'Oil Painting',
+      'Acrylic Painting',
+      'Watercolor',
+      'Digital Art',
+      'Sketch / Charcoal',
+      'Mixed Media',
+      'Sculpture',
+    ];
+    standard.forEach((s) => set.add(s));
+    return Array.from(set);
+  }, [localArtworks]);
+
   // Client-side filtering and sorting for instant responsiveness
   const displayedArtworks = useMemo(() => {
     // When viewing ALL or specific category, include Bidding items only if explicitly requested
@@ -383,13 +426,29 @@ export default function GalleryPageClient() {
       return effectiveFilterType === activeFilter;
     });
 
+    // Medium sidebar / pill filter
+    if (selectedMedium !== 'ALL') {
+      const targetMed = selectedMedium.toLowerCase().trim();
+      list = list.filter((art) => {
+        if (!art.medium) return false;
+        return String(art.medium).toLowerCase().includes(targetMed);
+      });
+    }
+
+    // Unified multi-category search: title, description, category, medium, technique, tags, artist name, art code
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        (art) =>
-          art.title.toLowerCase().includes(q) ||
-          art.artist.name.toLowerCase().includes(q) ||
-          (art.art_code && art.art_code.toLowerCase().includes(q))
+      const searchLower = searchQuery.toLowerCase().trim();
+      list = list.filter((art) =>
+        [
+          art.title,
+          art.description,
+          art.category,
+          art.medium,
+          art.technique,
+          art.artist?.name,
+          art.art_code,
+          ...(Array.isArray(art.tags) ? art.tags : []),
+        ].some((field) => field && String(field).toLowerCase().includes(searchLower))
       );
     }
 
@@ -420,7 +479,7 @@ export default function GalleryPageClient() {
     }
 
     return list;
-  }, [localArtworks, searchQuery, activeSort, activeFilter]);
+  }, [localArtworks, searchQuery, activeSort, activeFilter, selectedMedium]);
 
 
   // Handle Interactive Like
@@ -653,14 +712,26 @@ export default function GalleryPageClient() {
 
       const price = uploadSellingMode === 'FIXED_PRICE' && uploadPrice ? Number(uploadPrice) : null;
       const startingBid = uploadSellingMode === 'BIDDING' && uploadStartingBid ? Number(uploadStartingBid) : null;
+      const parsedTags = uploadTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const parsedCategory = uploadCategory.trim() || null;
+      const parsedMedium = uploadMedium.trim() || null;
+      const parsedTechnique = uploadTechnique.trim() || null;
 
       let { error: insertError } = await supabase
         .from('artworks')
         .insert({
           id: newId,
           artist_id: artistId,
+          user_id: artistId,
           title: uploadTitle.trim(),
           description: uploadDescription.trim() || null,
+          category: parsedCategory,
+          medium: parsedMedium,
+          technique: parsedTechnique,
+          tags: parsedTags,
           image_url: finalImageUrl,
           created_at: now,
           selling_mode: uploadSellingMode,
@@ -668,19 +739,25 @@ export default function GalleryPageClient() {
           price,
           starting_bid: startingBid,
           art_code: artCode,
+          ...(price && price > 0 ? { amount: price } : {}),
         });
 
       if (insertError) {
-        console.warn('Direct insert dual mode failed, trying with pricing_type only:', insertError);
+        console.warn('Direct insert dual mode with technique failed, trying without technique:', insertError);
         const retry1 = await supabase
           .from('artworks')
           .insert({
             id: newId,
             artist_id: artistId,
+            user_id: artistId,
             title: uploadTitle.trim(),
             description: uploadDescription.trim() || null,
+            category: parsedCategory,
+            medium: parsedMedium,
+            tags: parsedTags,
             image_url: finalImageUrl,
             created_at: now,
+            selling_mode: uploadSellingMode,
             pricing_type: uploadSellingMode,
             price,
             starting_bid: startingBid,
@@ -690,7 +767,7 @@ export default function GalleryPageClient() {
       }
 
       if (insertError) {
-        console.warn('Direct insert pricing_type failed, trying with selling_mode only:', insertError);
+        console.warn('Direct insert with metadata failed, trying pricing_type only:', insertError);
         const retry2 = await supabase
           .from('artworks')
           .insert({
@@ -700,30 +777,12 @@ export default function GalleryPageClient() {
             description: uploadDescription.trim() || null,
             image_url: finalImageUrl,
             created_at: now,
-            selling_mode: uploadSellingMode,
+            pricing_type: uploadSellingMode,
             price,
             starting_bid: startingBid,
             art_code: artCode,
           });
         insertError = retry2.error;
-      }
-
-      if (insertError) {
-        console.warn('Direct insert without extra metadata, preserving pricing:', insertError);
-        const retry3 = await supabase
-          .from('artworks')
-          .insert({
-            id: newId,
-            artist_id: artistId,
-            title: uploadTitle.trim(),
-            image_url: finalImageUrl,
-            created_at: now,
-            selling_mode: uploadSellingMode,
-            pricing_type: uploadSellingMode,
-            price,
-            starting_bid: startingBid,
-          });
-        insertError = retry3.error;
       }
 
       if (insertError) {
@@ -769,6 +828,10 @@ export default function GalleryPageClient() {
         artist_id: artistId,
         title: uploadTitle.trim(),
         description: uploadDescription.trim() || null,
+        category: parsedCategory,
+        medium: parsedMedium,
+        technique: parsedTechnique,
+        tags: parsedTags,
         image_url: finalImageUrl,
         created_at: now,
         likesCount: 0,
@@ -805,6 +868,10 @@ export default function GalleryPageClient() {
       // Reset form & close
       setUploadTitle('');
       setUploadDescription('');
+      setUploadCategory('');
+      setUploadMedium('');
+      setUploadTechnique('');
+      setUploadTags('');
       setUploadImageUrl('');
       setUploadArtistName('');
       setUploadFile(null);
@@ -1046,6 +1113,51 @@ export default function GalleryPageClient() {
             >
               <span>Not For Sale</span>
             </button>
+          </div>
+
+          {/* Row 3 — Medium Filter Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs no-scrollbar pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 shrink-0">
+              <Palette className="w-3.5 h-3.5 text-amber-500" />
+              <span>Medium:</span>
+            </div>
+
+            <button
+              onClick={() => setSelectedMedium('ALL')}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer shrink-0 border ${
+                selectedMedium === 'ALL'
+                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              All Mediums
+            </button>
+
+            {availableMediums.map((med) => {
+              const isActive = selectedMedium.toLowerCase() === med.toLowerCase();
+              return (
+                <button
+                  key={med}
+                  onClick={() => setSelectedMedium(isActive ? 'ALL' : med)}
+                  className={`px-3 py-1 rounded-full text-xs transition-all duration-200 cursor-pointer shrink-0 border ${
+                    isActive
+                      ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-amber-400/60 dark:hover:border-amber-500/50 hover:bg-amber-500/5'
+                  }`}
+                >
+                  {med}
+                </button>
+              );
+            })}
+
+            {selectedMedium !== 'ALL' && (
+              <button
+                onClick={() => setSelectedMedium('ALL')}
+                className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline shrink-0 ml-1 px-1 cursor-pointer font-semibold"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
@@ -1826,6 +1938,68 @@ export default function GalleryPageClient() {
                     onChange={(e) => setUploadArtistName(e.target.value)}
                     className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11 focus-visible:ring-amber-500"
                   />
+                </div>
+
+                {/* Category & Medium Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label htmlFor="art-category" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Palette className="w-3 h-3 text-amber-500" />
+                      Category
+                    </label>
+                    <Input
+                      id="art-category"
+                      placeholder="e.g. Painting, Digital Art, Sculpture"
+                      value={uploadCategory}
+                      onChange={(e) => setUploadCategory(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-xs h-9"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="art-medium" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-amber-500" />
+                      Medium
+                    </label>
+                    <Input
+                      id="art-medium"
+                      placeholder="e.g. Oil on Canvas, Watercolor"
+                      value={uploadMedium}
+                      onChange={(e) => setUploadMedium(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-xs h-9"
+                    />
+                  </div>
+                </div>
+
+                {/* Technique & Tags Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label htmlFor="art-technique" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      Technique
+                    </label>
+                    <Input
+                      id="art-technique"
+                      placeholder="e.g. Impasto, Palette Knife, Wet-on-Wet"
+                      value={uploadTechnique}
+                      onChange={(e) => setUploadTechnique(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-xs h-9"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="art-tags" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-amber-500" />
+                      Tags (Comma-separated)
+                    </label>
+                    <Input
+                      id="art-tags"
+                      placeholder="abstract, modern, vibrant, landscape"
+                      value={uploadTags}
+                      onChange={(e) => setUploadTags(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-xs h-9"
+                    />
+                  </div>
                 </div>
 
                 {/* File Upload OR URL */}
