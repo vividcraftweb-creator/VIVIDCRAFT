@@ -17,6 +17,7 @@ import { adminSettingsRouter } from './admin/settings';
 import { adminSupportTicketsRouter } from './admin/supportTickets';
 import { adminArtworksRouter } from './admin/artworks';
 import { adminChatConnectionsRouter } from './admin/chatConnections';
+import { adminAuctionsRouter } from './admin/auctions';
 import { fetchAllVerificationsList } from './verifications.supabase';
 
 const requireAdminSupabase = (ctx: Context) => {
@@ -43,6 +44,7 @@ export const adminRouter = router({
   supportTickets: adminSupportTicketsRouter,
   artworks: adminArtworksRouter,
   chatConnections: adminChatConnectionsRouter,
+  auctions: adminAuctionsRouter,
   getSystemStats: adminProcedure.query(async ({ ctx }) => {
     try {
       const supabase = ctx.adminSupabase || createAdminClient();

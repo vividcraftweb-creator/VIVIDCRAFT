@@ -487,25 +487,27 @@ export default function Dashboard({ session }: { session: AppSession }) {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-slate-950">
-          <div className="p-4 sm:p-6">
+        <main className={`flex-1 ${currentView === 'messages' ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'} bg-slate-950`}>
+          <div className={currentView === 'messages' ? 'p-2 sm:p-4 flex-1 flex flex-col min-h-0 overflow-hidden max-w-7xl w-full mx-auto' : 'p-4 sm:p-6'}>
             {/* Desktop header */}
-            <div className="hidden lg:block mb-6 lg:mb-8 max-w-7xl mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-white mb-2">
-                    {currentView === 'messages' ? 'My Messages' : (role === 'CLIENT' ? 'Client Dashboard' : 'Artist Dashboard')}
-                  </h1>
-                  <p className="text-slate-400 text-lg">
-                    Welcome back, {greetingName}
-                  </p>
+            {currentView !== 'messages' && (
+              <div className="hidden lg:block mb-6 lg:mb-8 max-w-7xl mx-auto">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">
+                      {role === 'CLIENT' ? 'Client Dashboard' : 'Artist Dashboard'}
+                    </h1>
+                    <p className="text-slate-400 text-lg">
+                      Welcome back, {greetingName}
+                    </p>
+                  </div>
+                  <NotificationDropdown />
                 </div>
-                <NotificationDropdown />
               </div>
-            </div>
+            )}
             
             {/* Dashboard content */}
-            <div className="max-w-7xl mx-auto">
+            <div className={currentView === 'messages' ? 'flex-1 flex flex-col min-h-0 w-full' : 'max-w-7xl mx-auto'}>
               {renderDashboardContent()}
             </div>
           </div>

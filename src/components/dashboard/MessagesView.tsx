@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw, Search, Copy, Check, Tag, X } from 'lucide-react';
+import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw, Search, Copy, Check, Tag, X, ArrowLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -696,7 +696,7 @@ export default function MessagesView() {
       try { e.preventDefault(); } catch {}
     }
 
-    const text = newMessage.trim();
+    const text = (message || newMessage || '').trim();
     if (!text || !activeRecipientId || !currentUserId || activeRecipientId === currentUserId || isSending) return;
 
     if (isArtistToArtist) {
@@ -704,8 +704,10 @@ export default function MessagesView() {
       return;
     }
 
-    setIsSending(true);
+    // Instantly reset input fields so UI reflects immediately
+    setMessage('');
     setNewMessage('');
+    setIsSending(true);
 
     // Optimistically show the message immediately
     const tempId = `temp-${Date.now()}`;
@@ -721,18 +723,24 @@ export default function MessagesView() {
     };
     setMessages((prev) => [...prev, tempMsg]);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
       const res = await fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ receiver_id: activeRecipientId, content: text }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const json = await res.json();
 
       if (!res.ok) {
-        // Remove optimistic message on failure
+        // Remove optimistic message on failure and restore text
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setMessage(text);
         setNewMessage(text);
         const errMsg = json?.error || '';
         if (errMsg.includes('artist')) {
@@ -744,6 +752,9 @@ export default function MessagesView() {
           toast.error('Message could not be sent. Please try again.');
         }
       } else {
+        // Immediately reset sending spinner upon successful API response
+        setIsSending(false);
+
         // Replace temp message with real message from server
         const realMsg = json.message;
         if (realMsg) {
@@ -758,11 +769,17 @@ export default function MessagesView() {
           utils.profiles.getContacts.invalidate();
         } catch {}
       }
-    } catch (err) {
+    } catch (err: any) {
+      clearTimeout(timeoutId);
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setMessage(text);
       setNewMessage(text);
-      console.warn('[Messaging] Network error:', err);
-      toast.error('Message could not be sent. Please check your connection.');
+      if (err?.name === 'AbortError') {
+        toast.error('Sending timed out. Please check your network connection.');
+      } else {
+        console.warn('[Messaging] Network error:', err);
+        toast.error('Message could not be sent. Please check your connection.');
+      }
     } finally {
       setIsSending(false);
     }
@@ -789,16 +806,18 @@ export default function MessagesView() {
   };
 
   return (
-    <div className="h-[calc(100vh-200px)] flex flex-col gap-4">
+    <div className="h-[calc(100dvh-130px)] sm:h-[calc(100vh-180px)] flex flex-col gap-2.5 sm:gap-4 min-h-0 overflow-hidden w-full">
       {/* 7-Day Retention Notice Banner */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-4 py-2.5 text-center text-xs sm:text-sm text-slate-400 flex items-center justify-center gap-2 flex-shrink-0 shadow-sm">
+      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-center text-xs text-slate-400 flex items-center justify-center gap-2 flex-shrink-0 shadow-sm">
         <span>ℹ️</span>
         <span>Messages are automatically cleared after 7 days.</span>
       </div>
 
-      <div className="flex-1 flex gap-6 min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row gap-3 sm:gap-4 md:gap-6 min-h-0 overflow-hidden w-full">
         {/* Contacts Sidebar */}
-        <Card className="w-1/3 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col min-h-0">
+        <Card className={`bg-slate-900/80 border-slate-800 shadow-sm flex-col min-h-0 ${
+          selectedUser ? 'hidden md:flex md:w-1/3 lg:w-80 xl:w-96' : 'flex w-full md:w-1/3 lg:w-80 xl:w-96'
+        }`}>
           <CardHeader className="pb-3 border-b border-slate-800/80 space-y-2.5">
             <div className="flex items-center justify-between">
               <CardTitle className="text-white flex items-center gap-2 text-base">
@@ -973,7 +992,9 @@ export default function MessagesView() {
         </Card>
 
         {/* Chat Area */}
-        <Card className="flex-1 bg-slate-900/80 border-slate-800 shadow-sm flex flex-col">
+        <Card className={`bg-slate-900/80 border-slate-800 shadow-sm flex-col flex-1 min-h-0 min-w-0 ${
+          selectedUser ? 'flex w-full md:flex-1' : 'hidden md:flex md:flex-1'
+        }`}>
           {selectedUser ? (
             <>
               {/* Chat Header with prominent Chat Code & Copy button */}
@@ -982,10 +1003,22 @@ export default function MessagesView() {
                 const jobContext = formatJobContext(selectedUser, chatHistory);
 
                 return (
-                  <CardHeader className="border-b border-slate-800 flex-shrink-0 py-3 sm:py-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="h-11 w-11 sm:h-12 sm:w-12 border-2 border-primary/50 shrink-0">
+                  <CardHeader className="border-b border-slate-800 flex-shrink-0 py-2.5 sm:py-4 px-3 sm:px-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        {/* Mobile Back to Conversation List Button */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedUser(null)}
+                          className="md:hidden h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800 shrink-0"
+                          title="Back to conversations"
+                        >
+                          <ArrowLeft className="h-4 w-4" />
+                        </Button>
+
+                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/50 shrink-0">
                           <AvatarImage
                             src={
                               activeRecipientProfile?.avatar_url ||

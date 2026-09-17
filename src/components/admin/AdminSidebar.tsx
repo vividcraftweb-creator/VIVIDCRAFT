@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   LogOut,
   Tag,
+  Gavel,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trpc } from '@/utils/trpc';
@@ -129,6 +130,12 @@ export default function AdminSidebar() {
       href: '/admin/banners',
       icon: Tag,
       description: 'Promotional banners & offer codes',
+    },
+    {
+      title: 'Bidding / Auctions',
+      href: '/admin/auctions',
+      icon: Gavel,
+      description: 'Manage live auctions & bids',
     },
     {
       title: 'WhatsApp Verifications',

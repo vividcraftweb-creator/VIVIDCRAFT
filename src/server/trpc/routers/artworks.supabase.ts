@@ -97,6 +97,9 @@ export const artworksRouter = router({
           pricing_type: evaluatedMode,
           price: effectivePrice,
           starting_bid: effectiveBid,
+          current_bid: art.current_bid !== undefined && art.current_bid !== null ? Number(art.current_bid) : effectiveBid,
+          end_time: art.end_time || null,
+          status: art.status || 'LIVE',
           art_code: artCode,
           profiles: myProfile ? {
             full_name: profileFullName || null,
@@ -512,6 +515,9 @@ export const artworksRouter = router({
             pricing_type: pricingType,
             price,
             starting_bid: startingBid,
+            current_bid: art.current_bid !== undefined && art.current_bid !== null ? Number(art.current_bid) : startingBid,
+            end_time: art.end_time || null,
+            status: art.status || 'LIVE',
             art_code: artCode,
             profiles: (artistProf || art.profiles) ? {
               full_name: artistProf?.full_name || (art.profiles as any)?.full_name || null,
@@ -707,6 +713,9 @@ export const artworksRouter = router({
             pricing_type: sellingMode,
             price,
             starting_bid: startingBid,
+            current_bid: art.current_bid !== undefined && art.current_bid !== null ? Number(art.current_bid) : startingBid,
+            end_time: art.end_time || null,
+            status: art.status || 'LIVE',
             art_code: artCode,
             artist: {
               id: art.artist_id,

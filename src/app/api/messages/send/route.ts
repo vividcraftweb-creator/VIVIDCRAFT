@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth';
+import { getChatCode } from '@/lib/chat-code';
 import crypto from 'crypto';
 
 export async function POST(req: Request) {
@@ -38,11 +39,12 @@ export async function POST(req: Request) {
     const adminClient = createAdminClient();
     const messageId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
+    const chatCode = getChatCode(user.id, receiver_id);
 
     let message: any = null;
     let lastError: any = null;
 
-    // Primary attempt: full payload with is_read: false
+    // Primary attempt: full payload with chat_code and is_read: false
     try {
       const { data: m1, error: e1 } = await adminClient
         .from('messages')
@@ -51,6 +53,7 @@ export async function POST(req: Request) {
           sender_id: user.id,
           receiver_id,
           content: content.trim(),
+          chat_code: chatCode,
           created_at: nowIso,
           is_read: false,
         })

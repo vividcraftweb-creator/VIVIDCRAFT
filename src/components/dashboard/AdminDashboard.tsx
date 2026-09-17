@@ -22,6 +22,7 @@ import {
   UserCheck,
   Tag,
   MessageSquare,
+  Gavel,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ import AdminUsersTab from './AdminUsersTab';
 import AdminArtworksTab from './AdminArtworksTab';
 import AdminConnectionsTab from './AdminConnectionsTab';
 import AdminBannersTab from '../admin/AdminBannersTab';
+import AdminAuctionsTab from '../admin/AdminAuctionsTab';
 import {
   ComposedChart,
   Bar,
@@ -470,6 +472,17 @@ export default function AdminDashboard() {
                 size="sm"
                 className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
               >
+                <Link href="/admin/auctions">
+                  <Gavel className="h-3.5 w-3.5 mr-2 text-amber-400" />
+                  Bidding &amp; Auctions
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                size="sm"
+                className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
+              >
                 <Link href="/admin/messages">
                   <MessageSquare className="h-3.5 w-3.5 mr-2 text-blue-400" />
                   Chat Monitoring &amp; Codes
@@ -618,6 +631,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="artworks" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Artworks
               </TabsTrigger>
+              <TabsTrigger value="bidding" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs flex items-center gap-1">
+                <Gavel className="h-3 w-3 text-primary" />
+                Bidding &amp; Auctions
+              </TabsTrigger>
               <TabsTrigger value="banners" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs flex items-center gap-1">
                 <Tag className="h-3 w-3 text-amber-400" />
                 Offers &amp; Banners
@@ -629,6 +646,10 @@ export default function AdminDashboard() {
                 Payments
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="bidding" className="mt-3">
+              <AdminAuctionsTab />
+            </TabsContent>
 
             <TabsContent value="banners" className="mt-3">
               <AdminBannersTab />
