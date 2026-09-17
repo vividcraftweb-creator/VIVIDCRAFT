@@ -8,14 +8,14 @@ export async function GET() {
     const supabase = await createClient();
     let result = await supabase
       .from('advertisements')
-      .select('*')
+      .select('id, title, subtitle, image_url, offer_code, target_route, link_url, is_active, display_order')
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (result.error && (result.error.code === '42P01' || result.error.message?.includes('does not exist'))) {
+    if (result.error && (result.error.code === '42703' || result.error.message?.includes('target_route'))) {
       result = await supabase
-        .from('banners')
+        .from('advertisements')
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true })
@@ -23,7 +23,12 @@ export async function GET() {
     }
 
     if (!result.error && Array.isArray(result.data)) {
-      return NextResponse.json({ banners: result.data });
+      const mapped = result.data.map((item: any) => ({
+        ...item,
+        link_url: item.target_route || item.link_url || '/gallery',
+        target_route: item.target_route || item.link_url || '/gallery',
+      }));
+      return NextResponse.json({ banners: mapped });
     }
   } catch (e) {
     // Graceful fallback
@@ -36,7 +41,13 @@ export async function GET() {
     if (res.ok) {
       const json = await res.json();
       if (json?.banners && Array.isArray(json.banners)) {
-        const active = json.banners.filter((b: any) => b.is_active !== false);
+        const active = json.banners
+          .filter((b: any) => b.is_active !== false)
+          .map((item: any) => ({
+            ...item,
+            link_url: item.target_route || item.link_url || '/gallery',
+            target_route: item.target_route || item.link_url || '/gallery',
+          }));
         return NextResponse.json({ banners: active });
       }
     }

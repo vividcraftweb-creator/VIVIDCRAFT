@@ -10,6 +10,7 @@ export interface BannerRecord {
   subtitle: string;
   cta_text: string;
   link_url: string;
+  target_route?: string;
   image_url: string;
   accent?: string;
   offer_code: string;
@@ -32,14 +33,14 @@ export async function GET() {
     const adminClient = createAdminClient();
     let result = await adminClient
       .from('advertisements')
-      .select('*')
+      .select('id, title, subtitle, image_url, offer_code, target_route, link_url, is_active, display_order')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    // If advertisements relation doesn't exist, try banners table
-    if (result.error && (result.error.code === '42P01' || result.error.message?.includes('does not exist'))) {
+    // If target_route column is not yet present on remote DB, fallback to select('*')
+    if (result.error && (result.error.code === '42703' || result.error.message?.includes('target_route'))) {
       result = await adminClient
-        .from('banners')
+        .from('advertisements')
         .select('*')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false });
@@ -47,13 +48,18 @@ export async function GET() {
 
     // When the table exists, return real live database rows (even if empty)
     if (!result.error && Array.isArray(result.data)) {
-      return NextResponse.json({ banners: result.data });
+      const mapped = result.data.map((b: any) => ({
+        ...b,
+        link_url: b.target_route || b.link_url || '/gallery',
+        target_route: b.target_route || b.link_url || '/gallery',
+      }));
+      return NextResponse.json({ banners: mapped });
     }
 
     // Only return fallback list if database is unreachable or unmigrated
     return NextResponse.json({ banners: fallbackBanners });
   } catch (err: any) {
-    console.warn('Fallback: Error querying supabase banners table:', err?.message);
+    console.warn('Fallback: Error querying supabase advertisements table:', err?.message);
     return NextResponse.json({ banners: fallbackBanners });
   }
 }
@@ -95,6 +101,7 @@ export async function POST(req: Request) {
       badge: badge.trim(),
       cta_text: cta_text.trim() || 'Get Offer',
       link_url: link_url.trim() || '/gallery',
+      target_route: link_url.trim() || '/gallery',
       image_url: image_url.trim(),
       accent,
       offer_code: finalOfferCode,
@@ -103,37 +110,26 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     };
 
-    // Try inserting into Supabase (both banners and advertisements tables)
+    // Insert into Supabase advertisements table ONLY
     try {
       const adminClient = createAdminClient();
-      let insertedData: any = null;
-
-      const { data: bData, error: bErr } = await adminClient
-        .from('banners')
-        .insert([newBannerRecord])
-        .select()
-        .single();
-
-      if (!bErr && bData) {
-        insertedData = bData;
-      }
-
       const { data: aData, error: aErr } = await adminClient
         .from('advertisements')
         .insert([newBannerRecord])
         .select()
         .single();
 
-      if (!insertedData && !aErr && aData) {
-        insertedData = aData;
-      }
-
-      if (insertedData) {
-        fallbackBanners.unshift(insertedData);
-        return NextResponse.json({ banner: insertedData, success: true }, { status: 201 });
+      if (!aErr && aData) {
+        const mapped = {
+          ...aData,
+          link_url: aData.target_route || aData.link_url || '/gallery',
+          target_route: aData.target_route || aData.link_url || '/gallery',
+        };
+        fallbackBanners.unshift(mapped);
+        return NextResponse.json({ banner: mapped, success: true }, { status: 201 });
       }
     } catch (dbErr) {
-      console.warn('Could not insert to Supabase banners/advertisements table, saving to fallback:', dbErr);
+      console.warn('Could not insert to Supabase advertisements table, saving to fallback:', dbErr);
     }
 
     // Save to local fallback array
@@ -157,7 +153,7 @@ export async function PATCH(req: Request) {
 
     let updatedRecord: any = null;
 
-    // Try updating Supabase tables
+    // Try updating Supabase advertisements table ONLY
     try {
       const adminClient = createAdminClient();
       const updatePayload: any = {};
@@ -166,19 +162,26 @@ export async function PATCH(req: Request) {
       if (title) updatePayload.title = title.trim();
       if (badge) updatePayload.badge = badge.trim();
       if (subtitle !== undefined) updatePayload.subtitle = subtitle.trim();
-      if (link_url) updatePayload.link_url = link_url.trim();
+      if (link_url) {
+        updatePayload.link_url = link_url.trim();
+        updatePayload.target_route = link_url.trim();
+      }
       if (image_url) updatePayload.image_url = image_url.trim();
       updatePayload.updated_at = new Date().toISOString();
 
-      const [resBanners, resAds] = await Promise.allSettled([
-        adminClient.from('banners').update(updatePayload).eq('id', id).select().single(),
-        adminClient.from('advertisements').update(updatePayload).eq('id', id).select().single(),
-      ]);
+      const resAds = await adminClient
+        .from('advertisements')
+        .update(updatePayload)
+        .eq('id', id)
+        .select()
+        .single();
 
-      if (resBanners.status === 'fulfilled' && !resBanners.value.error && resBanners.value.data) {
-        updatedRecord = resBanners.value.data;
-      } else if (resAds.status === 'fulfilled' && !resAds.value.error && resAds.value.data) {
-        updatedRecord = resAds.value.data;
+      if (!resAds.error && resAds.data) {
+        updatedRecord = {
+          ...resAds.data,
+          link_url: resAds.data.target_route || resAds.data.link_url || '/gallery',
+          target_route: resAds.data.target_route || resAds.data.link_url || '/gallery',
+        };
       }
     } catch (e) {
       console.warn('Supabase update skipped/failed, updating fallback');
@@ -194,7 +197,7 @@ export async function PATCH(req: Request) {
         ...(title ? { title: title.trim() } : {}),
         ...(badge ? { badge: badge.trim() } : {}),
         ...(subtitle !== undefined ? { subtitle: subtitle.trim() } : {}),
-        ...(link_url ? { link_url: link_url.trim() } : {}),
+        ...(link_url ? { link_url: link_url.trim(), target_route: link_url.trim() } : {}),
         ...(image_url ? { image_url: image_url.trim() } : {}),
       };
       if (!updatedRecord) {
@@ -218,13 +221,10 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Banner ID is required' }, { status: 400 });
     }
 
-    // Explicitly delete from Supabase 'banners' and 'advertisements' tables
+    // Explicitly delete ONLY from Supabase 'advertisements' table
     try {
       const adminClient = createAdminClient();
-      await Promise.allSettled([
-        adminClient.from('banners').delete().eq('id', id),
-        adminClient.from('advertisements').delete().eq('id', id),
-      ]);
+      await adminClient.from('advertisements').delete().eq('id', id);
     } catch (e) {
       console.warn('Supabase delete skipped/failed');
     }

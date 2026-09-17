@@ -41,6 +41,7 @@ export interface BannerItem {
   subtitle: string;
   cta_text: string;
   link_url: string;
+  target_route?: string;
   image_url: string;
   accent?: string;
   offer_code: string;
@@ -94,25 +95,39 @@ export default function AdminBannersTab() {
       // 1. Query advertisements table directly
       let { data, error } = await supabase
         .from('advertisements')
-        .select('*')
+        .select('id, title, subtitle, image_url, offer_code, target_route, link_url, is_active, display_order')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false });
 
-      // Fallback to banners table if advertisements does not exist
-      if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
-        const bRes = await supabase
-          .from('banners')
+      // Fallback if target_route column is not yet present on remote DB
+      if (error && (error.code === '42703' || error.message?.includes('target_route'))) {
+        const fallbackRes = await supabase
+          .from('advertisements')
           .select('*')
           .order('display_order', { ascending: true })
           .order('created_at', { ascending: false });
-        if (!bRes.error) {
-          data = bRes.data;
+        if (!fallbackRes.error) {
+          data = fallbackRes.data;
           error = null;
         }
       }
 
       if (!error && Array.isArray(data)) {
-        liveData = data as BannerItem[];
+        liveData = data.map((b: any) => ({
+          id: b.id,
+          badge: b.badge || 'Special Offer',
+          title: b.title || '',
+          subtitle: b.subtitle || '',
+          cta_text: b.cta_text || 'Get Offer',
+          link_url: b.target_route || b.link_url || '/gallery',
+          target_route: b.target_route || b.link_url || '/gallery',
+          image_url: b.image_url || '',
+          accent: b.accent || 'from-amber-500/20 to-orange-500/10',
+          offer_code: b.offer_code || '',
+          is_active: b.is_active !== false,
+          display_order: b.display_order ?? 0,
+          created_at: b.created_at,
+        }));
         setBanners(liveData);
         return;
       }
@@ -122,7 +137,22 @@ export default function AdminBannersTab() {
       if (res.ok) {
         const json = await res.json();
         if (json?.banners && Array.isArray(json.banners)) {
-          setBanners(json.banners);
+          const mapped = json.banners.map((b: any) => ({
+            id: b.id,
+            badge: b.badge || 'Special Offer',
+            title: b.title || '',
+            subtitle: b.subtitle || '',
+            cta_text: b.cta_text || 'Get Offer',
+            link_url: b.target_route || b.link_url || '/gallery',
+            target_route: b.target_route || b.link_url || '/gallery',
+            image_url: b.image_url || '',
+            accent: b.accent || 'from-amber-500/20 to-orange-500/10',
+            offer_code: b.offer_code || '',
+            is_active: b.is_active !== false,
+            display_order: b.display_order ?? 0,
+            created_at: b.created_at,
+          }));
+          setBanners(mapped);
         }
       }
     } catch (e) {
@@ -237,19 +267,17 @@ export default function AdminBannersTab() {
         badge: formBadge.trim() || 'Special Offer',
         cta_text: 'Get Offer',
         link_url: formLinkUrl.trim() || '/gallery',
+        target_route: formLinkUrl.trim() || '/gallery',
         image_url: formImageUrl.trim(),
         offer_code: code,
         is_active: formIsActive,
         display_order: banners.length + 1,
       };
 
-      // Direct client Supabase insert attempt
+      // Direct client Supabase insert attempt into advertisements table
       try {
         const supabase = createClient();
-        await Promise.allSettled([
-          supabase.from('advertisements').insert([bannerPayload]),
-          supabase.from('banners').insert([bannerPayload]),
-        ]);
+        await supabase.from('advertisements').insert([bannerPayload]);
       } catch (err) {
         console.warn('Client direct insert caught error:', err);
       }
@@ -290,10 +318,7 @@ export default function AdminBannersTab() {
     const newStatus = !banner.is_active;
     try {
       const supabase = createClient();
-      await Promise.allSettled([
-        supabase.from('advertisements').update({ is_active: newStatus }).eq('id', banner.id),
-        supabase.from('banners').update({ is_active: newStatus }).eq('id', banner.id),
-      ]);
+      await supabase.from('advertisements').update({ is_active: newStatus }).eq('id', banner.id);
 
       const res = await fetch('/api/admin/banners', {
         method: 'PATCH',
@@ -320,12 +345,9 @@ export default function AdminBannersTab() {
     setBanners((prev) => prev.filter((b) => b.id !== id));
 
     try {
-      // 2. Execute explicit Supabase delete query on advertisements and banners tables
+      // 2. Execute explicit Supabase delete query ONLY on advertisements table
       const supabase = createClient();
-      await Promise.allSettled([
-        supabase.from('advertisements').delete().eq('id', id),
-        supabase.from('banners').delete().eq('id', id),
-      ]);
+      await supabase.from('advertisements').delete().eq('id', id);
 
       // 3. Ensure server-side deletion & in-memory sync
       await fetch(`/api/admin/banners?id=${encodeURIComponent(id)}`, {

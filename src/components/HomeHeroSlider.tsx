@@ -13,15 +13,17 @@ import { DEFAULT_WHATSAPP_NUMBER } from '@/lib/whatsapp';
 
 export interface BannerSlide {
   id: string;
-  badge: string;
+  badge?: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   cta_text?: string;
   link_url?: string;
+  target_route?: string;
   image_url: string;
   accent?: string;
   offer_code: string;
   is_active?: boolean;
+  display_order?: number;
 }
 
 interface HomeHeroSliderProps {
@@ -43,29 +45,44 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
     async function loadBanners() {
       try {
         const supabase = createClient();
-        // 1. Fetch directly from advertisements table
+        // 1. Query ONLY advertisements table
         let { data, error } = await supabase
           .from('advertisements')
-          .select('*')
+          .select('id, title, subtitle, image_url, offer_code, target_route, link_url, is_active, display_order')
           .eq('is_active', true)
           .order('display_order', { ascending: true })
           .order('created_at', { ascending: false });
 
-        if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
-          const bRes = await supabase
-            .from('banners')
+        // Fallback if target_route column is not yet migrated on remote instance
+        if (error && (error.code === '42703' || error.message?.includes('target_route'))) {
+          const fallbackRes = await supabase
+            .from('advertisements')
             .select('*')
             .eq('is_active', true)
             .order('display_order', { ascending: true })
             .order('created_at', { ascending: false });
-          if (!bRes.error) {
-            data = bRes.data;
+          if (!fallbackRes.error) {
+            data = fallbackRes.data;
             error = null;
           }
         }
 
         if (!error && Array.isArray(data) && isMounted) {
-          setBanners(data as BannerSlide[]);
+          const mapped: BannerSlide[] = data.map((b: any) => ({
+            id: b.id,
+            badge: b.badge || 'Special Offer',
+            title: b.title || '',
+            subtitle: b.subtitle || '',
+            cta_text: b.cta_text || 'Get Offer',
+            link_url: b.target_route || b.link_url || '/gallery',
+            target_route: b.target_route || b.link_url || '/gallery',
+            image_url: b.image_url || '',
+            accent: b.accent || 'from-amber-500/20 to-orange-500/10',
+            offer_code: b.offer_code || '',
+            is_active: b.is_active !== false,
+            display_order: b.display_order ?? 0,
+          }));
+          setBanners(mapped);
           setIsLoading(false);
           return;
         }
@@ -75,7 +92,21 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
         if (res.ok) {
           const json = await res.json();
           if (json?.banners && Array.isArray(json.banners) && isMounted) {
-            setBanners(json.banners);
+            const mapped: BannerSlide[] = json.banners.map((b: any) => ({
+              id: b.id,
+              badge: b.badge || 'Special Offer',
+              title: b.title || '',
+              subtitle: b.subtitle || '',
+              cta_text: b.cta_text || 'Get Offer',
+              link_url: b.target_route || b.link_url || '/gallery',
+              target_route: b.target_route || b.link_url || '/gallery',
+              image_url: b.image_url || '',
+              accent: b.accent || 'from-amber-500/20 to-orange-500/10',
+              offer_code: b.offer_code || '',
+              is_active: b.is_active !== false,
+              display_order: b.display_order ?? 0,
+            }));
+            setBanners(mapped);
           }
         }
       } catch (e) {
