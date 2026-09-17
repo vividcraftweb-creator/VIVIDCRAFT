@@ -6,9 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import {
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   ArrowRight,
-  Tag,
   MessageCircle,
 } from 'lucide-react';
 import { DEFAULT_WHATSAPP_NUMBER } from '@/lib/whatsapp';
@@ -243,62 +241,25 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
                     : 'opacity-0 scale-105 z-0 pointer-events-none'
                 }`}
               >
-                {/* Background Image */}
+                {/* Background Image - 100% bright and crisp without dark filter */}
                 <img
                   src={banner.image_url}
-                  alt={banner.title}
-                  className="w-full h-full object-cover object-center filter brightness-[0.88] dark:brightness-[0.75] transition-transform duration-7000 ease-out group-hover:scale-105"
+                  alt={banner.title || 'Banner'}
+                  className="w-full h-full object-cover object-center transition-transform duration-7000 ease-out group-hover:scale-105"
                 />
 
-                {/* Gradient Overlay for Text Readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 sm:bg-gradient-to-r sm:from-black/90 sm:via-black/55 sm:to-transparent" />
-
-                {/* Banner Content */}
-                <div className="absolute inset-0 flex flex-col justify-end sm:justify-center p-6 sm:p-10 md:p-14 lg:p-16 max-w-2xl text-left z-20 space-y-2 sm:space-y-3.5">
-                  {/* Badge & Offer Code Row */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold uppercase tracking-wider bg-amber-500/25 text-amber-300 border border-amber-500/40 backdrop-blur-md shadow-sm">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      {banner.badge}
-                    </span>
-
-                    {/* Prominent Offer Code Badge */}
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider bg-black/50 text-amber-400 border border-amber-400/50 backdrop-blur-md shadow-sm">
-                      <Tag className="w-3 h-3 text-amber-400" />
-                      Code: {banner.offer_code}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h2 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight drop-shadow-md">
-                    {banner.title}
-                  </h2>
-
-                  {/* Subtitle */}
-                  <p className="text-xs sm:text-sm md:text-base text-slate-200 font-normal leading-relaxed line-clamp-2 sm:line-clamp-3 max-w-xl drop-shadow-sm">
-                    {banner.subtitle}
-                  </p>
-
-                  {/* Clickable "Get Offer →" Action Button connected to WhatsApp */}
-                  <div className="pt-2 sm:pt-3 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={(e) => handleClaimOffer(e, banner)}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-                      aria-label={`Get Offer for ${banner.title}`}
-                    >
-                      <MessageCircle className="w-4 h-4 fill-slate-950 text-transparent" />
-                      <span>Get Offer</span>
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                    </button>
-
-                    <span className="text-[11px] text-amber-200/80 hidden sm:inline-block font-mono">
-                      Claim via WhatsApp with code{' '}
-                      <span className="text-amber-400 font-bold underline decoration-amber-400/50">
-                        {banner.offer_code}
-                      </span>
-                    </span>
-                  </div>
+                {/* Only the "Get Offer →" Button positioned neatly on top of the banner */}
+                <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-20">
+                  <button
+                    type="button"
+                    onClick={(e) => handleClaimOffer(e, banner)}
+                    className="inline-flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-black/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                    aria-label={`Get Offer for ${banner.offer_code}`}
+                  >
+                    <MessageCircle className="w-4 h-4 fill-slate-950 text-transparent" />
+                    <span>Get Offer</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </button>
                 </div>
               </div>
             );

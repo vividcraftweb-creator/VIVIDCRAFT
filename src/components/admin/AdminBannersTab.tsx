@@ -573,7 +573,7 @@ export default function AdminBannersTab() {
 
       {/* Modal Dialog: Create New Banner / Offer */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md bg-slate-900 border border-slate-800 text-white">
+        <DialogContent className="max-w-md bg-slate-900 border border-slate-800 text-white max-h-[85vh] overflow-y-auto pr-2">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white text-base">
               <Sparkles className="h-4 w-4 text-amber-500" />
@@ -753,7 +753,7 @@ export default function AdminBannersTab() {
               />
             </div>
 
-            <DialogFooter className="pt-2 flex sm:justify-between gap-2">
+            <DialogFooter className="pt-3 sticky bottom-0 bg-slate-900/95 backdrop-blur-md pb-1 flex sm:justify-between gap-2 border-t border-slate-800/80 mt-4">
               <Button
                 type="button"
                 variant="outline"
