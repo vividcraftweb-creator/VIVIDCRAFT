@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const supabase = await createClient();
     let result = await supabase
-      .from('banners')
+      .from('advertisements')
       .select('*')
       .eq('is_active', true)
       .order('display_order', { ascending: true })
@@ -15,7 +15,7 @@ export async function GET() {
 
     if (result.error && (result.error.code === '42P01' || result.error.message?.includes('does not exist'))) {
       result = await supabase
-        .from('advertisements')
+        .from('banners')
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true })
@@ -42,57 +42,5 @@ export async function GET() {
     }
   } catch (e) {}
 
-  // Built-in curated banners with default offer codes
-  return NextResponse.json({
-    banners: [
-      {
-        id: 'banner-gallery',
-        badge: 'Curated Masterpieces',
-        title: 'Explore Original Fine Art & Portfolios',
-        subtitle: 'Discover oil paintings, digital art, sculptures, and mixed media ranked by verified collectors and creators.',
-        cta_text: 'Get Offer',
-        link_url: '/gallery',
-        image_url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1920&q=80',
-        accent: 'from-amber-500/20 to-orange-500/10',
-        offer_code: 'OFFER-7842',
-        is_active: true,
-      },
-      {
-        id: 'banner-artists',
-        badge: 'Verified Creators',
-        title: 'Commission Elite Artists for Custom Works',
-        subtitle: 'Connect directly with master painters, illustrators, and visual designers for custom portraits and bespoke commissions.',
-        cta_text: 'Get Offer',
-        link_url: '/artists',
-        image_url: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1920&q=80',
-        accent: 'from-purple-500/20 to-pink-500/10',
-        offer_code: 'OFFER-5190',
-        is_active: true,
-      },
-      {
-        id: 'banner-bidding',
-        badge: 'Live Art Auctions',
-        title: 'Exclusive Art Auctions & Open Bidding',
-        subtitle: 'Place competitive bids on rare, one-of-a-kind original creations or enter your masterpiece into live auctions.',
-        cta_text: 'Get Offer',
-        link_url: '/bidding',
-        image_url: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=1920&q=80',
-        accent: 'from-blue-500/20 to-cyan-500/10',
-        offer_code: 'OFFER-3421',
-        is_active: true,
-      },
-      {
-        id: 'banner-creator',
-        badge: 'Join Vivid Art',
-        title: 'Showcase Your Art & Sell to Global Collectors',
-        subtitle: 'Join Sri Lanka’s premier digital art marketplace. Create your artist profile, upload artworks, and get discovered.',
-        cta_text: 'Get Offer',
-        link_url: '/auth/signup',
-        image_url: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1920&q=80',
-        accent: 'from-emerald-500/20 to-teal-500/10',
-        offer_code: 'OFFER-9018',
-        is_active: true,
-      },
-    ],
-  });
+  return NextResponse.json({ banners: [] });
 }

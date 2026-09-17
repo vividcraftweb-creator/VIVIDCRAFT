@@ -214,33 +214,25 @@ export default function MessageDetailModal({
             </div>
           </div>
 
-          {/* Message Content */}
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <div className="text-xs text-slate-400 mb-2">Message Content</div>
-            <div className="text-sm text-white whitespace-pre-wrap leading-relaxed bg-slate-950/50 rounded-lg p-4 border border-white/5 max-h-96 overflow-y-auto">
-              {message.content || 'No content available'}
-            </div>
-          </div>
-
-          {/* Full Conversation History Thread */}
-          {Array.isArray((message as any).conversation) && (message as any).conversation.length > 0 && (
+          {/* Full Chronological Conversation History Thread */}
+          {Array.isArray((message as any).conversation) && (message as any).conversation.length > 0 ? (
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <History className="h-4 w-4 text-blue-400" />
                   <span className="text-sm font-semibold text-white">
-                    Full Conversation Thread
+                    Chronological Conversation Thread
                   </span>
                   <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">
                     {(message as any).conversation.length} {(message as any).conversation.length === 1 ? 'Message' : 'Messages'}
                   </Badge>
                 </div>
                 <span className="text-xs text-slate-400">
-                  Chat Code: <span className="font-mono text-blue-400">{chatCode}</span>
+                  Chat Code: <span className="font-mono text-blue-400 font-bold">{chatCode}</span>
                 </span>
               </div>
 
-              <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1 border border-white/5 rounded-lg p-3 bg-slate-950/60">
+              <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 border border-white/5 rounded-lg p-3 bg-slate-950/60">
                 {(message as any).conversation.map((threadMsg: any, idx: number) => {
                   const isCurrent = threadMsg.id === message.id;
                   const isFromSender = threadMsg.isSender;
@@ -297,6 +289,13 @@ export default function MessageDetailModal({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <div className="text-xs text-slate-400 mb-2">Message Content</div>
+              <div className="text-sm text-white whitespace-pre-wrap leading-relaxed bg-slate-950/50 rounded-lg p-4 border border-white/5 max-h-96 overflow-y-auto">
+                {message.content || 'No content available'}
               </div>
             </div>
           )}

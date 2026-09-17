@@ -19,7 +19,7 @@ import {
   Copy,
   X,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import MessageDetailModal from '@/components/admin/MessageDetailModal';
@@ -41,7 +41,7 @@ export default function AdminMessagesPage() {
     }
   }, [searchParams]);
 
-  const pageSize = 20;
+  const pageSize = 100;
 
   // Get messages from actual database with search query passed to backend
   const {
@@ -68,24 +68,110 @@ export default function AdminMessagesPage() {
     handleRefresh();
   };
 
-  // Filter messages by search term or Chat Code
-  const filteredMessages =
-    (messagesData?.messages || []).filter((msg) => {
-      const searchLower = searchTerm.toLowerCase();
-      const senderEmail = msg.sender?.email?.toLowerCase() || '';
-      const receiverEmail = msg.receiver?.email?.toLowerCase() || '';
-      const content = msg.content?.toLowerCase() || '';
-      const senderId = (msg as any).senderId || msg.sender?.id;
-      const receiverId = (msg as any).receiverId || msg.receiver?.id;
-      const chatCode = getChatCode(senderId, receiverId);
+  // Group messages by unique Chat Code
+  const groupedConversations = useMemo(() => {
+    const rawList = messagesData?.messages || [];
+    const map = new Map<string, {
+      chatCode: string;
+      sender: {
+        id: string;
+        name: string;
+        email: string;
+        avatarUrl?: string | null;
+      };
+      receiver: {
+        id: string;
+        name: string;
+        email: string;
+        avatarUrl?: string | null;
+      };
+      lastMessageTime: string | Date;
+      totalMessages: number;
+      latestMessageId: string;
+      hasFlagged: boolean;
+      allMessages: any[];
+    }>();
 
-      return (
-        matchesChatCode(chatCode, searchTerm) ||
-        senderEmail.includes(searchLower) ||
-        receiverEmail.includes(searchLower) ||
-        content.includes(searchLower)
+    for (const msg of rawList) {
+      const senderId = (msg as any).senderId || (msg as any).sender_id || msg.sender?.id;
+      const receiverId = (msg as any).receiverId || (msg as any).receiver_id || msg.receiver?.id;
+      const code = msg.chat_code || (msg as any).chatCode || getChatCode(senderId, receiverId);
+
+      const senderProfile = Array.isArray(msg.sender?.Profile)
+        ? msg.sender.Profile[0]
+        : msg.sender?.Profile;
+      const receiverProfile = Array.isArray(msg.receiver?.Profile)
+        ? msg.receiver.Profile[0]
+        : msg.receiver?.Profile;
+
+      const senderName =
+        senderProfile
+          ? `${senderProfile.firstName || ''} ${senderProfile.lastName || ''}`.trim()
+          : msg.sender?.name || msg.sender?.email?.split('@')[0] || 'User';
+      const receiverName =
+        receiverProfile
+          ? `${receiverProfile.firstName || ''} ${receiverProfile.lastName || ''}`.trim()
+          : msg.receiver?.name || msg.receiver?.email?.split('@')[0] || 'User';
+
+      const msgTime = msg.createdAt || msg.created_at;
+
+      if (!map.has(code)) {
+        map.set(code, {
+          chatCode: code,
+          sender: {
+            id: senderId,
+            name: senderName,
+            email: msg.sender?.email || '',
+            avatarUrl: senderProfile?.avatarUrl,
+          },
+          receiver: {
+            id: receiverId,
+            name: receiverName,
+            email: msg.receiver?.email || '',
+            avatarUrl: receiverProfile?.avatarUrl,
+          },
+          lastMessageTime: msgTime,
+          totalMessages: 1,
+          latestMessageId: msg.id,
+          hasFlagged: Boolean(msg.flagged),
+          allMessages: [msg],
+        });
+      } else {
+        const existing = map.get(code)!;
+        existing.totalMessages += 1;
+        existing.allMessages.push(msg);
+        if (msg.flagged) {
+          existing.hasFlagged = true;
+        }
+        if (new Date(msgTime).getTime() > new Date(existing.lastMessageTime).getTime()) {
+          existing.lastMessageTime = msgTime;
+          existing.latestMessageId = msg.id;
+        }
+      }
+    }
+
+    let list = Array.from(map.values());
+    list.sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime());
+
+    if (searchTerm.trim()) {
+      const s = searchTerm.toLowerCase().trim();
+      list = list.filter(
+        (g) =>
+          matchesChatCode(g.chatCode, s) ||
+          g.sender.name.toLowerCase().includes(s) ||
+          g.sender.email.toLowerCase().includes(s) ||
+          g.receiver.name.toLowerCase().includes(s) ||
+          g.receiver.email.toLowerCase().includes(s) ||
+          g.allMessages.some((m) => m.content && m.content.toLowerCase().includes(s))
       );
-    });
+    }
+
+    if (showFlaggedOnly) {
+      list = list.filter((g) => g.hasFlagged);
+    }
+
+    return list;
+  }, [messagesData?.messages, searchTerm, showFlaggedOnly]);
 
   const totalPages = messagesData?.totalPages || 1;
   const totalMessages = stats?.totalMessages || 0;
@@ -238,16 +324,16 @@ export default function AdminMessagesPage() {
       {/* Compact Table */}
       <Card className="bg-slate-900/80 border-slate-800 shadow-sm">
         <CardContent className="p-0">
-          {filteredMessages.length === 0 ? (
+          {groupedConversations.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm font-medium">No messages found</p>
+              <p className="text-slate-400 text-sm font-medium">No conversations found</p>
               <p className="text-slate-500 text-xs mt-1">
                 {searchTerm
-                  ? 'Try adjusting your search'
+                  ? 'Try adjusting your search or Chat Code'
                   : showFlaggedOnly
-                  ? 'No flagged messages'
-                  : 'Messages will appear here'}
+                  ? 'No flagged conversations'
+                  : 'Conversations will appear here grouped by Chat Code'}
               </p>
             </div>
           ) : (
@@ -255,91 +341,52 @@ export default function AdminMessagesPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-800">
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                      Date
-                    </th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-300 uppercase tracking-wide">
                       Chat Code
                     </th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                      From
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                      Participants
                     </th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                      To
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                      Last Message Time
                     </th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                      Message
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                      Total Messages
                     </th>
-                    <th className="text-center py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide w-20">
-                      Status
-                    </th>
-                    <th className="text-right py-2.5 px-3 text-xs font-semibold text-slate-300 uppercase tracking-wide w-16">
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-300 uppercase tracking-wide w-20">
                       Action
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredMessages.map((message) => {
-                    const senderProfile = Array.isArray(message.sender?.Profile)
-                      ? message.sender.Profile[0]
-                      : message.sender?.Profile;
-                    const receiverProfile = Array.isArray(message.receiver?.Profile)
-                      ? message.receiver.Profile[0]
-                      : message.receiver?.Profile;
-
-                    const senderName =
-                      senderProfile
-                        ? `${senderProfile.firstName || ''} ${senderProfile.lastName || ''}`.trim()
-                        : null;
-                    const receiverName =
-                      receiverProfile
-                        ? `${receiverProfile.firstName || ''} ${receiverProfile.lastName || ''}`.trim()
-                        : null;
-
-                    const senderId = (message as any).senderId || message.sender?.id;
-                    const receiverId = (message as any).receiverId || message.receiver?.id;
-                    const chatCode = getChatCode(senderId, receiverId);
-
+                  {groupedConversations.map((group) => {
                     return (
                       <tr
-                        key={message.id}
+                        key={group.chatCode}
                         className="border-b border-slate-800/80 hover:bg-slate-800/40 transition-colors cursor-pointer"
-                        onClick={() => setSelectedMessageId(message.id)}
+                        onClick={() => setSelectedMessageId(group.latestMessageId)}
                       >
-                        <td className="py-2 px-3">
-                          <div className="text-xs text-slate-300">
-                            {new Date(message.createdAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {new Date(message.createdAt).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </div>
-                        </td>
-                        <td className="py-2 px-3">
+                        {/* CHAT CODE */}
+                        <td className="py-3 px-4">
                           <div className="flex items-center gap-1.5">
                             <Badge
                               variant="outline"
-                              className="font-mono text-[11px] bg-blue-500/10 text-blue-400 border-blue-500/30 whitespace-nowrap tracking-wide cursor-pointer hover:bg-blue-500/20 transition-colors"
+                              className="font-mono text-xs bg-blue-500/10 text-blue-400 border-blue-500/30 whitespace-nowrap tracking-wide font-bold cursor-pointer hover:bg-blue-500/20 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigator.clipboard.writeText(chatCode);
-                                toast.success(`Copied chat code: ${chatCode}`);
+                                navigator.clipboard.writeText(group.chatCode);
+                                toast.success(`Copied chat code: ${group.chatCode}`);
                               }}
                               title="Click to copy Chat Code"
                             >
-                              {chatCode}
+                              {group.chatCode}
                             </Badge>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigator.clipboard.writeText(chatCode);
-                                toast.success(`Copied chat code: ${chatCode}`);
+                                navigator.clipboard.writeText(group.chatCode);
+                                toast.success(`Copied chat code: ${group.chatCode}`);
                               }}
                               className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
                               title="Copy Chat Code"
@@ -348,54 +395,69 @@ export default function AdminMessagesPage() {
                             </button>
                           </div>
                         </td>
-                        <td className="py-2 px-3">
-                          <div className="text-xs text-white font-medium truncate max-w-[150px]">
-                            {senderName || message.sender?.email || 'Unknown'}
-                          </div>
-                          {senderName && (
-                            <div className="text-xs text-slate-500 truncate max-w-[150px]">
-                              {message.sender?.email}
+
+                        {/* PARTICIPANTS (From/To) */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="min-w-0 max-w-[150px] sm:max-w-[180px]">
+                              <span className="text-[10px] text-slate-500 uppercase block font-semibold">From</span>
+                              <span className="font-medium text-white truncate block">{group.sender.name}</span>
+                              <span className="text-[11px] text-slate-400 truncate block">{group.sender.email}</span>
                             </div>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          <div className="text-xs text-white font-medium truncate max-w-[150px]">
-                            {receiverName || message.receiver?.email || 'Unknown'}
-                          </div>
-                          {receiverName && (
-                            <div className="text-xs text-slate-500 truncate max-w-[150px]">
-                              {message.receiver?.email}
+                            <ArrowRight className="h-3.5 w-3.5 text-slate-500 shrink-0 mx-1" />
+                            <div className="min-w-0 max-w-[150px] sm:max-w-[180px]">
+                              <span className="text-[10px] text-slate-500 uppercase block font-semibold">To</span>
+                              <span className="font-medium text-white truncate block">{group.receiver.name}</span>
+                              <span className="text-[11px] text-slate-400 truncate block">{group.receiver.email}</span>
                             </div>
-                          )}
-                        </td>
-                        <td className="py-2 px-3">
-                          <div className="text-xs text-slate-300 line-clamp-2 leading-relaxed max-w-[300px]">
-                            {message.content || 'No content'}
                           </div>
                         </td>
-                        <td className="py-2 px-3 text-center">
-                          {message.flagged ? (
-                            <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-xs">
-                              <Flag className="h-3 w-3 mr-1" />
-                              Flagged
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
-                              Active
-                            </Badge>
-                          )}
+
+                        {/* LAST MESSAGE TIME */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="text-xs text-slate-300 font-medium">
+                            {new Date(group.lastMessageTime).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {new Date(group.lastMessageTime).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
                         </td>
-                        <td className="py-2 px-3 text-right">
+
+                        {/* TOTAL MESSAGES */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="secondary" className="bg-slate-800 text-slate-200 border-slate-700 text-xs font-semibold">
+                              {group.totalMessages} {group.totalMessages === 1 ? 'msg' : 'msgs'}
+                            </Badge>
+                            {group.hasFlagged && (
+                              <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-[10px] py-0 h-4">
+                                <Flag className="h-2.5 w-2.5 mr-0.5" />
+                                Flagged
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* ACTION */}
+                        <td className="py-3 px-4 text-right">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-slate-400 hover:text-white hover:bg-white/10 h-7 w-7 p-0"
+                            className="text-blue-400 hover:text-white hover:bg-blue-600/30 h-8 w-8 p-0 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedMessageId(message.id);
+                              setSelectedMessageId(group.latestMessageId);
                             }}
+                            title="Inspect Conversation History"
                           >
-                            <Eye className="h-3.5 w-3.5" />
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </td>
                       </tr>
@@ -412,7 +474,7 @@ export default function AdminMessagesPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
           <div className="text-xs text-slate-400">
-            Page {currentPage} of {totalPages} • {filteredMessages.length} messages
+            Page {currentPage} of {totalPages} • {groupedConversations.length} conversations
           </div>
           <div className="flex items-center gap-2">
             <Button

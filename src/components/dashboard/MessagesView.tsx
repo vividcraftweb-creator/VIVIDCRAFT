@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw, Search, Copy, Check, Tag, X, ArrowLeft } from 'lucide-react';
+import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw, Search, Copy, Check, CheckCheck, Tag, X, ArrowLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,6 +107,7 @@ export default function MessagesView() {
   const chatHistory = messages;
   const setChatHistory = setMessages;
   const [isSending, setIsSending] = useState(false);
+  const [isSentSuccess, setIsSentSuccess] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -752,8 +753,10 @@ export default function MessagesView() {
           toast.error('Message could not be sent. Please try again.');
         }
       } else {
-        // Immediately reset sending spinner upon successful API response
+        // Immediately reset sending spinner and show checkmark success indicator
         setIsSending(false);
+        setIsSentSuccess(true);
+        setTimeout(() => setIsSentSuccess(false), 2000);
 
         // Replace temp message with real message from server
         const realMsg = json.message;
@@ -1174,11 +1177,16 @@ export default function MessagesView() {
                                   {formatTimestamp(timestamp)}
                                 </span>
                               )}
-                              {isPending && (
-                                <span className="text-[10px] text-amber-400 font-medium animate-pulse">
+                              {isPending ? (
+                                <span className="text-[10px] text-amber-400 font-medium animate-pulse flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
                                   Sending...
                                 </span>
-                              )}
+                              ) : isOwn ? (
+                                <span className="flex items-center text-emerald-400 ml-0.5" title="Dispatched to Supabase">
+                                  <CheckCheck className="h-3.5 w-3.5" />
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -1221,10 +1229,16 @@ export default function MessagesView() {
                   />
                   <Button
                     type="submit"
-                    disabled={isSending || !message.trim()}
-                    className="bg-primary hover:bg-primary/90 min-w-[44px] flex items-center justify-center"
+                    disabled={isSending || (!message.trim() && !isSentSuccess)}
+                    className={`min-w-[44px] flex items-center justify-center transition-all ${
+                      isSentSuccess
+                        ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
+                        : 'bg-primary hover:bg-primary/90 text-white'
+                    }`}
                   >
-                    {isSending ? (
+                    {isSentSuccess ? (
+                      <Check className="h-4 w-4 text-white animate-in zoom-in-50 duration-150" />
+                    ) : isSending ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       <Send className="h-4 w-4" />

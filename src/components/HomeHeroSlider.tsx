@@ -24,111 +24,66 @@ export interface BannerSlide {
   is_active?: boolean;
 }
 
-export const DEFAULT_ADVERTISING_BANNERS: BannerSlide[] = [
-  {
-    id: 'banner-gallery',
-    badge: 'Curated Masterpieces',
-    title: 'Explore Original Fine Art & Portfolios',
-    subtitle: 'Discover oil paintings, digital art, sculptures, and mixed media ranked by verified collectors and creators.',
-    cta_text: 'Get Offer',
-    link_url: '/gallery',
-    image_url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-amber-500/20 to-orange-500/10',
-    offer_code: 'OFFER-7842',
-  },
-  {
-    id: 'banner-artists',
-    badge: 'Verified Creators',
-    title: 'Commission Elite Artists for Custom Works',
-    subtitle: 'Connect directly with master painters, illustrators, and visual designers for custom portraits and bespoke commissions.',
-    cta_text: 'Get Offer',
-    link_url: '/artists',
-    image_url: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-purple-500/20 to-pink-500/10',
-    offer_code: 'OFFER-5190',
-  },
-  {
-    id: 'banner-bidding',
-    badge: 'Live Art Auctions',
-    title: 'Exclusive Art Auctions & Open Bidding',
-    subtitle: 'Place competitive bids on rare, one-of-a-kind original creations or enter your masterpiece into live auctions.',
-    cta_text: 'Get Offer',
-    link_url: '/bidding',
-    image_url: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-blue-500/20 to-cyan-500/10',
-    offer_code: 'OFFER-3421',
-  },
-  {
-    id: 'banner-creator',
-    badge: 'Join Vivid Art',
-    title: 'Showcase Your Art & Sell to Global Collectors',
-    subtitle: 'Join Sri Lanka’s premier digital art marketplace. Create your artist profile, upload artworks, and get discovered.',
-    cta_text: 'Get Offer',
-    link_url: '/auth/signup',
-    image_url: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-emerald-500/20 to-teal-500/10',
-    offer_code: 'OFFER-9018',
-  },
-];
-
 interface HomeHeroSliderProps {
   className?: string;
 }
 
 export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
   const router = useRouter();
-  const [banners, setBanners] = useState<BannerSlide[]>(DEFAULT_ADVERTISING_BANNERS);
+  const [banners, setBanners] = useState<BannerSlide[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  // Fetch dynamic banners from Supabase database live rows
+  // Fetch dynamic banners directly from Supabase advertisements table
   useEffect(() => {
     let isMounted = true;
     async function loadBanners() {
       try {
-        // 1. Direct Supabase live query
         const supabase = createClient();
+        // 1. Fetch directly from advertisements table
         let { data, error } = await supabase
-          .from('banners')
+          .from('advertisements')
           .select('*')
           .eq('is_active', true)
           .order('display_order', { ascending: true })
           .order('created_at', { ascending: false });
 
         if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
-          const adRes = await supabase
-            .from('advertisements')
+          const bRes = await supabase
+            .from('banners')
             .select('*')
             .eq('is_active', true)
             .order('display_order', { ascending: true })
             .order('created_at', { ascending: false });
-          if (!adRes.error) {
-            data = adRes.data;
+          if (!bRes.error) {
+            data = bRes.data;
             error = null;
           }
         }
 
         if (!error && Array.isArray(data) && isMounted) {
-          if (data.length > 0) {
-            setBanners(data as BannerSlide[]);
-            return;
-          }
+          setBanners(data as BannerSlide[]);
+          setIsLoading(false);
+          return;
         }
 
-        // 2. Fallback to API route
+        // 2. Fallback to API route if direct query failed
         const res = await fetch('/api/banners');
         if (res.ok) {
           const json = await res.json();
           if (json?.banners && Array.isArray(json.banners) && isMounted) {
-            if (json.banners.length > 0) {
-              setBanners(json.banners);
-            }
+            setBanners(json.banners);
           }
         }
       } catch (e) {
-        // Silently retain current banners on network failure
+        console.warn('Failed to load advertisements:', e);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
     loadBanners();
@@ -211,6 +166,18 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
       window.open(waUrl, '_blank', 'noopener,noreferrer');
     }
   };
+
+  if (!isLoading && banners.length === 0) {
+    return null;
+  }
+
+  if (isLoading && banners.length === 0) {
+    return (
+      <div className={`w-full ${className}`}>
+        <div className="relative w-full h-[280px] sm:h-[380px] md:h-[440px] lg:h-[490px] rounded-2xl sm:rounded-3xl border border-slate-800 bg-slate-900/60 animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full ${className}`}>

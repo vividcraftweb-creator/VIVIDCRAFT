@@ -84,44 +84,40 @@ export default function AdminBannersTab() {
     '94783813833';
   const cleanPhone = String(supportPhone).replace(/\D/g, '') || '94783813833';
 
-  // Load banners - checks live database rows first
+  // Load banners - checks live database rows directly from advertisements table
   const fetchBanners = async () => {
     setLoading(true);
     try {
       const supabase = createClient();
       let liveData: BannerItem[] | null = null;
 
-      // Query banners table
+      // 1. Query advertisements table directly
       let { data, error } = await supabase
-        .from('banners')
+        .from('advertisements')
         .select('*')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false });
 
-      // If banners table does not exist, query advertisements table
+      // Fallback to banners table if advertisements does not exist
       if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
-        const adRes = await supabase
-          .from('advertisements')
+        const bRes = await supabase
+          .from('banners')
           .select('*')
           .order('display_order', { ascending: true })
           .order('created_at', { ascending: false });
-        if (!adRes.error) {
-          data = adRes.data;
+        if (!bRes.error) {
+          data = bRes.data;
           error = null;
         }
       }
 
       if (!error && Array.isArray(data)) {
         liveData = data as BannerItem[];
-      }
-
-      // If live table exists and returned results, use them directly
-      if (liveData !== null) {
         setBanners(liveData);
         return;
       }
 
-      // Otherwise query through API
+      // Otherwise query through API if direct connection failed
       const res = await fetch('/api/admin/banners');
       if (res.ok) {
         const json = await res.json();

@@ -395,17 +395,23 @@ export const adminMessagesRouter = router({
           receiverProf?.email ||
           'User';
 
-        // 3. Fetch full conversation history between sender and receiver
+        // 3. Fetch full chronological conversation history between sender and receiver or by chat code
         let conversationHistory: any[] = [];
         try {
-          const { data: history } = await supabase
-            .from('messages')
-            .select('*')
-            .or(
+          let historyQuery = supabase.from('messages').select('*');
+          if (rawMessage.chat_code) {
+            historyQuery = historyQuery.or(
+              `chat_code.eq.${rawMessage.chat_code},and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`
+            );
+          } else {
+            historyQuery = historyQuery.or(
               `and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`
-            )
+            );
+          }
+
+          const { data: history } = await historyQuery
             .order('created_at', { ascending: true })
-            .limit(100);
+            .limit(200);
 
           if (history && history.length > 0) {
             conversationHistory = history.map((m: any) => {
