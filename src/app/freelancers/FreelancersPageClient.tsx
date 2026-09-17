@@ -515,60 +515,56 @@ export default function FreelancersPageClient({
       });
     }
 
-    // Forgiving Category Filtering with Array Matching & Fuzzy Matching
+    // 1. FORGIVING CATEGORY FILTERING: MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED TAGS (OR FILTER)
     result = result.filter((artist: any) => {
-      const artistStyles: string[] = [
+      const artistStyles = [
         ...parseTags(artist.art_styles),
         ...parseTags(artist.mediums),
-        ...parseTags(artist.skills),
+        ...(artist.skills ? parseTags(artist.skills) : []),
       ];
-      const artistSpecialties: string[] = [
+      const artistSpecs = [
         ...parseTags(artist.art_specialties),
         ...parseTags(artist.specialties),
-        ...parseTags(artist.skills),
+        ...(artist.skills ? parseTags(artist.skills) : []),
       ];
-      const artistServices: string[] = [
+      const artistServices = [
         ...parseTags(artist.services_offered),
         ...parseTags(artist.services),
-        ...parseTags(artist.skills),
+        ...(artist.skills ? parseTags(artist.skills) : []),
       ];
 
-      const fallbackText = `${artist.first_name || ''} ${artist.last_name || ''} ${artist.full_name || ''} ${artist.title || ''} ${artist.bio || ''}`.toLowerCase();
-
-      const matchesTagFuzzy = (target: string, tags: string[]) => {
-        const t = target.toLowerCase().trim();
-        const targetWords = t.split(/[^a-z0-9]+/i).filter((w) => w.length >= 3 && w !== 'and');
-
-        // 1. Check if any parsed tag matches or overlaps with target
-        const tagMatched = tags.some((s: string) => {
-          const a = s.toLowerCase().trim();
-          if (a === t || a.includes(t) || t.includes(a)) return true;
-          const tagWords = a.split(/[^a-z0-9]+/i).filter((w) => w.length >= 3 && w !== 'and');
-          return targetWords.some((tw) => tagWords.some((aw) => aw.includes(tw) || tw.includes(aw)));
-        });
-
-        if (tagMatched) return true;
-
-        // 2. If artist has no tags at all in this category, fuzzy match against fallbackText (bio, title)
-        if (tags.length === 0 && fallbackText) {
-          if (fallbackText.includes(t)) return true;
-          return targetWords.some((tw) => fallbackText.includes(tw));
-        }
-
-        return false;
-      };
-
+      // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED STYLES
       const matchesStyle =
         selectedStyles.length === 0 ||
-        selectedStyles.some((style) => matchesTagFuzzy(style, artistStyles));
+        selectedStyles.some((s) => {
+          const target = s.toLowerCase().trim();
+          return (
+            artistStyles.includes(target) ||
+            artistStyles.some((item) => item.includes(target) || target.includes(item))
+          );
+        });
 
+      // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED SPECIALTIES
       const matchesSpecialty =
         selectedSpecialties.length === 0 ||
-        selectedSpecialties.some((spec) => matchesTagFuzzy(spec, artistSpecialties));
+        selectedSpecialties.some((s) => {
+          const target = s.toLowerCase().trim();
+          return (
+            artistSpecs.includes(target) ||
+            artistSpecs.some((item) => item.includes(target) || target.includes(item))
+          );
+        });
 
+      // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED SERVICES
       const matchesService =
         selectedServices.length === 0 ||
-        selectedServices.some((service) => matchesTagFuzzy(service, artistServices));
+        selectedServices.some((s) => {
+          const target = s.toLowerCase().trim();
+          return (
+            artistServices.includes(target) ||
+            artistServices.some((item) => item.includes(target) || target.includes(item))
+          );
+        });
 
       return matchesStyle && matchesSpecialty && matchesService;
     });
