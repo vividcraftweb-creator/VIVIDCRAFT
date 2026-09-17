@@ -32,6 +32,12 @@ const signupSchema = z.object({
   country: z.string().max(100).optional(),
   timezone: z.string().max(100).optional(),
   website: z.string().max(500).optional(),
+  art_styles: z.array(z.string()).optional(),
+  art_specialties: z.array(z.string()).optional(),
+  services_offered: z.array(z.string()).optional(),
+  mediums: z.array(z.string()).optional(),
+  specialties: z.array(z.string()).optional(),
+  services: z.array(z.string()).optional(),
 });
 
 // Input sanitization helper
@@ -94,7 +100,13 @@ export async function POST(req: Request) {
       industry,
       country,
       timezone,
-      website
+      website,
+      art_styles,
+      art_specialties,
+      services_offered,
+      mediums,
+      specialties,
+      services
     } = validationResult.data;
 
     // Sanitize text inputs
@@ -169,6 +181,12 @@ export async function POST(req: Request) {
           last_name: sanitizedLastName,
           company: sanitizedCompanyName || resolvedCompanyName,
           country: sanitizedCountry || resolvedCountry,
+          art_styles: art_styles || mediums || [],
+          art_specialties: art_specialties || specialties || [],
+          services_offered: services_offered || services || [],
+          mediums: mediums || art_styles || [],
+          specialties: specialties || art_specialties || [],
+          services: services || services_offered || [],
         },
         emailRedirectTo: `${appOrigin}/auth/callback?role=${metadataRole}`,
       }
@@ -267,6 +285,12 @@ export async function POST(req: Request) {
       address: sanitizedLocation,
       location: sanitizedLocation,
       skills: sanitizedSkills || '',
+      art_styles: art_styles || mediums || [],
+      art_specialties: art_specialties || specialties || [],
+      services_offered: services_offered || services || [],
+      mediums: mediums || art_styles || [],
+      specialties: specialties || art_specialties || [],
+      services: services || services_offered || [],
       whatsapp_number: sanitizedPhone || '',
       slug: profileSlug,
       is_published: true,

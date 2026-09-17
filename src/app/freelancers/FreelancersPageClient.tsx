@@ -60,40 +60,20 @@ export const parseTags = (data: any): string[] => {
   if (Array.isArray(data)) {
     return data
       .flatMap((i) => {
-        if (typeof i === 'string' && (i.startsWith('[') || i.startsWith('{'))) {
-          try {
-            const p = JSON.parse(i);
-            if (Array.isArray(p)) return p.map((x) => String(x).toLowerCase().trim());
-          } catch {}
+        if (typeof i === 'string' && (i.includes(',') || i.includes('[') || i.includes('{'))) {
+          return i.replace(/["\[\]{}]/g, '').split(',');
         }
-        return [String(i).toLowerCase().trim()];
+        return [String(i)];
       })
+      .map((s) => String(s).trim().toLowerCase())
       .filter(Boolean);
   }
   if (typeof data === 'string') {
-    const trimmed = data.trim();
-    if (!trimmed || trimmed === '{}' || trimmed === '[]') return [];
-    try {
-      const parsed = JSON.parse(trimmed);
-      return Array.isArray(parsed)
-        ? parsed.map((i) => String(i).toLowerCase().trim()).filter(Boolean)
-        : [String(parsed).toLowerCase().trim()];
-    } catch {
-      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        return trimmed
-          .slice(1, -1)
-          .split(',')
-          .map((s) => s.replace(/^["']|["']$/g, '').toLowerCase().trim())
-          .filter(Boolean);
-      }
-      if (trimmed.includes(',')) {
-        return trimmed
-          .split(',')
-          .map((s) => s.replace(/^["']|["']$/g, '').toLowerCase().trim())
-          .filter(Boolean);
-      }
-      return [trimmed.toLowerCase().trim()];
-    }
+    return data
+      .replace(/["\[\]{}]/g, '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
   }
   return [];
 };
