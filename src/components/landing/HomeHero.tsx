@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -20,67 +20,10 @@ import { trpc } from '@/utils/trpc';
 import { getPublicUrl } from '@/components/artists/ArtistCard';
 import { GalleryGrid } from '@/components/gallery/GalleryGrid';
 import type { ArtworkItem } from '@/components/gallery/ArtworkCard';
-
-interface BannerSlide {
-  id: string;
-  badge: string;
-  title: string;
-  subtitle: string;
-  ctaText: string;
-  linkUrl: string;
-  imageUrl: string;
-  accent: string;
-}
-
-const ADVERTISING_BANNERS: BannerSlide[] = [
-  {
-    id: 'banner-gallery',
-    badge: 'Curated Masterpieces',
-    title: 'Explore Original Fine Art & Portfolios',
-    subtitle: 'Discover oil paintings, digital art, sculptures, and mixed media ranked by verified collectors and creators.',
-    ctaText: 'Explore Gallery',
-    linkUrl: '/gallery',
-    imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-amber-500/20 to-orange-500/10',
-  },
-  {
-    id: 'banner-artists',
-    badge: 'Verified Creators',
-    title: 'Commission Elite Artists for Custom Works',
-    subtitle: 'Connect directly with master painters, illustrators, and visual designers for custom portraits and bespoke commissions.',
-    ctaText: 'Discover Artists',
-    linkUrl: '/artists',
-    imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-purple-500/20 to-pink-500/10',
-  },
-  {
-    id: 'banner-bidding',
-    badge: 'Live Art Auctions',
-    title: 'Exclusive Art Auctions & Open Bidding',
-    subtitle: 'Place competitive bids on rare, one-of-a-kind original creations or enter your masterpiece into live auctions.',
-    ctaText: 'Join Live Bidding',
-    linkUrl: '/bidding',
-    imageUrl: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-blue-500/20 to-cyan-500/10',
-  },
-  {
-    id: 'banner-creator',
-    badge: 'Join Vivid Art',
-    title: 'Showcase Your Art & Sell to Global Collectors',
-    subtitle: 'Join Sri Lanka’s premier digital art marketplace. Create your artist profile, upload artworks, and get discovered.',
-    ctaText: 'Start Selling Today',
-    linkUrl: '/auth/signup',
-    imageUrl: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1920&q=80',
-    accent: 'from-emerald-500/20 to-teal-500/10',
-  },
-];
+import { HomeHeroSlider } from '@/components/HomeHeroSlider';
 
 export function HomeHero() {
   const router = useRouter();
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,57 +42,6 @@ export function HomeHero() {
   );
   const [fallbackArtworks, setFallbackArtworks] = useState<any[]>([]);
   const [loadingFallback, setLoadingFallback] = useState(false);
-
-  // Navigation handlers for banner slider
-  const handlePrev = useCallback(() => {
-    setCurrentSlide((prev) => (prev === 0 ? ADVERTISING_BANNERS.length - 1 : prev - 1));
-  }, []);
-
-  const handleNext = useCallback(() => {
-    setCurrentSlide((prev) => (prev === ADVERTISING_BANNERS.length - 1 ? 0 : prev + 1));
-  }, []);
-
-  // Auto-play sliding every 4 seconds
-  useEffect(() => {
-    if (isPaused) return;
-
-    const timer = setInterval(() => {
-      handleNext();
-    }, 4000);
-
-    return () => clearInterval(timer);
-  }, [isPaused, handleNext]);
-
-  // Touch handlers for mobile swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const diff = touchStartX.current - touchEndX.current;
-    if (diff > 50) {
-      handleNext();
-    } else if (diff < -50) {
-      handlePrev();
-    }
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') handlePrev();
-      if (e.key === 'ArrowRight') handleNext();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePrev, handleNext]);
 
   // Fetch top artists
   useEffect(() => {
@@ -280,129 +172,8 @@ export function HomeHero() {
       </div>
 
       <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 space-y-10 sm:space-y-14">
-        {/* 100% FULL-WIDTH ADVERTISING BANNER SLIDER ONLY (NO SIDE PROMOS) */}
-        <div className="w-full">
-          <div
-            className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl shadow-amber-950/10 dark:shadow-black/40 bg-slate-900 group"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {/* Banner Aspect Ratio Container */}
-            <div className="relative w-full h-[280px] sm:h-[380px] md:h-[440px] lg:h-[490px] overflow-hidden">
-              {ADVERTISING_BANNERS.map((banner, index) => {
-                const isActive = index === currentSlide;
-
-                return (
-                  <div
-                    key={banner.id}
-                    onClick={() => {
-                      if (banner.linkUrl) {
-                        router.push(banner.linkUrl);
-                      }
-                    }}
-                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-out cursor-pointer ${
-                      isActive
-                        ? 'opacity-100 scale-100 z-10 pointer-events-auto'
-                        : 'opacity-0 scale-105 z-0 pointer-events-none'
-                    }`}
-                  >
-                    {/* Background Image */}
-                    <img
-                      src={banner.imageUrl}
-                      alt={banner.title}
-                      className="w-full h-full object-cover object-center filter brightness-[0.88] dark:brightness-[0.75] transition-transform duration-7000 ease-out group-hover:scale-105"
-                    />
-
-                    {/* Gradient Overlay for Text Readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 sm:bg-gradient-to-r sm:from-black/90 sm:via-black/55 sm:to-transparent" />
-
-                    {/* Banner Content */}
-                    <div className="absolute inset-0 flex flex-col justify-end sm:justify-center p-6 sm:p-10 md:p-14 lg:p-16 max-w-2xl text-left z-20 space-y-2 sm:space-y-3.5">
-                      {/* Badge */}
-                      <div>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold uppercase tracking-wider bg-amber-500/25 text-amber-300 border border-amber-500/40 backdrop-blur-md shadow-sm">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                          {banner.badge}
-                        </span>
-                      </div>
-
-                      {/* Title */}
-                      <h2 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight drop-shadow-md">
-                        {banner.title}
-                      </h2>
-
-                      {/* Subtitle */}
-                      <p className="text-xs sm:text-sm md:text-base text-slate-200 font-normal leading-relaxed line-clamp-2 sm:line-clamp-3 max-w-xl drop-shadow-sm">
-                        {banner.subtitle}
-                      </p>
-
-                      {/* Clickable Action Button */}
-                      <div className="pt-2 sm:pt-3">
-                        <span className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition-all group-hover:shadow-amber-500/40 group-hover:translate-x-1">
-                          <span>{banner.ctaText}</span>
-                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Left Navigation Arrow */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePrev();
-              }}
-              aria-label="Previous slide"
-              className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-75 sm:opacity-90 hover:opacity-100"
-            >
-              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-
-            {/* Right Navigation Arrow */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleNext();
-              }}
-              aria-label="Next slide"
-              className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-75 sm:opacity-90 hover:opacity-100"
-            >
-              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-
-            {/* Bottom-Center Pagination Dots */}
-            <div className="absolute bottom-3.5 sm:bottom-5 left-1/2 -translate-y-0 -translate-x-1/2 z-30 flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-              {ADVERTISING_BANNERS.map((_, dotIndex) => {
-                const isCurrent = dotIndex === currentSlide;
-
-                return (
-                  <button
-                    key={dotIndex}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentSlide(dotIndex);
-                    }}
-                    aria-label={`Go to slide ${dotIndex + 1}`}
-                    className={`transition-all duration-300 rounded-full cursor-pointer ${
-                      isCurrent
-                        ? 'w-7 h-2 bg-amber-500 shadow-md shadow-amber-500/50'
-                        : 'w-2 h-2 bg-white/50 hover:bg-white/80'
-                    }`}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        {/* 100% FULL-WIDTH ADVERTISING BANNER SLIDER WITH GET OFFER WHATSAPP CLAIM */}
+        <HomeHeroSlider />
 
         {/* Compact Search Bar Row directly below full-width hero slider */}
         <div className="max-w-2xl mx-auto w-full">

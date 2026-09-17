@@ -20,6 +20,7 @@ import {
   Shield,
   Settings,
   UserCheck,
+  Tag,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import AdminUsersTab from './AdminUsersTab';
 import AdminArtworksTab from './AdminArtworksTab';
 import AdminConnectionsTab from './AdminConnectionsTab';
+import AdminBannersTab from '../admin/AdminBannersTab';
 import {
   ComposedChart,
   Bar,
@@ -456,6 +458,17 @@ export default function AdminDashboard() {
                 size="sm"
                 className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
               >
+                <Link href="/admin/banners">
+                  <Tag className="h-3.5 w-3.5 mr-2 text-amber-400" />
+                  Offers &amp; Banners
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                size="sm"
+                className="w-full justify-start bg-slate-800/80 border border-slate-700 text-white hover:bg-slate-700/80 h-8 text-xs"
+              >
                 <Link href="/admin/settings">
                   <Settings className="h-3.5 w-3.5 mr-2" />
                   System Settings
@@ -593,6 +606,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="artworks" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Artworks
               </TabsTrigger>
+              <TabsTrigger value="banners" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs flex items-center gap-1">
+                <Tag className="h-3 w-3 text-amber-400" />
+                Offers &amp; Banners
+              </TabsTrigger>
               <TabsTrigger value="connections" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Connections & Chat
               </TabsTrigger>
@@ -600,6 +617,10 @@ export default function AdminDashboard() {
                 Payments
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="banners" className="mt-3">
+              <AdminBannersTab />
+            </TabsContent>
 
             <TabsContent value="payments" className="mt-3">
               <div className="space-y-2 text-xs text-slate-300 bg-slate-950/60 border border-slate-800/80 rounded-lg p-3">

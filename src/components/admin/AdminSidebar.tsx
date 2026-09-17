@@ -21,6 +21,7 @@ import {
   ScrollText,
   CheckCircle2,
   LogOut,
+  Tag,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trpc } from '@/utils/trpc';
@@ -122,6 +123,12 @@ export default function AdminSidebar() {
       href: '/admin/artworks',
       icon: LayoutDashboard,
       description: 'Monitor listed artworks',
+    },
+    {
+      title: 'Offers & Banners',
+      href: '/admin/banners',
+      icon: Tag,
+      description: 'Promotional banners & offer codes',
     },
     {
       title: 'WhatsApp Verifications',
