@@ -74,7 +74,7 @@ async function handleDelete(request: NextRequest) {
 
     const userId = user.id;
 
-    // 2. Initialize Supabase Admin Client
+    // 2. Initialize Supabase Admin Client using Service Role Key
     const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -82,47 +82,117 @@ async function handleDelete(request: NextRequest) {
       },
     });
 
-    // 3. Delete user using Supabase Auth Admin Client
-    const { error: adminDeleteError } = await adminClient.auth.admin.deleteUser(userId);
+    console.log(`[delete-user] Initiating master relational cleanup for user ${userId}`);
 
-    if (adminDeleteError) {
-      console.error('[delete-user] Supabase admin.deleteUser error:', adminDeleteError);
-      
-      // If service key is invalid or unauthorized in local development, perform best-effort cleanup
-      if (
-        adminDeleteError.message?.includes('Invalid API key') ||
-        adminDeleteError.message?.includes('not authorized') ||
-        (adminDeleteError as any).status === 401
-      ) {
-        console.warn('[delete-user] Fallback: cleaning up profiles & User table directly');
-        try {
-          await adminClient.from('profiles').delete().eq('id', userId);
-          await adminClient.from('User').delete().eq('id', userId);
-        } catch {}
-      } else {
-        return NextResponse.json(
-          { error: adminDeleteError.message || 'Failed to delete user account.' },
-          { status: 500 }
-        );
-      }
-    } else {
-      // Clean up linked rows in application tables
-      try {
-        await adminClient.from('profiles').delete().eq('id', userId);
-        await adminClient.from('User').delete().eq('id', userId);
-      } catch (cleanupErr) {
-        console.warn('[delete-user] Notice during DB cleanup:', cleanupErr);
-      }
+    // 3. Explicit Relational Cleanups before deleting the auth user
+    // Messages cleanup
+    try {
+      await adminClient.from('messages').delete().eq('sender_id', userId);
+      await adminClient.from('messages').delete().eq('receiver_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during messages cleanup:', err);
     }
 
-    // 4. Invalidate/Sign out session
+    // Artwork likes and ratings cleanup
+    try {
+      await adminClient.from('artwork_likes').delete().eq('user_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during artwork_likes cleanup:', err);
+    }
+    try {
+      await adminClient.from('artwork_ratings').delete().eq('user_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during artwork_ratings cleanup:', err);
+    }
+
+    // Artworks cleanup
+    try {
+      await adminClient.from('artworks').delete().eq('user_id', userId);
+      await adminClient.from('artworks').delete().eq('artist_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during artworks cleanup:', err);
+    }
+    try {
+      await adminClient.from('Artwork').delete().eq('artistId', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during Artwork table cleanup:', err);
+    }
+
+    // Reviews cleanup
+    try {
+      await adminClient.from('reviews').delete().eq('artist_id', userId);
+      await adminClient.from('reviews').delete().eq('reviewer_id', userId);
+      await adminClient.from('reviews').delete().eq('user_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during reviews cleanup:', err);
+    }
+
+    // Favorites cleanup
+    try {
+      await adminClient.from('favorites').delete().eq('user_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during favorites cleanup:', err);
+    }
+
+    // Commissions cleanup
+    try {
+      await adminClient.from('commissions').delete().eq('client_id', userId);
+      await adminClient.from('commissions').delete().eq('artist_id', userId);
+      await adminClient.from('commissions').delete().eq('user_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during commissions cleanup:', err);
+    }
+
+    // Chat connections cleanup
+    try {
+      await adminClient.from('ChatConnection').delete().eq('clientId', userId);
+      await adminClient.from('ChatConnection').delete().eq('artistId', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during ChatConnection cleanup:', err);
+    }
+
+    // Verifications cleanup
+    try {
+      await adminClient.from('verifications').delete().eq('user_id', userId);
+    } catch (err) {
+      console.warn('[delete-user] Notice during verifications cleanup:', err);
+    }
+
+    // Delete user profile from public.profiles
+    try {
+      const { error: profileDeleteError } = await adminClient.from('profiles').delete().eq('id', userId);
+      if (profileDeleteError) {
+        console.warn('[delete-user] Notice during profiles cleanup:', profileDeleteError.message);
+      }
+    } catch (err) {
+      console.warn('[delete-user] Error deleting profile:', err);
+    }
+
+    // Also clean up User / users table if exists
+    try {
+      await adminClient.from('User').delete().eq('id', userId);
+    } catch {}
+    try {
+      await adminClient.from('users').delete().eq('id', userId);
+    } catch {}
+
+    // 4. Delete user using Supabase Auth Admin Client
+    const { error: adminDeleteError } = await adminClient.auth.admin.deleteUser(userId);
+    if (adminDeleteError) {
+      console.warn('[delete-user] Supabase auth.admin.deleteUser notice:', {
+        message: adminDeleteError.message,
+        status: (adminDeleteError as any).status,
+      });
+    }
+
+    // 5. Invalidate/Sign out session
     try {
       await supabase.auth.signOut();
     } catch {
       // Ignore client signOut errors
     }
 
-    // 5. Invalidate and clear all session/auth cookies
+    // 6. Invalidate and clear all session/auth cookies
     const allCookies = cookieStore.getAll();
     allCookies.forEach((c) => {
       if (
@@ -163,11 +233,20 @@ async function handleDelete(request: NextRequest) {
       }
     });
 
+    console.log(`[delete-user] Successfully completed account deletion for user ${userId}`);
     return response;
   } catch (error: any) {
-    console.error('[delete-user] Unexpected error in /api/user/delete:', error);
+    console.error('[delete-user] Detailed account deletion failure:', {
+      message: error?.message || 'Unknown error',
+      stack: error?.stack,
+      error,
+    });
     return NextResponse.json(
-      { error: error?.message || 'An unexpected error occurred while deleting your account.' },
+      {
+        success: false,
+        error: error?.message || 'An unexpected error occurred while deleting your account.',
+        details: process.env.NODE_ENV !== 'production' ? String(error) : undefined,
+      },
       { status: 500 }
     );
   }

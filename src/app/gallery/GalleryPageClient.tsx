@@ -1099,16 +1099,6 @@ export default function GalleryPageClient() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {displayedArtworks.map((artwork) => {
-              // Step 2: Log artwork database object directly to console to verify column names
-              console.log('Artwork database object (GalleryCard):', {
-                id: artwork.id,
-                title: artwork.title,
-                price: artwork.price,
-                pricing_type: artwork.pricing_type,
-                selling_type: (artwork as any).selling_type || artwork.selling_mode,
-                amount: (artwork as any).amount,
-              });
-
               const safeImg = getSafeArtworkUrl(artwork.image_url);
               const dynamicArtistName = (artwork.profiles?.full_name || artwork.profiles?.display_name || artwork.profiles?.username || artwork.profiles?.artist_name || artwork.user_name || artwork.artist?.name || 'Artist').trim();
               const artistAvatar = getProfilePictureUrl(artwork.artist_id, artwork.profiles?.avatar_url || artwork.artist?.avatar_url);
