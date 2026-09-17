@@ -1,0 +1,635 @@
+'use client';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  ArrowRight,
+  TrendingUp,
+  CheckCircle,
+  Search,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { trackEvent } from '@/utils/analytics';
+import { createClient } from '@/lib/supabase/client';
+import { trpc } from '@/utils/trpc';
+import { getPublicUrl } from '@/components/artists/ArtistCard';
+import { GalleryGrid } from '@/components/gallery/GalleryGrid';
+import type { ArtworkItem } from '@/components/gallery/ArtworkCard';
+
+interface BannerSlide {
+  id: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  linkUrl: string;
+  imageUrl: string;
+  accent: string;
+}
+
+const ADVERTISING_BANNERS: BannerSlide[] = [
+  {
+    id: 'banner-gallery',
+    badge: 'Curated Masterpieces',
+    title: 'Explore Original Fine Art & Portfolios',
+    subtitle: 'Discover oil paintings, digital art, sculptures, and mixed media ranked by verified collectors and creators.',
+    ctaText: 'Explore Gallery',
+    linkUrl: '/gallery',
+    imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1920&q=80',
+    accent: 'from-amber-500/20 to-orange-500/10',
+  },
+  {
+    id: 'banner-artists',
+    badge: 'Verified Creators',
+    title: 'Commission Elite Artists for Custom Works',
+    subtitle: 'Connect directly with master painters, illustrators, and visual designers for custom portraits and bespoke commissions.',
+    ctaText: 'Discover Artists',
+    linkUrl: '/artists',
+    imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1920&q=80',
+    accent: 'from-purple-500/20 to-pink-500/10',
+  },
+  {
+    id: 'banner-bidding',
+    badge: 'Live Art Auctions',
+    title: 'Exclusive Art Auctions & Open Bidding',
+    subtitle: 'Place competitive bids on rare, one-of-a-kind original creations or enter your masterpiece into live auctions.',
+    ctaText: 'Join Live Bidding',
+    linkUrl: '/bidding',
+    imageUrl: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=1920&q=80',
+    accent: 'from-blue-500/20 to-cyan-500/10',
+  },
+  {
+    id: 'banner-creator',
+    badge: 'Join Vivid Art',
+    title: 'Showcase Your Art & Sell to Global Collectors',
+    subtitle: 'Join Sri Lanka’s premier digital art marketplace. Create your artist profile, upload artworks, and get discovered.',
+    ctaText: 'Start Selling Today',
+    linkUrl: '/auth/signup',
+    imageUrl: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1920&q=80',
+    accent: 'from-emerald-500/20 to-teal-500/10',
+  },
+];
+
+export function HomeHero() {
+  const router = useRouter();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Horizontal artist slider ref
+  const sliderRef = useRef<HTMLDivElement>(null);
+
+  // Top Manual-Ordered Artists state
+  const [artists, setArtists] = useState<any[]>([]);
+  const [loadingArtists, setLoadingArtists] = useState(true);
+
+  // Top-Rated / Most Liked Artworks state
+  const { data: trpcArtworks, isLoading: trpcLoading } = trpc.artworks.getAllArtworks.useQuery(
+    { sort: 'popular', mode: 'ALL' },
+    { refetchOnWindowFocus: false }
+  );
+  const [fallbackArtworks, setFallbackArtworks] = useState<any[]>([]);
+  const [loadingFallback, setLoadingFallback] = useState(false);
+
+  // Navigation handlers for banner slider
+  const handlePrev = useCallback(() => {
+    setCurrentSlide((prev) => (prev === 0 ? ADVERTISING_BANNERS.length - 1 : prev - 1));
+  }, []);
+
+  const handleNext = useCallback(() => {
+    setCurrentSlide((prev) => (prev === ADVERTISING_BANNERS.length - 1 ? 0 : prev + 1));
+  }, []);
+
+  // Auto-play sliding every 4 seconds
+  useEffect(() => {
+    if (isPaused) return;
+
+    const timer = setInterval(() => {
+      handleNext();
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [isPaused, handleNext]);
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (diff > 50) {
+      handleNext();
+    } else if (diff < -50) {
+      handlePrev();
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') handlePrev();
+      if (e.key === 'ArrowRight') handleNext();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePrev, handleNext]);
+
+  // Fetch top artists
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchTopArtists() {
+      setLoadingArtists(true);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .or('role.ilike.%artist%,role.ilike.%freelancer%')
+          .order('display_order', { ascending: true })
+          .limit(12);
+
+        if (!error && data && data.length > 0) {
+          const sorted = [...data].sort(
+            (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
+          );
+          if (isMounted) setArtists(sorted);
+        } else {
+          const res = await fetch('/api/admin/artists/order');
+          const json = await res.json();
+          if (json?.artists && isMounted) {
+            setArtists(json.artists);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load top artists for hero:', e);
+      } finally {
+        if (isMounted) setLoadingArtists(false);
+      }
+    }
+
+    fetchTopArtists();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fallback fetch for top artworks if tRPC returns empty
+  useEffect(() => {
+    if (!trpcLoading && (!trpcArtworks || trpcArtworks.length === 0)) {
+      let isMounted = true;
+      async function fetchTopArtworksFallback() {
+        setLoadingFallback(true);
+        try {
+          const supabase = createClient();
+          const { data: arts } = await supabase
+            .from('artworks')
+            .select('*')
+            .order('likes_count', { ascending: false })
+            .limit(8);
+
+          if (arts && arts.length > 0 && isMounted) {
+            const formatted = arts.map((art: any) => ({
+              id: art.id,
+              artist_id: art.artist_id || art.user_id,
+              title: art.title || 'Untitled Artwork',
+              description: art.description || null,
+              category: art.category || null,
+              medium: art.medium || null,
+              technique: art.technique || null,
+              tags: art.tags || [],
+              image_url: art.image_url,
+              created_at: art.created_at,
+              likesCount: art.likes_count || 0,
+              isLiked: false,
+              ratingsCount: 0,
+              averageRating: art.rating_score || 0,
+              userRating: null,
+              pricing_type: art.pricing_type || 'FIXED_PRICE',
+              selling_mode: art.pricing_type || 'FIXED_PRICE',
+              price: art.price ?? art.amount ?? null,
+              amount: art.amount ?? art.price ?? null,
+            }));
+            setFallbackArtworks(formatted);
+          }
+        } catch (e) {
+          console.error('Failed to fetch fallback artworks for hero:', e);
+        } finally {
+          if (isMounted) setLoadingFallback(false);
+        }
+      }
+
+      fetchTopArtworksFallback();
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [trpcArtworks, trpcLoading]);
+
+  const displayArtworks = (
+    trpcArtworks && trpcArtworks.length > 0
+      ? trpcArtworks.slice(0, 8)
+      : fallbackArtworks.slice(0, 8)
+  ) as ArtworkItem[];
+
+  const handleSearch = () => {
+    if (!searchQuery.trim()) return;
+    trackEvent('hero_search_submit', { query: searchQuery });
+    router.push(`/gallery?search=${encodeURIComponent(searchQuery.trim())}`);
+  };
+
+  const scrollSlider = (direction: 'left' | 'right') => {
+    if (sliderRef.current) {
+      const scrollAmount = 320;
+      sliderRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  return (
+    <section
+      className="relative overflow-hidden bg-gradient-to-b from-background via-background/95 to-background pt-4 pb-16 sm:pt-6 sm:pb-20"
+      suppressHydrationWarning
+    >
+      {/* Background atmospheric ambient gradients */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-50 dark:bg-[#09090e] transition-colors duration-500">
+        <div
+          className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-amber-400/15 dark:bg-amber-600/10 blur-[130px] mix-blend-multiply dark:mix-blend-screen"
+        />
+        <div
+          className="absolute top-[15%] -right-[10%] w-[50%] h-[50%] rounded-full bg-yellow-300/15 dark:bg-amber-500/10 blur-[120px] mix-blend-multiply dark:mix-blend-screen"
+        />
+      </div>
+
+      <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 space-y-10 sm:space-y-14">
+        {/* 100% FULL-WIDTH ADVERTISING BANNER SLIDER ONLY (NO SIDE PROMOS) */}
+        <div className="w-full">
+          <div
+            className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl shadow-amber-950/10 dark:shadow-black/40 bg-slate-900 group"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Banner Aspect Ratio Container */}
+            <div className="relative w-full h-[280px] sm:h-[380px] md:h-[440px] lg:h-[490px] overflow-hidden">
+              {ADVERTISING_BANNERS.map((banner, index) => {
+                const isActive = index === currentSlide;
+
+                return (
+                  <div
+                    key={banner.id}
+                    onClick={() => {
+                      if (banner.linkUrl) {
+                        router.push(banner.linkUrl);
+                      }
+                    }}
+                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-out cursor-pointer ${
+                      isActive
+                        ? 'opacity-100 scale-100 z-10 pointer-events-auto'
+                        : 'opacity-0 scale-105 z-0 pointer-events-none'
+                    }`}
+                  >
+                    {/* Background Image */}
+                    <img
+                      src={banner.imageUrl}
+                      alt={banner.title}
+                      className="w-full h-full object-cover object-center filter brightness-[0.88] dark:brightness-[0.75] transition-transform duration-7000 ease-out group-hover:scale-105"
+                    />
+
+                    {/* Gradient Overlay for Text Readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 sm:bg-gradient-to-r sm:from-black/90 sm:via-black/55 sm:to-transparent" />
+
+                    {/* Banner Content */}
+                    <div className="absolute inset-0 flex flex-col justify-end sm:justify-center p-6 sm:p-10 md:p-14 lg:p-16 max-w-2xl text-left z-20 space-y-2 sm:space-y-3.5">
+                      {/* Badge */}
+                      <div>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold uppercase tracking-wider bg-amber-500/25 text-amber-300 border border-amber-500/40 backdrop-blur-md shadow-sm">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                          {banner.badge}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <h2 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight drop-shadow-md">
+                        {banner.title}
+                      </h2>
+
+                      {/* Subtitle */}
+                      <p className="text-xs sm:text-sm md:text-base text-slate-200 font-normal leading-relaxed line-clamp-2 sm:line-clamp-3 max-w-xl drop-shadow-sm">
+                        {banner.subtitle}
+                      </p>
+
+                      {/* Clickable Action Button */}
+                      <div className="pt-2 sm:pt-3">
+                        <span className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition-all group-hover:shadow-amber-500/40 group-hover:translate-x-1">
+                          <span>{banner.ctaText}</span>
+                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Left Navigation Arrow */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrev();
+              }}
+              aria-label="Previous slide"
+              className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-75 sm:opacity-90 hover:opacity-100"
+            >
+              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+
+            {/* Right Navigation Arrow */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNext();
+              }}
+              aria-label="Next slide"
+              className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl cursor-pointer opacity-75 sm:opacity-90 hover:opacity-100"
+            >
+              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+
+            {/* Bottom-Center Pagination Dots */}
+            <div className="absolute bottom-3.5 sm:bottom-5 left-1/2 -translate-y-0 -translate-x-1/2 z-30 flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+              {ADVERTISING_BANNERS.map((_, dotIndex) => {
+                const isCurrent = dotIndex === currentSlide;
+
+                return (
+                  <button
+                    key={dotIndex}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentSlide(dotIndex);
+                    }}
+                    aria-label={`Go to slide ${dotIndex + 1}`}
+                    className={`transition-all duration-300 rounded-full cursor-pointer ${
+                      isCurrent
+                        ? 'w-7 h-2 bg-amber-500 shadow-md shadow-amber-500/50'
+                        : 'w-2 h-2 bg-white/50 hover:bg-white/80'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Search Bar Row directly below full-width hero slider */}
+        <div className="max-w-2xl mx-auto w-full">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 p-1.5 sm:p-2 shadow-md backdrop-blur">
+            <form
+              className="flex flex-col gap-2 sm:flex-row sm:items-center"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearch();
+              }}
+            >
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search artworks by title, medium, style, or artist…"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-2 pl-10 pr-3 text-sm text-foreground shadow-sm transition focus:border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  aria-label="Search artworks"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Button
+                type="submit"
+                size="sm"
+                className="inline-flex items-center justify-center rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 px-6 py-2 text-sm font-semibold shadow-md shadow-amber-500/20 transition cursor-pointer"
+              >
+                Search
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        {/* FEATURED TOP ARTISTS SECTION (Horizontal Slider / Row) */}
+        <div className="w-full text-left">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                <Sparkles className="h-3.5 w-3.5" />
+                Featured Creators
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                Top Artists &amp; Creators
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Handpicked verified artists available for custom commissions.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollSlider('left')}
+                className="h-8 w-8 rounded-full border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer"
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollSlider('right')}
+                className="h-8 w-8 rounded-full border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer"
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Link
+                href="/artists"
+                className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 inline-flex items-center gap-1 ml-2 transition-colors"
+              >
+                View All <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Slider Row */}
+          <div
+            ref={sliderRef}
+            className="flex gap-4 sm:gap-5 overflow-x-auto pb-4 pt-1 px-1 scrollbar-none snap-x snap-mandatory scroll-smooth"
+          >
+            {loadingArtists ? (
+              [...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="min-w-[260px] sm:min-w-[280px] h-[210px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse p-5 flex flex-col justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-14 w-14 rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-full" />
+                </div>
+              ))
+            ) : artists.length === 0 ? (
+              <div className="w-full text-center py-8 text-sm text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl">
+                No artists available at the moment.
+              </div>
+            ) : (
+              artists.map((artist, idx) => {
+                const artistId = artist.id;
+                const name =
+                  artist.full_name ||
+                  artist.name ||
+                  artist.email?.split('@')[0] ||
+                  'Featured Artist';
+                const title =
+                  artist.title ||
+                  artist.professional_title ||
+                  'Verified Creator';
+                const avatar = getPublicUrl(artist.avatar_url, artistId);
+                const isVerified = Boolean(artist.is_verified || artist.isVerified);
+                const order = artist.display_order ?? 999;
+
+                return (
+                  <Link
+                    key={artistId || idx}
+                    href={`/freelancers/${artistId}`}
+                    className="group min-w-[260px] sm:min-w-[280px] max-w-[300px] flex-shrink-0 snap-start block"
+                  >
+                    <div className="h-full rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 dark:hover:border-amber-500/50 flex flex-col justify-between gap-4">
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-amber-400/40 ring-4 ring-amber-400/10 flex-shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform">
+                            {avatar ? (
+                              <img
+                                src={avatar}
+                                alt={name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-lg">
+                                {name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+
+                          {order < 999 && (
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300">
+                              #{order}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-3">
+                          <h3 className="font-bold text-base text-slate-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                            {name}
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {title}
+                          </p>
+                        </div>
+
+                        {isVerified && (
+                          <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle className="h-3 w-3" />
+                            Verified Artist
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">
+                          Commissions Open
+                        </span>
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold group-hover:underline inline-flex items-center gap-0.5">
+                          Profile <ArrowRight className="h-3 w-3" />
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* TOP-RATED & MOST LIKED ARTWORKS SECTION */}
+        <div className="w-full text-left">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Curated Masterpieces
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                Top-Rated &amp; Most Liked Artworks
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Explore community favorites and highly praised creations from our verified gallery.
+              </p>
+            </div>
+            <div>
+              <Link
+                href="/gallery"
+                className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 inline-flex items-center gap-1 transition-colors"
+              >
+                Explore Full Gallery <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {trpcLoading && displayArtworks.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[340px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            <GalleryGrid
+              artworks={displayArtworks}
+              emptyMessage="No featured artworks found at this time."
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            />
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default HomeHero;

@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { createPageMetadata } from '@/lib/seo-metadata';
-import Hero from '@/components/landing/Hero';
+import HomeHero from '@/components/landing/HomeHero';
 import Benefits from '@/components/landing/Benefits';
 import Features from '@/components/landing/Features';
 import CTA from '@/components/landing/CTA';
@@ -24,7 +24,7 @@ export const metadata: Metadata = createPageMetadata({
 export default function HomePage() {
   return (
     <div className="relative min-h-screen w-full bg-background text-foreground overflow-hidden">
-      <Hero />
+      <HomeHero />
       <Benefits />
       <Features />
       <CTA />
