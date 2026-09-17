@@ -20,8 +20,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { CrewMember, FALLBACK_CREW } from '@/app/api/crew/route';
-import { ManualReview, FALLBACK_REVIEWS } from '@/app/api/reviews/route';
+import { CrewMember, FALLBACK_CREW } from '@/types/crew';
+import { ManualReview, FALLBACK_REVIEWS } from '@/types/reviews';
 import { createClient } from '@/lib/supabase/client';
 
 export function FeaturedCrew() {

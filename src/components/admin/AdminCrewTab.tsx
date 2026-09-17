@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { CrewMember, FALLBACK_CREW } from '@/app/api/crew/route';
+import { CrewMember, FALLBACK_CREW } from '@/types/crew';
 
 export default function AdminCrewTab() {
   const router = useRouter();

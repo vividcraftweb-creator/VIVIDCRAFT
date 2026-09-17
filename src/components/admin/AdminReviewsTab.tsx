@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ManualReview, FALLBACK_REVIEWS } from '@/app/api/reviews/route';
+import { ManualReview, FALLBACK_REVIEWS } from '@/types/reviews';
 
 export default function AdminReviewsTab() {
   const router = useRouter();

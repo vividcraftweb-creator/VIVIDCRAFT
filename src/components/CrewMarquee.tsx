@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import { CrewMember, FALLBACK_CREW } from '@/app/api/crew/route';
+import { CrewMember, FALLBACK_CREW } from '@/types/crew';
 import { createClient } from '@/lib/supabase/client';
 
 export function CrewMarquee() {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { FALLBACK_CREW, CrewMember } from '@/app/api/crew/route';
+import { FALLBACK_CREW, CrewMember } from '@/types/crew';
 
 export const dynamic = 'force-dynamic';
 

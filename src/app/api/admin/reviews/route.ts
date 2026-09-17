@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { FALLBACK_REVIEWS, ManualReview } from '@/app/api/reviews/route';
+import { FALLBACK_REVIEWS, ManualReview } from '@/types/reviews';
 
 export const dynamic = 'force-dynamic';
 
