@@ -4,7 +4,7 @@ export const revalidate = 0;
 import { Metadata } from 'next';
 import { createPageMetadata } from '@/lib/seo-metadata';
 import { createClient } from '@/lib/supabase/server';
-import FreelancersPageClient from './FreelancersPageClient';
+import FreelancersPageClient, { normalizeArtistProfile } from './FreelancersPageClient';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Discover Artists',
@@ -54,7 +54,7 @@ export default async function FreelancersPage(props: {
     }
 
     if (artists && Array.isArray(artists)) {
-      profiles = artists;
+      profiles = artists.map(normalizeArtistProfile).filter(Boolean);
     }
   } catch (err) {
     console.error("Error fetching profiles:", err);

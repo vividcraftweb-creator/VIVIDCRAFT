@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search,
   Shield,
@@ -53,44 +53,57 @@ function isValidArtist(p: any): boolean {
 }
 
 /**
- * Normalizes a tag string for forgiving comparison.
+ * Populates default array columns and normalizes an artist profile object
  */
-function normalizeTag(tag: unknown): string {
-  if (typeof tag !== 'string') return '';
-  return tag.toLowerCase().trim();
-}
+export function normalizeArtistProfile(p: any) {
+  if (!p) return null;
+  const key = p.id || p.userId || p.user_id;
+  const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
 
-/**
- * Safely extracts tags from string[], string (comma-separated), or null/undefined.
- */
-function extractArtistTags(val: unknown): string[] {
-  if (!val) return [];
-  if (Array.isArray(val)) {
-    return val
-      .flatMap((item) => (typeof item === 'string' ? item.split(',') : []))
-      .map(normalizeTag)
-      .filter(Boolean);
-  }
-  if (typeof val === 'string') {
-    return val
-      .split(',')
-      .map(normalizeTag)
-      .filter(Boolean);
-  }
-  return [];
-}
+  const stylesArr: string[] = Array.isArray(p.art_styles)
+    ? p.art_styles
+    : Array.isArray(p.mediums)
+    ? p.mediums
+    : typeof p.art_styles === 'string' && p.art_styles.trim()
+    ? p.art_styles.split(',').map((s: string) => s.trim())
+    : typeof p.mediums === 'string' && p.mediums.trim()
+    ? p.mediums.split(',').map((s: string) => s.trim())
+    : [];
 
-/**
- * Checks if two tags match forgivingly:
- * 1. Exact case-insensitive match (e.g. "oil painting" === "oil painting")
- * 2. Bi-directional substring match (e.g. "digital art" matches "digital art & illustration")
- */
-function tagMatches(artistTag: string, filterTag: string): boolean {
-  if (!artistTag || !filterTag) return false;
-  const a = normalizeTag(artistTag);
-  const b = normalizeTag(filterTag);
-  if (a === b) return true;
-  return a.includes(b) || b.includes(a);
+  const specialtiesArr: string[] = Array.isArray(p.art_specialties)
+    ? p.art_specialties
+    : Array.isArray(p.specialties)
+    ? p.specialties
+    : typeof p.art_specialties === 'string' && p.art_specialties.trim()
+    ? p.art_specialties.split(',').map((s: string) => s.trim())
+    : typeof p.specialties === 'string' && p.specialties.trim()
+    ? p.specialties.split(',').map((s: string) => s.trim())
+    : [];
+
+  const servicesArr: string[] = Array.isArray(p.services_offered)
+    ? p.services_offered
+    : Array.isArray(p.services)
+    ? p.services
+    : typeof p.services_offered === 'string' && p.services_offered.trim()
+    ? p.services_offered.split(',').map((s: string) => s.trim())
+    : typeof p.services === 'string' && p.services.trim()
+    ? p.services.split(',').map((s: string) => s.trim())
+    : [];
+
+  return {
+    ...p,
+    id: key,
+    userId: p.user_id || p.userId || key,
+    avatar_url: avatar,
+    profile_picture: avatar,
+    art_styles: stylesArr,
+    art_specialties: specialtiesArr,
+    services_offered: servicesArr,
+    mediums: stylesArr,
+    specialties: specialtiesArr,
+    services: servicesArr,
+    display_order: p.display_order ?? 999,
+  };
 }
 
 interface FilterContentProps {
@@ -179,18 +192,15 @@ function FilterContent({
             <div className="mt-3 max-h-60 overflow-y-auto space-y-1.5 pr-1">
               {availableStyles.map((item) => {
                 const isChecked = selectedStyles.includes(item);
-                const inputId = `filter-style-${item.replace(/[^a-zA-Z0-9]/g, '-')}`;
                 return (
-                  <label
+                  <div
                     key={item}
-                    htmlFor={inputId}
+                    onClick={() => toggleStyle(item)}
                     className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 cursor-pointer transition select-none"
                   >
                     <Checkbox
-                      id={inputId}
                       checked={isChecked}
-                      onCheckedChange={() => toggleStyle(item)}
-                      className="data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                      className="pointer-events-none data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                     />
                     <span
                       className={`text-xs flex-1 ${
@@ -199,7 +209,7 @@ function FilterContent({
                     >
                       {item}
                     </span>
-                  </label>
+                  </div>
                 );
               })}
             </div>
@@ -233,18 +243,15 @@ function FilterContent({
             <div className="mt-3 max-h-60 overflow-y-auto space-y-1.5 pr-1">
               {availableSpecialties.map((item) => {
                 const isChecked = selectedSpecialties.includes(item);
-                const inputId = `filter-spec-${item.replace(/[^a-zA-Z0-9]/g, '-')}`;
                 return (
-                  <label
+                  <div
                     key={item}
-                    htmlFor={inputId}
+                    onClick={() => toggleSpecialty(item)}
                     className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 cursor-pointer transition select-none"
                   >
                     <Checkbox
-                      id={inputId}
                       checked={isChecked}
-                      onCheckedChange={() => toggleSpecialty(item)}
-                      className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                      className="pointer-events-none data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
                     />
                     <span
                       className={`text-xs flex-1 ${
@@ -253,7 +260,7 @@ function FilterContent({
                     >
                       {item}
                     </span>
-                  </label>
+                  </div>
                 );
               })}
             </div>
@@ -287,18 +294,15 @@ function FilterContent({
             <div className="mt-3 max-h-60 overflow-y-auto space-y-1.5 pr-1">
               {availableServices.map((item) => {
                 const isChecked = selectedServices.includes(item);
-                const inputId = `filter-srv-${item.replace(/[^a-zA-Z0-9]/g, '-')}`;
                 return (
-                  <label
+                  <div
                     key={item}
-                    htmlFor={inputId}
+                    onClick={() => toggleService(item)}
                     className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 cursor-pointer transition select-none"
                   >
                     <Checkbox
-                      id={inputId}
                       checked={isChecked}
-                      onCheckedChange={() => toggleService(item)}
-                      className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                      className="pointer-events-none data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                     />
                     <span
                       className={`text-xs flex-1 ${
@@ -307,7 +311,7 @@ function FilterContent({
                     >
                       {item}
                     </span>
-                  </label>
+                  </div>
                 );
               })}
             </div>
@@ -326,23 +330,16 @@ export default function FreelancersPageClient({
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Initial profiles passed from the server
+  // Initial profiles passed from the server with normalized array columns
   const [profiles, setProfiles] = useState<any[]>(() => {
-    return Array.isArray(initialProfiles) ? initialProfiles : [];
+    return Array.isArray(initialProfiles)
+      ? initialProfiles.map(normalizeArtistProfile).filter(Boolean)
+      : [];
   });
 
-  // Keep master list of all known profiles so category options remain populated and as a persistent fallback
-  const [allKnownProfiles, setAllKnownProfiles] = useState<any[]>(() => {
-    return Array.isArray(initialProfiles) ? initialProfiles : [];
-  });
+  const [loading, setLoading] = useState(initialProfiles.length === 0);
 
-  // Track if this is the very first render cycle
-  const isFirstMount = useRef(true);
-
-  // Loading indicator for active filtering queries
-  const [isFilterPending, setIsFilterPending] = useState(false);
-
-  // Multi-select category filter states
+  // Multi-select category filter states (immediately triggers re-filtering)
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -365,183 +362,75 @@ export default function FreelancersPageClient({
     setMounted(true);
   }, []);
 
-  const totalActiveFilters =
-    selectedStyles.length + selectedSpecialties.length + selectedServices.length;
-  const hasActiveFilters = totalActiveFilters > 0;
-
-  // Supabase filtering query effect: only runs when filters are intentionally applied by the user
+  // Fetch profiles on client only if initialProfiles was empty, never overriding populated initialProfiles
   useEffect(() => {
-    // 1. On initial mount with no active filters, strictly preserve the server-provided initialProfiles
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
-        setProfiles(initialProfiles);
-        setAllKnownProfiles(initialProfiles);
-        return;
-      }
+    if (profiles.length > 0) {
+      setLoading(false);
+      return;
     }
 
-    // 2. If no filters are selected, restore all active artists as normal without overriding with empty array
-    if (!hasActiveFilters) {
-      if (allKnownProfiles.length > 0) {
-        setProfiles(allKnownProfiles);
-        return;
-      }
-      if (Array.isArray(initialProfiles) && initialProfiles.length > 0) {
-        setProfiles(initialProfiles);
-        return;
-      }
-    }
-
-    // 3. When active filters are applied, query Supabase using .contains() on array columns
     const supabase = createClient();
-
-    async function loadFilteredProfiles() {
-      setIsFilterPending(true);
+    async function fetchInitialProfiles() {
+      setLoading(true);
       try {
-        let query = supabase
+        const { data: artists, error } = await supabase
           .from('profiles')
           .select('*')
-          .or('role.eq.artist,role.eq.ARTIST,role.ilike.artist');
+          .or('role.eq.artist,role.eq.ARTIST,role.ilike.artist')
+          .order('display_order', { ascending: true });
 
-        // Apply array column filters (.contains) instead of .eq()
-        // Ensure string matching is exact-trimmed to match category strings stored during signup
-        if (selectedStyles.length > 0) {
-          for (const style of selectedStyles) {
-            const trimmed = style.trim();
-            if (trimmed) {
-              query = query.contains('mediums', [trimmed]);
-            }
-          }
-        }
-
-        if (selectedSpecialties.length > 0) {
-          for (const specialty of selectedSpecialties) {
-            const trimmed = specialty.trim();
-            if (trimmed) {
-              query = query.contains('specialties', [trimmed]);
-            }
-          }
-        }
-
-        if (selectedServices.length > 0) {
-          for (const service of selectedServices) {
-            const trimmed = service.trim();
-            if (trimmed) {
-              query = query.contains('services', [trimmed]);
-            }
-          }
-        }
-
-        query = query.order('display_order', { ascending: true });
-
-        let { data: artists, error } = await query;
-
-        // Fallback: If strict DB array .contains() returned 0 results because of case-sensitivity
-        // or column naming (mediums vs art_styles), use allKnownProfiles / initialProfiles with
-        // forgiving case-insensitive / trimmed matching to prevent false empty results!
-        if (!artists || artists.length === 0) {
-          const sourceList =
-            allKnownProfiles.length > 0 ? allKnownProfiles : (initialProfiles || []);
-          const allSelected = [
-            ...selectedStyles,
-            ...selectedSpecialties,
-            ...selectedServices,
-          ]
-            .map(normalizeTag)
+        if (!error && artists && Array.isArray(artists) && artists.length > 0) {
+          const mapped = artists
+            .filter(isValidArtist)
+            .map(normalizeArtistProfile)
             .filter(Boolean);
-
-          if (allSelected.length > 0 && sourceList.length > 0) {
-            artists = sourceList.filter((p: any) => {
-              const tags = [
-                ...extractArtistTags(p.mediums),
-                ...extractArtistTags(p.art_styles),
-                ...extractArtistTags(p.specialties),
-                ...extractArtistTags(p.art_specialties),
-                ...extractArtistTags(p.services),
-                ...extractArtistTags(p.services_offered),
-                ...extractArtistTags(p.other_categories),
-                ...extractArtistTags(p.skills),
-              ];
-              return allSelected.some((sel) => tags.some((t) => tagMatches(t, sel)));
-            });
-          }
-        }
-
-        if (artists && Array.isArray(artists)) {
-          const profilesMap = new Map<string, any>();
-          for (const p of artists) {
-            if (!isValidArtist(p)) continue;
-            const key = p.id || p.userId || p.user_id;
-            if (key) {
-              const avatar =
-                p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
-              profilesMap.set(key, {
-                ...p,
-                id: key,
-                userId: p.user_id || p.userId || key,
-                avatar_url: avatar,
-                profile_picture: avatar,
-                mediums: p.mediums || p.art_styles || [],
-                specialties: p.specialties || p.art_specialties || [],
-                services: p.services || p.services_offered || [],
-                art_styles: p.art_styles || p.mediums || [],
-                art_specialties: p.art_specialties || p.specialties || [],
-                services_offered: p.services_offered || p.services || [],
-                display_order: p.display_order ?? 999,
-              });
-            }
-          }
-          const sorted = Array.from(profilesMap.values()).sort(
-            (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
-          );
-          setProfiles(sorted);
+          setProfiles(mapped);
         }
       } catch (err) {
-        console.error('Error applying category filter:', err);
+        console.error('Error fetching profiles from client:', err);
       } finally {
-        setIsFilterPending(false);
+        setLoading(false);
       }
     }
 
-    loadFilteredProfiles();
-  }, [selectedStyles, selectedSpecialties, selectedServices, hasActiveFilters]);
+    fetchInitialProfiles();
+  }, [profiles.length]);
 
-  // Compute available category options dynamically from constants + all known profiles
+  // Compute available category options dynamically from constants + loaded profiles
   const availableStyles = useMemo(() => {
     const set = new Set<string>(ARTIST_MEDIUMS);
-    allKnownProfiles.forEach((p) => {
+    profiles.forEach((p) => {
       const arr = p.art_styles || p.mediums;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
-  }, [allKnownProfiles]);
+  }, [profiles]);
 
   const availableSpecialties = useMemo(() => {
     const set = new Set<string>(ARTIST_SPECIALTIES);
-    allKnownProfiles.forEach((p) => {
+    profiles.forEach((p) => {
       const arr = p.art_specialties || p.specialties;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
-  }, [allKnownProfiles]);
+  }, [profiles]);
 
   const availableServices = useMemo(() => {
     const set = new Set<string>(ARTIST_SERVICES);
-    allKnownProfiles.forEach((p) => {
+    profiles.forEach((p) => {
       const arr = p.services_offered || p.services;
       if (Array.isArray(arr)) arr.forEach((x) => x && set.add(String(x).trim()));
       else if (typeof arr === 'string' && arr.trim())
         arr.split(',').forEach((x) => x && set.add(x.trim()));
     });
     return Array.from(set);
-  }, [allKnownProfiles]);
+  }, [profiles]);
 
-  // Category selection toggle handlers
+  // Category selection toggle handlers: immediately updates state arrays to trigger instant re-filtering
   const toggleStyle = (val: string) => {
     setSelectedStyles((prev) =>
       prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
@@ -574,11 +463,16 @@ export default function FreelancersPageClient({
     setSearchQuery('');
   };
 
-  // Filter profiles dynamically while strictly preserving display_order ASC
+  const totalActiveFilters =
+    selectedStyles.length + selectedSpecialties.length + selectedServices.length;
+  const hasActiveFilters = totalActiveFilters > 0;
+
+  // 1. FORGIVING CLIENT-SIDE FILTERING LOGIC
+  // Checks array existence, case-insensitivity, exact-trimming, and forgiving overlap
   const displayedArtists = useMemo(() => {
     let result = profiles;
 
-    // Search query filter (only active when user typed text into search)
+    // Search query filter (only when user enters search text)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter((artist: any) => {
@@ -597,47 +491,59 @@ export default function FreelancersPageClient({
       });
     }
 
-    // Strictly ensure client-side filter only runs when active filters are intentionally applied
-    if (hasActiveFilters) {
-      const allSelectedTags = [
-        ...selectedStyles,
-        ...selectedSpecialties,
-        ...selectedServices,
-      ]
-        .map(normalizeTag)
-        .filter(Boolean);
+    // Forgiving Category Filtering with Array Matching
+    result = result.filter((artist: any) => {
+      const artistStyles: string[] = [
+        ...(artist.art_styles || []),
+        ...(artist.mediums || []),
+      ];
+      const artistSpecialties: string[] = [
+        ...(artist.art_specialties || []),
+        ...(artist.specialties || []),
+      ];
+      const artistServices: string[] = [
+        ...(artist.services_offered || []),
+        ...(artist.services || []),
+      ];
 
-      if (allSelectedTags.length > 0) {
-        result = result.filter((artist: any) => {
-          const artistTags: string[] = [
-            ...extractArtistTags(artist.mediums),
-            ...extractArtistTags(artist.art_styles),
-            ...extractArtistTags(artist.specialties),
-            ...extractArtistTags(artist.art_specialties),
-            ...extractArtistTags(artist.services),
-            ...extractArtistTags(artist.services_offered),
-            ...extractArtistTags(artist.other_categories),
-            ...extractArtistTags(artist.skills),
-          ];
+      const matchesStyle =
+        selectedStyles.length === 0 ||
+        selectedStyles.some((style) =>
+          artistStyles.some((s: string) => {
+            const a = s.toLowerCase().trim();
+            const b = style.toLowerCase().trim();
+            return a === b || a.includes(b) || b.includes(a);
+          })
+        );
 
-          if (artistTags.length === 0) {
-            return false;
-          }
+      const matchesSpecialty =
+        selectedSpecialties.length === 0 ||
+        selectedSpecialties.some((spec) =>
+          artistSpecialties.some((s: string) => {
+            const a = s.toLowerCase().trim();
+            const b = spec.toLowerCase().trim();
+            return a === b || a.includes(b) || b.includes(a);
+          })
+        );
 
-          return allSelectedTags.some((selectedTag) =>
-            artistTags.some((artistTag) => tagMatches(artistTag, selectedTag))
-          );
-        });
-      }
-    }
+      const matchesService =
+        selectedServices.length === 0 ||
+        selectedServices.some((service) =>
+          artistServices.some((s: string) => {
+            const a = s.toLowerCase().trim();
+            const b = service.toLowerCase().trim();
+            return a === b || a.includes(b) || b.includes(a);
+          })
+        );
 
-    // Strictly preserve manual artist ordering (display_order ASC)
+      return matchesStyle && matchesSpecialty && matchesService;
+    });
+
+    // 3. ABSOLUTE GUARDRAILS: Strictly leave display_order manual sorting untouched
     return result.sort(
       (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
     );
-  }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedServices, hasActiveFilters]);
-
-  const isResolving = isFilterPending;
+  }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedServices]);
 
   return (
     <div className="min-h-screen pb-20">
@@ -734,7 +640,7 @@ export default function FreelancersPageClient({
                 </button>
 
                 <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                  {mounted && !isResolving
+                  {mounted && !loading
                     ? `Showing ${displayedArtists.length} ${
                         displayedArtists.length === 1 ? 'artist' : 'artists'
                       }`
@@ -803,8 +709,7 @@ export default function FreelancersPageClient({
 
             {/* Artist Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-2">
-              {/* Proper loading skeleton state while Supabase response is resolving */}
-              {isResolving &&
+              {loading &&
                 Array.from({ length: 6 }).map((_, index) => (
                   <div
                     key={`skeleton-${index}`}
@@ -819,8 +724,7 @@ export default function FreelancersPageClient({
                   </div>
                 ))}
 
-              {/* Resolved artist cards */}
-              {!isResolving &&
+              {!loading &&
                 Array.isArray(displayedArtists) &&
                 displayedArtists.length > 0 &&
                 displayedArtists.map((artist: any) => (
@@ -831,8 +735,8 @@ export default function FreelancersPageClient({
                 ))}
             </div>
 
-            {/* Empty State: Only shown when response has fully resolved and 0 artists match */}
-            {!isResolving && displayedArtists.length === 0 && (
+            {/* Empty State */}
+            {!loading && displayedArtists.length === 0 && (
               <div className="col-span-full mt-8 rounded-3xl border border-primary/20 bg-primary/5 p-10 text-center shadow-inner">
                 <Shield className="mx-auto mb-4 h-10 w-10 text-primary" />
                 <h3 className="mb-2 text-xl font-semibold text-foreground">No artists found</h3>
