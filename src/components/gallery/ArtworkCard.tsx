@@ -335,32 +335,36 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
         {/* Fiverr Marketplace Details Panel */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/60 p-3.5 flex flex-col flex-1 justify-between gap-2.5">
           <div className="space-y-2">
-            {/* Artist Row: Avatar + Artist Name + Badge Pill */}
-            <div className="flex items-center gap-2">
+            {/* Artist Row: Prominent Enlarged Avatar + Artist Name + Badge Pill */}
+            <div className="flex items-center gap-2.5">
               {artistAvatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={artistAvatarUrl}
                   alt={artistName}
-                  className="w-6 h-6 rounded-full object-cover shrink-0 border border-amber-300/80 dark:border-amber-500/50"
+                  className="w-10 h-10 rounded-full object-cover shrink-0 border-2 border-amber-300/80 dark:border-amber-500/50 ring-2 ring-amber-400/20 shadow-sm"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-[10px] font-bold text-amber-700 dark:text-amber-300 shrink-0">
-                  <User className="w-3.5 h-3.5" />
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 border-2 border-amber-400/40 ring-2 ring-amber-400/20 flex items-center justify-center text-xs font-bold text-amber-700 dark:text-amber-300 shrink-0 shadow-sm">
+                  <User className="w-5 h-5" />
                 </div>
               )}
 
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                {artistName}
-              </span>
+              <div className="min-w-0 flex-1 flex flex-col justify-center">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    {artistName}
+                  </span>
 
-              {/* Badge Pill right next to name (e.g. "Top Rated ◆◆◆" with light yellow background) */}
-              <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
-                {badgeFormatted}
-              </span>
+                  {/* Badge Pill right next to name (e.g. "Top Rated ◆◆◆" with light yellow background) */}
+                  <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
+                    {badgeFormatted}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Catchy Gig Title Text below ("I will create...") */}

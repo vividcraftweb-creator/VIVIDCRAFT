@@ -11,6 +11,8 @@ import {
   TrendingUp,
   CheckCircle,
   Search,
+  Heart,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +23,18 @@ import { getPublicUrl } from '@/lib/profile-helpers';
 import { GalleryGrid } from '@/components/gallery/GalleryGrid';
 import type { ArtworkItem } from '@/components/gallery/ArtworkCard';
 import { HomeHeroSlider } from '@/components/HomeHeroSlider';
+import { formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
+import { DEFAULT_ARTWORK_PLACEHOLDER, getSafeArtworkUrl } from '@/lib/image-placeholders';
+
+// Curated high-resolution fallback artwork thumbnails for featured creator cards
+const CURATED_GIG_THUMBNAILS = [
+  'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1578925518470-4def7a0f08bb?auto=format&fit=crop&w=800&q=80',
+];
 
 export function HomeHero() {
   const router = useRouter();
@@ -31,7 +45,7 @@ export function HomeHero() {
   // Horizontal artist slider ref
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  // Top Manual-Ordered Artists state
+  // Top Manual-Ordered Artists state with attached artworks
   const [artists, setArtists] = useState<any[]>([]);
   const [loadingArtists, setLoadingArtists] = useState(true);
 
@@ -42,6 +56,18 @@ export function HomeHero() {
   );
   const [fallbackArtworks, setFallbackArtworks] = useState<any[]>([]);
   const [loadingFallback, setLoadingFallback] = useState(false);
+
+  // Local state for wishlist heart toggle on featured gig cards
+  const [likedGigs, setLikedGigs] = useState<Record<string, boolean>>({});
+
+  const toggleGigLike = useCallback((e: React.MouseEvent, artistId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLikedGigs((prev) => ({
+      ...prev,
+      [artistId]: !prev[artistId],
+    }));
+  }, []);
 
   // Fetch top artists (ONLY artists where show_on_home = true, strictly sorted by display_order ASC)
   useEffect(() => {
@@ -93,7 +119,37 @@ export function HomeHero() {
           const sorted = [...validArtists].sort(
             (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
           );
-          if (isMounted) setArtists(sorted);
+
+          // Fetch associated artworks to attach to gig cards
+          const artistIds = sorted.map((a: any) => a.id).filter(Boolean);
+          const artworksByArtist: Record<string, any> = {};
+
+          if (artistIds.length > 0) {
+            try {
+              const { data: arts } = await supabase
+                .from('artworks')
+                .select('id, artist_id, user_id, title, gig_title, badge_title, base_rating, review_count_text, image_url, price, amount, likes_count, rating_score')
+                .in('artist_id', artistIds);
+
+              if (arts && arts.length > 0) {
+                for (const art of arts) {
+                  const aid = art.artist_id || art.user_id;
+                  if (aid && (!artworksByArtist[aid] || (art.likes_count ?? 0) > (artworksByArtist[aid].likes_count ?? 0))) {
+                    artworksByArtist[aid] = art;
+                  }
+                }
+              }
+            } catch (artErr) {
+              console.warn('Notice: Could not fetch artworks for top artists:', artErr);
+            }
+          }
+
+          const merged = sorted.map((artist) => ({
+            ...artist,
+            artwork: artworksByArtist[artist.id] || null,
+          }));
+
+          if (isMounted) setArtists(merged);
         } else {
           const res = await fetch('/api/admin/artists/order?home=true');
           const json = await res.json();
@@ -102,7 +158,33 @@ export function HomeHero() {
               const role = (p.role || '').toLowerCase();
               return role !== 'client' && role !== 'admin';
             });
-            setArtists(validArtists);
+
+            const artistIds = validArtists.map((a: any) => a.id).filter(Boolean);
+            const artworksByArtist: Record<string, any> = {};
+
+            if (artistIds.length > 0) {
+              try {
+                const { data: arts } = await supabase
+                  .from('artworks')
+                  .select('id, artist_id, user_id, title, gig_title, badge_title, base_rating, review_count_text, image_url, price, amount, likes_count, rating_score')
+                  .in('artist_id', artistIds);
+
+                if (arts && arts.length > 0) {
+                  for (const art of arts) {
+                    const aid = art.artist_id || art.user_id;
+                    if (aid && (!artworksByArtist[aid] || (art.likes_count ?? 0) > (artworksByArtist[aid].likes_count ?? 0))) {
+                      artworksByArtist[aid] = art;
+                    }
+                  }
+                }
+              } catch {}
+            }
+
+            const merged = validArtists.map((artist: any) => ({
+              ...artist,
+              artwork: artworksByArtist[artist.id] || null,
+            }));
+            setArtists(merged);
           }
         }
       } catch (e) {
@@ -311,16 +393,24 @@ export function HomeHero() {
               [...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="min-w-[260px] sm:min-w-[280px] h-[230px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse p-5 flex flex-col justify-between"
+                  className="min-w-[280px] sm:min-w-[320px] max-w-[340px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse overflow-hidden flex flex-col flex-shrink-0 snap-start"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="h-20 w-20 rounded-full bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
-                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                  <div className="aspect-[16/10] w-full bg-slate-200 dark:bg-slate-800" />
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                        <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                      </div>
+                    </div>
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-2/3" />
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/4" />
                     </div>
                   </div>
-                  <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-full" />
                 </div>
               ))
             ) : artists.length === 0 ? (
@@ -349,16 +439,86 @@ export function HomeHero() {
                 const isVerified = Boolean(artist.is_verified || artist.isVerified);
                 const order = artist.display_order ?? 0;
 
+                // Artwork and gig metadata
+                const artwork = artist.artwork;
+                const artworkImage = artwork?.image_url
+                  ? getSafeArtworkUrl(artwork.image_url)
+                  : CURATED_GIG_THUMBNAILS[idx % CURATED_GIG_THUMBNAILS.length];
+
+                // Fiverr-style badge with diamonds (e.g. "Top Rated ◆◆◆" or "Level 2 ◆◆")
+                const defaultBadge = idx === 0 ? 'Top Rated' : idx === 1 ? 'Level 2' : 'Top Rated';
+                const badgeFormatted = formatBadgeWithDiamonds(artwork?.badge_title || artist.badge_title || defaultBadge);
+
+                // Catchy Gig Title ("I will create...")
+                const catchyTitle = formatGigTitle(
+                  artwork?.title || title || 'custom digital artwork and creative illustrations',
+                  artwork?.gig_title
+                );
+
+                // Star Rating metadata row (e.g. "★ 4.9 (1k+)")
+                const cardRating = artwork?.base_rating ?? (artwork?.rating_score ? Number(artwork.rating_score) : 4.9);
+                const ratingFormatted = typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating;
+                const reviewCountFormatted = artwork?.review_count_text || (idx % 2 === 0 ? '(1k+)' : `(${45 + idx * 15})`);
+
+                // Starting at price
+                const rawPrice = Number(artwork?.price ?? artwork?.amount ?? (15000 + idx * 2500));
+                const priceFormatted = rawPrice > 0 ? rawPrice.toLocaleString() : '15,000';
+
+                const isLiked = Boolean(likedGigs[artistId]);
+
                 return (
-                  <Link
+                  <div
                     key={artistId || idx}
-                    href={`/freelancers/${artistId}`}
-                    className="group min-w-[260px] sm:min-w-[280px] max-w-[300px] flex-shrink-0 snap-start block"
+                    className="group min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 snap-start flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10"
                   >
-                    <div className="h-full rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 dark:hover:border-amber-500/50 flex flex-col justify-between gap-4">
-                      <div>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-amber-400/40 ring-4 ring-amber-400/10 flex-shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform">
+                    {/* Top Artwork Thumbnail with Wishlist Heart Overlay */}
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950">
+                      <Link href={`/freelancers/${artistId}`} className="block w-full h-full">
+                        <img
+                          src={artworkImage}
+                          alt={catchyTitle}
+                          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+                          }}
+                        />
+                      </Link>
+
+                      {/* Wishlist Heart Icon Overlay on Top Right */}
+                      <button
+                        type="button"
+                        onClick={(e) => toggleGigLike(e, artistId)}
+                        aria-label={isLiked ? 'Remove from wishlist' : 'Add to wishlist'}
+                        className="absolute top-2.5 right-2.5 z-20 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-md cursor-pointer"
+                      >
+                        <Heart
+                          className={`h-4 w-4 transition-transform ${
+                            isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white/90 hover:text-rose-400'
+                          }`}
+                        />
+                      </button>
+
+                      {/* Display order rank pill on top left if specified */}
+                      {order < 999 && (
+                        <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/60 text-amber-300 border border-amber-400/40 backdrop-blur-md shadow-sm">
+                            #{order} Featured
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Fiverr Style Details Panel */}
+                    <div className="p-4 flex flex-col flex-1 justify-between gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
+                      <div className="space-y-2.5">
+                        {/* Creator Profile Row: ENLARGED AVATAR + Name + Badge Pill */}
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/freelancers/${artistId}`}
+                            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-amber-400/50 ring-2 ring-amber-400/20 shadow-md shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform"
+                          >
                             {avatar ? (
                               <img
                                 src={avatar}
@@ -369,43 +529,75 @@ export function HomeHero() {
                                 }}
                               />
                             ) : (
-                              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-2xl">
+                              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-lg sm:text-xl">
                                 {name.charAt(0).toUpperCase()}
                               </div>
                             )}
-                          </div>
+                          </Link>
 
-                          {order < 999 && (
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300">
-                              #{order}
-                            </span>
-                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Link
+                                href={`/freelancers/${artistId}`}
+                                className="font-bold text-sm text-slate-900 dark:text-white truncate hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                              >
+                                {name}
+                              </Link>
+
+                              {/* Badge pill right next to name (e.g. "Top Rated ◆◆◆") */}
+                              <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-0.5 shrink-0">
+                                {badgeFormatted}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 flex items-center gap-1">
+                              {isVerified && <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />}
+                              <span>{title}</span>
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="mt-3">
-                          <h3 className="font-bold text-base text-slate-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                            {name}
-                          </h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                            {title}
-                          </p>
-                        </div>
+                        {/* Catchy Gig Title Text below ("I will create...") */}
+                        <Link
+                          href={`/freelancers/${artistId}`}
+                          className="block font-medium text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-2 transition-colors leading-snug"
+                          title={catchyTitle}
+                        >
+                          {catchyTitle}
+                        </Link>
 
-                        {isVerified && (
-                          <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                            <CheckCircle className="h-3 w-3" />
-                            Verified Artist
-                          </div>
-                        )}
+                        {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
+                        <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                          <span className="font-bold text-slate-900 dark:text-white text-xs">
+                            {ratingFormatted}
+                          </span>
+                          <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                            {reviewCountFormatted}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end text-xs">
-                        <span className="text-amber-600 dark:text-amber-400 font-semibold group-hover:underline inline-flex items-center gap-1">
-                          View Profile <ArrowRight className="h-3.5 w-3.5" />
-                        </span>
+                      {/* Footer Row: Starting at Price & View Gig CTA */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 tracking-wider">
+                            Starting at
+                          </span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-white">
+                            LKR {priceFormatted}
+                          </span>
+                        </div>
+
+                        <Link
+                          href={`/freelancers/${artistId}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-700 dark:text-amber-400 hover:text-slate-950 font-semibold text-xs transition-all duration-200"
+                        >
+                          View Gig <ArrowRight className="h-3 w-3" />
+                        </Link>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 );
               })
             )}

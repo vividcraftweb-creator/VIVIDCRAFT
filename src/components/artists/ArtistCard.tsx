@@ -157,8 +157,8 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
         <div className="flex flex-col gap-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0 flex-1">
-              {/* Avatar Component */}
-              <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-primary/20 ring-4 ring-primary/10 shadow-lg shadow-primary/25 transition-transform group-hover:scale-105 bg-muted">
+              {/* Avatar Component - Enlarged & Prominent */}
+              <div className="relative h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden rounded-full border-2 border-primary/30 ring-4 ring-primary/15 shadow-xl shadow-primary/20 transition-transform group-hover:scale-105 bg-muted">
                 {avatarSrc && !imgError ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
@@ -168,7 +168,7 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
                     onError={() => setImgError(true)}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/80 to-chart-1/70 text-lg font-bold text-white">
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/80 to-chart-1/70 text-xl sm:text-2xl font-bold text-white">
                     {initialLetter}
                   </div>
                 )}
