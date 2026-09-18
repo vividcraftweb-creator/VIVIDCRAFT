@@ -74,7 +74,12 @@ export default function AdminCrewTab() {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        setCrew(data);
+        const mapped = data.map((c: any) => ({
+          ...c,
+          avatar_url: c.image_url || c.avatar_url || '',
+          image_url: c.image_url || c.avatar_url || '',
+        }));
+        setCrew(mapped);
         return;
       }
 
@@ -208,7 +213,7 @@ export default function AdminCrewTab() {
     setEditingId(member.id);
     setFormName(member.name);
     setFormPosition(member.position);
-    setFormAvatarUrl(member.avatar_url);
+    setFormAvatarUrl(member.image_url || member.avatar_url || '');
     setFormShortBio(member.short_bio);
     setFormFullStory(member.full_story || '');
     setFormIsFeatured(member.is_featured);
@@ -246,6 +251,20 @@ export default function AdminCrewTab() {
         name: formName.trim(),
         position: formPosition.trim(),
         avatar_url: formAvatarUrl.trim(),
+        image_url: formAvatarUrl.trim(),
+        short_bio: formShortBio.trim(),
+        full_story: formFullStory.trim() || formShortBio.trim(),
+        is_featured: formIsFeatured,
+        linkedin_url: formLinkedinUrl.trim() || null,
+        instagram_url: formInstagramUrl.trim() || null,
+        facebook_url: formFacebookUrl.trim() || null,
+        twitter_url: formTwitterUrl.trim() || null,
+      };
+
+      const dbPayload = {
+        name: formName.trim(),
+        position: formPosition.trim(),
+        image_url: formAvatarUrl.trim(),
         short_bio: formShortBio.trim(),
         full_story: formFullStory.trim() || formShortBio.trim(),
         is_featured: formIsFeatured,
@@ -274,7 +293,10 @@ export default function AdminCrewTab() {
           if (formIsFeatured) {
             await supabase.from('crew_members').update({ is_featured: false }).neq('id', editingId);
           }
-          await supabase.from('crew_members').update(payload).eq('id', editingId);
+          const { error: updErr } = await supabase.from('crew_members').update(dbPayload).eq('id', editingId);
+          if (updErr) {
+            console.warn('Direct DB update notice:', updErr.message);
+          }
         } catch {}
 
         // 3. API update
@@ -308,9 +330,16 @@ export default function AdminCrewTab() {
           if (formIsFeatured) {
             await supabase.from('crew_members').update({ is_featured: false }).neq('id', '00000000-0000-0000-0000-000000000000');
           }
-          const { data } = await supabase.from('crew_members').insert([payload]).select().single();
-          if (data) {
-            setCrew((prev) => [data, ...prev.filter((c) => c.id !== newTempMember.id)]);
+          const { data, error: insErr } = await supabase.from('crew_members').insert([dbPayload]).select().single();
+          if (!insErr && data) {
+            const mapped = {
+              ...data,
+              avatar_url: data.image_url || data.avatar_url || formAvatarUrl.trim(),
+              image_url: data.image_url || data.avatar_url || formAvatarUrl.trim(),
+            };
+            setCrew((prev) => [mapped, ...prev.filter((c) => c.id !== newTempMember.id)]);
+          } else if (insErr) {
+            console.warn('Direct DB insert notice:', insErr.message);
           }
         } catch {}
 

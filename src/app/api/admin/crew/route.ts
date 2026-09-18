@@ -17,7 +17,12 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (!error && Array.isArray(data) && data.length > 0) {
-      return NextResponse.json({ crew: data });
+      const mapped = data.map((c: any) => ({
+        ...c,
+        avatar_url: c.image_url || c.avatar_url || '',
+        image_url: c.image_url || c.avatar_url || '',
+      }));
+      return NextResponse.json({ crew: mapped });
     }
   } catch (err) {
     console.warn('Error fetching crew from DB:', err);
@@ -34,6 +39,7 @@ export async function POST(req: Request) {
       name,
       position,
       avatar_url,
+      image_url,
       short_bio,
       full_story = '',
       is_featured = false,
@@ -45,8 +51,9 @@ export async function POST(req: Request) {
       x_url = '',
     } = body;
 
-    if (!name || !position || !avatar_url || !short_bio) {
-      return NextResponse.json({ error: 'Name, position, avatar, and short bio are required' }, { status: 400 });
+    const photoUrl = String(image_url || avatar_url || '').trim();
+    if (!name || !position || !photoUrl || !short_bio) {
+      return NextResponse.json({ error: 'Name, position, avatar/image, and short bio are required' }, { status: 400 });
     }
 
     const resolvedTwitter = (twitter_url || x_url) ? String(twitter_url || x_url).trim() : null;
@@ -55,7 +62,8 @@ export async function POST(req: Request) {
       id: `crew-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       name: String(name).trim(),
       position: String(position).trim(),
-      avatar_url: String(avatar_url).trim(),
+      avatar_url: photoUrl,
+      image_url: photoUrl,
       short_bio: String(short_bio).trim(),
       full_story: String(full_story).trim(),
       is_featured: Boolean(is_featured),
@@ -83,7 +91,7 @@ export async function POST(req: Request) {
       const insertPayload = {
         name: newMember.name,
         position: newMember.position,
-        avatar_url: newMember.avatar_url,
+        image_url: photoUrl,
         short_bio: newMember.short_bio,
         full_story: newMember.full_story,
         is_featured: newMember.is_featured,
@@ -101,8 +109,15 @@ export async function POST(req: Request) {
         .single();
 
       if (!error && data) {
-        memoryCrew.unshift(data);
-        return NextResponse.json({ member: data, success: true }, { status: 201 });
+        const mappedCreated = {
+          ...data,
+          avatar_url: data.image_url || data.avatar_url || photoUrl,
+          image_url: data.image_url || data.avatar_url || photoUrl,
+        };
+        memoryCrew.unshift(mappedCreated);
+        return NextResponse.json({ member: mappedCreated, success: true }, { status: 201 });
+      } else if (error) {
+        console.warn('DB insert returned error:', error);
       }
     } catch (dbErr) {
       console.warn('DB insert failed for crew member, saving in memory:', dbErr);
@@ -125,6 +140,7 @@ export async function PATCH(req: Request) {
       name,
       position,
       avatar_url,
+      image_url,
       short_bio,
       full_story,
       display_order,
@@ -153,7 +169,9 @@ export async function PATCH(req: Request) {
       if (typeof is_featured === 'boolean') updatePayload.is_featured = is_featured;
       if (name) updatePayload.name = String(name).trim();
       if (position) updatePayload.position = String(position).trim();
-      if (avatar_url) updatePayload.avatar_url = String(avatar_url).trim();
+      if (avatar_url || image_url) {
+        updatePayload.image_url = String(image_url || avatar_url).trim();
+      }
       if (short_bio) updatePayload.short_bio = String(short_bio).trim();
       if (full_story !== undefined) updatePayload.full_story = String(full_story).trim();
       if (typeof display_order === 'number') updatePayload.display_order = display_order;
@@ -174,7 +192,11 @@ export async function PATCH(req: Request) {
         .single();
 
       if (!error && data) {
-        updatedMember = data;
+        updatedMember = {
+          ...data,
+          avatar_url: data.image_url || data.avatar_url,
+          image_url: data.image_url || data.avatar_url,
+        };
       }
     } catch (e) {
       console.warn('Supabase crew update failed:', e);

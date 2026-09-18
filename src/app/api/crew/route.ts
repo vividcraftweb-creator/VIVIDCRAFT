@@ -14,7 +14,12 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (!error && Array.isArray(data)) {
-      return NextResponse.json({ crew: data });
+      const mapped = data.map((c: any) => ({
+        ...c,
+        avatar_url: c.image_url || c.avatar_url || '',
+        image_url: c.image_url || c.avatar_url || '',
+      }));
+      return NextResponse.json({ crew: mapped });
     }
   } catch (e) {
     console.warn('API crew GET error:', e);

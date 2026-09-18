@@ -38,7 +38,12 @@ export function CrewShowcase() {
           .order('created_at', { ascending: false });
 
         if (!error && Array.isArray(data) && isMounted) {
-          setCrew(data);
+          const mapped = data.map((c: any) => ({
+            ...c,
+            avatar_url: c.image_url || c.avatar_url || '',
+            image_url: c.image_url || c.avatar_url || '',
+          }));
+          setCrew(mapped);
           setIsLoading(false);
           return;
         }
@@ -47,7 +52,12 @@ export function CrewShowcase() {
         if (res.ok) {
           const json = await res.json();
           if (json?.crew && Array.isArray(json.crew) && isMounted) {
-            setCrew(json.crew);
+            const mapped = json.crew.map((c: any) => ({
+              ...c,
+              avatar_url: c.image_url || c.avatar_url || '',
+              image_url: c.image_url || c.avatar_url || '',
+            }));
+            setCrew(mapped);
           }
         }
       } catch (err) {
@@ -167,7 +177,7 @@ export function CrewShowcase() {
             >
               {/* High-Resolution Portrait Photo */}
               <img
-                src={member.avatar_url}
+                src={member.image_url || member.avatar_url}
                 alt={member.name}
                 loading="lazy"
                 className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
@@ -216,7 +226,7 @@ export function CrewShowcase() {
               {/* Header Portrait Banner */}
               <div className="relative w-full h-72 sm:h-80 bg-slate-900 overflow-hidden">
                 <img
-                  src={selectedMember.avatar_url}
+                  src={selectedMember.image_url || selectedMember.avatar_url}
                   alt={selectedMember.name}
                   className="w-full h-full object-cover object-top"
                 />

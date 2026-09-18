@@ -2,7 +2,8 @@ export interface CrewMember {
   id: string;
   name: string;
   position: string;
-  avatar_url: string;
+  avatar_url?: string;
+  image_url?: string;
   short_bio: string;
   full_story: string;
   is_featured: boolean;

@@ -40,9 +40,13 @@ export function FeaturedCrew() {
           .order('display_order', { ascending: true });
 
         if (!error && Array.isArray(crewData) && crewData.length > 0 && isMounted) {
-          const featured = crewData.find((c: CrewMember) => c.is_featured) || crewData[0];
-          if (featured) {
-            setFeaturedMember(featured);
+          const rawFeatured = crewData.find((c: any) => c.is_featured) || crewData[0];
+          if (rawFeatured) {
+            setFeaturedMember({
+              ...rawFeatured,
+              avatar_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
+              image_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
+            });
           }
           return;
         }
@@ -51,9 +55,13 @@ export function FeaturedCrew() {
         if (res.ok) {
           const json = await res.json();
           if (json?.crew && Array.isArray(json.crew) && json.crew.length > 0 && isMounted) {
-            const featured = json.crew.find((c: CrewMember) => c.is_featured) || json.crew[0];
-            if (featured) {
-              setFeaturedMember(featured);
+            const rawFeatured = json.crew.find((c: any) => c.is_featured) || json.crew[0];
+            if (rawFeatured) {
+              setFeaturedMember({
+                ...rawFeatured,
+                avatar_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
+                image_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
+              });
             }
           }
         }
@@ -167,7 +175,7 @@ export function FeaturedCrew() {
                 <div className="md:col-span-5 flex justify-center">
                   <div className="relative w-full max-w-[340px] md:max-w-none aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden ring-4 ring-amber-500/30 shadow-2xl group">
                     <img
-                      src={activeMember.avatar_url}
+                      src={activeMember.image_url || activeMember.avatar_url}
                       alt={activeMember.name}
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                     />
@@ -327,7 +335,7 @@ export function FeaturedCrew() {
               {/* Image Banner */}
               <div className="relative w-full h-56 sm:h-72 rounded-2xl overflow-hidden ring-2 ring-amber-500/30 shadow-xl">
                 <img
-                  src={activeMember.avatar_url}
+                  src={activeMember.image_url || activeMember.avatar_url}
                   alt={activeMember.name}
                   className="w-full h-full object-cover object-center"
                 />
