@@ -15,21 +15,45 @@ export async function GET(req: Request) {
       .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home');
 
     if (onlyHome) {
-      query = query.eq('show_on_home', true);
+      // Users where role = 'artist' (or is_artist = true) AND show_on_home = true, excluding client and admin
+      query = query
+        .eq('show_on_home', true)
+        .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true')
+        .neq('role', 'client')
+        .neq('role', 'CLIENT')
+        .neq('role', 'admin')
+        .neq('role', 'ADMIN');
     } else {
-      // Filter profiles where role = 'artist' or is_artist = true
-      query = query.or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true');
+      // Filter profiles where role = 'artist' or is_artist = true, excluding client and admin
+      query = query
+        .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true')
+        .neq('role', 'client')
+        .neq('role', 'CLIENT')
+        .neq('role', 'admin')
+        .neq('role', 'ADMIN');
     }
 
     let { data: artists, error } = await query.order('display_order', { ascending: true });
 
     // Fallback if is_artist column does not exist on remote database yet
-    if (error && !onlyHome) {
+    if (error) {
       console.warn('Primary artist query notice (falling back):', error.message);
-      const fallbackQuery = adminClient
+      let fallbackQuery = adminClient
         .from('profiles')
         .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
-        .or('role.ilike.%artist%,role.ilike.%freelancer%');
+        .neq('role', 'client')
+        .neq('role', 'CLIENT')
+        .neq('role', 'admin')
+        .neq('role', 'ADMIN');
+
+      if (onlyHome) {
+        fallbackQuery = fallbackQuery
+          .eq('show_on_home', true)
+          .or('role.eq.artist,role.eq.ARTIST,role.ilike.%artist%');
+      } else {
+        fallbackQuery = fallbackQuery
+          .or('role.eq.artist,role.eq.ARTIST,role.ilike.%artist%');
+      }
 
       const fallbackRes = await fallbackQuery.order('display_order', { ascending: true });
       if (!fallbackRes.error && fallbackRes.data) {
@@ -48,7 +72,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const formatted = (artists || []).map((p: any) => ({
+    // Strict safety filter: exclude client and admin, ensure artist role
+    const filtered = (artists || []).filter((p: any) => {
+      const role = (p.role || '').toLowerCase();
+      const isArtist = Boolean(p.is_artist);
+      if (role === 'client' || role === 'admin') return false;
+      return role === 'artist' || isArtist || role.includes('artist');
+    });
+
+    const formatted = filtered.map((p: any) => ({
       id: p.id,
       first_name: p.first_name || '',
       last_name: p.last_name || '',

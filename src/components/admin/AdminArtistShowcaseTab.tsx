@@ -44,11 +44,15 @@ export default function AdminArtistShowcaseTab() {
     setLoading(true);
     try {
       const supabase = createClient();
-      // Explicitly select only valid columns from profiles table
+      // Explicitly select only valid columns from profiles table and exclude client & admin
       let { data, error } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
-        .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true');
+        .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true')
+        .neq('role', 'client')
+        .neq('role', 'CLIENT')
+        .neq('role', 'admin')
+        .neq('role', 'ADMIN');
 
       // Fallback query if is_artist column does not exist on remote database yet
       if (error) {
@@ -56,7 +60,11 @@ export default function AdminArtistShowcaseTab() {
         const fallback = await supabase
           .from('profiles')
           .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
-          .or('role.ilike.%artist%,role.ilike.%freelancer%');
+          .or('role.ilike.%artist%,role.ilike.%freelancer%')
+          .neq('role', 'client')
+          .neq('role', 'CLIENT')
+          .neq('role', 'admin')
+          .neq('role', 'ADMIN');
 
         if (!fallback.error && fallback.data) {
           data = fallback.data;
@@ -65,7 +73,13 @@ export default function AdminArtistShowcaseTab() {
       }
 
       if (!error && Array.isArray(data)) {
-        const formatted: AdminArtistItem[] = data.map((item: any) => ({
+        // Exclude client and admin
+        const valid = data.filter((p: any) => {
+          const role = (p.role || '').toLowerCase();
+          return role !== 'client' && role !== 'admin';
+        });
+
+        const formatted: AdminArtistItem[] = valid.map((item: any) => ({
           id: item.id,
           first_name: item.first_name || '',
           last_name: item.last_name || '',
@@ -94,7 +108,12 @@ export default function AdminArtistShowcaseTab() {
       const res = await fetch('/api/admin/artists/order');
       const apiData = await res.json();
       if (apiData?.artists && Array.isArray(apiData.artists)) {
-        const formatted: AdminArtistItem[] = apiData.artists.map((item: any) => ({
+        const valid = apiData.artists.filter((p: any) => {
+          const role = (p.role || '').toLowerCase();
+          return role !== 'client' && role !== 'admin';
+        });
+
+        const formatted: AdminArtistItem[] = valid.map((item: any) => ({
           id: item.id,
           first_name: item.first_name || '',
           last_name: item.last_name || '',

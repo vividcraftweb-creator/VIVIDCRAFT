@@ -50,14 +50,47 @@ export function HomeHero() {
       setLoadingArtists(true);
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home, is_verified, title, professional_title')
           .eq('show_on_home', true)
+          .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true')
+          .neq('role', 'client')
+          .neq('role', 'CLIENT')
+          .neq('role', 'admin')
+          .neq('role', 'ADMIN')
           .order('display_order', { ascending: true });
 
+        // Fallback if is_artist column does not exist on remote database yet
+        if (error) {
+          console.warn('HomeHero artist query notice (falling back):', error.message);
+          const fallback = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home, is_verified, title, professional_title')
+            .eq('show_on_home', true)
+            .or('role.eq.artist,role.eq.ARTIST,role.ilike.%artist%')
+            .neq('role', 'client')
+            .neq('role', 'CLIENT')
+            .neq('role', 'admin')
+            .neq('role', 'ADMIN')
+            .order('display_order', { ascending: true });
+
+          if (!fallback.error && fallback.data) {
+            data = fallback.data;
+            error = null;
+          }
+        }
+
         if (!error && Array.isArray(data)) {
-          const sorted = [...data].sort(
+          // Strict client-side filter: only artist role / is_artist, strictly exclude client and admin
+          const validArtists = data.filter((p: any) => {
+            const role = (p.role || '').toLowerCase();
+            const isArtist = Boolean(p.is_artist);
+            if (role === 'client' || role === 'admin') return false;
+            return role === 'artist' || isArtist || role.includes('artist');
+          });
+
+          const sorted = [...validArtists].sort(
             (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
           );
           if (isMounted) setArtists(sorted);
@@ -65,7 +98,11 @@ export function HomeHero() {
           const res = await fetch('/api/admin/artists/order?home=true');
           const json = await res.json();
           if (json?.artists && isMounted) {
-            setArtists(json.artists);
+            const validArtists = json.artists.filter((p: any) => {
+              const role = (p.role || '').toLowerCase();
+              return role !== 'client' && role !== 'admin';
+            });
+            setArtists(validArtists);
           }
         }
       } catch (e) {
