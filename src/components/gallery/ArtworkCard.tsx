@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ArtworkModal } from './ArtworkModal';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
-import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay, formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
+import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay } from '@/lib/artworks';
 
 export interface ArtworkItem {
   id: string;
@@ -245,16 +245,19 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   if (isDeleted) return null;
 
   const safeImg = getSafeArtworkUrl(artwork.image_url);
-  const badgeFormatted = formatBadgeWithDiamonds(artwork.badge_title || 'Top Rated');
-  const catchyTitle = formatGigTitle(artwork.title, artwork.gig_title);
-  const cardRating = artwork.base_rating ?? (artwork.averageRating > 0 ? artwork.averageRating : 4.9);
-  const ratingFormatted = typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating;
-  const reviewCountFormatted = artwork.review_count_text || (artwork.ratingsCount > 0 ? `(${artwork.ratingsCount})` : '(1k+)');
+  const artworkTitle = (artwork.title || 'Untitled Artwork').trim();
+
+  // Dynamic Rating: Only display stars if real ratings exist in the database
+  const hasRealRatings =
+    typeof artwork.ratingsCount === 'number' &&
+    artwork.ratingsCount > 0 &&
+    typeof artwork.averageRating === 'number' &&
+    artwork.averageRating > 0;
 
   return (
     <>
       <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10 flex flex-col">
-        {/* Artwork Image Container with Top-Right Heart Wishlist Overlay */}
+        {/* Artwork Image Container */}
         <div
           className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
           onClick={() => setIsZoomOpen(true)}
@@ -281,7 +284,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={safeImg}
-                alt={catchyTitle}
+                alt={artworkTitle}
                 className="object-contain w-full h-full relative z-10 p-1.5 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                 onError={(e) => {
                   const target = e.currentTarget;
@@ -292,22 +295,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
             </div>
           </div>
 
-          {/* Top-Right Heart / Favorite Wishlist Icon Overlay */}
-          <button
-            type="button"
-            onClick={handleLikeClick}
-            disabled={toggleLikeMutation.isPending}
-            aria-label={isLiked ? 'Unlike artwork' : 'Like artwork'}
-            className="absolute top-2.5 right-2.5 z-30 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-md cursor-pointer"
-          >
-            <Heart
-              className={`h-4 w-4 transition-transform ${
-                isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white/90 hover:text-rose-400'
-              }`}
-            />
-          </button>
-
-          {/* Top-Left Pricing Status Badge */}
+          {/* Top-Left Pricing Status Badge (For Sale / Bidding / Not For Sale) */}
           <div className="absolute top-2.5 left-2.5 z-30 pointer-events-none">
             {badgeType === 'FOR_SALE' && (
               <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400/90 dark:bg-amber-500/25 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
@@ -332,69 +320,64 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
           </div>
         </div>
 
-        {/* Fiverr Marketplace Details Panel */}
+        {/* Clean Artwork Details Panel */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/60 p-3.5 flex flex-col flex-1 justify-between gap-2.5">
           <div className="space-y-2">
-            {/* Artist Row: Prominent Enlarged Avatar + Artist Name + Badge Pill */}
+            {/* Real Artist Avatar + Artist Name */}
             <div className="flex items-center gap-2.5">
               {artistAvatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={artistAvatarUrl}
                   alt={artistName}
-                  className="w-10 h-10 rounded-full object-cover shrink-0 border-2 border-amber-300/80 dark:border-amber-500/50 ring-2 ring-amber-400/20 shadow-sm"
+                  className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-amber-500/20 border-2 border-amber-400/40 ring-2 ring-amber-400/20 flex items-center justify-center text-xs font-bold text-amber-700 dark:text-amber-300 shrink-0 shadow-sm">
-                  <User className="w-5 h-5" />
+                <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xs font-bold text-amber-700 dark:text-amber-300 shrink-0">
+                  {artistName.charAt(0).toUpperCase()}
                 </div>
               )}
 
-              <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                    {artistName}
-                  </span>
-
-                  {/* Badge Pill right next to name (e.g. "Top Rated ◆◆◆" with light yellow background) */}
-                  <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
-                    {badgeFormatted}
-                  </span>
-                </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                  {artistName}
+                </span>
               </div>
             </div>
 
-            {/* Catchy Gig Title Text below ("I will create...") */}
+            {/* Dynamic Artwork Title */}
             <h3
               onClick={() => startTransition(() => setIsZoomOpen(true))}
-              className="font-medium text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-2 cursor-pointer transition-colors leading-snug"
-              title={catchyTitle}
+              className="font-semibold text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-1 cursor-pointer transition-colors leading-snug"
+              title={artworkTitle}
             >
-              {catchyTitle}
+              {artworkTitle}
             </h3>
 
-            {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
-            <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-              <span className="font-bold text-slate-900 dark:text-white text-xs">
-                {ratingFormatted}
-              </span>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
-                {reviewCountFormatted}
-              </span>
-            </div>
+            {/* Dynamic Star Rating row (only shown if real database ratings exist) */}
+            {hasRealRatings && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <span className="font-bold text-slate-900 dark:text-white text-xs">
+                  {Number(artwork.averageRating).toFixed(1)}
+                </span>
+                <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
+                  ({artwork.ratingsCount} {artwork.ratingsCount === 1 ? 'rating' : 'ratings'})
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Pricing & Actions Footer */}
           <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
             <div>
               <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
-                {badgeType === 'FOR_SALE' ? 'Starting at' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Portfolio'}
+                {badgeType === 'FOR_SALE' ? 'Price' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Status'}
               </span>
-              <span className="text-xs font-bold text-slate-900 dark:text-white">
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                 {badgeType === 'FOR_SALE'
                   ? `LKR ${displayPrice.toLocaleString()}`
                   : fallbackDisplayPrice}
@@ -408,10 +391,10 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
                 const rawPhone = artwork.profiles?.phone || artwork.user?.phone || artwork.artist_phone || '94783813833';
                 const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
 
-                const title = artwork.title || 'Artwork';
+                const title = artworkTitle;
                 const rawRef = artwork.ref_id || artwork.art_code || artwork.id || 'N/A';
                 const refId = String(rawRef).replace(/^#/, '');
-                const artistFullName = artwork.profiles?.full_name || artwork.profiles?.display_name || artwork.artist_name || artwork.artist?.name || 'Artist';
+                const artistFullName = artistName;
 
                 const rawPrice = Number(artwork.price || artwork.price_amount || artwork.amount || artwork.starting_bid || 0);
                 const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';

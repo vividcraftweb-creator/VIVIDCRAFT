@@ -5,11 +5,11 @@ import { trpc } from '@/utils/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Image as ImageIcon, Trash2, Loader2, UploadCloud, Heart, Star, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Loader2, UploadCloud, Star, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
-import { getArtworkPricingDisplay, formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
+import { getArtworkPricingDisplay } from '@/lib/artworks';
 
 export default function GalleryView() {
   const [isUploading, setIsUploading] = useState(false);
@@ -490,11 +490,12 @@ export default function GalleryView() {
               const imgUrl = artwork.image_url || artwork.imageUrl;
               const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
               const artCode = artwork.art_code || '#ART-101';
-              const rawBadge = artwork.badge_title || 'Top Rated';
-              const badgeWithDiamonds = formatBadgeWithDiamonds(rawBadge);
-              const displayGigTitle = formatGigTitle(artwork.title, artwork.gig_title);
-              const cardRating = artwork.base_rating ?? (artwork.averageRating > 0 ? artwork.averageRating : 4.9);
-              const cardReviewCount = artwork.review_count_text || (artwork.ratingsCount > 0 ? `(${artwork.ratingsCount})` : '(1k+)');
+              const artworkTitle = (artwork.title || 'Untitled Artwork').trim();
+              const hasRealRatings =
+                typeof artwork.ratingsCount === 'number' &&
+                artwork.ratingsCount > 0 &&
+                typeof artwork.averageRating === 'number' &&
+                artwork.averageRating > 0;
               const priceNumeric = Number(artwork.price || artwork.amount || artwork.price_amount || 0);
 
               return (
@@ -502,12 +503,12 @@ export default function GalleryView() {
                   key={artwork.id}
                   className="group relative rounded-2xl overflow-hidden bg-slate-900/90 border border-slate-800 transition-all duration-300 hover:border-amber-500/40 hover:shadow-xl hover:shadow-amber-500/10 flex flex-col"
                 >
-                  {/* Top Image Container with Heart Wishlist Overlay */}
+                  {/* Top Image Container */}
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-black/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={getSafeArtworkUrl(imgUrl)}
-                      alt={artwork.title || 'Artwork'}
+                      alt={artworkTitle}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
                         const target = e.currentTarget;
@@ -515,13 +516,6 @@ export default function GalleryView() {
                         target.src = DEFAULT_ARTWORK_PLACEHOLDER;
                       }}
                     />
-
-                    {/* Top Right Heart Wishlist Icon Overlay */}
-                    <div className="absolute top-2.5 right-2.5 z-20">
-                      <div className="w-8 h-8 rounded-full bg-slate-950/75 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 shadow-md">
-                        <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
-                      </div>
-                    </div>
 
                     {/* Top Left Status Badge */}
                     <div className="absolute top-2.5 left-2.5 z-20">
@@ -557,10 +551,10 @@ export default function GalleryView() {
                     </div>
                   </div>
                   
-                  {/* Fiverr Style Gig Details Panel */}
+                  {/* Clean Artwork Details Panel */}
                   <div className="p-3.5 flex flex-col flex-1 justify-between bg-slate-950/80 gap-2.5">
                     <div>
-                      {/* Artist Avatar + Name + Badge Pill Row */}
+                      {/* Artist Avatar + Name */}
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-[10px] font-bold text-amber-300 shrink-0">
                           <span>A</span>
@@ -568,29 +562,27 @@ export default function GalleryView() {
                         <span className="text-xs font-semibold text-slate-200 truncate">
                           Your Studio
                         </span>
-                        {/* Badge Pill right next to name */}
-                        <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
-                          {badgeWithDiamonds}
-                        </span>
                       </div>
 
-                      {/* Catchy Gig Title Text ("I will...") */}
+                      {/* Dynamic Artwork Title */}
                       <h3 className="text-sm font-medium text-white line-clamp-2 hover:text-amber-400 transition-colors leading-snug">
-                        {displayGigTitle}
+                        {artworkTitle}
                       </h3>
                     </div>
 
                     <div>
-                      {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
-                      <div className="flex items-center gap-1.5 text-xs text-amber-400 mb-2">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                        <span className="font-bold text-slate-100 text-xs">
-                          {typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating}
-                        </span>
-                        <span className="text-slate-400 text-[11px] font-normal">
-                          {cardReviewCount}
-                        </span>
-                      </div>
+                      {/* Dynamic Star Rating row (only shown if real database ratings exist) */}
+                      {hasRealRatings && (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-400 mb-2">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                          <span className="font-bold text-slate-100 text-xs">
+                            {Number(artwork.averageRating).toFixed(1)}
+                          </span>
+                          <span className="text-slate-400 text-[11px] font-normal">
+                            ({artwork.ratingsCount} {artwork.ratingsCount === 1 ? 'rating' : 'ratings'})
+                          </span>
+                        </div>
+                      )}
 
                       {/* Bottom Pricing & Ref ID */}
                       <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">

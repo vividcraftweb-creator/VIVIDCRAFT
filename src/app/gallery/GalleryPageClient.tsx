@@ -38,7 +38,7 @@ import { trpc } from '@/utils/trpc';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
-import { getArtworkPricingDisplay, formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
+import { getArtworkPricingDisplay } from '@/lib/artworks';
 
 type SortOption = 'popular' | 'highest_rated' | 'most_liked' | 'newest';
 type CategoryFilter = 'ALL' | 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
@@ -1258,11 +1258,12 @@ export default function GalleryPageClient() {
                 .toUpperCase();
 
               const activeHoverStar = hoveredRating[artwork.id] || 0;
-              const badgeFormatted = formatBadgeWithDiamonds(artwork.badge_title || 'Top Rated');
-              const catchyTitle = formatGigTitle(artwork.title, artwork.gig_title);
-              const cardRating = artwork.base_rating ?? (artwork.averageRating > 0 ? artwork.averageRating : 4.9);
-              const ratingFormatted = typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating;
-              const reviewCountFormatted = artwork.review_count_text || (artwork.ratingsCount > 0 ? `(${artwork.ratingsCount})` : '(1k+)');
+              const artworkTitle = (artwork.title || 'Untitled Artwork').trim();
+              const hasRealRatings =
+                typeof artwork.ratingsCount === 'number' &&
+                artwork.ratingsCount > 0 &&
+                typeof artwork.averageRating === 'number' &&
+                artwork.averageRating > 0;
               const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
 
               return (
@@ -1270,7 +1271,7 @@ export default function GalleryPageClient() {
                   key={artwork.id}
                   className="group relative bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-amber-500/10 flex flex-col hover:-translate-y-0.5"
                 >
-                  {/* Artwork Image Container with Smart Matte Framing & Top-Right Heart Wishlist */}
+                  {/* Artwork Image Container with Smart Matte Framing */}
                   <div
                     onClick={() => setSelectedArtwork(artwork)}
                     className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
@@ -1297,7 +1298,7 @@ export default function GalleryPageClient() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={safeImg}
-                          alt={catchyTitle}
+                          alt={artworkTitle}
                           className="object-contain w-full h-full relative z-10 p-1.5 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                           onError={(e) => {
                             const target = e.currentTarget;
@@ -1307,20 +1308,6 @@ export default function GalleryPageClient() {
                         />
                       </div>
                     </div>
-
-                    {/* Top-Right Heart Wishlist Icon Overlay */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleLike(artwork.id, e)}
-                      className="absolute top-2.5 right-2.5 z-30 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-md cursor-pointer"
-                      title={artwork.isLiked ? 'Unlike artwork' : 'Like artwork'}
-                    >
-                      <Heart
-                        className={`w-4 h-4 transition-transform ${
-                          artwork.isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white/90 hover:text-rose-400'
-                        }`}
-                      />
-                    </button>
 
                     {/* Top-Left Pricing Status Badge & Admin Delete Button */}
                     <div className="absolute top-2.5 left-2.5 z-30 flex items-center gap-1.5 pointer-events-auto">
@@ -1369,10 +1356,10 @@ export default function GalleryPageClient() {
                     </button>
                   </div>
 
-                  {/* Fiverr Style Gig Details Panel */}
+                  {/* Clean Artwork Details Panel */}
                   <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/60 p-3.5 flex flex-col flex-1 justify-between gap-2.5">
                     <div className="space-y-2">
-                      {/* Artist Row: Avatar + Name + Badge Pill */}
+                      {/* Artist Row: Avatar + Name */}
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/freelancers/${artwork.artist_id}`}
@@ -1394,32 +1381,29 @@ export default function GalleryPageClient() {
                         >
                           {dynamicArtistName}
                         </Link>
-
-                        {/* Badge Pill right next to name (e.g. "Top Rated ◆◆◆") */}
-                        <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
-                          {badgeFormatted}
-                        </span>
                       </div>
 
-                      {/* Catchy Gig Title Text ("I will create...") */}
+                      {/* Dynamic Artwork Title */}
                       <h3
                         onClick={() => setSelectedArtwork(artwork)}
                         className="font-medium text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-2 cursor-pointer transition-colors leading-snug"
-                        title={catchyTitle}
+                        title={artworkTitle}
                       >
-                        {catchyTitle}
+                        {artworkTitle}
                       </h3>
 
-                      {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
-                      <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                        <span className="font-bold text-slate-900 dark:text-white text-xs">
-                          {ratingFormatted}
-                        </span>
-                        <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
-                          {reviewCountFormatted}
-                        </span>
-                      </div>
+                      {/* Dynamic Star Rating row (only shown if real database ratings exist) */}
+                      {hasRealRatings && (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                          <span className="font-bold text-slate-900 dark:text-white text-xs">
+                            {Number(artwork.averageRating).toFixed(1)}
+                          </span>
+                          <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
+                            ({artwork.ratingsCount} {artwork.ratingsCount === 1 ? 'rating' : 'ratings'})
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Bottom Row: Pricing & Actions */}
