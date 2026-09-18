@@ -93,6 +93,10 @@ export const artworksRouter = router({
           likesCount: artLikes.length,
           ratingsCount: artRatings.length,
           averageRating: avgRating,
+          badge_title: art.badge_title || 'Top Rated',
+          gig_title: art.gig_title || art.title || null,
+          base_rating: art.base_rating !== undefined && art.base_rating !== null ? Number(art.base_rating) : (avgRating > 0 ? avgRating : 4.9),
+          review_count_text: art.review_count_text || (artRatings.length > 0 ? `(${artRatings.length})` : '(1k+)'),
           selling_mode: evaluatedMode,
           pricing_type: evaluatedMode,
           price: effectivePrice,
@@ -138,6 +142,14 @@ export const artworksRouter = router({
         price_amount: z.number().nullable().optional(),
         starting_bid: z.number().nullable().optional(),
         startingBid: z.number().nullable().optional(),
+        badge_title: z.string().nullable().optional(),
+        badgeTitle: z.string().nullable().optional(),
+        gig_title: z.string().nullable().optional(),
+        gigTitle: z.string().nullable().optional(),
+        base_rating: z.union([z.number(), z.string()]).nullable().optional(),
+        baseRating: z.union([z.number(), z.string()]).nullable().optional(),
+        review_count_text: z.string().nullable().optional(),
+        reviewCountText: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -161,6 +173,12 @@ export const artworksRouter = router({
         String(payload.price ?? payload.amount ?? payload.price_amount ?? input.price ?? 0)
       ) || 0;
       const startingBidVal = (payload.starting_bid ?? payload.startingBid) ? parseFloat(String(payload.starting_bid ?? payload.startingBid)) : null;
+
+      const badgeTitle = payload.badge_title || payload.badgeTitle || 'Top Rated';
+      const gigTitle = payload.gig_title || payload.gigTitle || null;
+      const rawBaseRating = payload.base_rating !== undefined && payload.base_rating !== null ? parseFloat(String(payload.base_rating)) : 4.9;
+      const baseRating = isNaN(rawBaseRating) ? 4.9 : rawBaseRating;
+      const reviewCountText = payload.review_count_text || payload.reviewCountText || '(1k+)';
 
       const description = input.description?.trim() || null;
       const category = input.category?.trim() || null;
@@ -194,6 +212,10 @@ export const artworksRouter = router({
         medium,
         technique,
         tags,
+        badge_title: badgeTitle,
+        gig_title: gigTitle,
+        base_rating: baseRating,
+        review_count_text: reviewCountText,
       };
       if (priceValue > 0) {
         insertData.price = priceValue;
@@ -202,7 +224,7 @@ export const artworksRouter = router({
 
       // Explicit insert query candidates with graceful fallback column names if 'price', 'user_id', or 'technique' fails in schema cache
       const candidateInserts: any[] = [
-        // Candidate 1: Full payload with BOTH price and amount, user_id, artist_id, category, medium, technique, tags
+        // Candidate 1: Full payload with BOTH price and amount, user_id, artist_id, category, medium, technique, tags, gig fields
         {
           id,
           artist_id: artistId,
@@ -219,6 +241,10 @@ export const artworksRouter = router({
           image_url: input.imageUrl,
           created_at: new Date().toISOString(),
           art_code: artCode,
+          badge_title: badgeTitle,
+          gig_title: gigTitle,
+          base_rating: baseRating,
+          review_count_text: reviewCountText,
           ...(priceValue > 0 ? { price: priceValue, amount: priceValue } : {}),
         },
         // Candidate 2: Strict user insertData sending BOTH price and amount
@@ -511,6 +537,10 @@ export const artworksRouter = router({
             ratingsCount: artRatings.length,
             averageRating: avgRating,
             userRating,
+            badge_title: art.badge_title || 'Top Rated',
+            gig_title: art.gig_title || art.title || null,
+            base_rating: art.base_rating !== undefined && art.base_rating !== null ? Number(art.base_rating) : (avgRating > 0 ? avgRating : 4.9),
+            review_count_text: art.review_count_text || (artRatings.length > 0 ? `(${artRatings.length})` : '(1k+)'),
             selling_mode: pricingType,
             pricing_type: pricingType,
             price,
@@ -708,6 +738,10 @@ export const artworksRouter = router({
             averageRating: avgRating,
             userRating,
             isLiked,
+            badge_title: art.badge_title || 'Top Rated',
+            gig_title: art.gig_title || art.title || null,
+            base_rating: art.base_rating !== undefined && art.base_rating !== null ? Number(art.base_rating) : (avgRating > 0 ? avgRating : 4.9),
+            review_count_text: art.review_count_text || (ratingsCount > 0 ? `(${ratingsCount})` : '(1k+)'),
             popularityScore,
             selling_mode: sellingMode,
             pricing_type: sellingMode,

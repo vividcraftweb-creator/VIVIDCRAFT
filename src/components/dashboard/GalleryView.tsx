@@ -5,11 +5,11 @@ import { trpc } from '@/utils/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Image as ImageIcon, Trash2, Loader2, UploadCloud, Heart, Star } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Loader2, UploadCloud, Heart, Star, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
-import { getArtworkPricingDisplay } from '@/lib/artworks';
+import { getArtworkPricingDisplay, formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
 
 export default function GalleryView() {
   const [isUploading, setIsUploading] = useState(false);
@@ -21,6 +21,10 @@ export default function GalleryView() {
   const [pricing_type, setPricingType] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('FIXED_PRICE');
   const [price, setPrice] = useState('');
   const [startingBid, setStartingBid] = useState('');
+  const [badgeTitle, setBadgeTitle] = useState('Top Rated');
+  const [gigTitle, setGigTitle] = useState('');
+  const [baseRating, setBaseRating] = useState('4.9');
+  const [reviewCountText, setReviewCountText] = useState('(1k+)');
   
   const utils = trpc.useUtils();
   const { data: artworks, isLoading } = trpc.artworks.getMyArtworks.useQuery();
@@ -41,6 +45,10 @@ export default function GalleryView() {
       setPrice('');
       setStartingBid('');
       setPricingType('FIXED_PRICE');
+      setBadgeTitle('Top Rated');
+      setGigTitle('');
+      setBaseRating('4.9');
+      setReviewCountText('(1k+)');
     },
     onError: (error) => {
       toast.error(`Failed to add artwork: ${error.message}`);
@@ -118,6 +126,14 @@ export default function GalleryView() {
         amount: numericPrice,
         starting_bid: numericBid,
         startingBid: numericBid,
+        badge_title: badgeTitle.trim() || 'Top Rated',
+        badgeTitle: badgeTitle.trim() || 'Top Rated',
+        gig_title: gigTitle.trim() || undefined,
+        gigTitle: gigTitle.trim() || undefined,
+        base_rating: baseRating ? parseFloat(baseRating) : 4.9,
+        baseRating: baseRating ? parseFloat(baseRating) : 4.9,
+        review_count_text: reviewCountText.trim() || '(1k+)',
+        reviewCountText: reviewCountText.trim() || '(1k+)',
       });
 
     } catch (error: any) {
@@ -181,6 +197,95 @@ export default function GalleryView() {
             onChange={(e) => setTitle(e.target.value)}
             className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-11"
           />
+
+          {/* Service Description / Gig Title (Fiverr Marketplace Style) */}
+          <div className="space-y-1.5">
+            <label htmlFor="gig-title" className="text-xs font-semibold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              Service Description / Gig Title (Fiverr Marketplace Style)
+            </label>
+            <Input
+              id="gig-title"
+              name="gig-title"
+              placeholder='e.g. "I will provide professional digital art and character design"'
+              value={gigTitle}
+              onChange={(e) => setGigTitle(e.target.value)}
+              className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-10 text-sm"
+            />
+            <p className="text-[11px] text-slate-400">
+              Leave blank to automatically format as &quot;I will create {title || 'custom artwork'}&quot;.
+            </p>
+          </div>
+
+          {/* Gig Badge, Base Rating & Review Count Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+            {/* Gig Badge Title */}
+            <div className="space-y-1.5 sm:col-span-1">
+              <label htmlFor="badge-title" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                Gig Badge Title
+              </label>
+              <Input
+                id="badge-title"
+                name="badge-title"
+                placeholder='e.g. "Top Rated", "Level 2", "Pro Seller"'
+                value={badgeTitle}
+                onChange={(e) => setBadgeTitle(e.target.value)}
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-9 text-xs"
+              />
+              <div className="flex flex-wrap gap-1 pt-1">
+                {['Top Rated', 'Level 2', 'Level 1', 'Pro Seller'].map((b) => (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setBadgeTitle(b)}
+                    className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                      badgeTitle === b
+                        ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Base Rating */}
+            <div className="space-y-1.5 sm:col-span-1">
+              <label htmlFor="base-rating" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                Base Rating (e.g. 4.9)
+              </label>
+              <Input
+                id="base-rating"
+                name="base-rating"
+                type="number"
+                step="0.1"
+                min="1"
+                max="5"
+                placeholder="4.9"
+                value={baseRating}
+                onChange={(e) => setBaseRating(e.target.value)}
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-9 text-xs"
+              />
+              <p className="text-[10px] text-slate-400">Default marketplace display rating</p>
+            </div>
+
+            {/* Review Count Text */}
+            <div className="space-y-1.5 sm:col-span-1">
+              <label htmlFor="review-count-text" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                Review Count Text
+              </label>
+              <Input
+                id="review-count-text"
+                name="review-count-text"
+                placeholder='e.g. "(1k+)", "(500)"'
+                value={reviewCountText}
+                onChange={(e) => setReviewCountText(e.target.value)}
+                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-9 text-xs"
+              />
+              <p className="text-[10px] text-slate-400">Marketplace reviews count pill</p>
+            </div>
+          </div>
 
           {/* Description Textarea Field */}
           <div className="space-y-1.5">
@@ -385,13 +490,20 @@ export default function GalleryView() {
               const imgUrl = artwork.image_url || artwork.imageUrl;
               const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
               const artCode = artwork.art_code || '#ART-101';
+              const rawBadge = artwork.badge_title || 'Top Rated';
+              const badgeWithDiamonds = formatBadgeWithDiamonds(rawBadge);
+              const displayGigTitle = formatGigTitle(artwork.title, artwork.gig_title);
+              const cardRating = artwork.base_rating ?? (artwork.averageRating > 0 ? artwork.averageRating : 4.9);
+              const cardReviewCount = artwork.review_count_text || (artwork.ratingsCount > 0 ? `(${artwork.ratingsCount})` : '(1k+)');
+              const priceNumeric = Number(artwork.price || artwork.amount || artwork.price_amount || 0);
 
               return (
                 <div
                   key={artwork.id}
-                  className="group relative rounded-2xl overflow-hidden bg-slate-950/60 border border-slate-800 transition-all duration-300 hover:border-amber-500/40 hover:shadow-xl hover:shadow-amber-500/10 flex flex-col"
+                  className="group relative rounded-2xl overflow-hidden bg-slate-900/90 border border-slate-800 transition-all duration-300 hover:border-amber-500/40 hover:shadow-xl hover:shadow-amber-500/10 flex flex-col"
                 >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/40">
+                  {/* Top Image Container with Heart Wishlist Overlay */}
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-black/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={getSafeArtworkUrl(imgUrl)}
@@ -404,80 +516,99 @@ export default function GalleryView() {
                       }}
                     />
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                    {/* Top Right Heart Wishlist Icon Overlay */}
+                    <div className="absolute top-2.5 right-2.5 z-20">
+                      <div className="w-8 h-8 rounded-full bg-slate-950/75 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 shadow-md">
+                        <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
+                      </div>
+                    </div>
+
+                    {/* Top Left Status Badge */}
+                    <div className="absolute top-2.5 left-2.5 z-20">
+                      {badgeType === 'FOR_SALE' && (
+                        <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                          {statusBadge}
+                        </span>
+                      )}
+                      {badgeType === 'BIDDING' && (
+                        <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                          {statusBadge}
+                        </span>
+                      )}
+                      {badgeType === 'NOT_FOR_SALE' && (
+                        <span className="text-[10px] font-medium text-slate-300 bg-slate-950/80 border border-slate-700 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                          {statusBadge}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Hover Overlay with Delete Button */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 z-20">
                       <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => handleRemoveImage(artwork.id)}
                         disabled={deleteArtwork.isPending}
-                        className="gap-2 self-end bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                        className="gap-1.5 self-end bg-rose-600 hover:bg-rose-700 text-white cursor-pointer h-7 text-xs"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                         Delete
                       </Button>
                     </div>
                   </div>
                   
-                  <div className="p-4 flex flex-col flex-1 justify-between bg-slate-950/80 gap-3">
+                  {/* Fiverr Style Gig Details Panel */}
+                  <div className="p-3.5 flex flex-col flex-1 justify-between bg-slate-950/80 gap-2.5">
                     <div>
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <h3 className="text-white font-semibold text-base truncate flex-1">
-                          {artwork.title}
-                        </h3>
-
-                        {/* Status Badges */}
-                        {badgeType === 'FOR_SALE' && (
-                          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                            {statusBadge}
-                          </span>
-                        )}
-                        {badgeType === 'BIDDING' && (
-                          <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                            {statusBadge}
-                          </span>
-                        )}
-                        {badgeType === 'NOT_FOR_SALE' && (
-                          <span className="text-[11px] font-semibold text-slate-400 bg-slate-500/15 border border-slate-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                            {statusBadge}
-                          </span>
-                        )}
+                      {/* Artist Avatar + Name + Badge Pill Row */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-[10px] font-bold text-amber-300 shrink-0">
+                          <span>A</span>
+                        </div>
+                        <span className="text-xs font-semibold text-slate-200 truncate">
+                          Your Studio
+                        </span>
+                        {/* Badge Pill right next to name */}
+                        <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
+                          {badgeWithDiamonds}
+                        </span>
                       </div>
 
-                      {/* Pricing / Bid amount display */}
-                      {badgeType === 'FOR_SALE' && (
-                        <p className="text-xs font-bold text-emerald-400">
-                          Price: LKR {Number(artwork.price || (artwork as any).amount || (artwork as any).price_amount || 0).toLocaleString()}
-                        </p>
-                      )}
-                      {badgeType === 'BIDDING' && (
-                        <p className="text-xs font-bold text-amber-400">
-                          {displayPrice}
-                        </p>
-                      )}
-                      {badgeType === 'NOT_FOR_SALE' && (
-                        <p className="text-xs font-medium text-slate-400">
-                          {displayPrice}
-                        </p>
-                      )}
-
-                      {/* Subtle Metadata: Ref ID */}
-                      <p className="text-[11px] font-mono text-slate-400 mt-1">
-                        Ref ID: {artCode}
-                      </p>
+                      {/* Catchy Gig Title Text ("I will...") */}
+                      <h3 className="text-sm font-medium text-white line-clamp-2 hover:text-amber-400 transition-colors leading-snug">
+                        {displayGigTitle}
+                      </h3>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">
-                      <span className="flex items-center gap-1 text-rose-400">
-                        <Heart className="h-3.5 w-3.5 fill-rose-500/20" />
-                        {artwork.likesCount ?? 0} {artwork.likesCount === 1 ? 'like' : 'likes'}
-                      </span>
-                      <span className="flex items-center gap-1 text-amber-400">
-                        <Star className="h-3.5 w-3.5 fill-amber-500/20" />
-                        {artwork.averageRating > 0 ? `${artwork.averageRating}★` : 'Unrated'}
-                        {artwork.ratingsCount > 0 && (
-                          <span className="text-slate-500">({artwork.ratingsCount})</span>
-                        )}
-                      </span>
+                    <div>
+                      {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
+                      <div className="flex items-center gap-1.5 text-xs text-amber-400 mb-2">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                        <span className="font-bold text-slate-100 text-xs">
+                          {typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating}
+                        </span>
+                        <span className="text-slate-400 text-[11px] font-normal">
+                          {cardReviewCount}
+                        </span>
+                      </div>
+
+                      {/* Bottom Pricing & Ref ID */}
+                      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] uppercase font-semibold text-slate-400 block leading-tight">
+                            {badgeType === 'FOR_SALE' ? 'Starting at' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Portfolio'}
+                          </span>
+                          <span className="text-xs font-bold text-emerald-400">
+                            {badgeType === 'FOR_SALE'
+                              ? `LKR ${priceNumeric.toLocaleString()}`
+                              : displayPrice}
+                          </span>
+                        </div>
+
+                        <span className="text-[10px] font-mono text-slate-500">
+                          {artCode}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

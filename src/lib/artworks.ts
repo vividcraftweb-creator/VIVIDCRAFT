@@ -42,6 +42,10 @@ export interface ArtworkWithProfile {
   price_amount?: number | null;
   starting_bid?: number | null;
   art_code?: string;
+  badge_title?: string | null;
+  gig_title?: string | null;
+  base_rating?: number | null;
+  review_count_text?: string | null;
   profiles?: ArtworkProfile | null;
   artist?: {
     id: string;
@@ -347,6 +351,10 @@ export async function getArtworks(options?: {
       price: pricing.price,
       starting_bid: pricing.startingBid,
       art_code: art.art_code || `#ART-101`,
+      badge_title: art.badge_title || 'Top Rated',
+      gig_title: art.gig_title || null,
+      base_rating: typeof art.base_rating === 'number' ? art.base_rating : (art.average_rating || 4.9),
+      review_count_text: art.review_count_text || (art.ratings_count > 0 ? `(${art.ratings_count})` : '(1k+)'),
       profiles: art.profiles || null,
       artist: {
         id: art.artist_id || art.user_id,
@@ -368,6 +376,37 @@ export async function getArtworks(options?: {
   }
 
   return mapped;
+}
+
+/**
+ * Format Fiverr-style badge with diamonds / icons:
+ * - "Top Rated" -> "Top Rated ◆◆◆"
+ * - "Level 2" -> "Level 2 ◆◆"
+ * - "Level 1" -> "Level 1 ◆"
+ * - "Pro Seller" -> "Pro Seller ★"
+ */
+export function formatBadgeWithDiamonds(badge?: string | null): string {
+  const clean = (badge || '').trim();
+  if (!clean) return 'Top Rated ◆◆◆';
+  const lower = clean.toLowerCase();
+  if (lower === 'top rated' || lower === 'top-rated') return 'Top Rated ◆◆◆';
+  if (lower === 'level 2' || lower === 'level-2') return 'Level 2 ◆◆';
+  if (lower === 'level 1' || lower === 'level-1') return 'Level 1 ◆';
+  if (lower === 'pro seller' || lower === 'pro') return 'Pro Seller ★';
+  return clean;
+}
+
+/**
+ * Format Fiverr-style catchy gig title:
+ * E.g., "I will provide professional..." or "I will create..."
+ */
+export function formatGigTitle(title: string, gigTitle?: string | null): string {
+  const custom = (gigTitle || '').trim();
+  if (custom) return custom;
+  const t = (title || '').trim();
+  if (!t) return 'I will create custom artwork for your project';
+  if (/^i will\b/i.test(t)) return t;
+  return `I will create ${t}`;
 }
 
 /**
@@ -394,3 +433,4 @@ export {
   isValidInternationalPhone,
   getSafeArtworkWhatsAppUrl,
 } from './whatsapp';
+

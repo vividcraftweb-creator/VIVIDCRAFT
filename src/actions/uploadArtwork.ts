@@ -18,6 +18,14 @@ export interface UploadArtworkFormData {
   priceAmount?: number | string | null;
   startingBid?: number | string | null;
   starting_bid?: number | string | null;
+  badge_title?: string | null;
+  badgeTitle?: string | null;
+  gig_title?: string | null;
+  gigTitle?: string | null;
+  base_rating?: number | string | null;
+  baseRating?: number | string | null;
+  review_count_text?: string | null;
+  reviewCountText?: string | null;
   file?: File | null;
   imageUrl?: string | null;
   image_url?: string | null;
@@ -104,6 +112,12 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     imageUrl = formData.imageUrl || (formData as any).image_url || null;
   }
 
+  const badgeTitle = String(payload.badge_title || payload.badgeTitle || (formData instanceof FormData ? formData.get('badge_title') || formData.get('badgeTitle') : '') || 'Top Rated').trim();
+  const gigTitle = String(payload.gig_title || payload.gigTitle || (formData instanceof FormData ? formData.get('gig_title') || formData.get('gigTitle') : '') || '').trim() || null;
+  const rawBaseRating = parseFloat(String(payload.base_rating ?? payload.baseRating ?? (formData instanceof FormData ? formData.get('base_rating') || formData.get('baseRating') : '') ?? 4.9));
+  const baseRating = isNaN(rawBaseRating) ? 4.9 : rawBaseRating;
+  const reviewCountText = String(payload.review_count_text || payload.reviewCountText || (formData instanceof FormData ? formData.get('review_count_text') || formData.get('reviewCountText') : '') || '(1k+)').trim();
+
   // Extract price strictly per user specification
   const priceValue = parseFloat((formData as any).price || (formData as any).amount || payload.price || payload.amount || 0);
 
@@ -116,23 +130,30 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
 
   // Upload file to Supabase storage if provided
   if (file) {
-    const fileExt = file.name.split('.').pop() || 'png';
-    uploadedFilePath = `${currentUserId}/${crypto.randomUUID()}.${fileExt}`;
+    try {
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      uploadedFilePath = `${currentUserId}/${fileName}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('artworks')
+        .upload(uploadedFilePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
-    const { error: storageError } = await supabase.storage
-      .from('artworks')
-      .upload(uploadedFilePath, file, { cacheControl: '3600', upsert: false });
+      if (uploadError) {
+        console.error('Supabase Storage Upload Error:', uploadError);
+        return { success: false, error: `Image storage upload failed: ${uploadError.message}` };
+      }
 
-    if (storageError) {
-      console.error('Supabase Storage Upload Error:', storageError);
-      return { success: false, error: `Failed to upload image: ${storageError.message}` };
+      const { data: publicUrlData } = supabase.storage
+        .from('artworks')
+        .getPublicUrl(uploadedFilePath);
+
+      uploadedImageUrl = publicUrlData.publicUrl;
+    } catch (uploadException: any) {
+      return { success: false, error: `Storage upload exception: ${uploadException?.message || uploadException}` };
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('artworks')
-      .getPublicUrl(uploadedFilePath);
-
-    uploadedImageUrl = publicUrl;
   }
 
   if (!uploadedImageUrl) {
@@ -153,6 +174,10 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
     medium: medium || null,
     technique: technique || null,
     tags,
+    badge_title: badgeTitle,
+    gig_title: gigTitle,
+    base_rating: baseRating,
+    review_count_text: reviewCountText,
   };
   if (priceValue > 0) {
     insertData.price = priceValue;
@@ -161,7 +186,7 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
 
   // Graceful fallback candidates if 'price', 'amount', or 'technique' fails in schema cache:
   const candidatePayloads: any[] = [
-    // 1. Comprehensive payload with BOTH price and amount, id, art_code, user_id, artist_id, medium, technique, tags
+    // 1. Comprehensive payload with BOTH price and amount, id, art_code, user_id, artist_id, medium, technique, tags, gig fields
     {
       id,
       title,
@@ -177,6 +202,10 @@ export async function uploadArtwork(formData: FormData | UploadArtworkFormData) 
       tags,
       art_code: randomCode,
       starting_bid: startingBidVal,
+      badge_title: badgeTitle,
+      gig_title: gigTitle,
+      base_rating: baseRating,
+      review_count_text: reviewCountText,
       created_at: new Date().toISOString(),
       ...(priceValue > 0 ? { price: priceValue, amount: priceValue } : {}),
     },

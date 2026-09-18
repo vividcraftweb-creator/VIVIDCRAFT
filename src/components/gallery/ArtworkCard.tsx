@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ArtworkModal } from './ArtworkModal';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
-import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay } from '@/lib/artworks';
+import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay, formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
 
 export interface ArtworkItem {
   id: string;
@@ -36,6 +36,10 @@ export interface ArtworkItem {
   price_amount?: number | null;
   starting_bid?: number | null;
   art_code?: string;
+  badge_title?: string | null;
+  gig_title?: string | null;
+  base_rating?: number | null;
+  review_count_text?: string | null;
   user_name?: string | null;
   profiles?: {
     full_name?: string | null;
@@ -241,13 +245,18 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   if (isDeleted) return null;
 
   const safeImg = getSafeArtworkUrl(artwork.image_url);
+  const badgeFormatted = formatBadgeWithDiamonds(artwork.badge_title || 'Top Rated');
+  const catchyTitle = formatGigTitle(artwork.title, artwork.gig_title);
+  const cardRating = artwork.base_rating ?? (artwork.averageRating > 0 ? artwork.averageRating : 4.9);
+  const ratingFormatted = typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating;
+  const reviewCountFormatted = artwork.review_count_text || (artwork.ratingsCount > 0 ? `(${artwork.ratingsCount})` : '(1k+)');
 
   return (
     <>
       <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10 flex flex-col">
-        {/* Artwork Image Container */}
+        {/* Artwork Image Container with Top-Right Heart Wishlist Overlay */}
         <div
-          className="relative aspect-[4/3] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer"
+          className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
           onClick={() => setIsZoomOpen(true)}
         >
           {/* Blurred Backdrop Layer */}
@@ -267,13 +276,13 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
           </div>
 
           {/* Exhibition Inner Matte Border & Foreground Artwork Image */}
-          <div className="relative z-10 w-full h-full p-2.5 flex items-center justify-center">
+          <div className="relative z-10 w-full h-full p-2 flex items-center justify-center">
             <div className="relative w-full h-full flex items-center justify-center border border-slate-900/10 dark:border-white/10 rounded-md overflow-hidden bg-black/5 dark:bg-black/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={safeImg}
-                alt={artwork.title || 'Artwork'}
-                className="object-contain w-full h-full relative z-10 p-2 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                alt={catchyTitle}
+                className="object-contain w-full h-full relative z-10 p-1.5 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                 onError={(e) => {
                   const target = e.currentTarget;
                   target.onerror = null;
@@ -283,137 +292,109 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
             </div>
           </div>
 
+          {/* Top-Right Heart / Favorite Wishlist Icon Overlay */}
+          <button
+            type="button"
+            onClick={handleLikeClick}
+            disabled={toggleLikeMutation.isPending}
+            aria-label={isLiked ? 'Unlike artwork' : 'Like artwork'}
+            className="absolute top-2.5 right-2.5 z-30 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-md cursor-pointer"
+          >
+            <Heart
+              className={`h-4 w-4 transition-transform ${
+                isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white/90 hover:text-rose-400'
+              }`}
+            />
+          </button>
+
+          {/* Top-Left Pricing Status Badge */}
+          <div className="absolute top-2.5 left-2.5 z-30 pointer-events-none">
+            {badgeType === 'FOR_SALE' && (
+              <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400/90 dark:bg-amber-500/25 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                {statusBadge}
+              </span>
+            )}
+            {badgeType === 'BIDDING' && (
+              <span className="text-[10px] font-bold text-white bg-orange-500/90 dark:bg-orange-500/30 dark:text-orange-300 border border-orange-500/50 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                {statusBadge}
+              </span>
+            )}
+            {badgeType === 'NOT_FOR_SALE' && (
+              <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                {statusBadge}
+              </span>
+            )}
+          </div>
+
           {/* Quick Zoom Preview Icon on Hover */}
-          <div className="absolute top-3 right-3 z-30 p-2 rounded-xl bg-black/50 backdrop-blur-md text-white/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 hover:text-white shadow-lg">
-            <ZoomIn className="h-4 w-4" />
+          <div className="absolute bottom-2.5 right-2.5 z-30 p-1.5 rounded-lg bg-black/50 backdrop-blur-md text-white/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 hover:text-white shadow-lg">
+            <ZoomIn className="h-3.5 w-3.5" />
           </div>
         </div>
 
-        {/* Glassmorphism Card Overlay & Formal Details Panel */}
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 p-4 flex flex-col flex-1 justify-between gap-3">
-          <div>
-            <div className="flex items-start justify-between gap-2">
-              {/* Title */}
-              <h3
-                onClick={() => startTransition(() => setIsZoomOpen(true))}
-                className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex-1"
-                title={artwork.title}
-              >
-                {artwork.title}
-              </h3>
+        {/* Fiverr Marketplace Details Panel */}
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/60 p-3.5 flex flex-col flex-1 justify-between gap-2.5">
+          <div className="space-y-2">
+            {/* Artist Row: Avatar + Artist Name + Badge Pill */}
+            <div className="flex items-center gap-2">
+              {artistAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={artistAvatarUrl}
+                  alt={artistName}
+                  className="w-6 h-6 rounded-full object-cover shrink-0 border border-amber-300/80 dark:border-amber-500/50"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-[10px] font-bold text-amber-700 dark:text-amber-300 shrink-0">
+                  <User className="w-3.5 h-3.5" />
+                </div>
+              )}
 
-              {/* Status Badges dynamically based on pricing and pricing_type */}
-              {badgeType === 'FOR_SALE' && (
-                <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400 dark:bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
-                  {statusBadge}
-                </span>
-              )}
-              {badgeType === 'BIDDING' && (
-                <span className="text-[10px] font-bold text-white bg-orange-500 dark:bg-orange-500/25 dark:text-orange-300 border border-orange-500/50 px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
-                  {statusBadge}
-                </span>
-              )}
-              {badgeType === 'NOT_FOR_SALE' && (
-                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                  {statusBadge}
-                </span>
-              )}
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                {artistName}
+              </span>
+
+              {/* Badge Pill right next to name (e.g. "Top Rated ◆◆◆" with light yellow background) */}
+              <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
+                {badgeFormatted}
+              </span>
             </div>
 
-            {/* Price / Starting Bid Line */}
-            {badgeType === 'FOR_SALE' && (
-              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                Price: LKR {displayPrice.toLocaleString()}
-              </p>
-            )}
-            {badgeType === 'BIDDING' && (
-              <p className="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">
-                {fallbackDisplayPrice}
-              </p>
-            )}
-            {badgeType === 'NOT_FOR_SALE' && (
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-                {fallbackDisplayPrice}
-              </p>
-            )}
+            {/* Catchy Gig Title Text below ("I will create...") */}
+            <h3
+              onClick={() => startTransition(() => setIsZoomOpen(true))}
+              className="font-medium text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-2 cursor-pointer transition-colors leading-snug"
+              title={catchyTitle}
+            >
+              {catchyTitle}
+            </h3>
 
-            {artwork.medium && (
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5" title={artwork.medium}>
-                {artwork.medium}
-              </p>
-            )}
-
-            {/* Artist & Lower Metadata Row with Ref ID */}
-            <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[170px]">
-                  {artistAvatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={artistAvatarUrl}
-                      alt={artistName}
-                      className="w-3.5 h-3.5 rounded-full object-cover shrink-0 border border-amber-300/60"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <User className="w-3 h-3 text-amber-500 shrink-0" />
-                  )}
-                  <span className="truncate">{artistName}</span>
-                </span>
-                {/* Secondary sub-badge: only use 'Verified Artist' as a secondary sub-badge/subtitle, not replacing the artist's real name */}
-                <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-1.5 py-0.5 rounded-md shrink-0">
-                  Verified Artist
-                </span>
-              </div>
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                Ref ID: {artwork.art_code || '#ART-101'}
+            {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
+            <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+              <span className="font-bold text-slate-900 dark:text-white text-xs">
+                {ratingFormatted}
+              </span>
+              <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
+                {reviewCountFormatted}
               </span>
             </div>
           </div>
 
-          {/* Stats & Actions: Like button, Rating badge, Expand */}
-          <div className="pt-3 border-t border-slate-200/50 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              {/* Like Button */}
-              <button
-                type="button"
-                onClick={handleLikeClick}
-                disabled={toggleLikeMutation.isPending}
-                aria-label={isLiked ? 'Unlike artwork' : 'Like artwork'}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                  isLiked
-                    ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 shadow-sm'
-                    : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/40'
-                }`}
-              >
-                <Heart
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                    isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-slate-400 dark:text-slate-500'
-                  }`}
-                />
-                <span>{likesCount}</span>
-                <span className="sr-only">likes</span>
-              </button>
-
-              {/* Rating Badge */}
-              {(artwork.averageRating > 0 || (artwork.ratingsCount ?? 0) > 0) && (
-                <div
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-500/25 shadow-sm"
-                  title={`Average rating: ${artwork.averageRating} from ${artwork.ratingsCount} review(s)`}
-                >
-                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {artwork.averageRating > 0 ? artwork.averageRating.toFixed(1) : '—'}
-                  </span>
-                  {artwork.ratingsCount > 0 && (
-                    <span className="text-amber-600/75 dark:text-amber-400/75 text-[10px] font-normal">
-                      ({artwork.ratingsCount})
-                    </span>
-                  )}
-                </div>
-              )}
+          {/* Pricing & Actions Footer */}
+          <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
+                {badgeType === 'FOR_SALE' ? 'Starting at' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Portfolio'}
+              </span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">
+                {badgeType === 'FOR_SALE'
+                  ? `LKR ${displayPrice.toLocaleString()}`
+                  : fallbackDisplayPrice}
+              </span>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -428,11 +409,9 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
                 const refId = String(rawRef).replace(/^#/, '');
                 const artistFullName = artwork.profiles?.full_name || artwork.profiles?.display_name || artwork.artist_name || artwork.artist?.name || 'Artist';
 
-                // Format price safely using existing price fallback values
                 const rawPrice = Number(artwork.price || artwork.price_amount || artwork.amount || artwork.starting_bid || 0);
                 const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
 
-                // Build full dynamic message string
                 const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${artistFullName}. Listed Price: ${priceDisplay}.`;
                 const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
 
@@ -441,7 +420,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
                     href={waUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
                     title="Ask about price or buy on WhatsApp"
                   >
                     Ask Price (WhatsApp)
@@ -454,9 +433,9 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
                 type="button"
                 onClick={() => startTransition(() => setIsZoomOpen(true))}
                 aria-label="View artwork details and comments"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-white/80 dark:bg-slate-800/80 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
               >
-                <ZoomIn className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <ZoomIn className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                 <span>Details</span>
               </button>
 
@@ -467,7 +446,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
                   onClick={handleDeleteClick}
                   aria-label="Delete Post"
                   title="Delete Post"
-                  className="inline-flex items-center justify-center p-1.5 rounded-full text-xs font-medium text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 transition-colors cursor-pointer"
+                  className="inline-flex items-center justify-center p-1 rounded-full text-xs font-medium text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 transition-colors cursor-pointer"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

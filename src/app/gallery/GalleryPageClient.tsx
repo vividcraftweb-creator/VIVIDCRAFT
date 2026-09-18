@@ -38,7 +38,7 @@ import { trpc } from '@/utils/trpc';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
-import { getArtworkPricingDisplay } from '@/lib/artworks';
+import { getArtworkPricingDisplay, formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
 
 type SortOption = 'popular' | 'highest_rated' | 'most_liked' | 'newest';
 type CategoryFilter = 'ALL' | 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
@@ -77,6 +77,10 @@ interface RankedArtwork {
   price?: number | null;
   starting_bid?: number | null;
   art_code?: string;
+  badge_title?: string | null;
+  gig_title?: string | null;
+  base_rating?: number | null;
+  review_count_text?: string | null;
   profiles?: {
     full_name?: string | null;
     display_name?: string | null;
@@ -130,6 +134,10 @@ export default function GalleryPageClient() {
   const [uploadSellingMode, setUploadSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('FIXED_PRICE');
   const [uploadPrice, setUploadPrice] = useState('');
   const [uploadStartingBid, setUploadStartingBid] = useState('');
+  const [uploadBadgeTitle, setUploadBadgeTitle] = useState('Top Rated');
+  const [uploadGigTitle, setUploadGigTitle] = useState('');
+  const [uploadBaseRating, setUploadBaseRating] = useState('4.9');
+  const [uploadReviewCountText, setUploadReviewCountText] = useState('(1k+)');
   const [isUploading, setIsUploading] = useState(false);
 
   // Fetch current user and check admin status
@@ -739,6 +747,10 @@ export default function GalleryPageClient() {
           price,
           starting_bid: startingBid,
           art_code: artCode,
+          badge_title: uploadBadgeTitle.trim() || 'Top Rated',
+          gig_title: uploadGigTitle.trim() || null,
+          base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
+          review_count_text: uploadReviewCountText.trim() || '(1k+)',
           ...(price && price > 0 ? { amount: price } : {}),
         });
 
@@ -762,6 +774,10 @@ export default function GalleryPageClient() {
             price,
             starting_bid: startingBid,
             art_code: artCode,
+            badge_title: uploadBadgeTitle.trim() || 'Top Rated',
+            gig_title: uploadGigTitle.trim() || null,
+            base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
+            review_count_text: uploadReviewCountText.trim() || '(1k+)',
           });
         insertError = retry1.error;
       }
@@ -781,6 +797,10 @@ export default function GalleryPageClient() {
             price,
             starting_bid: startingBid,
             art_code: artCode,
+            badge_title: uploadBadgeTitle.trim() || 'Top Rated',
+            gig_title: uploadGigTitle.trim() || null,
+            base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
+            review_count_text: uploadReviewCountText.trim() || '(1k+)',
           });
         insertError = retry2.error;
       }
@@ -797,6 +817,10 @@ export default function GalleryPageClient() {
           pricing_type: uploadSellingMode,
           price,
           starting_bid: startingBid,
+          badge_title: uploadBadgeTitle.trim() || 'Top Rated',
+          gig_title: uploadGigTitle.trim() || null,
+          base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
+          review_count_text: uploadReviewCountText.trim() || '(1k+)',
         });
 
         if (retryBasic.error) {
@@ -811,6 +835,10 @@ export default function GalleryPageClient() {
             pricing_type: uploadSellingMode,
             amount: price,
             starting_bid: startingBid,
+            badge_title: uploadBadgeTitle.trim() || 'Top Rated',
+            gig_title: uploadGigTitle.trim() || null,
+            base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
+            review_count_text: uploadReviewCountText.trim() || '(1k+)',
           });
 
           if (retryAmount.error) {
@@ -845,6 +873,10 @@ export default function GalleryPageClient() {
         price,
         starting_bid: startingBid,
         art_code: artCode,
+        badge_title: uploadBadgeTitle.trim() || 'Top Rated',
+        gig_title: uploadGigTitle.trim() || null,
+        base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
+        review_count_text: uploadReviewCountText.trim() || '(1k+)',
         artist: {
           id: artistId,
           name: uploadArtistName.trim() || 'Vivid Art Curation',
@@ -878,6 +910,10 @@ export default function GalleryPageClient() {
       setUploadSellingMode('NOT_FOR_SALE');
       setUploadPrice('');
       setUploadStartingBid('');
+      setUploadBadgeTitle('Top Rated');
+      setUploadGigTitle('');
+      setUploadBaseRating('4.9');
+      setUploadReviewCountText('(1k+)');
       setIsUploadOpen(false);
 
       utils.artworks.getAllArtworks.invalidate();
@@ -1222,16 +1258,22 @@ export default function GalleryPageClient() {
                 .toUpperCase();
 
               const activeHoverStar = hoveredRating[artwork.id] || 0;
+              const badgeFormatted = formatBadgeWithDiamonds(artwork.badge_title || 'Top Rated');
+              const catchyTitle = formatGigTitle(artwork.title, artwork.gig_title);
+              const cardRating = artwork.base_rating ?? (artwork.averageRating > 0 ? artwork.averageRating : 4.9);
+              const ratingFormatted = typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating;
+              const reviewCountFormatted = artwork.review_count_text || (artwork.ratingsCount > 0 ? `(${artwork.ratingsCount})` : '(1k+)');
+              const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
 
               return (
                 <div
                   key={artwork.id}
                   className="group relative bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-amber-500/10 flex flex-col hover:-translate-y-0.5"
                 >
-                  {/* Artwork Image Container with Smart Matte Framing & Blurred Backdrop */}
+                  {/* Artwork Image Container with Smart Matte Framing & Top-Right Heart Wishlist */}
                   <div
                     onClick={() => setSelectedArtwork(artwork)}
-                    className="relative aspect-[4/3] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
+                    className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
                   >
                     {/* Background blurred layer using the SAME artwork image URL */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1250,13 +1292,13 @@ export default function GalleryPageClient() {
                     </div>
 
                     {/* Exhibition Inner Matte Border Wrapping Foreground Image */}
-                    <div className="relative z-10 w-full h-full p-2.5 flex items-center justify-center">
+                    <div className="relative z-10 w-full h-full p-2 flex items-center justify-center">
                       <div className="relative w-full h-full flex items-center justify-center border border-slate-900/10 dark:border-white/10 rounded-md overflow-hidden bg-black/5 dark:bg-black/20">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={safeImg}
-                          alt={artwork.title}
-                          className="object-contain w-full h-full relative z-10 p-2 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                          alt={catchyTitle}
+                          className="object-contain w-full h-full relative z-10 p-1.5 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                           onError={(e) => {
                             const target = e.currentTarget;
                             target.onerror = null;
@@ -1266,235 +1308,175 @@ export default function GalleryPageClient() {
                       </div>
                     </div>
 
-                    {/* In-situ Admin Moderation Control ("Delete Post") */}
-                    {isAdmin && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingArtwork(artwork);
-                          setDeleteReason('');
-                        }}
-                        className="absolute top-3 left-3 z-30 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-bold shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
-                        title="Admin Moderation: Delete Post with Reason"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete Post</span>
-                      </button>
-                    )}
+                    {/* Top-Right Heart Wishlist Icon Overlay */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleLike(artwork.id, e)}
+                      className="absolute top-2.5 right-2.5 z-30 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-md cursor-pointer"
+                      title={artwork.isLiked ? 'Unlike artwork' : 'Like artwork'}
+                    >
+                      <Heart
+                        className={`w-4 h-4 transition-transform ${
+                          artwork.isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white/90 hover:text-rose-400'
+                        }`}
+                      />
+                    </button>
 
-                    {/* Top hover action: Maximize button */}
+                    {/* Top-Left Pricing Status Badge & Admin Delete Button */}
+                    <div className="absolute top-2.5 left-2.5 z-30 flex items-center gap-1.5 pointer-events-auto">
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingArtwork(artwork);
+                            setDeleteReason('');
+                          }}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[10px] font-bold shadow-md backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
+                          title="Admin Moderation: Delete Post with Reason"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Delete</span>
+                        </button>
+                      )}
+
+                      {badgeType === 'FOR_SALE' && (
+                        <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400/90 dark:bg-amber-500/25 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                          {statusBadge}
+                        </span>
+                      )}
+                      {badgeType === 'BIDDING' && (
+                        <span className="text-[10px] font-bold text-white bg-orange-500/90 dark:bg-orange-500/30 dark:text-orange-300 border border-orange-500/50 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                          {statusBadge}
+                        </span>
+                      )}
+                      {badgeType === 'NOT_FOR_SALE' && (
+                        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                          {statusBadge}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Bottom-Right hover action: Maximize button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedArtwork(artwork);
                       }}
-                      className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-amber-500 hover:text-slate-950 hover:border-amber-400 cursor-pointer shadow-lg"
+                      className="absolute bottom-2.5 right-2.5 z-30 w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-amber-500 hover:text-slate-950 hover:border-amber-400 cursor-pointer shadow-lg"
                       title="View full screen"
                     >
-                      <Maximize2 className="w-4 h-4" />
+                      <Maximize2 className="w-3.5 h-3.5" />
                     </button>
-
-                    {/* Bottom hover action: Quick Rate Stars */}
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute bottom-3 left-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-between bg-slate-950/85 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white shadow-lg"
-                    >
-                      <span className="text-[11px] text-slate-300 font-medium">Rate:</span>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onMouseEnter={() =>
-                              setHoveredRating((prev) => ({ ...prev, [artwork.id]: star }))
-                            }
-                            onMouseLeave={() =>
-                              setHoveredRating((prev) => ({ ...prev, [artwork.id]: 0 }))
-                            }
-                            onClick={(e) => handleRate(artwork.id, star, e)}
-                            className="p-0.5 hover:scale-125 transition-transform text-slate-400 cursor-pointer"
-                            title={`Rate ${star} star${star > 1 ? 's' : ''}`}
-                          >
-                            <Star
-                              className={`w-3.5 h-3.5 transition-colors ${
-                                (activeHoverStar >= star) ||
-                                (!activeHoverStar && artwork.userRating && artwork.userRating >= star)
-                                  ? 'text-amber-400 fill-amber-400'
-                                  : 'text-slate-500'
-                              }`}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Glassmorphism Card Overlay & Formal Details Panel */}
-                  <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 p-4 flex flex-col flex-1 justify-between gap-3">
-                    <div>
-                      {/* Title & Status Badge Row */}
-                      <div className="flex items-start justify-between gap-2">
-                        <h3
-                          onClick={() => setSelectedArtwork(artwork)}
-                          className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex-1"
-                          title={artwork.title}
+                  {/* Fiverr Style Gig Details Panel */}
+                  <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/60 p-3.5 flex flex-col flex-1 justify-between gap-2.5">
+                    <div className="space-y-2">
+                      {/* Artist Row: Avatar + Name + Badge Pill */}
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/freelancers/${artwork.artist_id}`}
+                          className="flex-shrink-0 group/avatar"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {artwork.title}
-                        </h3>
+                          <Avatar className="w-6 h-6 ring-1 ring-amber-500/30 group-hover/avatar:ring-amber-400 transition-all">
+                            {artistAvatar && <AvatarImage src={artistAvatar} alt={dynamicArtistName} />}
+                            <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200 text-[10px] font-semibold">
+                              {initials || <User className="w-3 h-3" />}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
 
-                        {(() => {
-                          const { statusBadge, badgeType } = getArtworkPricingDisplay(artwork);
-                          return (
-                            <>
-                              {badgeType === 'FOR_SALE' && (
-                                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                                  {statusBadge}
-                                </span>
-                              )}
-                              {badgeType === 'BIDDING' && (
-                                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
-                                  {statusBadge}
-                                </span>
-                              )}
-                              {badgeType === 'NOT_FOR_SALE' && (
-                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                                  {statusBadge}
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
+                        <Link
+                          href={`/freelancers/${artwork.artist_id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs font-semibold text-slate-800 dark:text-slate-200 hover:text-amber-600 dark:hover:text-amber-400 truncate block transition-colors"
+                        >
+                          {dynamicArtistName}
+                        </Link>
+
+                        {/* Badge Pill right next to name (e.g. "Top Rated ◆◆◆") */}
+                        <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
+                          {badgeFormatted}
+                        </span>
                       </div>
 
-                      {/* Price Display for Fixed Price & Bidding Artworks */}
-                      {(() => {
-                        const { displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
-                        return (
-                          <>
-                            {badgeType === 'FOR_SALE' && (
-                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                                Price: {displayPrice}
-                              </p>
-                            )}
-                            {badgeType === 'BIDDING' && (
-                              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
-                                {displayPrice}
-                              </p>
-                            )}
-                            {badgeType === 'NOT_FOR_SALE' && (
-                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-                                {displayPrice}
-                              </p>
-                            )}
-                          </>
-                        );
-                      })()}
+                      {/* Catchy Gig Title Text ("I will create...") */}
+                      <h3
+                        onClick={() => setSelectedArtwork(artwork)}
+                        className="font-medium text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-2 cursor-pointer transition-colors leading-snug"
+                        title={catchyTitle}
+                      >
+                        {catchyTitle}
+                      </h3>
 
-                      {/* Artist Row & Ref ID */}
-                      <div className="flex items-center justify-between gap-2.5 mt-2">
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <Link
-                            href={`/freelancers/${artwork.artist_id}`}
-                            className="flex-shrink-0 group/avatar"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Avatar className="w-7 h-7 ring-1 ring-amber-500/30 group-hover/avatar:ring-amber-400 transition-all">
-                              {artistAvatar && <AvatarImage src={artistAvatar} alt={dynamicArtistName} />}
-                              <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200 text-xs font-semibold">
-                                {initials || <User className="w-3.5 h-3.5" />}
-                              </AvatarFallback>
-                            </Avatar>
-                          </Link>
-
-                          <div className="flex-1 min-w-0">
-                            <Link
-                              href={`/freelancers/${artwork.artist_id}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-amber-600 dark:hover:text-amber-400 truncate block transition-colors"
-                            >
-                              {dynamicArtistName}
-                            </Link>
-                            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium truncate flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                              <span>Verified Artist</span>
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 shrink-0">
-                          Ref ID: {artwork.art_code || '#ART-101'}
+                      {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
+                      <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                        <span className="font-bold text-slate-900 dark:text-white text-xs">
+                          {ratingFormatted}
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
+                          {reviewCountFormatted}
                         </span>
                       </div>
                     </div>
 
-                    {/* Stats & Actions Footer (Rounded Pill Containers) */}
-                    <div className="pt-3 border-t border-slate-200/50 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        {/* Interactive Like Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleLike(artwork.id, e)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                            artwork.isLiked
-                              ? 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/40 shadow-sm'
-                              : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-300 dark:hover:border-rose-500/40'
-                          }`}
-                          title={artwork.isLiked ? 'Unlike artwork' : 'Like artwork'}
-                        >
-                          <Heart
-                            className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
-                              artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500'
-                            }`}
-                          />
-                          <span>{artwork.likesCount}</span>
-                          <span className="sr-only">likes</span>
-                        </button>
-
-                        {/* Average Rating Display */}
-                        <div
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-500/25 shadow-sm"
-                          title={`Average rating: ${artwork.averageRating} from ${artwork.ratingsCount} review(s)`}
-                        >
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                          <span className="font-semibold text-slate-900 dark:text-white">
-                            {artwork.averageRating > 0 ? artwork.averageRating.toFixed(1) : '—'}
-                          </span>
-                        </div>
+                    {/* Bottom Row: Pricing & Actions */}
+                    <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
+                          {badgeType === 'FOR_SALE' ? 'Starting at' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Portfolio'}
+                        </span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          {badgeType === 'FOR_SALE'
+                            ? `LKR ${displayPrice}`
+                            : displayPrice}
+                        </span>
                       </div>
 
-                      {/* WhatsApp Inquiry Action for Fixed Price & For Sale Artworks */}
-                      {(() => {
-                        const { badgeType } = getArtworkPricingDisplay(artwork);
-                        if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+                      <div className="flex items-center gap-1.5">
+                        {/* WhatsApp Inquiry Action for Fixed Price & For Sale Artworks */}
+                        {(() => {
+                          if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                        const rawPhone = artwork.profiles?.phone || artwork.user?.phone || (artwork as any).artist_phone || '94783813833';
-                        const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+                          const rawPhone = artwork.profiles?.phone || artwork.user?.phone || (artwork as any).artist_phone || '94783813833';
+                          const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
 
-                        const title = artwork.title || 'Artwork';
-                        const rawRef = (artwork as any).ref_id || (artwork as any).art_code || artwork.id || 'N/A';
-                        const refId = String(rawRef).replace(/^#/, '');
-                        const cardArtist = artwork.profiles?.full_name || (artwork as any).artist_name || artwork.artist?.name || 'Artist';
+                          const title = artwork.title || 'Artwork';
+                          const rawRef = (artwork as any).ref_id || (artwork as any).art_code || artwork.id || 'N/A';
+                          const refId = String(rawRef).replace(/^#/, '');
+                          const cardArtist = artwork.profiles?.full_name || (artwork as any).artist_name || artwork.artist?.name || 'Artist';
 
-                        // Format price safely using existing price fallback values
-                        const rawPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || (artwork as any).starting_bid || 0);
-                        const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
+                          const rawPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || (artwork as any).starting_bid || 0);
+                          const priceText = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
 
-                        // Build full dynamic message string
-                        const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${cardArtist}. Listed Price: ${priceDisplay}.`;
-                        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
+                          const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${cardArtist}. Listed Price: ${priceText}.`;
+                          const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
 
-                        return (
-                          <a
-                            href={waUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
-                            title="Ask about price or buy on WhatsApp"
-                          >
-                            Ask Price (WhatsApp)
-                          </a>
-                        );
-                      })()}
+                          return (
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
+                              title="Ask about price or buy on WhatsApp"
+                            >
+                              Ask Price (WhatsApp)
+                            </a>
+                          );
+                        })()}
+
+                        {/* Details Modal CTA */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedArtwork(artwork)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
+                        >
+                          <Maximize2 className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                          <span>Details</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1910,6 +1892,83 @@ export default function GalleryPageClient() {
                     onChange={(e) => setUploadTitle(e.target.value)}
                     className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11 focus-visible:ring-amber-500"
                   />
+                </div>
+
+                {/* Service Description / Gig Title */}
+                <div className="space-y-1.5">
+                  <label htmlFor="upload-gig-title" className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Service Description / Gig Title (Fiverr Marketplace Style)
+                  </label>
+                  <Input
+                    id="upload-gig-title"
+                    placeholder='e.g. "I will provide professional digital art and character design"'
+                    value={uploadGigTitle}
+                    onChange={(e) => setUploadGigTitle(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-10 focus-visible:ring-amber-500"
+                  />
+                </div>
+
+                {/* Gig Badge & Rating Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800">
+                  <div className="space-y-1 sm:col-span-1">
+                    <label htmlFor="upload-badge-title" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
+                      Gig Badge
+                    </label>
+                    <Input
+                      id="upload-badge-title"
+                      placeholder='e.g. "Top Rated"'
+                      value={uploadBadgeTitle}
+                      onChange={(e) => setUploadBadgeTitle(e.target.value)}
+                      className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
+                    />
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {['Top Rated', 'Level 2', 'Level 1', 'Pro Seller'].map((b) => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => setUploadBadgeTitle(b)}
+                          className={`text-[9px] px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                            uploadBadgeTitle === b
+                              ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                              : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-700'
+                          }`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-1">
+                    <label htmlFor="upload-base-rating" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
+                      Base Rating
+                    </label>
+                    <Input
+                      id="upload-base-rating"
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="5"
+                      placeholder="4.9"
+                      value={uploadBaseRating}
+                      onChange={(e) => setUploadBaseRating(e.target.value)}
+                      className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-1">
+                    <label htmlFor="upload-review-count" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
+                      Review Count
+                    </label>
+                    <Input
+                      id="upload-review-count"
+                      placeholder='e.g. "(1k+)"'
+                      value={uploadReviewCountText}
+                      onChange={(e) => setUploadReviewCountText(e.target.value)}
+                      className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
+                    />
+                  </div>
                 </div>
 
                 {/* Artwork Description */}
