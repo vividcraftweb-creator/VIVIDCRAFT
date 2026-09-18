@@ -113,3 +113,27 @@ export function getProfilePictureUrlWithTimestamp(
   const [base] = url.split('?');
   return `${base}?t=${timestamp}`;
 }
+
+/**
+ * Resolves avatar_url: directly returns valid absolute URLs, or wraps relative paths with Supabase Storage URL
+ */
+export function getPublicUrl(pathOrUrl?: string | null, userId?: string): string | undefined {
+  if (!pathOrUrl || typeof pathOrUrl !== 'string') return undefined;
+  const trimmed = pathOrUrl.trim();
+  if (!trimmed) return undefined;
+
+  // If already full absolute URL or data URI, return directly
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
+  const cleanPath = trimmed.replace(/^\/?(avatars\/)?/, '');
+  const pathWithUser = cleanPath.includes('/') ? cleanPath : (userId ? `${userId}/${cleanPath}` : cleanPath);
+  return `${supabaseUrl}/storage/v1/object/public/avatars/${pathWithUser}`;
+}

@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, CheckCircle, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { normalizeTags, parseTags } from '@/app/freelancers/FreelancersPageClient';
+import { getPublicUrl } from '@/lib/profile-helpers';
+export { getPublicUrl };
 
 export interface ArtistProfile {
   id: string;
@@ -46,39 +47,6 @@ export interface ArtistProfile {
 export interface ArtistCardProps {
   artist?: ArtistProfile;
   profile?: ArtistProfile;
-}
-
-/**
- * Resolves avatar_url: directly returns valid absolute URLs, or wraps relative paths with getPublicUrl
- */
-export function getPublicUrl(pathOrUrl?: string | null, userId?: string): string | undefined {
-  if (!pathOrUrl || typeof pathOrUrl !== 'string') return undefined;
-  const trimmed = pathOrUrl.trim();
-  if (!trimmed) return undefined;
-
-  // If already full absolute URL or data URI, return directly
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:') ||
-    trimmed.startsWith('blob:')
-  ) {
-    return trimmed;
-  }
-
-  // Wrap relative path with Supabase Storage getPublicUrl
-  try {
-    const supabase = createClient();
-    const cleanPath = trimmed.replace(/^\/?(avatars\/)?/, '');
-    const pathWithUser = cleanPath.includes('/') ? cleanPath : (userId ? `${userId}/${cleanPath}` : cleanPath);
-    const { data } = supabase.storage.from('avatars').getPublicUrl(pathWithUser);
-    if (data?.publicUrl) return data.publicUrl;
-  } catch {}
-
-  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://edvoffgfattcoladypii.supabase.co').replace(/\/+$/, '');
-  const cleanPath = trimmed.replace(/^\/?(avatars\/)?/, '');
-  const pathWithUser = cleanPath.includes('/') ? cleanPath : (userId ? `${userId}/${cleanPath}` : cleanPath);
-  return `${supabaseUrl}/storage/v1/object/public/avatars/${pathWithUser}`;
 }
 
 export default function ArtistCard({ artist: propArtist, profile: propProfile }: ArtistCardProps) {

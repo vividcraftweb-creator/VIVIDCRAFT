@@ -136,6 +136,9 @@ export function FeaturedCrew() {
     };
   }, []);
 
+  const displayedCrew = crewMembers.slice(0, 3);
+  const activeReviews = reviews;
+
   // Automatic horizontal auto-moving carousel for mobile view
   useEffect(() => {
     const slider = crewSliderRef.current;
@@ -159,9 +162,6 @@ export function FeaturedCrew() {
   if (!isLoading && crewMembers.length === 0 && reviews.length === 0) {
     return null;
   }
-
-  const displayedCrew = crewMembers.slice(0, 3);
-  const activeReviews = reviews;
 
   return (
     <section className="relative w-full py-16 sm:py-24 bg-slate-50/70 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transition-colors duration-200 overflow-hidden">

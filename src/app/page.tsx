@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { createPageMetadata } from '@/lib/seo-metadata';
-import HomeHero from '@/components/landing/HomeHero';
+import { HomeHero } from '@/components/landing/HomeHero';
 import { FeaturedCrew } from '@/components/FeaturedCrew';
 
 export const metadata: Metadata = createPageMetadata({

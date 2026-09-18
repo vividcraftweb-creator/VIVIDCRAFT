@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { trackEvent } from '@/utils/analytics';
 import { createClient } from '@/lib/supabase/client';
 import { trpc } from '@/utils/trpc';
-import { getPublicUrl } from '@/components/artists/ArtistCard';
+import { getPublicUrl } from '@/lib/profile-helpers';
 import { GalleryGrid } from '@/components/gallery/GalleryGrid';
 import type { ArtworkItem } from '@/components/gallery/ArtworkCard';
 import { HomeHeroSlider } from '@/components/HomeHeroSlider';
