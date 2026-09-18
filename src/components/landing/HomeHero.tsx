@@ -58,7 +58,7 @@ export function HomeHero() {
 
         if (!error && Array.isArray(data)) {
           const sorted = [...data].sort(
-            (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
+            (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
           );
           if (isMounted) setArtists(sorted);
         } else {
@@ -310,7 +310,7 @@ export function HomeHero() {
                   'Verified Creator';
                 const avatar = getPublicUrl(artist.avatar_url, artistId);
                 const isVerified = Boolean(artist.is_verified || artist.isVerified);
-                const order = artist.display_order ?? 999;
+                const order = artist.display_order ?? 0;
 
                 return (
                   <Link

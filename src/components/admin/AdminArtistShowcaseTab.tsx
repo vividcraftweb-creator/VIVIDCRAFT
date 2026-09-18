@@ -15,28 +15,21 @@ import {
   RefreshCw,
   Save,
   Search,
-  Eye,
-  EyeOff,
   Sparkles,
-  CheckCircle2,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
 
 export interface AdminArtistItem {
   id: string;
   first_name?: string | null;
   last_name?: string | null;
-  full_name?: string | null;
-  username?: string | null;
   email?: string | null;
   avatar_url?: string | null;
   display_order?: number;
   show_on_home?: boolean;
   role?: string | null;
-  title?: string | null;
-  professional_title?: string | null;
-  is_verified?: boolean;
 }
 
 export default function AdminArtistShowcaseTab() {
@@ -46,16 +39,74 @@ export default function AdminArtistShowcaseTab() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingAll, setSavingAll] = useState(false);
 
-  // Load all artists from API
+  // Load artists from Supabase database without selecting display_name
   const loadArtists = async () => {
     setLoading(true);
     try {
+      const supabase = createClient();
+      // Explicitly select only valid columns from profiles table
+      let { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
+        .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true');
+
+      // Fallback query if is_artist column does not exist on remote database yet
+      if (error) {
+        console.warn('Primary artist query notice (falling back):', error.message);
+        const fallback = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
+          .or('role.ilike.%artist%,role.ilike.%freelancer%');
+
+        if (!fallback.error && fallback.data) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+
+      if (!error && Array.isArray(data)) {
+        const formatted: AdminArtistItem[] = data.map((item: any) => ({
+          id: item.id,
+          first_name: item.first_name || '',
+          last_name: item.last_name || '',
+          email: item.email || '',
+          role: item.role || 'artist',
+          avatar_url: item.avatar_url || '',
+          // Default display_order to 0 and show_on_home to true if undefined
+          display_order: typeof item.display_order === 'number' ? item.display_order : 0,
+          show_on_home: item.show_on_home !== undefined && item.show_on_home !== null ? Boolean(item.show_on_home) : true,
+        }));
+
+        formatted.sort((a, b) => {
+          const orderA = a.display_order ?? 0;
+          const orderB = b.display_order ?? 0;
+          if (orderA !== orderB) return orderA - orderB;
+          const nameA = [a.first_name, a.last_name].filter(Boolean).join(' ').trim() || a.email || '';
+          const nameB = [b.first_name, b.last_name].filter(Boolean).join(' ').trim() || b.email || '';
+          return nameA.localeCompare(nameB);
+        });
+
+        setArtists(formatted);
+        return;
+      }
+
+      // API Fallback
       const res = await fetch('/api/admin/artists/order');
-      const data = await res.json();
-      if (data?.artists && Array.isArray(data.artists)) {
-        setArtists(data.artists);
-      } else if (data?.error) {
-        toast.error(data.error);
+      const apiData = await res.json();
+      if (apiData?.artists && Array.isArray(apiData.artists)) {
+        const formatted: AdminArtistItem[] = apiData.artists.map((item: any) => ({
+          id: item.id,
+          first_name: item.first_name || '',
+          last_name: item.last_name || '',
+          email: item.email || '',
+          role: item.role || 'artist',
+          avatar_url: item.avatar_url || '',
+          display_order: typeof item.display_order === 'number' ? item.display_order : 0,
+          show_on_home: item.show_on_home !== undefined && item.show_on_home !== null ? Boolean(item.show_on_home) : true,
+        }));
+        setArtists(formatted);
+      } else if (apiData?.error) {
+        toast.error(apiData.error);
       }
     } catch (err: any) {
       console.error('Failed to load artists for showcase:', err);
@@ -74,14 +125,17 @@ export default function AdminArtistShowcaseTab() {
     const parsed = parseInt(newOrder, 10);
     setArtists((prev) =>
       prev.map((a) =>
-        a.id === id ? { ...a, display_order: isNaN(parsed) ? 999 : parsed } : a
+        a.id === id ? { ...a, display_order: isNaN(parsed) ? 0 : parsed } : a
       )
     );
   };
 
-  // Toggle show_on_home locally and immediately persist
+  // Toggle show_on_home locally and persist
   const handleToggleShowOnHome = async (artist: AdminArtistItem) => {
-    const nextState = !artist.show_on_home;
+    const isCurrentlyHome = artist.show_on_home !== undefined && artist.show_on_home !== null ? Boolean(artist.show_on_home) : true;
+    const nextState = !isCurrentlyHome;
+    const orderVal = typeof artist.display_order === 'number' ? artist.display_order : 0;
+
     // Optimistic local update
     setArtists((prev) =>
       prev.map((a) => (a.id === artist.id ? { ...a, show_on_home: nextState } : a))
@@ -89,21 +143,34 @@ export default function AdminArtistShowcaseTab() {
 
     setSavingId(artist.id);
     try {
-      const res = await fetch('/api/admin/artists/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          artistId: artist.id,
+      // 1. Direct Supabase update
+      const supabase = createClient();
+      const { error: sbError } = await supabase
+        .from('profiles')
+        .update({
           show_on_home: nextState,
-          display_order: artist.display_order ?? 999,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to update showcase toggle');
+          display_order: orderVal,
+        })
+        .eq('id', artist.id);
 
+      if (sbError) {
+        // Fallback to API route
+        const res = await fetch('/api/admin/artists/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            artistId: artist.id,
+            show_on_home: nextState,
+            display_order: orderVal,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update showcase toggle');
+      }
+
+      // Concatenate first_name and last_name for UI display
       const artistName =
-        [artist.first_name, artist.last_name].filter(Boolean).join(' ') ||
-        artist.full_name ||
+        [artist.first_name, artist.last_name].filter(Boolean).join(' ').trim() ||
         artist.email ||
         'Artist';
 
@@ -115,7 +182,7 @@ export default function AdminArtistShowcaseTab() {
     } catch (err: any) {
       // Revert on failure
       setArtists((prev) =>
-        prev.map((a) => (a.id === artist.id ? { ...a, show_on_home: !nextState } : a))
+        prev.map((a) => (a.id === artist.id ? { ...a, show_on_home: isCurrentlyHome } : a))
       );
       toast.error(err.message || 'Failed to update home showcase status');
     } finally {
@@ -126,26 +193,40 @@ export default function AdminArtistShowcaseTab() {
   // Save single artist display order and show_on_home
   const handleSaveSingle = async (artist: AdminArtistItem) => {
     setSavingId(artist.id);
-    try {
-      const res = await fetch('/api/admin/artists/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          artistId: artist.id,
-          display_order: artist.display_order ?? 999,
-          show_on_home: Boolean(artist.show_on_home),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save changes');
+    const orderVal = typeof artist.display_order === 'number' ? artist.display_order : 0;
+    const showVal = artist.show_on_home !== undefined && artist.show_on_home !== null ? Boolean(artist.show_on_home) : true;
 
+    try {
+      const supabase = createClient();
+      const { error: sbError } = await supabase
+        .from('profiles')
+        .update({
+          display_order: orderVal,
+          show_on_home: showVal,
+        })
+        .eq('id', artist.id);
+
+      if (sbError) {
+        const res = await fetch('/api/admin/artists/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            artistId: artist.id,
+            display_order: orderVal,
+            show_on_home: showVal,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save changes');
+      }
+
+      // Concatenate first_name and last_name
       const artistName =
-        [artist.first_name, artist.last_name].filter(Boolean).join(' ') ||
-        artist.full_name ||
+        [artist.first_name, artist.last_name].filter(Boolean).join(' ').trim() ||
         artist.email ||
         'Artist';
 
-      toast.success(`Saved order #${artist.display_order ?? 999} for ${artistName}`);
+      toast.success(`Saved order #${orderVal} for ${artistName}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to save artist order');
     } finally {
@@ -159,8 +240,8 @@ export default function AdminArtistShowcaseTab() {
     try {
       const orders = artists.map((a) => ({
         id: a.id,
-        display_order: a.display_order ?? 999,
-        show_on_home: Boolean(a.show_on_home),
+        display_order: typeof a.display_order === 'number' ? a.display_order : 0,
+        show_on_home: a.show_on_home !== undefined && a.show_on_home !== null ? Boolean(a.show_on_home) : true,
       }));
 
       const res = await fetch('/api/admin/artists/order', {
@@ -175,7 +256,7 @@ export default function AdminArtistShowcaseTab() {
       // Re-sort locally
       setArtists((prev) =>
         [...prev].sort(
-          (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
+          (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
         )
       );
     } catch (err: any) {
@@ -192,15 +273,13 @@ export default function AdminArtistShowcaseTab() {
     return artists.filter((a) => {
       const fn = (a.first_name || '').toLowerCase();
       const ln = (a.last_name || '').toLowerCase();
-      const full = (a.full_name || '').toLowerCase();
+      const concatenated = `${fn} ${ln}`.trim();
       const email = (a.email || '').toLowerCase();
-      const un = (a.username || '').toLowerCase();
       return (
+        concatenated.includes(q) ||
         fn.includes(q) ||
         ln.includes(q) ||
-        full.includes(q) ||
-        email.includes(q) ||
-        un.includes(q)
+        email.includes(q)
       );
     });
   }, [artists, searchQuery]);
@@ -292,9 +371,10 @@ export default function AdminArtistShowcaseTab() {
                 <tr>
                   <th className="py-3 px-3.5 font-semibold text-center w-12">#</th>
                   <th className="py-3 px-3 font-semibold w-12">Photo</th>
-                  <th className="py-3 px-4 font-semibold">First Name</th>
-                  <th className="py-3 px-4 font-semibold">Last Name</th>
-                  <th className="py-3 px-4 font-semibold hidden sm:table-cell">Email / Identifier</th>
+                  <th className="py-3 px-4 font-semibold">Artist Name</th>
+                  <th className="py-3 px-4 font-semibold hidden sm:table-cell">First Name</th>
+                  <th className="py-3 px-4 font-semibold hidden sm:table-cell">Last Name</th>
+                  <th className="py-3 px-4 font-semibold hidden md:table-cell">Email / Identifier</th>
                   <th className="py-3 px-4 font-semibold text-center w-36">Show on Home</th>
                   <th className="py-3 px-4 font-semibold text-center w-32">Display Order</th>
                   <th className="py-3 px-4 font-semibold text-center w-24">Action</th>
@@ -304,7 +384,10 @@ export default function AdminArtistShowcaseTab() {
                 {filteredArtists.map((artist, idx) => {
                   const firstName = (artist.first_name || '').trim();
                   const lastName = (artist.last_name || '').trim();
-                  const isVisibleOnHome = Boolean(artist.show_on_home);
+                  // Concatenate first_name and last_name inside the UI for rendering names
+                  const concatenatedName = [firstName, lastName].filter(Boolean).join(' ').trim();
+                  const displayNameUI = concatenatedName || artist.email || 'Unnamed Artist';
+                  const isVisibleOnHome = artist.show_on_home !== undefined && artist.show_on_home !== null ? Boolean(artist.show_on_home) : true;
                   const isSaving = savingId === artist.id;
 
                   return (
@@ -325,7 +408,7 @@ export default function AdminArtistShowcaseTab() {
                           {artist.avatar_url ? (
                             <img
                               src={artist.avatar_url}
-                              alt=""
+                              alt={displayNameUI}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 (e.target as HTMLElement).style.display = 'none';
@@ -333,25 +416,39 @@ export default function AdminArtistShowcaseTab() {
                             />
                           ) : (
                             <span className="font-bold text-xs text-amber-400">
-                              {((firstName || artist.full_name || artist.email || 'A')[0]).toUpperCase()}
+                              {((concatenatedName || artist.email || 'A')[0]).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Artist Name (Concatenated first_name & last_name) */}
+                      <td className="py-3 px-4 font-semibold text-white">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-white">
+                            {displayNameUI}
+                          </span>
+                          {artist.role && (
+                            <span className="text-[10px] text-slate-400 capitalize">
+                              {artist.role}
                             </span>
                           )}
                         </div>
                       </td>
 
                       {/* First Name */}
-                      <td className="py-3 px-4 font-semibold text-white">
-                        {firstName || <span className="text-slate-500 italic">None</span>}
+                      <td className="py-3 px-4 text-slate-300 hidden sm:table-cell">
+                        {firstName || <span className="text-slate-500 italic">—</span>}
                       </td>
 
                       {/* Last Name */}
-                      <td className="py-3 px-4 font-semibold text-white">
-                        {lastName || <span className="text-slate-500 italic">None</span>}
+                      <td className="py-3 px-4 text-slate-300 hidden sm:table-cell">
+                        {lastName || <span className="text-slate-500 italic">—</span>}
                       </td>
 
                       {/* Email / Handle */}
-                      <td className="py-3 px-4 text-slate-400 font-mono text-[11px] hidden sm:table-cell truncate max-w-[200px]">
-                        {artist.email || artist.username || artist.id.slice(0, 8)}
+                      <td className="py-3 px-4 text-slate-400 font-mono text-[11px] hidden md:table-cell truncate max-w-[200px]">
+                        {artist.email || artist.id.slice(0, 8)}
                       </td>
 
                       {/* Show on Home Toggle */}
@@ -377,11 +474,11 @@ export default function AdminArtistShowcaseTab() {
 
                       {/* Display Order Input */}
                       <td className="py-3 px-4 text-center">
-                        <div className="inline-flex items-center gap-1">
+                        <div className="inline-flex items-center gap-1 justify-center">
                           <Input
                             type="number"
-                            min={1}
-                            value={artist.display_order ?? 999}
+                            min={0}
+                            value={artist.display_order ?? 0}
                             onChange={(e) => handleOrderChange(artist.id, e.target.value)}
                             className="w-20 h-8 bg-slate-900 border-slate-700 text-white text-xs text-center font-bold focus:border-amber-500"
                           />

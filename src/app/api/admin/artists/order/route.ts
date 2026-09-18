@@ -12,15 +12,31 @@ export async function GET(req: Request) {
     const adminClient = createAdminClient();
     let query = adminClient
       .from('profiles')
-      .select('id, full_name, first_name, last_name, display_name, username, email, avatar_url, role, display_order, show_on_home, title, professional_title, is_verified');
+      .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home');
 
     if (onlyHome) {
       query = query.eq('show_on_home', true);
     } else {
-      query = query.or('role.ilike.%artist%,role.ilike.%freelancer%');
+      // Filter profiles where role = 'artist' or is_artist = true
+      query = query.or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true');
     }
 
-    const { data: artists, error } = await query.order('display_order', { ascending: true });
+    let { data: artists, error } = await query.order('display_order', { ascending: true });
+
+    // Fallback if is_artist column does not exist on remote database yet
+    if (error && !onlyHome) {
+      console.warn('Primary artist query notice (falling back):', error.message);
+      const fallbackQuery = adminClient
+        .from('profiles')
+        .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
+        .or('role.ilike.%artist%,role.ilike.%freelancer%');
+
+      const fallbackRes = await fallbackQuery.order('display_order', { ascending: true });
+      if (!fallbackRes.error && fallbackRes.data) {
+        artists = fallbackRes.data;
+        error = null;
+      }
+    }
 
     if (error) {
       // If filtering by show_on_home failed (e.g. column not yet added to remote database), handle gracefully
@@ -32,12 +48,23 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const sorted = (artists || []).sort((a: any, b: any) => {
-      const orderA = a.display_order ?? 999;
-      const orderB = b.display_order ?? 999;
+    const formatted = (artists || []).map((p: any) => ({
+      id: p.id,
+      first_name: p.first_name || '',
+      last_name: p.last_name || '',
+      email: p.email || '',
+      role: p.role || 'artist',
+      avatar_url: p.avatar_url || '',
+      display_order: typeof p.display_order === 'number' ? p.display_order : 0,
+      show_on_home: p.show_on_home !== undefined && p.show_on_home !== null ? Boolean(p.show_on_home) : true,
+    }));
+
+    const sorted = formatted.sort((a: any, b: any) => {
+      const orderA = a.display_order ?? 0;
+      const orderB = b.display_order ?? 0;
       if (orderA !== orderB) return orderA - orderB;
-      const nameA = [a.first_name, a.last_name].filter(Boolean).join(' ') || a.full_name || a.email || '';
-      const nameB = [b.first_name, b.last_name].filter(Boolean).join(' ') || b.full_name || b.email || '';
+      const nameA = [a.first_name, a.last_name].filter(Boolean).join(' ') || a.email || '';
+      const nameB = [b.first_name, b.last_name].filter(Boolean).join(' ') || b.email || '';
       return nameA.localeCompare(nameB);
     });
 
@@ -92,7 +119,7 @@ export async function POST(req: Request) {
           const updatePayload: any = {};
           if (item.display_order !== undefined) {
             const orderNum = parseInt(item.display_order, 10);
-            updatePayload.display_order = isNaN(orderNum) ? 999 : orderNum;
+            updatePayload.display_order = isNaN(orderNum) ? 0 : orderNum;
           }
           if (item.show_on_home !== undefined) {
             updatePayload.show_on_home = Boolean(item.show_on_home);
@@ -116,7 +143,7 @@ export async function POST(req: Request) {
     const updatePayload: any = {};
     if (display_order !== undefined) {
       const orderNum = parseInt(display_order, 10);
-      updatePayload.display_order = isNaN(orderNum) ? 999 : orderNum;
+      updatePayload.display_order = isNaN(orderNum) ? 0 : orderNum;
     }
     if (show_on_home !== undefined) {
       updatePayload.show_on_home = Boolean(show_on_home);
@@ -126,7 +153,7 @@ export async function POST(req: Request) {
       .from('profiles')
       .update(updatePayload)
       .eq('id', artistId)
-      .select('id, full_name, first_name, last_name, display_order, show_on_home')
+      .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
       .single();
 
     if (updateErr) {
