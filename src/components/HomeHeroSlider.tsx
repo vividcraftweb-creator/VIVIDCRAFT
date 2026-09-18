@@ -30,41 +30,10 @@ interface HomeHeroSliderProps {
   className?: string;
 }
 
-export const DEFAULT_BANNER_SLIDES: BannerSlide[] = [
-  {
-    id: 'banner-default-1',
-    badge: 'Limited Commission Offer',
-    title: 'Custom Oil & Fine Art Masterpieces',
-    subtitle: 'Direct collaboration with verified master artists.',
-    cta_text: 'Get Offer',
-    link_url: '/gallery',
-    target_route: '/gallery',
-    image_url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
-    accent: 'from-amber-500/20 to-orange-500/10',
-    offer_code: 'VIVID-ART-2026',
-    is_active: true,
-    display_order: 1,
-  },
-  {
-    id: 'banner-default-2',
-    badge: 'Exclusive Exhibition',
-    title: 'Curated Fine Art Showcase',
-    subtitle: 'Discover private collection releases and verified bids.',
-    cta_text: 'Get Offer',
-    link_url: '/bidding',
-    target_route: '/bidding',
-    image_url: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=800&q=80',
-    accent: 'from-purple-500/20 to-pink-500/10',
-    offer_code: 'EXHIBIT-50',
-    is_active: true,
-    display_order: 2,
-  },
-];
-
 export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
   const router = useRouter();
-  const [banners, setBanners] = useState<BannerSlide[]>(DEFAULT_BANNER_SLIDES);
-  const [isLoading, setIsLoading] = useState(false);
+  const [banners, setBanners] = useState<BannerSlide[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Responsive cards-per-view: calculated cleanly without hydration flash
   const [cardsPerView, setCardsPerView] = useState(() => {

@@ -13,7 +13,14 @@ import {
   Loader2,
   Sparkles,
   CheckCircle2,
+  Globe,
 } from 'lucide-react';
+import {
+  IconBrandLinkedin,
+  IconBrandInstagram,
+  IconBrandFacebook,
+  IconBrandX,
+} from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -50,6 +57,10 @@ export default function AdminCrewTab() {
   const [formShortBio, setFormShortBio] = useState('');
   const [formFullStory, setFormFullStory] = useState('');
   const [formIsFeatured, setFormIsFeatured] = useState(false);
+  const [formLinkedinUrl, setFormLinkedinUrl] = useState('');
+  const [formInstagramUrl, setFormInstagramUrl] = useState('');
+  const [formFacebookUrl, setFormFacebookUrl] = useState('');
+  const [formTwitterUrl, setFormTwitterUrl] = useState('');
 
   // Fetch crew members
   const fetchCrew = async () => {
@@ -186,6 +197,10 @@ export default function AdminCrewTab() {
     setFormShortBio('');
     setFormFullStory('');
     setFormIsFeatured(false);
+    setFormLinkedinUrl('');
+    setFormInstagramUrl('');
+    setFormFacebookUrl('');
+    setFormTwitterUrl('');
     setIsModalOpen(true);
   };
 
@@ -197,6 +212,10 @@ export default function AdminCrewTab() {
     setFormShortBio(member.short_bio);
     setFormFullStory(member.full_story || '');
     setFormIsFeatured(member.is_featured);
+    setFormLinkedinUrl(member.linkedin_url || '');
+    setFormInstagramUrl(member.instagram_url || '');
+    setFormFacebookUrl(member.facebook_url || '');
+    setFormTwitterUrl(member.twitter_url || member.x_url || '');
     setIsModalOpen(true);
   };
 
@@ -223,13 +242,17 @@ export default function AdminCrewTab() {
     setSubmitting(true);
 
     try {
-      const payload = {
+      const payload: any = {
         name: formName.trim(),
         position: formPosition.trim(),
         avatar_url: formAvatarUrl.trim(),
         short_bio: formShortBio.trim(),
         full_story: formFullStory.trim() || formShortBio.trim(),
         is_featured: formIsFeatured,
+        linkedin_url: formLinkedinUrl.trim() || null,
+        instagram_url: formInstagramUrl.trim() || null,
+        facebook_url: formFacebookUrl.trim() || null,
+        twitter_url: formTwitterUrl.trim() || null,
       };
 
       if (editingId) {
@@ -465,6 +488,56 @@ export default function AdminCrewTab() {
                     {member.full_story}
                   </p>
                 )}
+
+                {/* Active Social Media Badges */}
+                {(member.linkedin_url || member.instagram_url || member.facebook_url || member.twitter_url || member.x_url) && (
+                  <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-800/80">
+                    {member.linkedin_url && (
+                      <a
+                        href={member.linkedin_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                        title="LinkedIn Profile"
+                      >
+                        <IconBrandLinkedin className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {member.instagram_url && (
+                      <a
+                        href={member.instagram_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 rounded bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 transition-colors"
+                        title="Instagram Profile"
+                      >
+                        <IconBrandInstagram className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {member.facebook_url && (
+                      <a
+                        href={member.facebook_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 rounded bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                        title="Facebook Profile"
+                      >
+                        <IconBrandFacebook className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {(member.twitter_url || member.x_url) && (
+                      <a
+                        href={member.twitter_url || member.x_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 rounded bg-slate-500/10 text-slate-300 hover:bg-slate-500/20 transition-colors"
+                        title="X / Twitter Profile"
+                      >
+                        <IconBrandX className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -592,6 +665,68 @@ export default function AdminCrewTab() {
                 rows={4}
                 className="bg-slate-950 border-slate-800 text-xs"
               />
+            </div>
+
+            {/* Social Media Links Section */}
+            <div className="space-y-3 pt-2 border-t border-slate-800">
+              <div className="flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-rose-400" />
+                <Label className="text-xs font-semibold text-white">Social Media Links (Optional)</Label>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-slate-300 flex items-center gap-1">
+                    <IconBrandLinkedin className="w-3 h-3 text-blue-400" />
+                    <span>LinkedIn URL</span>
+                  </Label>
+                  <Input
+                    placeholder="https://linkedin.com/in/..."
+                    value={formLinkedinUrl}
+                    onChange={(e) => setFormLinkedinUrl(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-xs h-8"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-slate-300 flex items-center gap-1">
+                    <IconBrandInstagram className="w-3 h-3 text-pink-400" />
+                    <span>Instagram URL</span>
+                  </Label>
+                  <Input
+                    placeholder="https://instagram.com/..."
+                    value={formInstagramUrl}
+                    onChange={(e) => setFormInstagramUrl(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-xs h-8"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-slate-300 flex items-center gap-1">
+                    <IconBrandFacebook className="w-3 h-3 text-indigo-400" />
+                    <span>Facebook URL</span>
+                  </Label>
+                  <Input
+                    placeholder="https://facebook.com/..."
+                    value={formFacebookUrl}
+                    onChange={(e) => setFormFacebookUrl(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-xs h-8"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-slate-300 flex items-center gap-1">
+                    <IconBrandX className="w-3 h-3 text-slate-200" />
+                    <span>X (Twitter) URL</span>
+                  </Label>
+                  <Input
+                    placeholder="https://x.com/..."
+                    value={formTwitterUrl}
+                    onChange={(e) => setFormTwitterUrl(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-xs h-8"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Featured Switch */}

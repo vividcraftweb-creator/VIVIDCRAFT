@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { createPageMetadata } from '@/lib/seo-metadata';
 import HomeHero from '@/components/landing/HomeHero';
 import Benefits from '@/components/landing/Benefits';
-import { CrewMarquee } from '@/components/CrewMarquee';
+import { CrewShowcase } from '@/components/CrewShowcase';
 import { FeaturedCrew } from '@/components/FeaturedCrew';
 
 export const metadata: Metadata = createPageMetadata({
@@ -26,8 +26,8 @@ export default function HomePage() {
     <div className="relative min-h-screen w-full bg-background text-foreground overflow-x-hidden">
       <HomeHero />
       <Benefits />
-      {/* RED SECTION - Infinite Horizontal Crew Marquee */}
-      <CrewMarquee />
+      {/* RED SECTION - Static Crew Showcase Grid */}
+      <CrewShowcase />
       {/* YELLOW SECTION - Featured Crew Showcase & Manual Reviews */}
       <FeaturedCrew />
     </div>

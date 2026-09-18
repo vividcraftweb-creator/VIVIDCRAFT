@@ -30,11 +30,26 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, position, avatar_url, short_bio, full_story = '', is_featured = false, display_order } = body;
+    const {
+      name,
+      position,
+      avatar_url,
+      short_bio,
+      full_story = '',
+      is_featured = false,
+      display_order,
+      linkedin_url = '',
+      instagram_url = '',
+      facebook_url = '',
+      twitter_url = '',
+      x_url = '',
+    } = body;
 
     if (!name || !position || !avatar_url || !short_bio) {
       return NextResponse.json({ error: 'Name, position, avatar, and short bio are required' }, { status: 400 });
     }
+
+    const resolvedTwitter = (twitter_url || x_url) ? String(twitter_url || x_url).trim() : null;
 
     const newMember: CrewMember = {
       id: `crew-${Date.now()}-${Math.random().toString(36).substring(7)}`,
@@ -45,6 +60,11 @@ export async function POST(req: Request) {
       full_story: String(full_story).trim(),
       is_featured: Boolean(is_featured),
       display_order: Number(display_order ?? (memoryCrew.length + 1)),
+      linkedin_url: linkedin_url ? String(linkedin_url).trim() : null,
+      instagram_url: instagram_url ? String(instagram_url).trim() : null,
+      facebook_url: facebook_url ? String(facebook_url).trim() : null,
+      twitter_url: resolvedTwitter,
+      x_url: resolvedTwitter,
       created_at: new Date().toISOString(),
     };
 
@@ -68,6 +88,10 @@ export async function POST(req: Request) {
         full_story: newMember.full_story,
         is_featured: newMember.is_featured,
         display_order: newMember.display_order,
+        linkedin_url: newMember.linkedin_url,
+        instagram_url: newMember.instagram_url,
+        facebook_url: newMember.facebook_url,
+        twitter_url: newMember.twitter_url,
       };
 
       const { data, error } = await adminClient
@@ -95,7 +119,21 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const { id, is_featured, name, position, avatar_url, short_bio, full_story, display_order } = body;
+    const {
+      id,
+      is_featured,
+      name,
+      position,
+      avatar_url,
+      short_bio,
+      full_story,
+      display_order,
+      linkedin_url,
+      instagram_url,
+      facebook_url,
+      twitter_url,
+      x_url,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Crew Member ID is required' }, { status: 400 });
@@ -119,6 +157,13 @@ export async function PATCH(req: Request) {
       if (short_bio) updatePayload.short_bio = String(short_bio).trim();
       if (full_story !== undefined) updatePayload.full_story = String(full_story).trim();
       if (typeof display_order === 'number') updatePayload.display_order = display_order;
+      if (linkedin_url !== undefined) updatePayload.linkedin_url = linkedin_url ? String(linkedin_url).trim() : null;
+      if (instagram_url !== undefined) updatePayload.instagram_url = instagram_url ? String(instagram_url).trim() : null;
+      if (facebook_url !== undefined) updatePayload.facebook_url = facebook_url ? String(facebook_url).trim() : null;
+      if (twitter_url !== undefined || x_url !== undefined) {
+        const finalTw = twitter_url !== undefined ? twitter_url : x_url;
+        updatePayload.twitter_url = finalTw ? String(finalTw).trim() : null;
+      }
       updatePayload.updated_at = new Date().toISOString();
 
       const { data, error } = await adminClient
@@ -137,6 +182,7 @@ export async function PATCH(req: Request) {
 
     const idx = memoryCrew.findIndex((c) => c.id === id);
     if (idx !== -1) {
+      const finalTw = twitter_url !== undefined ? twitter_url : x_url;
       memoryCrew[idx] = {
         ...memoryCrew[idx],
         ...(typeof is_featured === 'boolean' ? { is_featured } : {}),
@@ -146,6 +192,10 @@ export async function PATCH(req: Request) {
         ...(short_bio ? { short_bio } : {}),
         ...(full_story !== undefined ? { full_story } : {}),
         ...(typeof display_order === 'number' ? { display_order } : {}),
+        ...(linkedin_url !== undefined ? { linkedin_url: linkedin_url ? String(linkedin_url).trim() : null } : {}),
+        ...(instagram_url !== undefined ? { instagram_url: instagram_url ? String(instagram_url).trim() : null } : {}),
+        ...(facebook_url !== undefined ? { facebook_url: facebook_url ? String(facebook_url).trim() : null } : {}),
+        ...(finalTw !== undefined ? { twitter_url: finalTw ? String(finalTw).trim() : null, x_url: finalTw ? String(finalTw).trim() : null } : {}),
       };
       if (!updatedMember) updatedMember = memoryCrew[idx];
     }

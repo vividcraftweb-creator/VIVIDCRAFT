@@ -22,47 +22,10 @@ import { CrewMember } from '@/types/crew';
 import { ManualReview } from '@/types/reviews';
 import { createClient } from '@/lib/supabase/client';
 
-export const DEFAULT_FEATURED_MEMBER: CrewMember = {
-  id: 'crew-default-1',
-  name: 'Elena Rostova',
-  position: 'Chief Art Curator & Valuation Lead',
-  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-  short_bio: 'Art is not merely what we see, but the emotional truth we are brave enough to feel.',
-  full_story: 'Elena leads our curation board with over a decade of prestigious gallery direction across Paris, Vienna, and London. She specializes in authenticating physical and digital fine art masterworks. Under her curation, Vivid Art connects extraordinary talent with discerning patrons worldwide.',
-  is_featured: true,
-  display_order: 1,
-  created_at: '2026-01-01T00:00:00Z',
-};
-
-export const DEFAULT_CURATED_REVIEWS: ManualReview[] = [
-  {
-    id: 'rev-default-1',
-    author_name: 'Julian Sterling',
-    author_role: 'Private Art Collector & Patron',
-    avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
-    rating: 5,
-    content: 'Vivid Art has completely transformed how I acquire curated originals. The direct dialogue with artists and verified valuation standards provide an experience rivaling London\'s top auction houses.',
-    is_active: true,
-    display_order: 1,
-    created_at: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'rev-default-2',
-    author_name: 'Sophia Laurent',
-    author_role: 'Architectural Design Director, Paris',
-    avatar_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-    rating: 5,
-    content: 'Finding master artists capable of executing large-scale bespoke commissions on deadline was notoriously difficult. Vivid Art delivers verified craftsmanship and absolute transparency every time.',
-    is_active: true,
-    display_order: 2,
-    created_at: '2026-01-01T00:00:00Z',
-  },
-];
-
 export function FeaturedCrew() {
-  const [featuredMember, setFeaturedMember] = useState<CrewMember>(DEFAULT_FEATURED_MEMBER);
-  const [reviews, setReviews] = useState<ManualReview[]>(DEFAULT_CURATED_REVIEWS);
-  const [isLoading, setIsLoading] = useState(false);
+  const [featuredMember, setFeaturedMember] = useState<CrewMember | null>(null);
+  const [reviews, setReviews] = useState<ManualReview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
 
   useEffect(() => {
@@ -159,8 +122,12 @@ export function FeaturedCrew() {
     };
   }, []);
 
-  const activeMember = featuredMember || DEFAULT_FEATURED_MEMBER;
-  const activeReviews = reviews.length > 0 ? reviews : DEFAULT_CURATED_REVIEWS;
+  if (!isLoading && !featuredMember && reviews.length === 0) {
+    return null;
+  }
+
+  const activeMember = featuredMember;
+  const activeReviews = reviews;
 
   return (
     <section className="relative w-full py-16 sm:py-24 bg-gradient-to-b from-slate-950 via-amber-950/15 to-slate-950 border-b border-amber-900/30 overflow-hidden">
