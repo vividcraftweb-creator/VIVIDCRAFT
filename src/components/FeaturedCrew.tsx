@@ -29,7 +29,8 @@ import { ManualReview } from '@/types/reviews';
 import { createClient } from '@/lib/supabase/client';
 
 export function FeaturedCrew() {
-  const [featuredMember, setFeaturedMember] = useState<CrewMember | null>(null);
+  const [crewMembers, setCrewMembers] = useState<CrewMember[]>([]);
+  const [selectedMember, setSelectedMember] = useState<CrewMember | null>(null);
   const [reviews, setReviews] = useState<ManualReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
@@ -43,36 +44,33 @@ export function FeaturedCrew() {
         const { data: crewData, error } = await supabase
           .from('crew_members')
           .select('*')
-          .order('display_order', { ascending: true });
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false });
 
-        if (!error && Array.isArray(crewData) && crewData.length > 0 && isMounted) {
-          const rawFeatured = crewData.find((c: any) => c.is_featured) || crewData[0];
-          if (rawFeatured) {
-            setFeaturedMember({
-              ...rawFeatured,
-              avatar_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
-              image_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
-            });
-          }
+        if (!error && Array.isArray(crewData) && isMounted) {
+          const mapped = crewData.map((c: any) => ({
+            ...c,
+            avatar_url: c.image_url || c.avatar_url || '',
+            image_url: c.image_url || c.avatar_url || '',
+          }));
+          setCrewMembers(mapped);
           return;
         }
 
         const res = await fetch('/api/crew');
         if (res.ok) {
           const json = await res.json();
-          if (json?.crew && Array.isArray(json.crew) && json.crew.length > 0 && isMounted) {
-            const rawFeatured = json.crew.find((c: any) => c.is_featured) || json.crew[0];
-            if (rawFeatured) {
-              setFeaturedMember({
-                ...rawFeatured,
-                avatar_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
-                image_url: rawFeatured.image_url || rawFeatured.avatar_url || '',
-              });
-            }
+          if (json?.crew && Array.isArray(json.crew) && isMounted) {
+            const mapped = json.crew.map((c: any) => ({
+              ...c,
+              avatar_url: c.image_url || c.avatar_url || '',
+              image_url: c.image_url || c.avatar_url || '',
+            }));
+            setCrewMembers(mapped);
           }
         }
       } catch (err) {
-        console.warn('Failed to load featured crew:', err);
+        console.warn('Failed to load crew members:', err);
       }
     }
 
@@ -136,11 +134,11 @@ export function FeaturedCrew() {
     };
   }, []);
 
-  if (!isLoading && !featuredMember && reviews.length === 0) {
+  if (!isLoading && crewMembers.length === 0 && reviews.length === 0) {
     return null;
   }
 
-  const activeMember = featuredMember;
+  const displayedCrew = crewMembers.slice(0, 3);
   const activeReviews = reviews;
 
   return (
@@ -152,15 +150,15 @@ export function FeaturedCrew() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-16 sm:space-y-20">
         
         {/* ============================================================ */}
-        {/* PART 1: FEATURED CREW MEMBER SHOWCASE (Large Image + Bio)   */}
+        {/* PART 1: COMPACT RESPONSIVE 3-CARD CREW GRID                  */}
         {/* ============================================================ */}
-        {activeMember && (
+        {displayedCrew.length > 0 && (
           <div className="max-w-6xl mx-auto">
             {/* Section Badge */}
             <div className="text-center mb-10 sm:mb-14">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 dark:bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs font-semibold tracking-wide uppercase shadow-sm mb-3">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-                <span>Curator of the Month</span>
+                <span>Curatorial Team</span>
               </div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 Featured Crew Showcase
@@ -170,130 +168,128 @@ export function FeaturedCrew() {
               </p>
             </div>
 
-            {/* Featured Crew Card */}
-            <div className="relative rounded-3xl p-6 sm:p-8 md:p-10 bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-amber-500/30 shadow-2xl shadow-slate-300/40 dark:shadow-amber-950/30 backdrop-blur-xl overflow-hidden transition-colors duration-300">
-              {/* Ambient inner gradient */}
-              <div className="absolute -top-24 -right-24 w-80 h-80 bg-amber-500/10 dark:bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 items-center">
-                {/* Large Image Column (Left 5 Cols) */}
-                <div className="md:col-span-5 flex justify-center">
-                  <div className="relative w-full max-w-[340px] md:max-w-none aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden ring-4 ring-amber-500/30 shadow-2xl group">
+            {/* Responsive Compact 3-Card Grid (1 col mobile, 3 cols desktop) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {displayedCrew.map((member) => (
+                <div
+                  key={member.id}
+                  className="relative rounded-3xl p-5 sm:p-6 bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-amber-500/30 shadow-xl shadow-slate-200/50 dark:shadow-amber-950/20 backdrop-blur-xl flex flex-col justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
+                >
+                  {/* Card Portrait Photo: balanced h-64 aspect-[4/5] */}
+                  <div className="relative w-full h-64 rounded-2xl overflow-hidden ring-2 ring-amber-500/20 dark:ring-amber-500/30 shadow-md mb-4 bg-slate-100 dark:bg-slate-800">
                     <img
-                      src={activeMember.image_url || activeMember.avatar_url}
-                      alt={activeMember.name}
-                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                      src={member.image_url || member.avatar_url}
+                      alt={member.name}
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                    <div className="absolute bottom-4 left-4 right-4 text-white">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500 text-slate-950 shadow-md">
-                        <Award className="w-3.5 h-3.5" />
-                        Featured Member
-                      </span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
+                    {member.is_featured && (
+                      <div className="absolute top-3 left-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500 text-slate-950 shadow-md">
+                          <Award className="w-3 h-3" />
+                          Featured
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Content & Details */}
+                  <div className="flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider line-clamp-1 mb-1">
+                        {member.position}
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                        {member.name}
+                      </h3>
+
+                      {member.short_bio && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200 dark:border-amber-500/20 text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed line-clamp-2">
+                          <p className="italic text-amber-800 dark:text-amber-200/90">
+                            &ldquo;{member.short_bio}&rdquo;
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Active Social Media Icons (only rendered if links exist) */}
+                    {Boolean(
+                      member.linkedin_url ||
+                      member.instagram_url ||
+                      member.facebook_url ||
+                      member.twitter_url ||
+                      member.x_url
+                    ) && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {member.linkedin_url && (
+                          <a
+                            href={member.linkedin_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 transition-transform hover:scale-110"
+                            aria-label={`${member.name} on LinkedIn`}
+                            title="LinkedIn"
+                          >
+                            <IconBrandLinkedin className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        {member.instagram_url && (
+                          <a
+                            href={member.instagram_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30 transition-transform hover:scale-110"
+                            aria-label={`${member.name} on Instagram`}
+                            title="Instagram"
+                          >
+                            <IconBrandInstagram className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        {member.facebook_url && (
+                          <a
+                            href={member.facebook_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 transition-transform hover:scale-110"
+                            aria-label={`${member.name} on Facebook`}
+                            title="Facebook"
+                          >
+                            <IconBrandFacebook className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        {(member.twitter_url || member.x_url) && (
+                          <a
+                            href={member.twitter_url || member.x_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white border border-slate-300 dark:border-slate-700 transition-transform hover:scale-110"
+                            aria-label={`${member.name} on X (Twitter)`}
+                            title="X (Twitter)"
+                          >
+                            <IconBrandX className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Concise See More Button */}
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setSelectedMember(member);
+                          startTransition(() => setIsStoryModalOpen(true));
+                        }}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 hover:scale-[1.02] transition-all duration-200 cursor-pointer"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>See More</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
                 </div>
-
-                {/* Story & Details Column (Right 7 Cols) */}
-                <div className="md:col-span-7 space-y-4 sm:space-y-5 text-left">
-                  <div>
-                    <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
-                      <span>{activeMember.position}</span>
-                    </div>
-                    <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
-                      {activeMember.name}
-                    </h3>
-                  </div>
-
-                  {/* Short Bio / Highlight */}
-                  {activeMember.short_bio && (
-                    <div className="p-4 rounded-xl bg-slate-100/90 dark:bg-slate-950/60 border border-slate-200 dark:border-amber-500/20 text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
-                      <p className="font-medium text-amber-800 dark:text-amber-200/90 mb-1">
-                        &ldquo;{activeMember.short_bio}&rdquo;
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Truncated Description */}
-                  <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed line-clamp-3">
-                    {activeMember.full_story || activeMember.short_bio}
-                  </p>
-
-                  {/* Social Media Links (Conditional on presence) */}
-                  {Boolean(
-                    activeMember.linkedin_url ||
-                    activeMember.instagram_url ||
-                    activeMember.facebook_url ||
-                    activeMember.twitter_url ||
-                    activeMember.x_url
-                  ) && (
-                    <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                      {activeMember.linkedin_url && (
-                        <a
-                          href={activeMember.linkedin_url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs font-semibold transition-all hover:scale-105"
-                          aria-label={`${activeMember.name} on LinkedIn`}
-                        >
-                          <IconBrandLinkedin className="w-3.5 h-3.5" />
-                          <span>LinkedIn</span>
-                        </a>
-                      )}
-                      {activeMember.instagram_url && (
-                        <a
-                          href={activeMember.instagram_url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30 text-xs font-semibold transition-all hover:scale-105"
-                          aria-label={`${activeMember.name} on Instagram`}
-                        >
-                          <IconBrandInstagram className="w-3.5 h-3.5" />
-                          <span>Instagram</span>
-                        </a>
-                      )}
-                      {activeMember.facebook_url && (
-                        <a
-                          href={activeMember.facebook_url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-xs font-semibold transition-all hover:scale-105"
-                          aria-label={`${activeMember.name} on Facebook`}
-                        >
-                          <IconBrandFacebook className="w-3.5 h-3.5" />
-                          <span>Facebook</span>
-                        </a>
-                      )}
-                      {(activeMember.twitter_url || activeMember.x_url) && (
-                        <a
-                          href={activeMember.twitter_url || activeMember.x_url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white border border-slate-300 dark:border-slate-700 text-xs font-semibold transition-all hover:scale-105"
-                          aria-label={`${activeMember.name} on X (Twitter)`}
-                        >
-                          <IconBrandX className="w-3.5 h-3.5" />
-                          <span>X</span>
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {/* CTA / See More Button */}
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      onClick={() => startTransition(() => setIsStoryModalOpen(true))}
-                      className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-xl shadow-amber-500/20 hover:scale-105 transition-all duration-200 cursor-pointer"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      <span>See More</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         )}
@@ -383,7 +379,7 @@ export function FeaturedCrew() {
       {/* ============================================================ */}
       {/* CREW STORY & DETAILS MODAL                                   */}
       {/* ============================================================ */}
-      {activeMember && (
+      {selectedMember && (
         <Dialog open={isStoryModalOpen} onOpenChange={setIsStoryModalOpen}>
           <DialogContent className="max-w-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-amber-500/40 text-slate-900 dark:text-white rounded-3xl p-6 sm:p-8 max-h-[88vh] overflow-y-auto shadow-2xl">
             <DialogHeader className="text-left space-y-2">
@@ -392,10 +388,10 @@ export function FeaturedCrew() {
                 <span>Full Crew Member Story</span>
               </div>
               <DialogTitle className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                {activeMember.name}
+                {selectedMember.name}
               </DialogTitle>
               <DialogDescription className="text-sm font-semibold text-amber-600 dark:text-amber-400">
-                {activeMember.position}
+                {selectedMember.position}
               </DialogDescription>
             </DialogHeader>
 
@@ -403,16 +399,18 @@ export function FeaturedCrew() {
               {/* Image Banner */}
               <div className="relative w-full h-56 sm:h-72 rounded-2xl overflow-hidden ring-2 ring-amber-500/30 shadow-xl">
                 <img
-                  src={activeMember.image_url || activeMember.avatar_url}
-                  alt={activeMember.name}
-                  className="w-full h-full object-cover object-center"
+                  src={selectedMember.image_url || selectedMember.avatar_url}
+                  alt={selectedMember.name}
+                  className="w-full h-full object-cover object-top"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <p className="text-xs sm:text-sm font-medium text-amber-200 drop-shadow">
-                    &ldquo;{activeMember.short_bio}&rdquo;
-                  </p>
-                </div>
+                {selectedMember.short_bio && (
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <p className="text-xs sm:text-sm font-medium text-amber-200 drop-shadow">
+                      &ldquo;{selectedMember.short_bio}&rdquo;
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Story Paragraphs */}
@@ -422,72 +420,72 @@ export function FeaturedCrew() {
                   Creative Journey &amp; Impact
                 </h4>
                 <p className="whitespace-pre-line">
-                  {activeMember.full_story || activeMember.short_bio}
+                  {selectedMember.full_story || selectedMember.short_bio}
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  At Vivid Art, {activeMember.name} works directly with verified creators and world-class patrons, ensuring every commission and curated piece represents the pinnacle of artistic integrity.
+                  At Vivid Art, {selectedMember.name} works directly with verified creators and world-class patrons, ensuring every commission and curated piece represents the pinnacle of artistic integrity.
                 </p>
               </div>
 
               {/* Active Social Media Links */}
               {Boolean(
-                activeMember.linkedin_url ||
-                activeMember.instagram_url ||
-                activeMember.facebook_url ||
-                activeMember.twitter_url ||
-                activeMember.x_url
+                selectedMember.linkedin_url ||
+                selectedMember.instagram_url ||
+                selectedMember.facebook_url ||
+                selectedMember.twitter_url ||
+                selectedMember.x_url
               ) && (
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80 space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Connect &amp; Follow
                   </h4>
                   <div className="flex flex-wrap items-center gap-2.5">
-                    {activeMember.linkedin_url && (
+                    {selectedMember.linkedin_url && (
                       <a
-                        href={activeMember.linkedin_url || '#'}
+                        href={selectedMember.linkedin_url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs font-semibold transition-all hover:scale-105"
-                        aria-label={`${activeMember.name} on LinkedIn`}
+                        aria-label={`${selectedMember.name} on LinkedIn`}
                       >
                         <IconBrandLinkedin className="w-4 h-4" />
                         <span>LinkedIn</span>
                       </a>
                     )}
 
-                    {activeMember.instagram_url && (
+                    {selectedMember.instagram_url && (
                       <a
-                        href={activeMember.instagram_url || '#'}
+                        href={selectedMember.instagram_url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30 text-xs font-semibold transition-all hover:scale-105"
-                        aria-label={`${activeMember.name} on Instagram`}
+                        aria-label={`${selectedMember.name} on Instagram`}
                       >
                         <IconBrandInstagram className="w-4 h-4" />
                         <span>Instagram</span>
                       </a>
                     )}
 
-                    {activeMember.facebook_url && (
+                    {selectedMember.facebook_url && (
                       <a
-                        href={activeMember.facebook_url || '#'}
+                        href={selectedMember.facebook_url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-xs font-semibold transition-all hover:scale-105"
-                        aria-label={`${activeMember.name} on Facebook`}
+                        aria-label={`${selectedMember.name} on Facebook`}
                       >
                         <IconBrandFacebook className="w-4 h-4" />
                         <span>Facebook</span>
                       </a>
                     )}
 
-                    {(activeMember.twitter_url || activeMember.x_url) && (
+                    {(selectedMember.twitter_url || selectedMember.x_url) && (
                       <a
-                        href={activeMember.twitter_url || activeMember.x_url || '#'}
+                        href={selectedMember.twitter_url || selectedMember.x_url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white border border-slate-300 dark:border-slate-700 text-xs font-semibold transition-all hover:scale-105"
-                        aria-label={`${activeMember.name} on X (Twitter)`}
+                        aria-label={`${selectedMember.name} on X (Twitter)`}
                       >
                         <IconBrandX className="w-4 h-4" />
                         <span>X (Twitter)</span>
