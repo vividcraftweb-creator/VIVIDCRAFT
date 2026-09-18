@@ -165,23 +165,23 @@ export function FeaturedCrew() {
             </div>
 
             {/* Responsive Compact 3-Card Grid (1 col mobile, 3 cols desktop) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 justify-items-center max-w-4xl mx-auto">
               {displayedCrew.map((member) => (
                 <div
                   key={member.id}
-                  className="relative rounded-2xl p-5 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-amber-400/50 dark:hover:border-amber-500/40 transition-colors flex flex-col justify-between"
+                  className="relative max-w-xs w-full rounded-2xl p-3.5 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-amber-400/50 dark:hover:border-amber-500/40 transition-colors flex flex-col justify-between"
                 >
-                  {/* Card Portrait Photo: balanced h-64 aspect-[4/5] */}
-                  <div className="relative w-full h-64 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-4 border border-slate-200/80 dark:border-slate-800">
+                  {/* Compact Card Portrait Photo: h-44 sm:h-48 */}
+                  <div className="relative w-full h-44 sm:h-48 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-3 border border-slate-200/80 dark:border-slate-800">
                     <img
                       src={member.image_url || member.avatar_url}
                       alt={member.name}
                       className="w-full h-full object-cover object-top"
                     />
                     {member.is_featured && (
-                      <div className="absolute top-3 left-3">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500 text-slate-950 shadow-sm">
-                          <Award className="w-3.5 h-3.5" />
+                      <div className="absolute top-2 left-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500 text-slate-950 shadow-sm">
+                          <Award className="w-3 h-3" />
                           Featured
                         </span>
                       </div>
@@ -189,17 +189,17 @@ export function FeaturedCrew() {
                   </div>
 
                   {/* Card Content & Details */}
-                  <div className="flex-1 flex flex-col justify-between space-y-3">
+                  <div className="flex-1 flex flex-col justify-between space-y-2">
                     <div>
-                      <div className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider line-clamp-1 mb-1">
+                      <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider line-clamp-1 mb-0.5">
                         {member.position}
                       </div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
                         {member.name}
                       </h3>
 
                       {member.short_bio && (
-                        <div className="mt-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed line-clamp-2">
+                        <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs leading-relaxed line-clamp-2">
                           <p className="italic text-slate-700 dark:text-slate-300">
                             &ldquo;{member.short_bio}&rdquo;
                           </p>
@@ -215,17 +215,17 @@ export function FeaturedCrew() {
                       member.twitter_url ||
                       member.x_url
                     ) && (
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                         {member.linkedin_url && (
                           <a
                             href={member.linkedin_url || '#'}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 transition-colors"
+                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 transition-colors"
                             aria-label={`${member.name} on LinkedIn`}
                             title="LinkedIn"
                           >
-                            <IconBrandLinkedin className="w-4 h-4" />
+                            <IconBrandLinkedin className="w-3.5 h-3.5" />
                           </a>
                         )}
                         {member.instagram_url && (
@@ -233,11 +233,11 @@ export function FeaturedCrew() {
                             href={member.instagram_url || '#'}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700 transition-colors"
+                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700 transition-colors"
                             aria-label={`${member.name} on Instagram`}
                             title="Instagram"
                           >
-                            <IconBrandInstagram className="w-4 h-4" />
+                            <IconBrandInstagram className="w-3.5 h-3.5" />
                           </a>
                         )}
                         {member.facebook_url && (
@@ -245,11 +245,11 @@ export function FeaturedCrew() {
                             href={member.facebook_url || '#'}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-700 transition-colors"
+                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-700 transition-colors"
                             aria-label={`${member.name} on Facebook`}
                             title="Facebook"
                           >
-                            <IconBrandFacebook className="w-4 h-4" />
+                            <IconBrandFacebook className="w-3.5 h-3.5" />
                           </a>
                         )}
                         {(member.twitter_url || member.x_url) && (
@@ -257,25 +257,25 @@ export function FeaturedCrew() {
                             href={member.twitter_url || member.x_url || '#'}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors"
+                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors"
                             aria-label={`${member.name} on X (Twitter)`}
                             title="X (Twitter)"
                           >
-                            <IconBrandX className="w-4 h-4" />
+                            <IconBrandX className="w-3.5 h-3.5" />
                           </a>
                         )}
                       </div>
                     )}
 
-                    {/* Concise See More Button */}
-                    <div className="pt-2">
+                    {/* Compact See More Button */}
+                    <div className="pt-1.5">
                       <Button
                         type="button"
                         onClick={() => {
                           setSelectedMember(member);
                           startTransition(() => setIsStoryModalOpen(true));
                         }}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer shadow-sm"
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer shadow-sm"
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>See More</span>
