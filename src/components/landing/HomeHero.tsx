@@ -43,7 +43,7 @@ export function HomeHero() {
   const [fallbackArtworks, setFallbackArtworks] = useState<any[]>([]);
   const [loadingFallback, setLoadingFallback] = useState(false);
 
-  // Fetch top artists
+  // Fetch top artists (ONLY artists where show_on_home = true, strictly sorted by display_order ASC)
   useEffect(() => {
     let isMounted = true;
     async function fetchTopArtists() {
@@ -53,17 +53,16 @@ export function HomeHero() {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .or('role.ilike.%artist%,role.ilike.%freelancer%')
-          .order('display_order', { ascending: true })
-          .limit(12);
+          .eq('show_on_home', true)
+          .order('display_order', { ascending: true });
 
-        if (!error && data && data.length > 0) {
+        if (!error && Array.isArray(data)) {
           const sorted = [...data].sort(
             (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
           );
           if (isMounted) setArtists(sorted);
         } else {
-          const res = await fetch('/api/admin/artists/order');
+          const res = await fetch('/api/admin/artists/order?home=true');
           const json = await res.json();
           if (json?.artists && isMounted) {
             setArtists(json.artists);
@@ -289,7 +288,7 @@ export function HomeHero() {
               ))
             ) : artists.length === 0 ? (
               <div className="w-full text-center py-8 text-sm text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl">
-                No artists available at the moment.
+                No featured artists selected for the home page yet. Enable artists in Admin Panel &rarr; Artist Showcase.
               </div>
             ) : (
               artists.map((artist, idx) => {

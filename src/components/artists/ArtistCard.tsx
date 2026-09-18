@@ -60,6 +60,7 @@ export interface ArtistProfile {
   services?: string[] | null;
   other_categories?: string[] | null;
   display_order?: number | null;
+  show_on_home?: boolean;
   is_verified?: boolean;
   isVerified?: boolean;
 }

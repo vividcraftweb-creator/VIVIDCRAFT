@@ -25,6 +25,7 @@ import {
   Gavel,
   MessageSquareQuote,
   UserCheck,
+  Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trpc } from '@/utils/trpc';
@@ -96,6 +97,12 @@ export default function AdminSidebar() {
       href: '/admin/users',
       icon: Users,
       description: 'Manage all users',
+    },
+    {
+      title: 'Artist Showcase',
+      href: '/admin/artists',
+      icon: Sparkles,
+      description: 'Home showcase & order',
     },
     {
       title: 'Job Moderation',

@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Gavel,
   Star,
+  Sparkles,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import AdminBannersTab from '../admin/AdminBannersTab';
 import AdminAuctionsTab from '../admin/AdminAuctionsTab';
 import AdminCrewTab from '../admin/AdminCrewTab';
 import AdminReviewsTab from '../admin/AdminReviewsTab';
+import AdminArtistShowcaseTab from '../admin/AdminArtistShowcaseTab';
 import {
   ComposedChart,
   Bar,
@@ -631,6 +633,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Users
               </TabsTrigger>
+              <TabsTrigger value="artists" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-amber-400" />
+                Artist Showcase
+              </TabsTrigger>
               <TabsTrigger value="artworks" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Artworks
               </TabsTrigger>
@@ -697,6 +703,10 @@ export default function AdminDashboard() {
             
             <TabsContent value="users" className="mt-3">
               <AdminUsersTab />
+            </TabsContent>
+
+            <TabsContent value="artists" className="mt-3">
+              <AdminArtistShowcaseTab />
             </TabsContent>
             
             <TabsContent value="artworks" className="mt-3">
