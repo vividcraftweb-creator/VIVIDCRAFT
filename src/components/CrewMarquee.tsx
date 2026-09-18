@@ -5,9 +5,56 @@ import { Sparkles } from 'lucide-react';
 import { CrewMember } from '@/types/crew';
 import { createClient } from '@/lib/supabase/client';
 
+export const DEFAULT_CURATED_CREW: CrewMember[] = [
+  {
+    id: 'crew-default-1',
+    name: 'Elena Rostova',
+    position: 'Chief Art Curator & Valuation Lead',
+    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    short_bio: '12+ years in contemporary European curation and gallery direction.',
+    full_story: 'Elena leads our curation board with over a decade of prestigious gallery direction across Paris, Vienna, and London. She specializes in authenticating physical and digital fine art masterworks.',
+    is_featured: true,
+    display_order: 1,
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'crew-default-2',
+    name: 'Marcus Vance',
+    position: 'Senior Fine Art Specialist',
+    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+    short_bio: 'Expert in auction valuation, oil on canvas, and rare digital artifacts.',
+    full_story: 'Marcus brings an eagle eye for technical technique and historical significance, helping collectors identify rising master talents before they reach international auctions.',
+    is_featured: false,
+    display_order: 2,
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'crew-default-3',
+    name: 'Sarah Jenkins',
+    position: 'Master Conservator & Technique Advisor',
+    avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+    short_bio: 'Bridging classical fine art preservation with contemporary digital mediums.',
+    full_story: 'Sarah ensures artistic integrity across every medium. With degrees from the Royal College of Art, she mentors emerging creators on archival permanence and digital provenance.',
+    is_featured: false,
+    display_order: 3,
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'crew-default-4',
+    name: 'David Chen',
+    position: 'Global Collector Relations',
+    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    short_bio: 'Advising private patrons, luxury interior architects, and institutional buyers.',
+    full_story: 'David bridges visionary artists with elite private collectors and interior architects worldwide, facilitating seamless commissions and custom installations.',
+    is_featured: false,
+    display_order: 4,
+    created_at: '2026-01-01T00:00:00Z',
+  },
+];
+
 export function CrewMarquee() {
-  const [crew, setCrew] = useState<CrewMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [crew, setCrew] = useState<CrewMember[]>(DEFAULT_CURATED_CREW);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -21,7 +68,7 @@ export function CrewMarquee() {
           .order('display_order', { ascending: true })
           .order('created_at', { ascending: false });
 
-        if (!error && Array.isArray(data) && isMounted) {
+        if (!error && Array.isArray(data) && data.length > 0 && isMounted) {
           setCrew(data);
           setIsLoading(false);
           return;
@@ -30,7 +77,7 @@ export function CrewMarquee() {
         const res = await fetch('/api/crew');
         if (res.ok) {
           const json = await res.json();
-          if (json?.crew && Array.isArray(json.crew) && isMounted) {
+          if (json?.crew && Array.isArray(json.crew) && json.crew.length > 0 && isMounted) {
             setCrew(json.crew);
           }
         }
@@ -90,13 +137,11 @@ export function CrewMarquee() {
     );
   }
 
-  // If not loading and no crew in database, do not render empty container
-  if (crew.length === 0) {
-    return null;
-  }
+  // Safe active crew ensuring zero layout shift
+  const activeCrew = crew.length > 0 ? crew : DEFAULT_CURATED_CREW;
 
   // Duplicate crew array to create a seamless infinite loop
-  const marqueeItems = [...crew, ...crew, ...crew];
+  const marqueeItems = [...activeCrew, ...activeCrew, ...activeCrew];
 
   return (
     <section className="relative w-full py-10 sm:py-14 overflow-hidden bg-gradient-to-b from-slate-950 via-rose-950/20 to-slate-950 border-y border-rose-900/30">

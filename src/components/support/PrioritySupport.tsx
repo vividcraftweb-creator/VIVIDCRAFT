@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, startTransition } from 'react';
 import { trpc } from '@/utils/trpc';
 import {
   Headphones,
@@ -94,7 +94,9 @@ export default function PrioritySupport() {
       setNewTicketMessage('');
       setSelectedCategory('general');
       setPriority('medium');
-      setActiveTab('tickets');
+      startTransition(() => {
+        setActiveTab('tickets');
+      });
       utils.supportTickets.list.invalidate();
       utils.supportTickets.getStats.invalidate();
     },
@@ -265,7 +267,7 @@ export default function PrioritySupport() {
           ]).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => startTransition(() => setActiveTab(tab.key))}
               className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                 activeTab === tab.key
                   ? 'bg-primary/20 text-primary border border-primary/30'
@@ -427,7 +429,7 @@ export default function PrioritySupport() {
                 You haven&apos;t created any support tickets yet
               </p>
               <button
-                onClick={() => setActiveTab('contact')}
+                onClick={() => startTransition(() => setActiveTab('contact'))}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 <MessageSquare className="h-4 w-4" />

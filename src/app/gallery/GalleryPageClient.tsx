@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, startTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -931,7 +931,7 @@ export default function GalleryPageClient() {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={() => setIsUploadOpen(true)}
+                onClick={() => startTransition(() => setIsUploadOpen(true))}
                 className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs h-8 px-3 gap-1.5 shadow-md cursor-pointer"
               >
                 <UploadCloud className="w-3.5 h-3.5 text-slate-950" />
@@ -981,7 +981,7 @@ export default function GalleryPageClient() {
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => startTransition(() => setSearchQuery(''))}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white text-[11px] bg-slate-200/70 dark:bg-slate-800 px-2 py-0.5 rounded cursor-pointer"
                   >
                     Clear
@@ -991,7 +991,7 @@ export default function GalleryPageClient() {
 
               {isAdmin && (
                 <Button
-                  onClick={() => setIsUploadOpen(true)}
+                  onClick={() => startTransition(() => setIsUploadOpen(true))}
                   className="inline-flex items-center justify-center rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-4 py-2 text-sm shadow-md shadow-amber-500/20 transition flex-shrink-0 cursor-pointer"
                 >
                   <UploadCloud className="w-4 h-4 mr-1.5" />
@@ -1008,7 +1008,7 @@ export default function GalleryPageClient() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 p-1 bg-slate-200/70 dark:bg-slate-900/90 border border-slate-300/70 dark:border-slate-800 rounded-2xl overflow-x-auto max-w-full">
               <button
-                onClick={() => setActiveSort('popular')}
+                onClick={() => startTransition(() => setActiveSort('popular'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'popular'
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
@@ -1020,7 +1020,7 @@ export default function GalleryPageClient() {
               </button>
 
               <button
-                onClick={() => setActiveSort('highest_rated')}
+                onClick={() => startTransition(() => setActiveSort('highest_rated'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'highest_rated'
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
@@ -1032,7 +1032,7 @@ export default function GalleryPageClient() {
               </button>
 
               <button
-                onClick={() => setActiveSort('most_liked')}
+                onClick={() => startTransition(() => setActiveSort('most_liked'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'most_liked'
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
@@ -1044,7 +1044,7 @@ export default function GalleryPageClient() {
               </button>
 
               <button
-                onClick={() => setActiveSort('newest')}
+                onClick={() => startTransition(() => setActiveSort('newest'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'newest'
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
@@ -1069,7 +1069,7 @@ export default function GalleryPageClient() {
             </div>
 
             <button
-              onClick={() => setActiveFilter('ALL')}
+              onClick={() => startTransition(() => setActiveFilter('ALL'))}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
                 activeFilter === 'ALL'
                   ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md'
@@ -1080,7 +1080,7 @@ export default function GalleryPageClient() {
             </button>
 
             <button
-              onClick={() => setActiveFilter('FIXED_PRICE')}
+              onClick={() => startTransition(() => setActiveFilter('FIXED_PRICE'))}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
                 activeFilter === 'FIXED_PRICE'
                   ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
@@ -1092,7 +1092,7 @@ export default function GalleryPageClient() {
             </button>
 
             <button
-              onClick={() => setActiveFilter('BIDDING')}
+              onClick={() => startTransition(() => setActiveFilter('BIDDING'))}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
                 activeFilter === 'BIDDING'
                   ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20'
@@ -1104,7 +1104,7 @@ export default function GalleryPageClient() {
             </button>
 
             <button
-              onClick={() => setActiveFilter('NOT_FOR_SALE')}
+              onClick={() => startTransition(() => setActiveFilter('NOT_FOR_SALE'))}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
                 activeFilter === 'NOT_FOR_SALE'
                   ? 'bg-slate-500 text-white border-slate-500 shadow-md'
@@ -1123,7 +1123,7 @@ export default function GalleryPageClient() {
             </div>
 
             <button
-              onClick={() => setSelectedMedium('ALL')}
+              onClick={() => startTransition(() => setSelectedMedium('ALL'))}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer shrink-0 border ${
                 selectedMedium === 'ALL'
                   ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-sm'
@@ -1138,7 +1138,7 @@ export default function GalleryPageClient() {
               return (
                 <button
                   key={med}
-                  onClick={() => setSelectedMedium(isActive ? 'ALL' : med)}
+                  onClick={() => startTransition(() => setSelectedMedium(isActive ? 'ALL' : med))}
                   className={`px-3 py-1 rounded-full text-xs transition-all duration-200 cursor-pointer shrink-0 border ${
                     isActive
                       ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-sm'
@@ -1152,7 +1152,7 @@ export default function GalleryPageClient() {
 
             {selectedMedium !== 'ALL' && (
               <button
-                onClick={() => setSelectedMedium('ALL')}
+                onClick={() => startTransition(() => setSelectedMedium('ALL'))}
                 className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline shrink-0 ml-1 px-1 cursor-pointer font-semibold"
               >
                 Clear

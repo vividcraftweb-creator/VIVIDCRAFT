@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, startTransition } from 'react';
 import {
   Sparkles,
   Star,
@@ -22,10 +22,47 @@ import { CrewMember } from '@/types/crew';
 import { ManualReview } from '@/types/reviews';
 import { createClient } from '@/lib/supabase/client';
 
+export const DEFAULT_FEATURED_MEMBER: CrewMember = {
+  id: 'crew-default-1',
+  name: 'Elena Rostova',
+  position: 'Chief Art Curator & Valuation Lead',
+  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+  short_bio: 'Art is not merely what we see, but the emotional truth we are brave enough to feel.',
+  full_story: 'Elena leads our curation board with over a decade of prestigious gallery direction across Paris, Vienna, and London. She specializes in authenticating physical and digital fine art masterworks. Under her curation, Vivid Art connects extraordinary talent with discerning patrons worldwide.',
+  is_featured: true,
+  display_order: 1,
+  created_at: '2026-01-01T00:00:00Z',
+};
+
+export const DEFAULT_CURATED_REVIEWS: ManualReview[] = [
+  {
+    id: 'rev-default-1',
+    author_name: 'Julian Sterling',
+    author_role: 'Private Art Collector & Patron',
+    avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
+    rating: 5,
+    content: 'Vivid Art has completely transformed how I acquire curated originals. The direct dialogue with artists and verified valuation standards provide an experience rivaling London\'s top auction houses.',
+    is_active: true,
+    display_order: 1,
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'rev-default-2',
+    author_name: 'Sophia Laurent',
+    author_role: 'Architectural Design Director, Paris',
+    avatar_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+    rating: 5,
+    content: 'Finding master artists capable of executing large-scale bespoke commissions on deadline was notoriously difficult. Vivid Art delivers verified craftsmanship and absolute transparency every time.',
+    is_active: true,
+    display_order: 2,
+    created_at: '2026-01-01T00:00:00Z',
+  },
+];
+
 export function FeaturedCrew() {
-  const [featuredMember, setFeaturedMember] = useState<CrewMember | null>(null);
-  const [reviews, setReviews] = useState<ManualReview[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [featuredMember, setFeaturedMember] = useState<CrewMember>(DEFAULT_FEATURED_MEMBER);
+  const [reviews, setReviews] = useState<ManualReview[]>(DEFAULT_CURATED_REVIEWS);
+  const [isLoading, setIsLoading] = useState(false);
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
 
   useEffect(() => {
@@ -34,14 +71,28 @@ export function FeaturedCrew() {
 
     async function loadCrew() {
       try {
-        const { data: crewData } = await supabase
+        const { data: crewData, error } = await supabase
           .from('crew_members')
           .select('*')
           .order('display_order', { ascending: true });
 
-        if (Array.isArray(crewData) && isMounted) {
-          const featured = crewData.find((c: CrewMember) => c.is_featured) || crewData[0] || null;
-          setFeaturedMember(featured);
+        if (!error && Array.isArray(crewData) && crewData.length > 0 && isMounted) {
+          const featured = crewData.find((c: CrewMember) => c.is_featured) || crewData[0];
+          if (featured) {
+            setFeaturedMember(featured);
+          }
+          return;
+        }
+
+        const res = await fetch('/api/crew');
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.crew && Array.isArray(json.crew) && json.crew.length > 0 && isMounted) {
+            const featured = json.crew.find((c: CrewMember) => c.is_featured) || json.crew[0];
+            if (featured) {
+              setFeaturedMember(featured);
+            }
+          }
         }
       } catch (err) {
         console.warn('Failed to load featured crew:', err);
@@ -50,14 +101,23 @@ export function FeaturedCrew() {
 
     async function loadReviews() {
       try {
-        const { data: revData } = await supabase
+        const { data: revData, error } = await supabase
           .from('manual_reviews')
           .select('*')
           .eq('is_active', true)
           .order('display_order', { ascending: true });
 
-        if (Array.isArray(revData) && isMounted) {
+        if (!error && Array.isArray(revData) && revData.length > 0 && isMounted) {
           setReviews(revData);
+          return;
+        }
+
+        const res = await fetch('/api/reviews');
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.reviews && Array.isArray(json.reviews) && json.reviews.length > 0 && isMounted) {
+            setReviews(json.reviews);
+          }
         }
       } catch (err) {
         console.warn('Failed to load manual reviews:', err);
@@ -99,36 +159,8 @@ export function FeaturedCrew() {
     };
   }, []);
 
-  // Sleek pulse skeleton while loading
-  if (isLoading && !featuredMember && reviews.length === 0) {
-    return (
-      <section className="relative w-full py-16 sm:py-24 bg-gradient-to-b from-slate-950 via-amber-950/15 to-slate-950 border-b border-amber-900/30 overflow-hidden">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          {/* Skeleton Featured Crew */}
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-8">
-              <div className="h-6 w-48 bg-amber-500/10 rounded-full mx-auto animate-pulse mb-3" />
-              <div className="h-8 w-72 bg-slate-800 rounded-lg mx-auto animate-pulse" />
-            </div>
-            <div className="rounded-3xl p-6 sm:p-10 bg-slate-900/60 border border-slate-800 animate-pulse grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-              <div className="md:col-span-5 h-72 bg-slate-800 rounded-2xl" />
-              <div className="md:col-span-7 space-y-4">
-                <div className="h-4 w-32 bg-slate-800 rounded" />
-                <div className="h-7 w-64 bg-slate-800 rounded" />
-                <div className="h-20 bg-slate-800/60 rounded-xl" />
-                <div className="h-10 w-36 bg-slate-800 rounded-xl" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  // If loading finished and neither featured member nor reviews exist, render nothing
-  if (!featuredMember && reviews.length === 0) {
-    return null;
-  }
+  const activeMember = featuredMember || DEFAULT_FEATURED_MEMBER;
+  const activeReviews = reviews.length > 0 ? reviews : DEFAULT_CURATED_REVIEWS;
 
   return (
     <section className="relative w-full py-16 sm:py-24 bg-gradient-to-b from-slate-950 via-amber-950/15 to-slate-950 border-b border-amber-900/30 overflow-hidden">
@@ -141,7 +173,7 @@ export function FeaturedCrew() {
         {/* ============================================================ */}
         {/* PART 1: FEATURED CREW MEMBER SHOWCASE (Large Image + Bio)   */}
         {/* ============================================================ */}
-        {featuredMember && (
+        {activeMember && (
           <div className="max-w-6xl mx-auto">
             {/* Section Badge */}
             <div className="text-center mb-10 sm:mb-14">
@@ -168,8 +200,8 @@ export function FeaturedCrew() {
                 <div className="md:col-span-5 flex justify-center">
                   <div className="relative w-full max-w-[340px] md:max-w-none aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden ring-4 ring-amber-500/30 shadow-2xl group">
                     <img
-                      src={featuredMember.avatar_url}
-                      alt={featuredMember.name}
+                      src={activeMember.avatar_url}
+                      alt={activeMember.name}
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
@@ -186,30 +218,30 @@ export function FeaturedCrew() {
                 <div className="md:col-span-7 space-y-4 sm:space-y-5 text-left">
                   <div>
                     <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-amber-400 uppercase tracking-wider mb-1">
-                      <span>{featuredMember.position}</span>
+                      <span>{activeMember.position}</span>
                     </div>
                     <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight">
-                      {featuredMember.name}
+                      {activeMember.name}
                     </h3>
                   </div>
 
                   {/* Short Bio / Highlight */}
                   <div className="p-4 rounded-xl bg-slate-950/60 border border-amber-500/20 text-slate-300 text-sm sm:text-base leading-relaxed">
                     <p className="font-medium text-amber-200/90 mb-1">
-                      &ldquo;{featuredMember.short_bio}&rdquo;
+                      &ldquo;{activeMember.short_bio}&rdquo;
                     </p>
                   </div>
 
                   {/* Truncated Description */}
                   <p className="text-slate-400 text-sm sm:text-base leading-relaxed line-clamp-3">
-                    {featuredMember.full_story || featuredMember.short_bio}
+                    {activeMember.full_story || activeMember.short_bio}
                   </p>
 
                   {/* CTA / See More Button */}
                   <div className="pt-2">
                     <Button
                       type="button"
-                      onClick={() => setIsStoryModalOpen(true)}
+                      onClick={() => startTransition(() => setIsStoryModalOpen(true))}
                       className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-xl shadow-amber-500/20 hover:scale-105 transition-all duration-200 cursor-pointer"
                     >
                       <BookOpen className="w-4 h-4" />
@@ -226,7 +258,7 @@ export function FeaturedCrew() {
         {/* ============================================================ */}
         {/* PART 2: DYNAMIC MANUAL REVIEWS SECTION                       */}
         {/* ============================================================ */}
-        {reviews.length > 0 && (
+        {activeReviews.length > 0 && (
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-10 sm:mb-12">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-semibold tracking-wide uppercase shadow-sm shadow-yellow-950/40 mb-3">
@@ -243,7 +275,7 @@ export function FeaturedCrew() {
 
             {/* Reviews Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-              {reviews.map((rev) => (
+              {activeReviews.map((rev) => (
                 <div
                   key={rev.id}
                   className="relative rounded-2xl p-6 sm:p-7 bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 shadow-xl shadow-black/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between group"
@@ -308,7 +340,7 @@ export function FeaturedCrew() {
       {/* ============================================================ */}
       {/* CREW STORY MODAL                                            */}
       {/* ============================================================ */}
-      {featuredMember && (
+      {activeMember && (
         <Dialog open={isStoryModalOpen} onOpenChange={setIsStoryModalOpen}>
           <DialogContent className="max-w-2xl bg-slate-900 border border-amber-500/40 text-white rounded-3xl p-6 sm:p-8 max-h-[88vh] overflow-y-auto shadow-2xl">
             <DialogHeader className="text-left space-y-2">
@@ -317,10 +349,10 @@ export function FeaturedCrew() {
                 <span>Full Crew Member Story</span>
               </div>
               <DialogTitle className="text-2xl sm:text-3xl font-bold text-white">
-                {featuredMember.name}
+                {activeMember.name}
               </DialogTitle>
               <DialogDescription className="text-sm font-semibold text-amber-400">
-                {featuredMember.position}
+                {activeMember.position}
               </DialogDescription>
             </DialogHeader>
 
@@ -328,14 +360,14 @@ export function FeaturedCrew() {
               {/* Image Banner */}
               <div className="relative w-full h-56 sm:h-72 rounded-2xl overflow-hidden ring-2 ring-amber-500/30 shadow-xl">
                 <img
-                  src={featuredMember.avatar_url}
-                  alt={featuredMember.name}
+                  src={activeMember.avatar_url}
+                  alt={activeMember.name}
                   className="w-full h-full object-cover object-center"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent pointer-events-none" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <p className="text-xs sm:text-sm font-medium text-amber-200 drop-shadow">
-                    &ldquo;{featuredMember.short_bio}&rdquo;
+                    &ldquo;{activeMember.short_bio}&rdquo;
                   </p>
                 </div>
               </div>
@@ -347,10 +379,10 @@ export function FeaturedCrew() {
                   Creative Journey &amp; Impact
                 </h4>
                 <p>
-                  {featuredMember.full_story || featuredMember.short_bio}
+                  {activeMember.full_story || activeMember.short_bio}
                 </p>
                 <p className="text-xs sm:text-sm text-slate-400">
-                  At Vivid Art, {featuredMember.name} works directly with verified creators and world-class patrons, ensuring every commission and curated piece represents the pinnacle of artistic integrity.
+                  At Vivid Art, {activeMember.name} works directly with verified creators and world-class patrons, ensuring every commission and curated piece represents the pinnacle of artistic integrity.
                 </p>
               </div>
 
@@ -358,7 +390,7 @@ export function FeaturedCrew() {
               <div className="flex justify-end pt-4 border-t border-slate-800">
                 <Button
                   type="button"
-                  onClick={() => setIsStoryModalOpen(false)}
+                  onClick={() => startTransition(() => setIsStoryModalOpen(false))}
                   className="px-6 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm cursor-pointer"
                 >
                   Close Story

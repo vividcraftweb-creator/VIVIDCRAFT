@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, startTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
@@ -50,6 +50,18 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  const toggleMobileMenu = () => {
+    startTransition(() => {
+      setIsMobileMenuOpen((prev) => !prev);
+    });
+  };
+
+  const closeMobileMenu = () => {
+    startTransition(() => {
+      setIsMobileMenuOpen(false);
+    });
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -294,7 +306,7 @@ const Header = () => {
 
               {/* Mobile Menu Button */}
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                onClick={toggleMobileMenu}
                 className="lg:hidden h-9 w-9 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex items-center justify-center text-slate-700 dark:text-white"
                 aria-label="Toggle mobile menu"
               >
@@ -479,7 +491,7 @@ const Header = () => {
                 <Link
                   key={item.name}
                   href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={closeMobileMenu}
                   className={`block text-2xl font-medium transition-all duration-200 ${
                     isActive(item.href)
                       ? 'text-white'
@@ -508,7 +520,7 @@ const Header = () => {
                       </div>
                       <Link
                         href="/admin"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={closeMobileMenu}
                         className="flex items-center gap-3 text-xl font-medium text-amber-400 hover:text-amber-300 transition-all hover:translate-x-2"
                       >
                         <Shield className="h-5 w-5" />
@@ -516,7 +528,7 @@ const Header = () => {
                       </Link>
                       <Link
                         href="/gallery?upload=true"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={closeMobileMenu}
                         className="flex items-center gap-3 text-xl font-medium text-amber-400 hover:text-amber-300 transition-all hover:translate-x-2"
                       >
                         <UploadCloud className="h-5 w-5" />
@@ -524,7 +536,7 @@ const Header = () => {
                       </Link>
                       <Link
                         href="/dashboard"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={closeMobileMenu}
                         className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
                       >
                         <Briefcase className="h-5 w-5" />
@@ -537,7 +549,7 @@ const Header = () => {
                     <>
                       <Link
                         href="/dashboard"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={closeMobileMenu}
                         className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
                       >
                         <Briefcase className="h-5 w-5" />
@@ -545,7 +557,7 @@ const Header = () => {
                       </Link>
                       <Link
                         href="/profile"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={closeMobileMenu}
                         className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
                       >
                         <UserIcon className="h-5 w-5" />
@@ -557,7 +569,7 @@ const Header = () => {
                   {isBuyerOrClient && (
                     <Link
                       href="/profile"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
                     >
                       <UserIcon className="h-5 w-5" />
@@ -567,7 +579,7 @@ const Header = () => {
 
                   <Link
                     href="/notifications"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={closeMobileMenu}
                     className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
                   >
                     <Bell className="h-5 w-5" />
@@ -579,7 +591,7 @@ const Header = () => {
                 {/* Sign Out */}
                 <button
                   onClick={() => {
-                    setIsMobileMenuOpen(false);
+                    closeMobileMenu();
                     handleSignOut();
                   }}
                   className="flex items-center gap-3 text-xl font-medium text-red-400 hover:text-red-300 transition-all hover:translate-x-2"
@@ -592,14 +604,14 @@ const Header = () => {
               <div className="space-y-4">
                 <Link
                   href="/auth/signin"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={closeMobileMenu}
                   className="block w-full text-center py-3 text-lg font-medium text-white/70 hover:text-white border border-white/20 rounded-full hover:bg-white/10 transition-all hover:scale-105"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/auth/signup"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={closeMobileMenu}
                   className="block w-full text-center py-3 text-lg font-medium bg-white text-gray-900 hover:bg-white/90 rounded-full transition-all hover:scale-105"
                 >
                   Get Started

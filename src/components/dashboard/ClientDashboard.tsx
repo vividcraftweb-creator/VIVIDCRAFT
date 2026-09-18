@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, startTransition } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth as useSession } from '@/hooks/useAuth';
 import { trpc } from '@/utils/trpc';
@@ -28,11 +28,10 @@ import ProfileView from './ProfileView';
 import SettingsView from './SettingsView';
 import RecommendationsSection from './RecommendationsSection';
 import AnalyticsView from './AnalyticsView';
-import dynamic from 'next/dynamic';
-
-const SubscriptionView = dynamic(() => import('./SubscriptionView'), { ssr: false });
+import SubscriptionView from './SubscriptionView';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import {
   Select,
@@ -70,21 +69,25 @@ export default function ClientDashboard() {
   const [jobFilter, setJobFilter] = useState<'all' | 'open' | 'under-review' | 'closed'>('all');
   const [isProfileEditMode, setIsProfileEditMode] = useState(false);
 
-  // Sync activeTab with URL parameter from sidebar navigation
+  // Sync activeTab with URL parameter from sidebar navigation with startTransition
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'verification') {
       router.replace('/dashboard?tab=overview');
-      setActiveTab('dashboard');
+      startTransition(() => {
+        setActiveTab('dashboard');
+      });
       return;
     }
-    if (tabParam === 'overview') {
-      setActiveTab('dashboard');
-    } else if (tabParam && ['dashboard', 'subscription', 'team', 'projects', 'support', 'crm', 'myjobs', 'messages', 'apikeys', 'webhooks', 'profile', 'settings', 'analytics'].includes(tabParam)) {
-      setActiveTab(tabParam as typeof activeTab);
-    } else {
-      setActiveTab('dashboard');
-    }
+    startTransition(() => {
+      if (tabParam === 'overview') {
+        setActiveTab('dashboard');
+      } else if (tabParam && ['dashboard', 'subscription', 'team', 'projects', 'support', 'crm', 'myjobs', 'messages', 'apikeys', 'webhooks', 'profile', 'settings', 'analytics'].includes(tabParam)) {
+        setActiveTab(tabParam as typeof activeTab);
+      } else {
+        setActiveTab('dashboard');
+      }
+    });
   }, [searchParams, router]);
 
   // Sync profile edit mode with URL parameter

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArtworkCard, type ArtworkItem } from './ArtworkCard';
 
@@ -12,7 +12,7 @@ interface GalleryGridProps {
   onArtworkDeleted?: (artworkId: string) => void;
 }
 
-export function GalleryGrid({
+export function GalleryGridComponent({
   artworks,
   artistName,
   className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6',
@@ -24,8 +24,20 @@ export function GalleryGrid({
 
   // Synchronize when incoming artworks prop updates
   useEffect(() => {
-    setItems(artworks || []);
+    startTransition(() => {
+      setItems(artworks || []);
+    });
   }, [artworks]);
+
+  const handleDelete = useCallback((deletedId: string) => {
+    startTransition(() => {
+      setItems((prev) => prev.filter((art) => art.id !== deletedId));
+    });
+    if (onArtworkDeleted) onArtworkDeleted(deletedId);
+    startTransition(() => {
+      router.refresh();
+    });
+  }, [onArtworkDeleted, router]);
 
   // Instant deletion listener across all users and components
   useEffect(() => {
@@ -33,21 +45,13 @@ export function GalleryGrid({
       const customEvent = e as CustomEvent<{ id: string }>;
       const deletedId = customEvent.detail?.id;
       if (deletedId) {
-        setItems((prev) => prev.filter((art) => art.id !== deletedId));
-        if (onArtworkDeleted) onArtworkDeleted(deletedId);
-        router.refresh();
+        handleDelete(deletedId);
       }
     };
 
     window.addEventListener('artwork-deleted', handleArtworkDeleted);
     return () => window.removeEventListener('artwork-deleted', handleArtworkDeleted);
-  }, [onArtworkDeleted, router]);
-
-  const handleDelete = (deletedId: string) => {
-    setItems((prev) => prev.filter((art) => art.id !== deletedId));
-    if (onArtworkDeleted) onArtworkDeleted(deletedId);
-    router.refresh();
-  };
+  }, [handleDelete]);
 
   if (!items || items.length === 0) {
     return (
@@ -71,4 +75,5 @@ export function GalleryGrid({
   );
 }
 
+export const GalleryGrid = memo(GalleryGridComponent);
 export default GalleryGrid;

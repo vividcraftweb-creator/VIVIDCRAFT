@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, startTransition } from 'react';
 import { trpc } from '@/utils/trpc';
 import { MAX_FILE_SIZE_MB, isValidFileSize, getFileSizeErrorMessage, formatFileSize } from '@/lib/constants/file-upload';
 import { toast } from 'sonner';
@@ -518,7 +518,7 @@ export default function EnhancedProjectManagement() {
           ]).map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => startTransition(() => setActiveTab(tab.key))}
               className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                 activeTab === tab.key
                   ? 'bg-primary/20 text-primary border border-primary/30'
@@ -657,13 +657,13 @@ export default function EnhancedProjectManagement() {
                 </p>
                 <div className="flex items-center justify-center gap-3">
                   <button
-                    onClick={() => setActiveTab('milestones')}
+                    onClick={() => startTransition(() => setActiveTab('milestones'))}
                     className="px-4 py-2 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors text-sm"
                   >
                     Create Milestone
                   </button>
                   <button
-                    onClick={() => setActiveTab('files')}
+                    onClick={() => startTransition(() => setActiveTab('files'))}
                     className="px-4 py-2 bg-white/5 text-foreground rounded-lg hover:bg-white/10 transition-colors text-sm"
                   >
                     Upload Files

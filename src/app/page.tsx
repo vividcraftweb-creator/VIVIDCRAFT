@@ -4,7 +4,6 @@ import HomeHero from '@/components/landing/HomeHero';
 import Benefits from '@/components/landing/Benefits';
 import { CrewMarquee } from '@/components/CrewMarquee';
 import { FeaturedCrew } from '@/components/FeaturedCrew';
-import CTA from '@/components/landing/CTA';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Home',
@@ -31,7 +30,6 @@ export default function HomePage() {
       <CrewMarquee />
       {/* YELLOW SECTION - Featured Crew Showcase & Manual Reviews */}
       <FeaturedCrew />
-      <CTA />
     </div>
   );
 }

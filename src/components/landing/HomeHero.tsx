@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -140,13 +140,15 @@ export function HomeHero() {
       : fallbackArtworks.slice(0, 8)
   ) as ArtworkItem[];
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (!searchQuery.trim()) return;
     trackEvent('hero_search_submit', { query: searchQuery });
-    router.push(`/gallery?search=${encodeURIComponent(searchQuery.trim())}`);
-  };
+    startTransition(() => {
+      router.push(`/gallery?search=${encodeURIComponent(searchQuery.trim())}`);
+    });
+  }, [searchQuery, router]);
 
-  const scrollSlider = (direction: 'left' | 'right') => {
+  const scrollSlider = useCallback((direction: 'left' | 'right') => {
     if (sliderRef.current) {
       const scrollAmount = 320;
       sliderRef.current.scrollBy({
@@ -154,7 +156,7 @@ export function HomeHero() {
         behavior: 'smooth',
       });
     }
-  };
+  }, []);
 
   return (
     <section

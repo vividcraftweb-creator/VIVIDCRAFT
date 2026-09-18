@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo, startTransition } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Heart, ZoomIn, Star, User, Trash2 } from 'lucide-react';
@@ -81,7 +81,7 @@ export interface ArtworkCardProps {
   onDelete?: (artworkId: string) => void;
 }
 
-export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: ArtworkCardProps) {
+export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDelete }: ArtworkCardProps) {
   // Requirement 1: Instant deletion state across gallery
   const [isDeleted, setIsDeleted] = useState(false);
 
@@ -89,7 +89,9 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
     const handleArtworkDeleted = (e: Event) => {
       const customEvent = e as CustomEvent<{ id: string }>;
       if (customEvent.detail?.id === artwork.id) {
-        setIsDeleted(true);
+        startTransition(() => {
+          setIsDeleted(true);
+        });
       }
     };
     window.addEventListener('artwork-deleted', handleArtworkDeleted);
@@ -137,19 +139,23 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
 
   const toggleLikeMutation = trpc.artworks.toggleLike.useMutation({
     onSuccess: (data) => {
-      setIsLiked(data.liked);
-      setLikesCount(data.likesCount);
+      startTransition(() => {
+        setIsLiked(data.liked);
+        setLikesCount(data.likesCount);
+      });
       utils.artworks.getArtistArtworks.invalidate({ artistId: artwork.artist_id });
     },
     onError: (err) => {
       // Revert optimistic state
-      setIsLiked((prev) => !prev);
-      setLikesCount((prev) => (isLiked ? prev + 1 : Math.max(0, prev - 1)));
+      startTransition(() => {
+        setIsLiked((prev) => !prev);
+        setLikesCount((prev) => (isLiked ? prev + 1 : Math.max(0, prev - 1)));
+      });
       toast.error(err.message || 'Failed to update like');
     },
   });
 
-  const handleLikeClick = (e: React.MouseEvent) => {
+  const handleLikeClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (!isAuthenticated) {
@@ -168,20 +174,24 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
       return;
     }
 
-    // Optimistic toggle
+    // Optimistic toggle with startTransition for 0ms click latency
     const nextLiked = !isLiked;
-    setIsLiked(nextLiked);
-    setLikesCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
+    startTransition(() => {
+      setIsLiked(nextLiked);
+      setLikesCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
+    });
 
     toggleLikeMutation.mutate({ artworkId: artwork.id });
-  };
+  }, [isAuthenticated, isLiked, artwork.id, toggleLikeMutation, router]);
 
-  const handleDeleteClick = async (e: React.MouseEvent) => {
+  const handleDeleteClick = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm(`Are you sure you want to delete "${artwork.title}"?`)) return;
 
-    // Instant optimistic removal from UI
-    setIsDeleted(true);
+    // Instant optimistic removal from UI with startTransition
+    startTransition(() => {
+      setIsDeleted(true);
+    });
     if (onDelete) onDelete(artwork.id);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('artwork-deleted', { detail: { id: artwork.id } }));
@@ -212,7 +222,9 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
       if (error) {
         console.error('Delete error:', error);
         alert('Delete failed: ' + error.message);
-        setIsDeleted(false);
+        startTransition(() => {
+          setIsDeleted(false);
+        });
       } else {
         // Force window reload to immediately purge client/server cache across all sessions
         window.location.href = window.location.pathname + '?refresh=' + Date.now();
@@ -220,9 +232,11 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
     } catch (err: any) {
       console.error('Delete error:', err);
       alert('Delete failed: ' + (err?.message || 'Unknown error'));
-      setIsDeleted(false);
+      startTransition(() => {
+        setIsDeleted(false);
+      });
     }
-  };
+  }, [artwork.id, artwork.title, artwork.artist_id, onDelete]);
 
   if (isDeleted) return null;
 
@@ -281,7 +295,7 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
             <div className="flex items-start justify-between gap-2">
               {/* Title */}
               <h3
-                onClick={() => setIsZoomOpen(true)}
+                onClick={() => startTransition(() => setIsZoomOpen(true))}
                 className="truncate font-semibold text-slate-900 dark:text-slate-100 text-base cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex-1"
                 title={artwork.title}
               >
@@ -438,7 +452,7 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
               {/* Expand / Details CTA */}
               <button
                 type="button"
-                onClick={() => setIsZoomOpen(true)}
+                onClick={() => startTransition(() => setIsZoomOpen(true))}
                 aria-label="View artwork details and comments"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-white/80 dark:bg-slate-800/80 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 cursor-pointer"
               >
@@ -466,7 +480,7 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
       {/* Lightbox / Expanded Artwork Modal with Comments */}
       <ArtworkModal
         isOpen={isZoomOpen}
-        onClose={() => setIsZoomOpen(false)}
+        onClose={() => startTransition(() => setIsZoomOpen(false))}
         artwork={artwork}
         artistName={artistName}
         likesCount={likesCount}
@@ -476,3 +490,6 @@ export function ArtworkCard({ artwork, artistName: artistNameProp, onDelete }: A
     </>
   );
 }
+
+export const ArtworkCard = memo(ArtworkCardComponent);
+export default ArtworkCard;
