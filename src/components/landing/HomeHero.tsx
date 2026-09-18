@@ -51,166 +51,126 @@ export function HomeHero() {
       setLoadingArtists(true);
       try {
         const supabase = createClient();
-        let { data, error } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home, is_verified, title, professional_title, bio, skills')
-          .eq('show_on_home', true)
-          .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true')
-          .neq('role', 'client')
-          .neq('role', 'CLIENT')
-          .neq('role', 'admin')
-          .neq('role', 'ADMIN')
-          .order('display_order', { ascending: true });
+        let profilesData: any[] | null = null;
 
-        // Fallback if is_artist column does not exist on remote database yet
-        if (error) {
-          console.warn('HomeHero artist query notice (falling back):', error.message);
-          const fallback = await supabase
+        // 1. Primary query: safely requesting ONLY existing schema fields
+        try {
+          const { data, error } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home, is_verified, title, professional_title, bio, skills')
+            .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home')
             .eq('show_on_home', true)
-            .or('role.eq.artist,role.eq.ARTIST,role.ilike.%artist%')
-            .neq('role', 'client')
-            .neq('role', 'CLIENT')
-            .neq('role', 'admin')
-            .neq('role', 'ADMIN')
             .order('display_order', { ascending: true });
 
-          if (!fallback.error && fallback.data) {
-            data = fallback.data;
-            error = null;
+          if (!error && Array.isArray(data) && data.length > 0) {
+            profilesData = data;
+          } else if (error) {
+            console.warn('HomeHero profiles select notice (handled):', error.message);
+          }
+        } catch (dbErr) {
+          console.warn('Direct profiles query error (handled):', dbErr);
+        }
+
+        // 2. Fallback query via internal API if direct select returned no data or errored
+        if (!profilesData || profilesData.length === 0) {
+          try {
+            const res = await fetch('/api/admin/artists/order?home=true');
+            if (res.ok) {
+              const json = await res.json();
+              if (json?.artists && Array.isArray(json.artists)) {
+                profilesData = json.artists;
+              }
+            }
+          } catch (apiErr) {
+            console.warn('Fallback /api/admin/artists/order error (handled):', apiErr);
           }
         }
 
-        if (!error && Array.isArray(data)) {
-          // Strict client-side filter: only artist role / is_artist, strictly exclude client and admin
-          const validArtists = data.filter((p: any) => {
-            const role = (p.role || '').toLowerCase();
-            const isArtist = Boolean(p.is_artist);
-            if (role === 'client' || role === 'admin') return false;
-            return role === 'artist' || isArtist || role.includes('artist');
-          });
+        // 3. Fallback: query without show_on_home if the column was missing on remote database
+        if (!profilesData || profilesData.length === 0) {
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('id, first_name, last_name, email, role, avatar_url, banner_url')
+              .limit(12);
 
-          const sorted = [...validArtists].sort(
-            (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
-          );
-
-          // Calculate actual dynamic ratings from database reviews table
-          const artistIds = sorted.map((a: any) => a.id).filter(Boolean);
-          const ratingsMap: Record<string, { avgRating: number; count: number }> = {};
-
-          if (artistIds.length > 0) {
-            try {
-              const { data: revs } = await supabase
-                .from('reviews')
-                .select('artist_id, rating')
-                .in('artist_id', artistIds);
-
-              let allRevs: any[] = Array.isArray(revs) ? revs : [];
-
-              // Fallback to artist_reviews if reviews table had 0 rows
-              if (allRevs.length === 0) {
-                try {
-                  const { data: fbRevs } = await supabase
-                    .from('artist_reviews')
-                    .select('artist_id, rating')
-                    .in('artist_id', artistIds);
-                  if (Array.isArray(fbRevs)) {
-                    allRevs = fbRevs;
-                  }
-                } catch {}
-              }
-
-              if (allRevs.length > 0) {
-                const accum: Record<string, { sum: number; count: number }> = {};
-                for (const r of allRevs) {
-                  const aid = r.artist_id;
-                  const val = Number(r.rating);
-                  if (aid && !isNaN(val) && val > 0) {
-                    if (!accum[aid]) accum[aid] = { sum: 0, count: 0 };
-                    accum[aid].sum += val;
-                    accum[aid].count += 1;
-                  }
-                }
-                for (const aid in accum) {
-                  ratingsMap[aid] = {
-                    avgRating: accum[aid].sum / accum[aid].count,
-                    count: accum[aid].count,
-                  };
-                }
-              }
-            } catch (revErr) {
-              console.warn('Reviews query notice in HomeHero:', revErr);
+            if (!error && Array.isArray(data)) {
+              profilesData = data;
             }
+          } catch (broadErr) {
+            console.warn('Broad profiles fallback error (handled):', broadErr);
           }
+        }
 
-          const merged = sorted.map((artist: any) => ({
-            ...artist,
-            ratingInfo: ratingsMap[artist.id] || null,
-          }));
+        // Strict client-side filter: only artist role / is_artist, strictly exclude client and admin
+        const validArtists = (profilesData || []).filter((p: any) => {
+          const role = (p.role || '').toLowerCase();
+          const isArtist = Boolean(p.is_artist);
+          if (role === 'client' || role === 'admin') return false;
+          return role === 'artist' || isArtist || role.includes('artist');
+        });
 
-          if (isMounted) setArtists(merged);
-        } else {
-          const res = await fetch('/api/admin/artists/order?home=true');
-          const json = await res.json();
-          if (json?.artists && isMounted) {
-            const validArtists = json.artists.filter((p: any) => {
-              const role = (p.role || '').toLowerCase();
-              return role !== 'client' && role !== 'admin';
-            });
+        const sorted = [...validArtists].sort(
+          (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
+        );
 
-            const artistIds = validArtists.map((a: any) => a.id).filter(Boolean);
-            const ratingsMap: Record<string, { avgRating: number; count: number }> = {};
+        // Calculate actual dynamic ratings from database reviews table
+        const artistIds = sorted.map((a: any) => a.id).filter(Boolean);
+        const ratingsMap: Record<string, { avgRating: number; count: number }> = {};
 
-            if (artistIds.length > 0) {
+        if (artistIds.length > 0) {
+          try {
+            const { data: revs, error: revErr } = await supabase
+              .from('reviews')
+              .select('artist_id, rating')
+              .in('artist_id', artistIds);
+
+            let allRevs: any[] = (!revErr && Array.isArray(revs)) ? revs : [];
+
+            // Fallback to artist_reviews if reviews table had 0 rows or error
+            if (allRevs.length === 0) {
               try {
-                const { data: revs } = await supabase
-                  .from('reviews')
+                const { data: fbRevs, error: fbErr } = await supabase
+                  .from('artist_reviews')
                   .select('artist_id, rating')
                   .in('artist_id', artistIds);
-
-                let allRevs: any[] = Array.isArray(revs) ? revs : [];
-
-                if (allRevs.length === 0) {
-                  try {
-                    const { data: fbRevs } = await supabase
-                      .from('artist_reviews')
-                      .select('artist_id, rating')
-                      .in('artist_id', artistIds);
-                    if (Array.isArray(fbRevs)) allRevs = fbRevs;
-                  } catch {}
-                }
-
-                if (allRevs.length > 0) {
-                  const accum: Record<string, { sum: number; count: number }> = {};
-                  for (const r of allRevs) {
-                    const aid = r.artist_id;
-                    const val = Number(r.rating);
-                    if (aid && !isNaN(val) && val > 0) {
-                      if (!accum[aid]) accum[aid] = { sum: 0, count: 0 };
-                      accum[aid].sum += val;
-                      accum[aid].count += 1;
-                    }
-                  }
-                  for (const aid in accum) {
-                    ratingsMap[aid] = {
-                      avgRating: accum[aid].sum / accum[aid].count,
-                      count: accum[aid].count,
-                    };
-                  }
+                if (!fbErr && Array.isArray(fbRevs)) {
+                  allRevs = fbRevs;
                 }
               } catch {}
             }
 
-            const merged = validArtists.map((artist: any) => ({
-              ...artist,
-              ratingInfo: ratingsMap[artist.id] || null,
-            }));
-            setArtists(merged);
+            if (allRevs.length > 0) {
+              const accum: Record<string, { sum: number; count: number }> = {};
+              for (const r of allRevs) {
+                const aid = r.artist_id;
+                const val = Number(r.rating);
+                if (aid && !isNaN(val) && val > 0) {
+                  if (!accum[aid]) accum[aid] = { sum: 0, count: 0 };
+                  accum[aid].sum += val;
+                  accum[aid].count += 1;
+                }
+              }
+              for (const aid in accum) {
+                ratingsMap[aid] = {
+                  avgRating: accum[aid].sum / accum[aid].count,
+                  count: accum[aid].count,
+                };
+              }
+            }
+          } catch (revErr) {
+            console.warn('Reviews query notice in HomeHero (handled gracefully):', revErr);
           }
         }
+
+        const merged = sorted.map((artist: any) => ({
+          ...artist,
+          ratingInfo: ratingsMap[artist.id] || null,
+        }));
+
+        if (isMounted) setArtists(merged);
       } catch (e) {
-        console.error('Failed to load top artists for hero:', e);
+        console.error('Failed to load top artists for hero (handled gracefully):', e);
+        if (isMounted) setArtists([]);
       } finally {
         if (isMounted) setLoadingArtists(false);
       }
@@ -219,21 +179,33 @@ export function HomeHero() {
     fetchTopArtists();
 
     // Realtime subscription to profiles to reflect name or profile changes immediately
-    const supabase = createClient();
-    const channel = supabase
-      .channel('home_artists_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          fetchTopArtists();
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+    try {
+      const supabase = createClient();
+      channel = supabase
+        .channel('home_artists_realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'profiles' },
+          () => {
+            fetchTopArtists();
+          }
+        )
+        .subscribe((status, err) => {
+          if (err) console.warn('Home artists realtime notice:', err.message);
+        });
+    } catch (realtimeErr) {
+      console.warn('Realtime channel init notice:', realtimeErr);
+    }
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        try {
+          const supabase = createClient();
+          supabase.removeChannel(channel);
+        } catch {}
+      }
     };
   }, []);
 
@@ -245,11 +217,30 @@ export function HomeHero() {
         setLoadingFallback(true);
         try {
           const supabase = createClient();
-          const { data: arts } = await supabase
-            .from('artworks')
-            .select('*')
-            .order('likes_count', { ascending: false })
-            .limit(8);
+          let arts: any[] | null = null;
+          try {
+            const { data, error } = await supabase
+              .from('artworks')
+              .select('*')
+              .order('likes_count', { ascending: false })
+              .limit(8);
+            if (!error && data && data.length > 0) {
+              arts = data;
+            }
+          } catch {}
+
+          if (!arts || arts.length === 0) {
+            try {
+              const { data, error } = await supabase
+                .from('artworks')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(8);
+              if (!error && data && data.length > 0) {
+                arts = data;
+              }
+            } catch {}
+          }
 
           if (arts && arts.length > 0 && isMounted) {
             const formatted = arts.map((art: any) => ({

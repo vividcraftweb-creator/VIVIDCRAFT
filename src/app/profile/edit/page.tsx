@@ -41,6 +41,7 @@ export default function EditProfilePage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [userRole, setUserRole] = useState<string>('CLIENT');
   const hasInitializedRef = useRef(false);
 
@@ -90,6 +91,134 @@ export default function EditProfilePage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Banner image must be less than 5MB');
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      toast.error('Only JPG, PNG, and WebP images are allowed');
+      return;
+    }
+
+    setIsUploadingBanner(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User session not found');
+
+      let publicBannerUrl = '';
+
+      // Direct upload to Supabase storage 'banners' bucket
+      try {
+        const fileExt = file.name ? file.name.split('.').pop() || 'png' : 'png';
+        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+        const filePath = `user-banners/${user.id}/${Date.now()}.${cleanExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('banners')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (!uploadError && uploadData) {
+          const { data: pubData } = supabase.storage.from('banners').getPublicUrl(filePath);
+          if (pubData?.publicUrl) {
+            publicBannerUrl = pubData.publicUrl;
+          }
+        } else if (uploadError) {
+          console.warn('Storage banners upload notice:', uploadError.message);
+        }
+      } catch (directErr) {
+        console.warn('Direct banner upload notice:', directErr);
+      }
+
+      // Fallback via /api/admin/banners/upload
+      if (!publicBannerUrl) {
+        try {
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', file);
+          uploadFormData.append('userId', user.id);
+
+          const response = await fetch('/api/admin/banners/upload', {
+            method: 'POST',
+            body: uploadFormData,
+          });
+
+          if (response.ok) {
+            const resJson = await response.json();
+            publicBannerUrl = resJson.url;
+          }
+        } catch (fbErr) {
+          console.warn('Banner admin upload fallback notice:', fbErr);
+        }
+      }
+
+      if (!publicBannerUrl) {
+        throw new Error('Failed to upload banner image');
+      }
+
+      setFormData((prev) => ({ ...prev, bannerUrl: publicBannerUrl }));
+
+      // Automatically update profiles.banner_url directly in database
+      await supabase
+        .from('profiles')
+        .update({
+          banner_url: publicBannerUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      try {
+        await supabase.auth.updateUser({
+          data: { banner_url: publicBannerUrl },
+        });
+      } catch {}
+
+      toast.success('Cover banner image uploaded and saved successfully!');
+    } catch (err: any) {
+      console.error('Banner upload error:', err);
+      toast.error('Failed to upload cover banner: ' + (err.message || 'Please try again.'));
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
+
+  const handleRemoveBanner = async () => {
+    try {
+      setIsUploadingBanner(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({
+            banner_url: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        try {
+          await supabase.auth.updateUser({
+            data: { banner_url: null },
+          });
+        } catch {}
+      }
+
+      setFormData((prev) => ({ ...prev, bannerUrl: '' }));
+      toast.success('Cover banner removed');
+    } catch (err: any) {
+      toast.error('Failed to remove banner: ' + err.message);
+    } finally {
+      setIsUploadingBanner(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -261,22 +390,17 @@ export default function EditProfilePage() {
                 </div>
               </div>
 
-              {/* Cover Banner Image URL */}
-              <div className="space-y-2">
-                <Label htmlFor="bannerUrl" className="text-sm font-medium text-slate-300">
-                  Cover Banner Image URL
-                </Label>
-                <Input
-                  id="bannerUrl"
-                  name="bannerUrl"
-                  type="url"
-                  value={formData.bannerUrl}
-                  onChange={handleChange}
-                  placeholder="https://images.unsplash.com/..."
-                  className="bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
-                />
-                {formData.bannerUrl && (
-                  <div className="relative w-full h-24 rounded-xl overflow-hidden border border-white/10 mt-2">
+              {/* Cover Banner Image (Direct Storage Upload) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="bannerFile" className="text-sm font-medium text-slate-300">
+                    Cover Banner Image
+                  </Label>
+                  <span className="text-xs text-slate-400">Header on artist showcase card & profile</span>
+                </div>
+
+                {formData.bannerUrl ? (
+                  <div className="relative w-full h-32 sm:h-36 rounded-xl overflow-hidden border border-white/10 bg-slate-900">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={formData.bannerUrl}
@@ -286,10 +410,54 @@ export default function EditProfilePage() {
                         (e.currentTarget as HTMLElement).style.display = 'none';
                       }}
                     />
+                    {isUploadingBanner && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-white text-xs font-semibold">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Uploading banner...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative w-full h-24 rounded-xl border border-dashed border-white/20 bg-slate-950/40 flex items-center justify-center p-4">
+                    {isUploadingBanner ? (
+                      <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-400"></div>
+                        Uploading banner to storage...
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 text-center">
+                        No banner uploaded yet. Default sleek gradient will be displayed.
+                      </p>
+                    )}
                   </div>
                 )}
-                <p className="text-xs text-slate-400">
-                  Displayed as your header cover banner on the home page and public profile.
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <Input
+                    id="bannerFile"
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                    onChange={handleBannerUpload}
+                    disabled={isUploadingBanner}
+                    className="cursor-pointer text-xs bg-slate-950/60 border-white/10 text-white file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400"
+                  />
+                  {formData.bannerUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveBanner}
+                      disabled={isUploadingBanner}
+                      className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border-rose-500/30 shrink-0"
+                    >
+                      Remove Banner
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Direct upload to Supabase Storage (&apos;banners&apos; bucket). Recommended ratio: 3:1 or 16:9 (Max 5MB).
                 </p>
               </div>
 

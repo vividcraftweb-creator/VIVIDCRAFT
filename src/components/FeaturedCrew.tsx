@@ -73,31 +73,53 @@ export function FeaturedCrew() {
         }
       } catch (err) {
         console.warn('Failed to load crew members:', err);
+        if (isMounted) setCrewMembers([]);
       }
     }
 
     async function loadReviews() {
       try {
-        const { data: revData, error } = await supabase
-          .from('manual_reviews')
-          .select('*')
-          .eq('is_active', true)
-          .order('display_order', { ascending: true });
+        let revsLoaded = false;
+        try {
+          const { data: revData, error } = await supabase
+            .from('manual_reviews')
+            .select('*')
+            .eq('is_active', true)
+            .order('display_order', { ascending: true });
 
-        if (!error && Array.isArray(revData) && revData.length > 0 && isMounted) {
-          setReviews(revData);
-          return;
+          if (!error && Array.isArray(revData) && revData.length > 0 && isMounted) {
+            setReviews(revData);
+            revsLoaded = true;
+            return;
+          }
+        } catch (dbErr) {
+          console.warn('Direct manual_reviews query notice (handled gracefully):', dbErr);
         }
 
-        const res = await fetch('/api/reviews');
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.reviews && Array.isArray(json.reviews) && json.reviews.length > 0 && isMounted) {
-            setReviews(json.reviews);
+        if (!revsLoaded) {
+          try {
+            const res = await fetch('/api/reviews');
+            if (res.ok) {
+              const json = await res.json();
+              if (json?.reviews && Array.isArray(json.reviews) && json.reviews.length > 0 && isMounted) {
+                setReviews(json.reviews);
+                revsLoaded = true;
+                return;
+              }
+            }
+          } catch (apiErr) {
+            console.warn('API /api/reviews fallback notice (handled gracefully):', apiErr);
           }
         }
+
+        if (!revsLoaded && isMounted) {
+          setReviews([]);
+        }
       } catch (err) {
-        console.warn('Failed to load manual reviews:', err);
+        console.warn('Failed to load manual reviews (defaulting to empty array):', err);
+        if (isMounted) {
+          setReviews([]);
+        }
       }
     }
 
@@ -111,28 +133,41 @@ export function FeaturedCrew() {
 
     loadAllData();
 
-    // Enable Supabase Realtime subscriptions for both crew and reviews
-    const channel = supabase
-      .channel('featured_crew_and_reviews_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'crew_members' },
-        () => {
-          loadCrew();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'manual_reviews' },
-        () => {
-          loadReviews();
-        }
-      )
-      .subscribe();
+    // Enable Supabase Realtime subscriptions for both crew and reviews safely
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel('featured_crew_and_reviews_realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'crew_members' },
+          () => {
+            loadCrew();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'manual_reviews' },
+          () => {
+            loadReviews();
+          }
+        )
+        .subscribe((status, err) => {
+          if (err) {
+            console.warn('Featured crew realtime subscription notice:', err.message);
+          }
+        });
+    } catch (chanErr) {
+      console.warn('Realtime channel error in FeaturedCrew (handled):', chanErr);
+    }
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
     };
   }, []);
 

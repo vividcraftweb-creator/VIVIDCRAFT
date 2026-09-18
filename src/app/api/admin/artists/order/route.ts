@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const adminClient = createAdminClient();
     let query = adminClient
       .from('profiles')
-      .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home');
+      .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home');
 
     if (onlyHome) {
       // Users where role = 'artist' (or is_artist = true) AND show_on_home = true, excluding client and admin
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
       console.warn('Primary artist query notice (falling back):', error.message);
       let fallbackQuery = adminClient
         .from('profiles')
-        .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
+        .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home')
         .neq('role', 'client')
         .neq('role', 'CLIENT')
         .neq('role', 'admin')
@@ -87,6 +87,7 @@ export async function GET(req: Request) {
       email: p.email || '',
       role: p.role || 'artist',
       avatar_url: p.avatar_url || '',
+      banner_url: p.banner_url || '',
       display_order: typeof p.display_order === 'number' ? p.display_order : 0,
       show_on_home: p.show_on_home !== undefined && p.show_on_home !== null ? Boolean(p.show_on_home) : true,
     }));
@@ -185,7 +186,7 @@ export async function POST(req: Request) {
       .from('profiles')
       .update(updatePayload)
       .eq('id', artistId)
-      .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home')
+      .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home')
       .single();
 
     if (updateErr) {

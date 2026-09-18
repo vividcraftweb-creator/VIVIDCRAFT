@@ -567,62 +567,72 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
 
       let publicBannerUrl = '';
 
-      // Direct upload to Supabase storage 'avatars' bucket
+      // Direct upload to Supabase storage 'banners' bucket
       try {
         const fileExt = file.name ? file.name.split('.').pop() || 'png' : 'png';
         const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-        const filePath = `${userId}/banner_${Date.now()}.${cleanExt}`;
+        const filePath = `user-banners/${userId}/${Date.now()}.${cleanExt}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('avatars')
+          .from('banners')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: true,
           });
 
         if (!uploadError && uploadData) {
-          const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+          const { data: pubData } = supabase.storage.from('banners').getPublicUrl(filePath);
           if (pubData?.publicUrl) {
             publicBannerUrl = pubData.publicUrl;
           }
+        } else if (uploadError) {
+          console.warn('Storage banners upload notice (falling back):', uploadError.message);
         }
       } catch (directErr) {
         console.warn('Direct banner upload notice:', directErr);
       }
 
-      // Fallback via /api/profile/upload if direct storage failed
+      // Fallback via /api/admin/banners/upload if direct storage failed
       if (!publicBannerUrl) {
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', file);
-        uploadFormData.append('userId', userId);
+        try {
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', file);
+          uploadFormData.append('userId', userId);
 
-        const response = await fetch('/api/profile/upload', {
-          method: 'POST',
-          body: uploadFormData,
-        });
+          const response = await fetch('/api/admin/banners/upload', {
+            method: 'POST',
+            body: uploadFormData,
+          });
 
-        if (response.ok) {
-          const resJson = await response.json();
-          publicBannerUrl = resJson.url || resJson.avatar_url;
+          if (response.ok) {
+            const resJson = await response.json();
+            publicBannerUrl = resJson.url;
+          }
+        } catch (fbErr) {
+          console.warn('Banner admin upload fallback notice:', fbErr);
         }
       }
 
       if (!publicBannerUrl) {
-        throw new Error('Failed to upload banner image');
+        throw new Error('Failed to upload banner image to storage');
       }
 
       setBannerUrl(publicBannerUrl);
       setFormData((prev) => ({ ...prev, bannerUrl: publicBannerUrl }));
       setProfileData((prev) => ({ ...prev, banner_url: publicBannerUrl }));
 
-      // Persist to profiles database table
-      await (supabase as any)
+      // Automatically update profiles.banner_url directly in database
+      const { error: dbUpdateErr } = await (supabase as any)
         .from('profiles')
         .update({
           banner_url: publicBannerUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
+
+      if (dbUpdateErr) {
+        console.warn('Direct profiles banner_url update notice:', dbUpdateErr.message);
+      }
 
       // Persist to user metadata
       try {
@@ -631,7 +641,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         });
       } catch {}
 
-      toast.success('Cover banner uploaded successfully!');
+      toast.success('Cover banner image uploaded and saved successfully!');
     } catch (err: any) {
       console.error('Banner upload error:', err);
       toast.error('Failed to upload cover banner', {
@@ -641,6 +651,40 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
       setIsUploadingBanner(false);
       URL.revokeObjectURL(localPreview);
       setBannerPreviewUrl('');
+    }
+  };
+
+  const handleRemoveBanner = async () => {
+    try {
+      setIsUploadingBanner(true);
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || profile?.userId;
+      if (userId) {
+        await (supabase as any)
+          .from('profiles')
+          .update({
+            banner_url: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId);
+
+        try {
+          await supabase.auth.updateUser({
+            data: { banner_url: null },
+          });
+        } catch {}
+      }
+
+      setBannerUrl('');
+      setBannerPreviewUrl('');
+      setFormData((prev) => ({ ...prev, bannerUrl: '' }));
+      setProfileData((prev) => ({ ...prev, banner_url: '' }));
+      toast.success('Cover banner removed');
+    } catch (err: any) {
+      toast.error('Failed to remove banner: ' + err.message);
+    } finally {
+      setIsUploadingBanner(false);
     }
   };
 
@@ -798,38 +842,40 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
               )}
             </div>
 
-            {/* Upload button and Direct URL input */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="bannerFileInput" className="text-xs font-medium">Upload Banner Image File</Label>
-                <div className="relative">
+            {/* Direct File Upload to 'banners' bucket (external URL text box removed) */}
+            <div className="space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1 flex-1">
+                  <Label htmlFor="bannerFileInput" className="text-xs font-medium">
+                    Upload Banner Image (Direct Storage Upload)
+                  </Label>
                   <Input
                     id="bannerFileInput"
                     type="file"
                     accept="image/jpeg,image/png,image/jpg,image/webp"
                     onChange={handleBannerUpload}
                     disabled={isUploadingBanner}
-                    className="cursor-pointer text-xs"
+                    className="cursor-pointer text-xs file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400"
                   />
+                  <p className="text-[11px] text-muted-foreground">
+                    Direct upload to Supabase Storage (&apos;banners&apos; bucket). JPG, PNG, or WebP (Max 5MB). Recommended ratio: 3:1 or 16:9.
+                  </p>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Recommended ratio 3:1 or 16:9 (Max 5MB)</p>
-              </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="bannerUrlInput" className="text-xs font-medium">Or Enter Image URL</Label>
-                <Input
-                  id="bannerUrlInput"
-                  type="url"
-                  value={formData.bannerUrl || bannerUrl || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormData((prev) => ({ ...prev, bannerUrl: val }));
-                    setBannerUrl(val);
-                  }}
-                  placeholder="https://images.unsplash.com/..."
-                  className="bg-background/50 text-xs"
-                />
-                <p className="text-[11px] text-muted-foreground">Direct link to hosted banner image</p>
+                {(bannerPreviewUrl || bannerUrl || formData.bannerUrl) && (
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveBanner}
+                      disabled={isUploadingBanner}
+                      className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/50"
+                    >
+                      Remove Banner
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
