@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, startTransition } from 'react';
+import React, { useEffect, useState, useRef, startTransition } from 'react';
 import {
   Sparkles,
   Star,
@@ -34,6 +34,8 @@ export function FeaturedCrew() {
   const [reviews, setReviews] = useState<ManualReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
+  const crewSliderRef = useRef<HTMLDivElement>(null);
+  const [isSliderPaused, setIsSliderPaused] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -134,6 +136,26 @@ export function FeaturedCrew() {
     };
   }, []);
 
+  // Automatic horizontal auto-moving carousel for mobile view
+  useEffect(() => {
+    const slider = crewSliderRef.current;
+    if (!slider) return;
+
+    const interval = setInterval(() => {
+      if (isSliderPaused) return;
+      if (slider.scrollWidth > slider.clientWidth) {
+        const maxScroll = slider.scrollWidth - slider.clientWidth;
+        if (slider.scrollLeft >= maxScroll - 15) {
+          slider.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          slider.scrollBy({ left: 280, behavior: 'smooth' });
+        }
+      }
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [isSliderPaused, displayedCrew.length]);
+
   if (!isLoading && crewMembers.length === 0 && reviews.length === 0) {
     return null;
   }
@@ -164,12 +186,19 @@ export function FeaturedCrew() {
               </p>
             </div>
 
-            {/* Responsive Compact 3-Card Grid (1 col mobile, 3 cols desktop) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 justify-items-center max-w-4xl mx-auto">
+            {/* Responsive Compact 3-Card Grid (Desktop) / Auto-moving Horizontal Carousel (Mobile) */}
+            <div
+              ref={crewSliderRef}
+              onMouseEnter={() => setIsSliderPaused(true)}
+              onMouseLeave={() => setIsSliderPaused(false)}
+              onTouchStart={() => setIsSliderPaused(true)}
+              onTouchEnd={() => setIsSliderPaused(false)}
+              className="flex md:grid md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory scrollbar-none pb-4 md:pb-0 px-2 sm:px-0 scroll-smooth max-w-4xl mx-auto items-stretch justify-start md:justify-items-center"
+            >
               {displayedCrew.map((member) => (
                 <div
                   key={member.id}
-                  className="relative max-w-xs w-full rounded-2xl p-3.5 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-amber-400/50 dark:hover:border-amber-500/40 transition-colors flex flex-col justify-between"
+                  className="relative min-w-[260px] sm:min-w-[280px] max-w-[285px] md:max-w-xs w-full flex-shrink-0 md:flex-shrink rounded-2xl p-3.5 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-amber-400/50 dark:hover:border-amber-500/40 transition-colors flex flex-col justify-between snap-center"
                 >
                   {/* Compact Card Portrait Photo: h-44 sm:h-48 */}
                   <div className="relative w-full h-44 sm:h-48 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-3 border border-slate-200/80 dark:border-slate-800">
@@ -286,6 +315,12 @@ export function FeaturedCrew() {
                 </div>
               ))}
             </div>
+            {displayedCrew.length > 1 && (
+              <div className="flex md:hidden items-center justify-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                <span>Swipe to explore crew</span>
+                <ArrowRight className="w-3 h-3 animate-pulse text-amber-500" />
+              </div>
+            )}
           </div>
         )}
 

@@ -9,7 +9,7 @@ export async function GET() {
     const adminClient = createAdminClient();
     const { data: artists, error } = await adminClient
       .from('profiles')
-      .select('id, full_name, email, avatar_url, role, display_order')
+      .select('id, full_name, first_name, last_name, display_name, username, email, avatar_url, role, display_order, title, professional_title, is_verified')
       .or('role.ilike.%artist%,role.ilike.%freelancer%')
       .order('display_order', { ascending: true });
 

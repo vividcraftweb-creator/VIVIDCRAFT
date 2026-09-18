@@ -77,8 +77,23 @@ export function HomeHero() {
     }
 
     fetchTopArtists();
+
+    // Realtime subscription to profiles to reflect name or profile changes immediately
+    const supabase = createClient();
+    const channel = supabase
+      .channel('home_artists_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => {
+          fetchTopArtists();
+        }
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -260,10 +275,10 @@ export function HomeHero() {
               [...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="min-w-[260px] sm:min-w-[280px] h-[210px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse p-5 flex flex-col justify-between"
+                  className="min-w-[260px] sm:min-w-[280px] h-[230px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse p-5 flex flex-col justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-14 w-14 rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-20 w-20 rounded-full bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
                     <div className="space-y-2 flex-1">
                       <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
                       <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
@@ -279,9 +294,15 @@ export function HomeHero() {
             ) : (
               artists.map((artist, idx) => {
                 const artistId = artist.id;
+                const firstName = (artist.first_name || artist.firstName || '').trim();
+                const lastName = (artist.last_name || artist.lastName || '').trim();
+                const fullNameFromFirstLast = [firstName, lastName].filter(Boolean).join(' ').trim();
                 const name =
+                  fullNameFromFirstLast ||
                   artist.full_name ||
+                  artist.display_name ||
                   artist.name ||
+                  artist.username ||
                   artist.email?.split('@')[0] ||
                   'Featured Artist';
                 const title =
@@ -301,7 +322,7 @@ export function HomeHero() {
                     <div className="h-full rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 dark:hover:border-amber-500/50 flex flex-col justify-between gap-4">
                       <div>
                         <div className="flex items-start justify-between gap-3">
-                          <div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-amber-400/40 ring-4 ring-amber-400/10 flex-shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform">
+                          <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-amber-400/40 ring-4 ring-amber-400/10 flex-shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform">
                             {avatar ? (
                               <img
                                 src={avatar}
@@ -312,7 +333,7 @@ export function HomeHero() {
                                 }}
                               />
                             ) : (
-                              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-lg">
+                              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-2xl">
                                 {name.charAt(0).toUpperCase()}
                               </div>
                             )}
@@ -342,12 +363,9 @@ export function HomeHero() {
                         )}
                       </div>
 
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium">
-                          Commissions Open
-                        </span>
-                        <span className="text-amber-600 dark:text-amber-400 font-semibold group-hover:underline inline-flex items-center gap-0.5">
-                          Profile <ArrowRight className="h-3 w-3" />
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end text-xs">
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold group-hover:underline inline-flex items-center gap-1">
+                          View Profile <ArrowRight className="h-3.5 w-3.5" />
                         </span>
                       </div>
                     </div>
