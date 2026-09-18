@@ -25,6 +25,7 @@ interface ClientProfileForm {
   address: string;
   whatsappNumber: string;
   email: string;
+  bannerUrl: string;
 }
 
 export default function EditProfilePage() {
@@ -35,6 +36,7 @@ export default function EditProfilePage() {
     address: '',
     whatsappNumber: '',
     email: '',
+    bannerUrl: '',
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +71,7 @@ export default function EditProfilePage() {
           address: p.address || p.location || p.businessAddressLine1 || '',
           whatsappNumber: p.whatsapp_number || p.phone || p.businessPhone || '',
           email: p.email || p.businessEmail || user.email || '',
+          bannerUrl: p.banner_url || user.user_metadata?.banner_url || '',
         });
 
         hasInitializedRef.current = true;
@@ -123,8 +126,17 @@ export default function EditProfilePage() {
           whatsapp_number: cleanPhone || null,
           phone: cleanPhone || null,
           email: formData.email,
+          banner_url: formData.bannerUrl ? formData.bannerUrl.trim() : null,
           updated_at: new Date().toISOString(),
         });
+
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            banner_url: formData.bannerUrl ? formData.bannerUrl.trim() : null,
+          },
+        });
+      } catch {}
 
       if (error) {
         throw error;
@@ -247,6 +259,38 @@ export default function EditProfilePage() {
                     className="pl-10 bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
                   />
                 </div>
+              </div>
+
+              {/* Cover Banner Image URL */}
+              <div className="space-y-2">
+                <Label htmlFor="bannerUrl" className="text-sm font-medium text-slate-300">
+                  Cover Banner Image URL
+                </Label>
+                <Input
+                  id="bannerUrl"
+                  name="bannerUrl"
+                  type="url"
+                  value={formData.bannerUrl}
+                  onChange={handleChange}
+                  placeholder="https://images.unsplash.com/..."
+                  className="bg-slate-950/60 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-amber-500/50"
+                />
+                {formData.bannerUrl && (
+                  <div className="relative w-full h-24 rounded-xl overflow-hidden border border-white/10 mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={formData.bannerUrl}
+                      alt="Banner Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-slate-400">
+                  Displayed as your header cover banner on the home page and public profile.
+                </p>
               </div>
 
               {/* WhatsApp Number & Email Address */}

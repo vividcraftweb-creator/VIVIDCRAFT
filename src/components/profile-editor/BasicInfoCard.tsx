@@ -29,6 +29,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
   const [isSaving, setIsSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [bannerUrl, setBannerUrl] = useState<string>('');
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string>('');
+  const [isUploadingBanner, setIsUploadingBanner] = useState<boolean>(false);
   const [profileData, setProfileData] = useState<{
     first_name?: string;
     last_name?: string;
@@ -37,6 +40,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     skills?: string;
     bio?: string;
     avatar_url?: string;
+    banner_url?: string;
   }>({});
   const [formData, setFormData] = useState({
     firstName: '',
@@ -46,6 +50,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     location: '',
     skills: '',
     profilePicture: '',
+    bannerUrl: '',
   });
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -138,6 +143,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           address: dbProfile?.address || metadata.address || anyProfile?.address || profile?.location || '',
           skills: metadata.skills || dbProfile?.skills || profile?.skills || '',
           avatar_url: dbProfile?.avatar_url || metadata.avatar_url || anyProfile?.avatarUrl || anyProfile?.profile_picture || profile?.profilePicture || '',
+          banner_url: dbProfile?.banner_url || metadata.banner_url || anyProfile?.banner_url || anyProfile?.bannerUrl || '',
         };
 
         if (source) {
@@ -161,6 +167,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           const rawSkills = source.skills || '';
           const skillsVal = Array.isArray(rawSkills) ? rawSkills.join(', ') : rawSkills;
           const picVal = source.avatar_url || source.avatarUrl || source.profile_picture || source.profilePicture || '';
+          const bannerVal = source.banner_url || '';
+
+          setBannerUrl(bannerVal);
 
           setProfileData({
             first_name: fName,
@@ -170,6 +179,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             skills: skillsVal,
             bio: bioVal,
             avatar_url: picVal,
+            banner_url: bannerVal,
           });
 
           setFormData({
@@ -180,6 +190,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             location: locVal,
             skills: skillsVal,
             profilePicture: picVal,
+            bannerUrl: bannerVal,
           });
 
           if (skillsVal) {
@@ -260,6 +271,12 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         cleanAvatarUrl = profileData.avatar_url;
       }
 
+      const rawBanner = bannerUrl || formData.bannerUrl || profileData.banner_url || '';
+      let cleanBannerUrl: string | null = null;
+      if (rawBanner && !rawBanner.startsWith('data:') && rawBanner.trim()) {
+        cleanBannerUrl = rawBanner.trim();
+      }
+
       const metaPayload: Record<string, any> = {
         first_name: formData.firstName || null,
         last_name: formData.lastName || null,
@@ -272,6 +289,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
       if (cleanAvatarUrl) {
         metaPayload.avatar_url = cleanAvatarUrl;
       }
+      if (cleanBannerUrl) {
+        metaPayload.banner_url = cleanBannerUrl;
+      }
 
       try {
         await supabase.auth.updateUser({
@@ -282,7 +302,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
       }
 
       // Build payload matching lowercase profiles table schema PERFECTLY:
-      // (id, first_name, last_name, address, avatar_url, updated_at)
+      // (id, first_name, last_name, address, avatar_url, banner_url, updated_at)
       const profilesPayload: Record<string, any> = {
         id: user.id,
         first_name: formData.firstName || null,
@@ -292,6 +312,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
       };
       if (cleanAvatarUrl) {
         profilesPayload.avatar_url = cleanAvatarUrl;
+      }
+      if (cleanBannerUrl) {
+        profilesPayload.banner_url = cleanBannerUrl;
       }
 
       try {
@@ -306,7 +329,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         console.warn('Profiles upsert exception:', upsertEx);
       }
 
-      // Sync extended artist metadata (title, bio, skills) via tRPC mutation
+      // Sync extended artist metadata (title, bio, skills, banner_url) via tRPC mutation
       try {
         await updateMutation.mutateAsync({
           firstName: formData.firstName,
@@ -317,6 +340,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           skills: skillsString,
           profilePicture: cleanAvatarUrl || undefined,
           avatar_url: cleanAvatarUrl || undefined,
+          banner_url: cleanBannerUrl || undefined,
         });
       } catch (mutationErr) {
         console.warn('tRPC updateMutation sync notice:', mutationErr);
@@ -330,6 +354,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         skills: skillsString,
         bio: formData.bio || '',
         avatar_url: avatarUrl || formData.profilePicture || '',
+        banner_url: cleanBannerUrl || '',
       });
 
       toast.success('Basic information updated successfully!');
@@ -515,9 +540,114 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     }
   };
 
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Banner image must be less than 5MB');
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      toast.error('Only JPG, PNG, and WebP images are allowed');
+      return;
+    }
+
+    setIsUploadingBanner(true);
+    const localPreview = URL.createObjectURL(file);
+    setBannerPreviewUrl(localPreview);
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || profile?.userId;
+      if (!userId) throw new Error('User session not found');
+
+      let publicBannerUrl = '';
+
+      // Direct upload to Supabase storage 'avatars' bucket
+      try {
+        const fileExt = file.name ? file.name.split('.').pop() || 'png' : 'png';
+        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+        const filePath = `${userId}/banner_${Date.now()}.${cleanExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (!uploadError && uploadData) {
+          const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+          if (pubData?.publicUrl) {
+            publicBannerUrl = pubData.publicUrl;
+          }
+        }
+      } catch (directErr) {
+        console.warn('Direct banner upload notice:', directErr);
+      }
+
+      // Fallback via /api/profile/upload if direct storage failed
+      if (!publicBannerUrl) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
+        uploadFormData.append('userId', userId);
+
+        const response = await fetch('/api/profile/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        if (response.ok) {
+          const resJson = await response.json();
+          publicBannerUrl = resJson.url || resJson.avatar_url;
+        }
+      }
+
+      if (!publicBannerUrl) {
+        throw new Error('Failed to upload banner image');
+      }
+
+      setBannerUrl(publicBannerUrl);
+      setFormData((prev) => ({ ...prev, bannerUrl: publicBannerUrl }));
+      setProfileData((prev) => ({ ...prev, banner_url: publicBannerUrl }));
+
+      // Persist to profiles database table
+      await (supabase as any)
+        .from('profiles')
+        .update({
+          banner_url: publicBannerUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      // Persist to user metadata
+      try {
+        await supabase.auth.updateUser({
+          data: { banner_url: publicBannerUrl },
+        });
+      } catch {}
+
+      toast.success('Cover banner uploaded successfully!');
+    } catch (err: any) {
+      console.error('Banner upload error:', err);
+      toast.error('Failed to upload cover banner', {
+        description: err.message || 'Please try again.',
+      });
+    } finally {
+      setIsUploadingBanner(false);
+      URL.revokeObjectURL(localPreview);
+      setBannerPreviewUrl('');
+    }
+  };
+
   const handleCancel = () => {
     setIsEditing(false);
     if (profile) {
+      const bUrl = (profile as any)?.banner_url || profileData.banner_url || '';
       setFormData({
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
@@ -526,7 +656,9 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         location: profile.location || '',
         skills: profile.skills || '',
         profilePicture: profile.profilePicture || '',
+        bannerUrl: bUrl,
       });
+      setBannerUrl(bUrl);
 
       // Reset skills
       if (profile.skills) {
@@ -623,6 +755,81 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Cover Banner Image */}
+          <div className="glass-card p-5 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Cover Banner Image
+              </h3>
+              <span className="text-xs text-muted-foreground">Header on artist card & profile</span>
+            </div>
+
+            {/* Banner Preview */}
+            <div className="relative w-full h-32 sm:h-40 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-gradient-to-r from-amber-500/20 via-primary/20 to-amber-600/20 flex items-center justify-center">
+              {(bannerPreviewUrl || bannerUrl || formData.bannerUrl) ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={bannerPreviewUrl || bannerUrl || formData.bannerUrl}
+                  alt="Cover banner preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="text-center p-4">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    No cover banner uploaded. Default sleek gradient will be used.
+                  </p>
+                </div>
+              )}
+
+              {isUploadingBanner && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                  <div className="flex items-center gap-2 text-white text-xs font-semibold">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Uploading banner...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Upload button and Direct URL input */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="bannerFileInput" className="text-xs font-medium">Upload Banner Image File</Label>
+                <div className="relative">
+                  <Input
+                    id="bannerFileInput"
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                    onChange={handleBannerUpload}
+                    disabled={isUploadingBanner}
+                    className="cursor-pointer text-xs"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">Recommended ratio 3:1 or 16:9 (Max 5MB)</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="bannerUrlInput" className="text-xs font-medium">Or Enter Image URL</Label>
+                <Input
+                  id="bannerUrlInput"
+                  type="url"
+                  value={formData.bannerUrl || bannerUrl || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData((prev) => ({ ...prev, bannerUrl: val }));
+                    setBannerUrl(val);
+                  }}
+                  placeholder="https://images.unsplash.com/..."
+                  className="bg-background/50 text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">Direct link to hosted banner image</p>
               </div>
             </div>
           </div>
@@ -845,6 +1052,27 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                   <p>No profile picture added yet. Click edit to upload one.</p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Cover Banner Image */}
+          <div className="glass-card p-5 rounded-2xl space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cover Banner Image</h3>
+            <div className="relative w-full h-28 sm:h-36 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-gradient-to-r from-amber-500/20 via-primary/20 to-amber-600/20 flex items-center justify-center">
+              {(bannerUrl || profileData.banner_url || (profile as any)?.banner_url) ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={bannerUrl || profileData.banner_url || (profile as any)?.banner_url}
+                  alt="Cover banner"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="text-center p-4">
+                  <p className="text-xs text-muted-foreground">
+                    No cover banner image set. A sleek theme gradient is used on your showcase cards. Click Edit to add one.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

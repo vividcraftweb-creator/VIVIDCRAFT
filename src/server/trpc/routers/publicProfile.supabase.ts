@@ -25,6 +25,7 @@ const basicInfoSchema = z.object({
   rate: z.number().positive().optional(),
   profilePicture: z.string().optional(),
   avatar_url: z.string().optional(),
+  banner_url: z.string().optional().nullable(),
 });
 
 const educationSchema = z.object({
@@ -809,9 +810,14 @@ export const publicProfileRouter = router({
       }
 
       const addressVal = (input.location !== undefined ? input.location : (existingProfile?.address || existingProfile?.location)) || null;
+      const rawBanner = input.banner_url !== undefined ? input.banner_url : (existingProfile?.banner_url || null);
+      let bannerUrlString: string | null = null;
+      if (rawBanner && typeof rawBanner === 'string' && rawBanner.trim()) {
+        bannerUrlString = rawBanner.trim();
+      }
 
       // Build payload matching lowercase profiles table schema PERFECTLY:
-      // (id, first_name, last_name, email, role, address, avatar_url, updated_at)
+      // (id, first_name, last_name, email, role, address, avatar_url, banner_url, updated_at)
       const profilesPayload: Record<string, any> = {
         id: userId,
         first_name: firstName || null,
@@ -820,6 +826,7 @@ export const publicProfileRouter = router({
         role: existingProfile?.role || 'artist',
         address: addressVal,
         avatar_url: avatarUrlString,
+        banner_url: bannerUrlString,
         updated_at: timestamp,
       };
 
@@ -854,7 +861,7 @@ export const publicProfileRouter = router({
         console.warn('Admin profiles upsert error:', e);
       }
 
-      // 2. Persist extended profile fields (title, bio, skills) and public avatar_url to Auth user_metadata
+      // 2. Persist extended profile fields (title, bio, skills, banner_url) and public avatar_url to Auth user_metadata
       const titleString = input.title !== undefined ? input.title : (existingProfile?.title || null);
       const bioString = input.bio !== undefined ? input.bio : (existingProfile?.bio || null);
       const skillsString = input.skills !== undefined ? input.skills : (existingProfile?.skills || null);
@@ -873,6 +880,7 @@ export const publicProfileRouter = router({
             skills: skillsString,
             address: addressVal,
             avatar_url: avatarUrlString,
+            banner_url: bannerUrlString,
           },
         });
       } catch (metaErr) {

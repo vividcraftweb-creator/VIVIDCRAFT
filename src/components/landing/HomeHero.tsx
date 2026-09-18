@@ -11,7 +11,6 @@ import {
   TrendingUp,
   CheckCircle,
   Search,
-  Heart,
   Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,18 +22,6 @@ import { getPublicUrl } from '@/lib/profile-helpers';
 import { GalleryGrid } from '@/components/gallery/GalleryGrid';
 import type { ArtworkItem } from '@/components/gallery/ArtworkCard';
 import { HomeHeroSlider } from '@/components/HomeHeroSlider';
-import { formatBadgeWithDiamonds, formatGigTitle } from '@/lib/artworks';
-import { DEFAULT_ARTWORK_PLACEHOLDER, getSafeArtworkUrl } from '@/lib/image-placeholders';
-
-// Curated high-resolution fallback artwork thumbnails for featured creator cards
-const CURATED_GIG_THUMBNAILS = [
-  'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1578925518470-4def7a0f08bb?auto=format&fit=crop&w=800&q=80',
-];
 
 export function HomeHero() {
   const router = useRouter();
@@ -45,7 +32,7 @@ export function HomeHero() {
   // Horizontal artist slider ref
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  // Top Manual-Ordered Artists state with attached artworks
+  // Top Manual-Ordered Artists state with real ratings and banner
   const [artists, setArtists] = useState<any[]>([]);
   const [loadingArtists, setLoadingArtists] = useState(true);
 
@@ -57,18 +44,6 @@ export function HomeHero() {
   const [fallbackArtworks, setFallbackArtworks] = useState<any[]>([]);
   const [loadingFallback, setLoadingFallback] = useState(false);
 
-  // Local state for wishlist heart toggle on featured gig cards
-  const [likedGigs, setLikedGigs] = useState<Record<string, boolean>>({});
-
-  const toggleGigLike = useCallback((e: React.MouseEvent, artistId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLikedGigs((prev) => ({
-      ...prev,
-      [artistId]: !prev[artistId],
-    }));
-  }, []);
-
   // Fetch top artists (ONLY artists where show_on_home = true, strictly sorted by display_order ASC)
   useEffect(() => {
     let isMounted = true;
@@ -78,7 +53,7 @@ export function HomeHero() {
         const supabase = createClient();
         let { data, error } = await supabase
           .from('profiles')
-          .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home, is_verified, title, professional_title')
+          .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home, is_verified, title, professional_title, bio, skills')
           .eq('show_on_home', true)
           .or('role.eq.artist,role.eq.ARTIST,is_artist.eq.true')
           .neq('role', 'client')
@@ -92,7 +67,7 @@ export function HomeHero() {
           console.warn('HomeHero artist query notice (falling back):', error.message);
           const fallback = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, email, role, avatar_url, display_order, show_on_home, is_verified, title, professional_title')
+            .select('id, first_name, last_name, email, role, avatar_url, banner_url, display_order, show_on_home, is_verified, title, professional_title, bio, skills')
             .eq('show_on_home', true)
             .or('role.eq.artist,role.eq.ARTIST,role.ilike.%artist%')
             .neq('role', 'client')
@@ -120,33 +95,58 @@ export function HomeHero() {
             (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
           );
 
-          // Fetch associated artworks to attach to gig cards
+          // Calculate actual dynamic ratings from database reviews table
           const artistIds = sorted.map((a: any) => a.id).filter(Boolean);
-          const artworksByArtist: Record<string, any> = {};
+          const ratingsMap: Record<string, { avgRating: number; count: number }> = {};
 
           if (artistIds.length > 0) {
             try {
-              const { data: arts } = await supabase
-                .from('artworks')
-                .select('id, artist_id, user_id, title, gig_title, badge_title, base_rating, review_count_text, image_url, price, amount, likes_count, rating_score')
+              const { data: revs } = await supabase
+                .from('reviews')
+                .select('artist_id, rating')
                 .in('artist_id', artistIds);
 
-              if (arts && arts.length > 0) {
-                for (const art of arts) {
-                  const aid = art.artist_id || art.user_id;
-                  if (aid && (!artworksByArtist[aid] || (art.likes_count ?? 0) > (artworksByArtist[aid].likes_count ?? 0))) {
-                    artworksByArtist[aid] = art;
+              let allRevs: any[] = Array.isArray(revs) ? revs : [];
+
+              // Fallback to artist_reviews if reviews table had 0 rows
+              if (allRevs.length === 0) {
+                try {
+                  const { data: fbRevs } = await supabase
+                    .from('artist_reviews')
+                    .select('artist_id, rating')
+                    .in('artist_id', artistIds);
+                  if (Array.isArray(fbRevs)) {
+                    allRevs = fbRevs;
+                  }
+                } catch {}
+              }
+
+              if (allRevs.length > 0) {
+                const accum: Record<string, { sum: number; count: number }> = {};
+                for (const r of allRevs) {
+                  const aid = r.artist_id;
+                  const val = Number(r.rating);
+                  if (aid && !isNaN(val) && val > 0) {
+                    if (!accum[aid]) accum[aid] = { sum: 0, count: 0 };
+                    accum[aid].sum += val;
+                    accum[aid].count += 1;
                   }
                 }
+                for (const aid in accum) {
+                  ratingsMap[aid] = {
+                    avgRating: accum[aid].sum / accum[aid].count,
+                    count: accum[aid].count,
+                  };
+                }
               }
-            } catch (artErr) {
-              console.warn('Notice: Could not fetch artworks for top artists:', artErr);
+            } catch (revErr) {
+              console.warn('Reviews query notice in HomeHero:', revErr);
             }
           }
 
-          const merged = sorted.map((artist) => ({
+          const merged = sorted.map((artist: any) => ({
             ...artist,
-            artwork: artworksByArtist[artist.id] || null,
+            ratingInfo: ratingsMap[artist.id] || null,
           }));
 
           if (isMounted) setArtists(merged);
@@ -160,21 +160,43 @@ export function HomeHero() {
             });
 
             const artistIds = validArtists.map((a: any) => a.id).filter(Boolean);
-            const artworksByArtist: Record<string, any> = {};
+            const ratingsMap: Record<string, { avgRating: number; count: number }> = {};
 
             if (artistIds.length > 0) {
               try {
-                const { data: arts } = await supabase
-                  .from('artworks')
-                  .select('id, artist_id, user_id, title, gig_title, badge_title, base_rating, review_count_text, image_url, price, amount, likes_count, rating_score')
+                const { data: revs } = await supabase
+                  .from('reviews')
+                  .select('artist_id, rating')
                   .in('artist_id', artistIds);
 
-                if (arts && arts.length > 0) {
-                  for (const art of arts) {
-                    const aid = art.artist_id || art.user_id;
-                    if (aid && (!artworksByArtist[aid] || (art.likes_count ?? 0) > (artworksByArtist[aid].likes_count ?? 0))) {
-                      artworksByArtist[aid] = art;
+                let allRevs: any[] = Array.isArray(revs) ? revs : [];
+
+                if (allRevs.length === 0) {
+                  try {
+                    const { data: fbRevs } = await supabase
+                      .from('artist_reviews')
+                      .select('artist_id, rating')
+                      .in('artist_id', artistIds);
+                    if (Array.isArray(fbRevs)) allRevs = fbRevs;
+                  } catch {}
+                }
+
+                if (allRevs.length > 0) {
+                  const accum: Record<string, { sum: number; count: number }> = {};
+                  for (const r of allRevs) {
+                    const aid = r.artist_id;
+                    const val = Number(r.rating);
+                    if (aid && !isNaN(val) && val > 0) {
+                      if (!accum[aid]) accum[aid] = { sum: 0, count: 0 };
+                      accum[aid].sum += val;
+                      accum[aid].count += 1;
                     }
+                  }
+                  for (const aid in accum) {
+                    ratingsMap[aid] = {
+                      avgRating: accum[aid].sum / accum[aid].count,
+                      count: accum[aid].count,
+                    };
                   }
                 }
               } catch {}
@@ -182,7 +204,7 @@ export function HomeHero() {
 
             const merged = validArtists.map((artist: any) => ({
               ...artist,
-              artwork: artworksByArtist[artist.id] || null,
+              ratingInfo: ratingsMap[artist.id] || null,
             }));
             setArtists(merged);
           }
@@ -393,22 +415,17 @@ export function HomeHero() {
               [...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="min-w-[280px] sm:min-w-[320px] max-w-[340px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse overflow-hidden flex flex-col flex-shrink-0 snap-start"
+                  className="min-w-[280px] sm:min-w-[320px] max-w-[340px] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse overflow-hidden flex flex-col flex-shrink-0 snap-start"
                 >
-                  <div className="aspect-[16/10] w-full bg-slate-200 dark:bg-slate-800" />
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-                      <div className="space-y-1.5 flex-1">
-                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
-                        <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
-                      </div>
-                    </div>
-                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                  <div className="h-28 sm:h-32 w-full bg-slate-200 dark:bg-slate-800" />
+                  <div className="relative -mt-10 sm:-mt-12 ml-5 h-20 w-20 sm:h-22 sm:w-22 rounded-full bg-slate-300 dark:bg-slate-700 border-4 border-white dark:border-slate-900 shrink-0" />
+                  <div className="p-5 pt-3 space-y-3">
                     <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-2/3" />
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
-                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/4" />
+                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/4" />
                     </div>
                   </div>
                 </div>
@@ -431,173 +448,133 @@ export function HomeHero() {
                   artist.username ||
                   artist.email?.split('@')[0] ||
                   'Featured Artist';
-                const title =
-                  artist.title ||
-                  artist.professional_title ||
-                  'Verified Creator';
+                const title = (artist.title || artist.professional_title || '').trim();
                 const avatar = getPublicUrl(artist.avatar_url, artistId);
+                const bannerUrl = artist.banner_url || null;
                 const isVerified = Boolean(artist.is_verified || artist.isVerified);
                 const order = artist.display_order ?? 0;
-
-                // Artwork and gig metadata
-                const artwork = artist.artwork;
-                const artworkImage = artwork?.image_url
-                  ? getSafeArtworkUrl(artwork.image_url)
-                  : CURATED_GIG_THUMBNAILS[idx % CURATED_GIG_THUMBNAILS.length];
-
-                // Fiverr-style badge with diamonds (e.g. "Top Rated ◆◆◆" or "Level 2 ◆◆")
-                const defaultBadge = idx === 0 ? 'Top Rated' : idx === 1 ? 'Level 2' : 'Top Rated';
-                const badgeFormatted = formatBadgeWithDiamonds(artwork?.badge_title || artist.badge_title || defaultBadge);
-
-                // Catchy Gig Title ("I will create...")
-                const catchyTitle = formatGigTitle(
-                  artwork?.title || title || 'custom digital artwork and creative illustrations',
-                  artwork?.gig_title
-                );
-
-                // Star Rating metadata row (e.g. "★ 4.9 (1k+)")
-                const cardRating = artwork?.base_rating ?? (artwork?.rating_score ? Number(artwork.rating_score) : 4.9);
-                const ratingFormatted = typeof cardRating === 'number' ? cardRating.toFixed(1) : cardRating;
-                const reviewCountFormatted = artwork?.review_count_text || (idx % 2 === 0 ? '(1k+)' : `(${45 + idx * 15})`);
-
-                // Starting at price
-                const rawPrice = Number(artwork?.price ?? artwork?.amount ?? (15000 + idx * 2500));
-                const priceFormatted = rawPrice > 0 ? rawPrice.toLocaleString() : '15,000';
-
-                const isLiked = Boolean(likedGigs[artistId]);
+                const bio = (artist.bio || '').trim();
+                const rawSkills = artist.skills || '';
+                const skillsList = Array.isArray(rawSkills)
+                  ? rawSkills
+                  : typeof rawSkills === 'string'
+                  ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
+                  : [];
+                const ratingInfo = artist.ratingInfo;
 
                 return (
-                  <div
+                  <Link
                     key={artistId || idx}
-                    className="group min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 snap-start flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10"
+                    href={`/freelancers/${artistId}`}
+                    className="group min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 snap-start block"
                   >
-                    {/* Top Artwork Thumbnail with Wishlist Heart Overlay */}
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950">
-                      <Link href={`/freelancers/${artistId}`} className="block w-full h-full">
-                        <img
-                          src={artworkImage}
-                          alt={catchyTitle}
-                          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            target.onerror = null;
-                            target.src = DEFAULT_ARTWORK_PLACEHOLDER;
-                          }}
-                        />
-                      </Link>
+                    <div className="h-full rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 dark:hover:border-amber-500/50 flex flex-col justify-between">
+                      {/* Profile Banner Header */}
+                      <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-gradient-to-r from-amber-500/20 via-primary/20 to-amber-600/20">
+                        {bannerUrl ? (
+                          <img
+                            src={bannerUrl}
+                            alt={`${name} banner`}
+                            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-amber-400/20 via-primary/15 to-amber-600/25 relative flex items-center justify-center">
+                            <div className="absolute inset-0 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px] opacity-20" />
+                          </div>
+                        )}
 
-                      {/* Wishlist Heart Icon Overlay on Top Right */}
-                      <button
-                        type="button"
-                        onClick={(e) => toggleGigLike(e, artistId)}
-                        aria-label={isLiked ? 'Remove from wishlist' : 'Add to wishlist'}
-                        className="absolute top-2.5 right-2.5 z-20 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-md cursor-pointer"
-                      >
-                        <Heart
-                          className={`h-4 w-4 transition-transform ${
-                            isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white/90 hover:text-rose-400'
-                          }`}
-                        />
-                      </button>
+                        {order < 999 && (
+                          <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black/60 text-amber-300 border border-amber-400/40 backdrop-blur-md shadow-sm">
+                              #{order}
+                            </span>
+                          </div>
+                        )}
+                      </div>
 
-                      {/* Display order rank pill on top left if specified */}
-                      {order < 999 && (
-                        <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/60 text-amber-300 border border-amber-400/40 backdrop-blur-md shadow-sm">
-                            #{order} Featured
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                      {/* Artist Avatar overlapping banner */}
+                      <div className="relative -mt-10 sm:-mt-12 ml-5 w-20 h-20 sm:w-22 sm:h-22 rounded-full overflow-hidden border-4 border-white dark:border-slate-900 ring-2 ring-amber-400/30 shadow-md shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform z-10">
+                        {avatar ? (
+                          <img
+                            src={avatar}
+                            alt={name}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-xl sm:text-2xl">
+                            {name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Fiverr Style Details Panel */}
-                    <div className="p-4 flex flex-col flex-1 justify-between gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
-                      <div className="space-y-2.5">
-                        {/* Creator Profile Row: ENLARGED AVATAR + Name + Badge Pill */}
-                        <div className="flex items-center gap-3">
-                          <Link
-                            href={`/freelancers/${artistId}`}
-                            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-amber-400/50 ring-2 ring-amber-400/20 shadow-md shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform"
-                          >
-                            {avatar ? (
-                              <img
-                                src={avatar}
-                                alt={name}
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-lg sm:text-xl">
-                                {name.charAt(0).toUpperCase()}
-                              </div>
+                      {/* Content Details */}
+                      <div className="px-5 pt-2 pb-5 flex flex-col flex-1 justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white truncate group-hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                              {name}
+                            </h3>
+                            {isVerified && (
+                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
                             )}
-                          </Link>
+                          </div>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Link
-                                href={`/freelancers/${artistId}`}
-                                className="font-bold text-sm text-slate-900 dark:text-white truncate hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                              >
-                                {name}
-                              </Link>
+                          {title && (
+                            <p className="text-xs font-medium text-amber-600 dark:text-amber-400 truncate mt-0.5">
+                              {title}
+                            </p>
+                          )}
 
-                              {/* Badge pill right next to name (e.g. "Top Rated ◆◆◆") */}
-                              <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-0.5 shrink-0">
-                                {badgeFormatted}
+                          {/* Dynamic Rating row: ONLY show when real reviews exist */}
+                          {ratingInfo && ratingInfo.count > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs text-amber-500 mt-2">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                              <span className="font-bold text-slate-900 dark:text-white text-xs">
+                                {ratingInfo.avgRating.toFixed(1)}
+                              </span>
+                              <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                                ({ratingInfo.count} {ratingInfo.count === 1 ? 'review' : 'reviews'})
                               </span>
                             </div>
+                          )}
 
-                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 flex items-center gap-1">
-                              {isVerified && <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />}
-                              <span>{title}</span>
+                          {/* Bio or Skills */}
+                          {bio ? (
+                            <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mt-2 leading-relaxed">
+                              {bio}
                             </p>
-                          </div>
+                          ) : skillsList.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-2.5">
+                              {skillsList.slice(0, 3).map((skill: string, sIdx: number) => (
+                                <span
+                                  key={sIdx}
+                                  className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
 
-                        {/* Catchy Gig Title Text below ("I will create...") */}
-                        <Link
-                          href={`/freelancers/${artistId}`}
-                          className="block font-medium text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-2 transition-colors leading-snug"
-                          title={catchyTitle}
-                        >
-                          {catchyTitle}
-                        </Link>
-
-                        {/* Star Rating row with bold rating number and review count (e.g. "★ 4.9 (1k+)") */}
-                        <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
-                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                          <span className="font-bold text-slate-900 dark:text-white text-xs">
-                            {ratingFormatted}
+                        {/* Card Footer: View Profile CTA */}
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-2">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            Available for work
                           </span>
-                          <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                            {reviewCountFormatted}
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all">
+                            View Profile <ArrowRight className="h-3.5 w-3.5" />
                           </span>
                         </div>
-                      </div>
-
-                      {/* Footer Row: Starting at Price & View Gig CTA */}
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 tracking-wider">
-                            Starting at
-                          </span>
-                          <span className="text-sm font-bold text-slate-900 dark:text-white">
-                            LKR {priceFormatted}
-                          </span>
-                        </div>
-
-                        <Link
-                          href={`/freelancers/${artistId}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-700 dark:text-amber-400 hover:text-slate-950 font-semibold text-xs transition-all duration-200"
-                        >
-                          View Gig <ArrowRight className="h-3 w-3" />
-                        </Link>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })
             )}
