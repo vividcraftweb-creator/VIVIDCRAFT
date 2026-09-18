@@ -91,3 +91,33 @@ export function validateArtistCategories(
 
   return { isValid: true, error: null };
 }
+
+/**
+ * Safe parser helper for tags that handles null, undefined, raw arrays, or PostgreSQL array literal formats safely
+ */
+export const normalizeTags = (tags: any): string[] => {
+  if (!tags) return [];
+  if (Array.isArray(tags)) {
+    return tags
+      .flatMap((t) => {
+        if (typeof t === 'string' && (t.includes('{') || t.includes('['))) {
+          return t.replace(/[\{\}\"\[\]]/g, '').split(',');
+        }
+        return [String(t)];
+      })
+      .map((t) => String(t).toLowerCase().trim())
+      .filter(Boolean);
+  }
+  if (typeof tags === 'string') {
+    // Clean PostgreSQL array literal format e.g. '{"Oil Painting","Acrylic Painting"}'
+    return tags
+      .replace(/[\{\}\"\[\]]/g, '')
+      .split(',')
+      .map((t) => t.toLowerCase().trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+export const parseTags = normalizeTags;
+

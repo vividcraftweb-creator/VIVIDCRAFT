@@ -5,7 +5,27 @@ import Link from 'next/link';
 import { MapPin, CheckCircle, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { getPublicUrl } from '@/lib/profile-helpers';
+import { normalizeTags as baseNormalizeTags } from '@/lib/artist-categories';
 export { getPublicUrl };
+
+/**
+ * Robust fallback helper for normalizeTags
+ */
+export const normalizeTags = (tags: any): string[] => {
+  if (typeof baseNormalizeTags === 'function') {
+    try {
+      return baseNormalizeTags(tags);
+    } catch {}
+  }
+  if (!tags) return [];
+  if (Array.isArray(tags)) return tags.map(String).filter(Boolean);
+  if (typeof tags === 'string') {
+    return tags.replace(/[\{\}\"\[\]]/g, '').split(',').map((t) => t.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+export const parseTags = normalizeTags;
 
 export interface ArtistProfile {
   id: string;
