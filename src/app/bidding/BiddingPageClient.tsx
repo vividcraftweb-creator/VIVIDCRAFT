@@ -144,7 +144,8 @@ export default function BiddingPageClient() {
           if (localUserStr) {
             try {
               const parsed = JSON.parse(localUserStr);
-              if (parsed?.role === 'admin' || parsed?.email === 'vividcraftweb@gmail.com') {
+              const parsedEmail = (parsed?.email || '').toLowerCase().trim();
+              if (parsed?.role === 'admin' || parsedEmail === 'vividcraftweb@gmail.com' || parsedEmail === 'cinnamongallerysocial@gmail.com') {
                 setIsAdmin(true);
                 setCurrentUserId('admin-vividcraft-default-id');
                 setUserRole('ADMIN');
@@ -158,8 +159,9 @@ export default function BiddingPageClient() {
       }
 
       setCurrentUserId(user.id);
+      const userEmail = (user.email || '').toLowerCase().trim();
       const metaRole = (user.user_metadata?.role || '').toString().toUpperCase();
-      if (metaRole === 'ADMIN' || user.email === 'vividcraftweb@gmail.com') {
+      if (metaRole === 'ADMIN' || userEmail === 'vividcraftweb@gmail.com' || userEmail === 'cinnamongallerysocial@gmail.com') {
         setIsAdmin(true);
         setUserRole('ADMIN');
         return;
@@ -638,7 +640,8 @@ export default function BiddingPageClient() {
       return;
     }
 
-    if (isAdmin || user?.email === 'vividcraftweb@gmail.com') {
+    const userEmail = (user?.email || '').toLowerCase().trim();
+    if (isAdmin || userEmail === 'vividcraftweb@gmail.com' || userEmail === 'cinnamongallerysocial@gmail.com') {
       setIsUploadOpen(true);
       return;
     }

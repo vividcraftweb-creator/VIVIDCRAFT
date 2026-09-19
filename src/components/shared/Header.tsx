@@ -73,10 +73,11 @@ const Header = () => {
       if (localUserStr) {
         try {
           const parsed = JSON.parse(localUserStr);
-          if (parsed?.role === 'admin' || parsed?.email === 'vividcraftweb@gmail.com') {
+          const parsedEmail = (parsed?.email || '').toLowerCase().trim();
+          if (parsed?.role === 'admin' || parsedEmail === 'vividcraftweb@gmail.com' || parsedEmail === 'cinnamongallerysocial@gmail.com') {
             setUser({
               id: 'admin-vividcraft-default-id',
-              email: 'vividcraftweb@gmail.com',
+              email: parsedEmail || 'vividcraftweb@gmail.com',
               user_metadata: { role: 'ADMIN', name: 'Vivid Craft Admin' },
             } as any);
             setUserRole('ADMIN');
@@ -94,9 +95,11 @@ const Header = () => {
         return;
       }
       setUser(user);
+      const userEmail = (user.email || '').toLowerCase().trim();
+      const isAdminEmail = userEmail === 'vividcraftweb@gmail.com' || userEmail === 'cinnamongallerysocial@gmail.com';
       const metaRole = (user?.user_metadata?.role || '').toString().trim().toUpperCase();
       // Normalize artist/creator/seller variants to FREELANCER
-      const normalized = ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
+      const normalized = isAdminEmail ? 'ADMIN' : ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
       setUserRole(normalized || null);
     }).catch(() => {
       setUser(null);
@@ -110,8 +113,10 @@ const Header = () => {
         setUserRole(null);
       } else {
         setUser(session.user);
+        const userEmail = (session.user.email || '').toLowerCase().trim();
+        const isAdminEmail = userEmail === 'vividcraftweb@gmail.com' || userEmail === 'cinnamongallerysocial@gmail.com';
         const metaRole = (session.user?.user_metadata?.role || '').toString().trim().toUpperCase();
-        const normalized = ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
+        const normalized = isAdminEmail ? 'ADMIN' : ['ARTIST', 'CREATOR', 'SELLER'].includes(metaRole) ? 'FREELANCER' : metaRole;
         setUserRole(normalized || null);
       }
     });
@@ -147,7 +152,7 @@ const Header = () => {
   }, [userRole, profile, user]);
 
   const isArtistOrCreator = hasUser && (effectiveRole === 'FREELANCER' || effectiveRole === 'ARTIST' || effectiveRole === 'CREATOR');
-  const isAdmin = hasUser && effectiveRole === 'ADMIN';
+  const isAdmin = hasUser && (effectiveRole === 'ADMIN' || (user?.email && ['vividcraftweb@gmail.com', 'cinnamongallerysocial@gmail.com'].includes(user.email.toLowerCase().trim())));
   const isBuyerOrClient = hasUser && !isArtistOrCreator && !isAdmin;
 
   // Calculate avatar & initials - memoized to prevent flashing

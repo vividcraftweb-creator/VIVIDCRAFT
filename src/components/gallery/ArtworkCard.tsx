@@ -108,17 +108,8 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   // Dynamic Pricing & Status Badge Evaluation (preserved untouched)
   const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
 
-  // Requirement 2: Render artist full name dynamically strictly per user specification
-  const artistName =
-    artwork.profiles?.full_name ||
-    artwork.profiles?.display_name ||
-    artwork.profiles?.username ||
-    artwork.user_name ||
-    artwork.profiles?.artist_name ||
-    extractArtistName(artwork, artistNameProp) ||
-    artwork.artist?.name ||
-    artistNameProp ||
-    'Artist';
+  // Requirement 1: Render artist dynamic name strictly per user specification
+  const artistName = extractArtistName(artwork, artistNameProp);
 
   const artistAvatarUrl =
     artwork.profiles?.avatar_url ||
@@ -130,13 +121,19 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   const isAuthenticated = status === 'authenticated' && !!session?.session?.user;
   const currentUserId = session?.session?.user?.id;
   const userMetaRole = (session?.session?.user?.user_metadata?.role || '').toString().toUpperCase();
-  const isAdmin = userMetaRole === 'ADMIN' || session?.session?.user?.email === 'vividcraftweb@gmail.com';
+  const userEmail = (session?.session?.user?.email || '').toLowerCase().trim();
+  const isAdmin = userMetaRole === 'ADMIN' || userEmail === 'vividcraftweb@gmail.com' || userEmail === 'cinnamongallerysocial@gmail.com';
   const isOwner = Boolean(currentUserId && (artwork.artist_id === currentUserId || artwork.user_id === currentUserId));
   const canDelete = isOwner || isAdmin;
 
   // Local optimistic state for instant feedback
-  const [likesCount, setLikesCount] = useState<number>(artwork.likesCount);
-  const [isLiked, setIsLiked] = useState<boolean>(artwork.isLiked);
+  const initialLikesCount = typeof artwork.likesCount === 'number'
+    ? artwork.likesCount
+    : (typeof (artwork as any).likes_count === 'number'
+    ? (artwork as any).likes_count
+    : 0);
+  const [likesCount, setLikesCount] = useState<number>(initialLikesCount);
+  const [isLiked, setIsLiked] = useState<boolean>(Boolean(artwork.isLiked));
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
 
   const utils = trpc.useUtils();
@@ -247,12 +244,24 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   const safeImg = getSafeArtworkUrl(artwork.image_url);
   const artworkTitle = (artwork.title || 'Untitled Artwork').trim();
 
-  // Dynamic Rating: Only display stars if real ratings exist in the database
-  const hasRealRatings =
-    typeof artwork.ratingsCount === 'number' &&
-    artwork.ratingsCount > 0 &&
-    typeof artwork.averageRating === 'number' &&
-    artwork.averageRating > 0;
+  // Real metrics fetched from database
+  const actualRatingsCount =
+    typeof artwork.ratingsCount === 'number'
+      ? artwork.ratingsCount
+      : (typeof (artwork as any).ratings_count === 'number'
+      ? (artwork as any).ratings_count
+      : (typeof (artwork as any).reviews_count === 'number'
+      ? (artwork as any).reviews_count
+      : 0));
+
+  const actualAverageRating =
+    typeof artwork.averageRating === 'number'
+      ? artwork.averageRating
+      : (typeof (artwork as any).average_rating === 'number'
+      ? (artwork as any).average_rating
+      : 0);
+
+  const displayLikes = typeof likesCount === 'number' ? likesCount : 0;
 
   return (
     <>
@@ -357,18 +366,61 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
               {artworkTitle}
             </h3>
 
-            {/* Dynamic Star Rating row (only shown if real database ratings exist) */}
-            {hasRealRatings && (
-              <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                <span className="font-bold text-slate-900 dark:text-white text-xs">
-                  {Number(artwork.averageRating).toFixed(1)}
+            {/* Visible Metrics Row: Real Likes Count & Actual Total Reviews from Database */}
+            <div className="flex items-center gap-3 text-xs pt-1 select-none">
+              {/* Interactive Like Action & Real Likes Count */}
+              <button
+                type="button"
+                onClick={handleLikeClick}
+                className={`inline-flex items-center gap-1.5 transition-colors cursor-pointer group/like ${
+                  isLiked
+                    ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
+                }`}
+                title={isLiked ? 'Unlike this artwork' : 'Like this artwork'}
+                aria-label={`${displayLikes} likes`}
+              >
+                <Heart
+                  className={`w-3.5 h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
+                    isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500 group-hover/like:text-rose-500'
+                  }`}
+                />
+                <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                  {displayLikes}
                 </span>
-                <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
-                  ({artwork.ratingsCount} {artwork.ratingsCount === 1 ? 'rating' : 'ratings'})
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {displayLikes === 1 ? 'like' : 'likes'}
                 </span>
+              </button>
+
+              <span className="text-slate-300 dark:text-slate-700 font-light">•</span>
+
+              {/* Dynamic Reviews Metric from Database */}
+              <div
+                className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400"
+                title={`${actualRatingsCount} total reviews`}
+              >
+                <Star
+                  className={`w-3.5 h-3.5 ${
+                    actualRatingsCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'
+                  }`}
+                />
+                {actualRatingsCount > 0 ? (
+                  <>
+                    <span className="font-bold text-slate-900 dark:text-white text-xs">
+                      {Number(actualAverageRating).toFixed(1)}
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                      ({actualRatingsCount} {actualRatingsCount === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-slate-400 dark:text-slate-500 text-[11px]">
+                    0 reviews
+                  </span>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Pricing & Actions Footer */}

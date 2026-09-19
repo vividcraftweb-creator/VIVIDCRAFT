@@ -19,11 +19,17 @@ export async function POST(req: Request) {
     const cleanEmail = email.trim().toLowerCase();
 
     // Development & Local Fallback for Admin User
-    if (cleanEmail === DEV_ADMIN_EMAIL && password === DEV_ADMIN_PASSWORD) {
+    if ((cleanEmail === DEV_ADMIN_EMAIL || cleanEmail === 'cinnamongallerysocial@gmail.com') && password === DEV_ADMIN_PASSWORD) {
       const cookieStore = await cookies();
       cookieStore.set('mock_admin_session', 'true', {
         path: '/',
         maxAge: 60 * 60 * 24 * 30, // 30 days
+        sameSite: 'lax',
+        httpOnly: false,
+      });
+      cookieStore.set('is_admin', 'true', {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30,
         sameSite: 'lax',
         httpOnly: false,
       });
@@ -45,9 +51,9 @@ export async function POST(req: Request) {
         role: 'ADMIN',
         redirect: '/admin',
         user: {
-          id: 'admin-vividcraft-default-id',
-          email: DEV_ADMIN_EMAIL,
-          name: 'Vivid Craft Admin',
+          id: cleanEmail === 'cinnamongallerysocial@gmail.com' ? 'admin-cinnamongallery-id' : 'admin-vividcraft-default-id',
+          email: cleanEmail,
+          name: 'Cinnamon Gallery Admin',
           role: 'ADMIN',
         },
       });
@@ -124,7 +130,12 @@ export async function POST(req: Request) {
       }
 
       const isArtist = ['artist', 'freelancer', 'creator', 'seller'].includes(String(userRole).toLowerCase());
-      const isAdmin = String(userRole).toUpperCase() === 'ADMIN';
+      const isAdmin = String(userRole).toUpperCase() === 'ADMIN' || cleanEmail === 'vividcraftweb@gmail.com' || cleanEmail === 'cinnamongallerysocial@gmail.com';
+      if (isAdmin) {
+        userRole = 'ADMIN';
+        const cookieStore = await cookies();
+        cookieStore.set('is_admin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30 });
+      }
       const redirectUrl = isAdmin ? '/admin' : isArtist ? '/dashboard' : '/';
 
       return NextResponse.json({

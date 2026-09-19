@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import { type Context } from './context';
 import superjson from 'superjson';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.types';
 
@@ -17,13 +18,16 @@ const isAuthed = t.middleware(async ({ next, ctx }) => {
     });
   }
 
-  // If user is ADMIN or mock dev admin, allow immediately
-  if (ctx.session.user.role === 'ADMIN') {
+  // If user is ADMIN, authorized admin email, or mock dev admin, allow immediately
+  if (ctx.session.user.role === 'ADMIN' || isAdminEmail(ctx.session.user.email)) {
     return next({
       ctx: {
         ...ctx,
         session: {
-          user: ctx.session.user,
+          user: {
+            ...ctx.session.user,
+            role: 'ADMIN',
+          },
           accessToken: ctx.session.accessToken || '',
           refreshToken: ctx.session.refreshToken || '',
           expires: ctx.session.expires || new Date(Date.now() + 3600000).toISOString(),
@@ -37,7 +41,7 @@ const isAuthed = t.middleware(async ({ next, ctx }) => {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
 
-    if (!error && user && !user.email_confirmed_at && ctx.session.user.role !== 'ADMIN') {
+    if (!error && user && !user.email_confirmed_at && ctx.session.user.role !== 'ADMIN' && !isAdminEmail(ctx.session.user.email)) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'Please verify your email address to access this feature.'
@@ -71,7 +75,7 @@ const getAdminSupabaseClient = (): SupabaseClient<Database> => {
 };
 
 const adminGuard = isAuthed.unstable_pipe(({ ctx, next }) => {
-  if (ctx.session.user.role !== 'ADMIN') {
+  if (ctx.session.user.role !== 'ADMIN' && !isAdminEmail(ctx.session.user.email)) {
     throw new TRPCError({ code: 'FORBIDDEN' });
   }
 
@@ -83,7 +87,7 @@ const adminGuard = isAuthed.unstable_pipe(({ ctx, next }) => {
 });
 
 const isAdmin = adminGuard.unstable_pipe(({ ctx, next }) => {
-  if (!ctx.session.user?.role || ctx.session.user.role !== 'ADMIN') {
+  if ((!ctx.session.user?.role || ctx.session.user.role !== 'ADMIN') && !isAdminEmail(ctx.session.user?.email)) {
     throw new TRPCError({ code: 'FORBIDDEN' });
   }
 

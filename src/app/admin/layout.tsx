@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { auth, isAdminEmail } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import { cookies } from 'next/headers';
@@ -34,8 +34,8 @@ export default async function AdminLayout({
     redirect('/auth/signin');
   }
 
-  // Check if user is admin using the role from session or dev mock
-  if (session && session.user?.role !== 'ADMIN' && !isDevMockAdmin) {
+  // Check if user is admin using the role from session, admin email list, or dev mock
+  if (session && session.user?.role !== 'ADMIN' && !isAdminEmail(session.user?.email) && !isDevMockAdmin) {
     redirect('/dashboard');
   }
 

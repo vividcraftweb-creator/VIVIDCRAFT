@@ -24,7 +24,7 @@ export async function deleteArtwork(artworkId: string, reason?: string): Promise
 
     const currentUserId = user.id;
     const metaRole = (user.user_metadata?.role || '').toString().toUpperCase();
-    const isAdmin = metaRole === 'ADMIN' || user.email === 'vividcraftweb@gmail.com';
+    const isAdmin = metaRole === 'ADMIN' || user.email === 'vividcraftweb@gmail.com' || user.email === 'cinnamongallerysocial@gmail.com';
 
     // Verify ownership or admin privileges
     const { data: artwork } = await supabase

@@ -2,7 +2,13 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 
+export const ADMIN_EMAILS = ['vividcraftweb@gmail.com', 'cinnamongallerysocial@gmail.com'];
 const DEV_ADMIN_EMAIL = 'vividcraftweb@gmail.com';
+
+export function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
 
 async function getMockAdminSession() {
   try {
@@ -118,12 +124,15 @@ export async function auth() {
     }
 
     // Direct check for admin email
-    if (user.email?.toLowerCase() === DEV_ADMIN_EMAIL) {
+    if (isAdminEmail(user.email)) {
+      const adminName = user.user_metadata?.firstName
+        ? `${user.user_metadata.firstName} ${user.user_metadata.lastName || ''}`.trim()
+        : 'Vivid Craft Admin';
       return {
         user: {
           id: user.id,
           email: user.email,
-          name: 'Vivid Craft Admin',
+          name: adminName,
           role: 'ADMIN',
         },
         accessToken: 'mock-admin-dev-token',

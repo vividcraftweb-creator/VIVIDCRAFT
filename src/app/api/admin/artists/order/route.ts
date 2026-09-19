@@ -138,7 +138,8 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     const userRole = (profile?.role || user.role || user.user_metadata?.role || '').toUpperCase();
-    if (userRole !== 'ADMIN' && user.email !== 'vividcraftweb@gmail.com') {
+    const userEmail = (user.email || '').toLowerCase().trim();
+    if (userRole !== 'ADMIN' && userEmail !== 'vividcraftweb@gmail.com' && userEmail !== 'cinnamongallerysocial@gmail.com') {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 

@@ -27,6 +27,7 @@ import {
   Gavel,
   Filter,
   Palette,
+  Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +39,7 @@ import { trpc } from '@/utils/trpc';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
-import { getArtworkPricingDisplay } from '@/lib/artworks';
+import { getArtworkPricingDisplay, extractArtistName } from '@/lib/artworks';
 
 type SortOption = 'popular' | 'highest_rated' | 'most_liked' | 'newest';
 type CategoryFilter = 'ALL' | 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
@@ -153,7 +154,8 @@ export default function GalleryPageClient() {
           if (localUserStr) {
             try {
               const parsed = JSON.parse(localUserStr);
-              if (parsed?.role === 'admin' || parsed?.email === 'vividcraftweb@gmail.com') {
+              const parsedEmail = (parsed?.email || '').toLowerCase().trim();
+              if (parsed?.role === 'admin' || parsedEmail === 'vividcraftweb@gmail.com' || parsedEmail === 'cinnamongallerysocial@gmail.com') {
                 setIsAdmin(true);
                 setCurrentUserId('admin-vividcraft-default-id');
               }
@@ -164,8 +166,9 @@ export default function GalleryPageClient() {
       }
 
       setCurrentUserId(user.id);
+      const userEmail = (user.email || '').toLowerCase().trim();
       const metaRole = (user.user_metadata?.role || '').toString().toUpperCase();
-      if (metaRole === 'ADMIN' || user.email === 'vividcraftweb@gmail.com') {
+      if (metaRole === 'ADMIN' || userEmail === 'vividcraftweb@gmail.com' || userEmail === 'cinnamongallerysocial@gmail.com') {
         setIsAdmin(true);
         return;
       }
@@ -247,6 +250,41 @@ export default function GalleryPageClient() {
     },
   });
 
+  const handleToggleLike = useCallback((artwork: RankedArtwork, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    if (!currentUserId) {
+      toast.error('Please sign in to like this artwork', {
+        action: {
+          label: 'Sign In',
+          onClick: () => {
+            router.push(
+              `/auth/signin?callbackUrl=${encodeURIComponent(
+                typeof window !== 'undefined' ? window.location.href : ''
+              )}`
+            );
+          },
+        },
+      });
+      return;
+    }
+
+    const nextLiked = !artwork.isLiked;
+    setLocalArtworks((prev) =>
+      prev.map((a) =>
+        a.id === artwork.id
+          ? {
+              ...a,
+              isLiked: nextLiked,
+              likesCount: nextLiked ? a.likesCount + 1 : Math.max(0, a.likesCount - 1),
+            }
+          : a
+      )
+    );
+
+    toggleLikeMutation.mutate({ artworkId: artwork.id });
+  }, [currentUserId, router, toggleLikeMutation]);
+
   const rateArtworkMutation = trpc.artworks.rateArtwork.useMutation({
     onSuccess: (data) => {
       toast.success('Thank you for rating!', {
@@ -305,13 +343,7 @@ export default function GalleryPageClient() {
               const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
               const avg = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
               const prof = pMap.get(art.artist_id);
-              const profileFullName = (prof?.full_name || '').trim();
-              const profileDisplayName = (prof?.display_name || '').trim();
-              const profileUsername = (prof?.username || '').trim();
-              const artistNameField = (prof?.artist_name || '').trim();
-              const combinedFirstLast = [prof?.first_name, prof?.last_name].filter(Boolean).join(' ').trim();
-              const emailPrefix = prof?.email ? prof.email.split('@')[0] : '';
-              const artistName = profileFullName || profileDisplayName || profileUsername || artistNameField || combinedFirstLast || emailPrefix || art.user_name || 'Verified Artist';
+              const artistName = extractArtistName({ ...art, profiles: prof });
 
 
               const rawArtCode = art.art_code;
@@ -1248,7 +1280,7 @@ export default function GalleryPageClient() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {displayedArtworks.map((artwork) => {
               const safeImg = getSafeArtworkUrl(artwork.image_url);
-              const dynamicArtistName = (artwork.profiles?.full_name || artwork.profiles?.display_name || artwork.profiles?.username || artwork.profiles?.artist_name || artwork.user_name || artwork.artist?.name || 'Artist').trim();
+              const dynamicArtistName = extractArtistName(artwork);
               const artistAvatar = getProfilePictureUrl(artwork.artist_id, artwork.profiles?.avatar_url || artwork.artist?.avatar_url);
               const initials = (dynamicArtistName || 'Artist')
                 .split(' ')
@@ -1392,18 +1424,61 @@ export default function GalleryPageClient() {
                         {artworkTitle}
                       </h3>
 
-                      {/* Dynamic Star Rating row (only shown if real database ratings exist) */}
-                      {hasRealRatings && (
-                        <div className="flex items-center gap-1.5 text-xs text-amber-500 pt-0.5">
-                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                          <span className="font-bold text-slate-900 dark:text-white text-xs">
-                            {Number(artwork.averageRating).toFixed(1)}
+                      {/* Visible Metrics Row: Real Likes Count & Actual Total Reviews from Database */}
+                      <div className="flex items-center gap-3 text-xs pt-1 select-none">
+                        {/* Interactive Like Action & Real Likes Count */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleLike(artwork, e)}
+                          className={`inline-flex items-center gap-1.5 transition-colors cursor-pointer group/like ${
+                            artwork.isLiked
+                              ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
+                          }`}
+                          title={artwork.isLiked ? 'Unlike this artwork' : 'Like this artwork'}
+                          aria-label={`${artwork.likesCount} likes`}
+                        >
+                          <Heart
+                            className={`w-3.5 h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
+                              artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500 group-hover/like:text-rose-500'
+                            }`}
+                          />
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                            {artwork.likesCount}
                           </span>
-                          <span className="text-slate-500 dark:text-slate-400 text-[11px] font-normal">
-                            ({artwork.ratingsCount} {artwork.ratingsCount === 1 ? 'rating' : 'ratings'})
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {artwork.likesCount === 1 ? 'like' : 'likes'}
                           </span>
+                        </button>
+
+                        <span className="text-slate-300 dark:text-slate-700 font-light">•</span>
+
+                        {/* Dynamic Reviews Metric from Database */}
+                        <div
+                          className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400"
+                          title={`${artwork.ratingsCount} total reviews`}
+                        >
+                          <Star
+                            className={`w-3.5 h-3.5 ${
+                              artwork.ratingsCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'
+                            }`}
+                          />
+                          {artwork.ratingsCount > 0 ? (
+                            <>
+                              <span className="font-bold text-slate-900 dark:text-white text-xs">
+                                {Number(artwork.averageRating).toFixed(1)}
+                              </span>
+                              <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                                ({artwork.ratingsCount} {artwork.ratingsCount === 1 ? 'review' : 'reviews'})
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 text-[11px]">
+                              0 reviews
+                            </span>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
 
                     {/* Bottom Row: Pricing & Actions */}
@@ -1413,9 +1488,7 @@ export default function GalleryPageClient() {
                           {badgeType === 'FOR_SALE' ? 'Starting at' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Portfolio'}
                         </span>
                         <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          {badgeType === 'FOR_SALE'
-                            ? `LKR ${displayPrice}`
-                            : displayPrice}
+                          {displayPrice}
                         </span>
                       </div>
 
@@ -1430,7 +1503,7 @@ export default function GalleryPageClient() {
                           const title = artwork.title || 'Artwork';
                           const rawRef = (artwork as any).ref_id || (artwork as any).art_code || artwork.id || 'N/A';
                           const refId = String(rawRef).replace(/^#/, '');
-                          const cardArtist = artwork.profiles?.full_name || (artwork as any).artist_name || artwork.artist?.name || 'Artist';
+                          const cardArtist = dynamicArtistName;
 
                           const rawPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || (artwork as any).starting_bid || 0);
                           const priceText = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
@@ -1527,11 +1600,7 @@ export default function GalleryPageClient() {
                         href={`/freelancers/${selectedArtwork.artist_id}`}
                         className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:underline font-medium"
                       >
-                        by {(() => {
-                          const p = (selectedArtwork as any).profiles;
-                          const rawName = p?.full_name || p?.display_name || p?.username || p?.artist_name || (selectedArtwork as any).user_name || selectedArtwork.artist?.name;
-                          return (rawName && rawName !== 'Artist' && rawName !== 'Artist / Creator') ? rawName : 'Verified Artist';
-                        })()}
+                        by {extractArtistName(selectedArtwork)}
                       </Link>
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                         • Ref ID: {selectedArtwork.art_code || '#ART-101'}
@@ -1575,7 +1644,7 @@ export default function GalleryPageClient() {
                     {/* Full Artist Profile Info Section */}
                     {(() => {
                       const profile = (selectedArtwork as any).profiles;
-                      const name = profile?.artist_name || profile?.full_name || selectedArtwork.artist?.name || 'Verified Artist';
+                      const name = extractArtistName(selectedArtwork);
                       const bio = profile?.bio || profile?.headline || profile?.title || selectedArtwork.artist?.bio || selectedArtwork.artist?.title || 'Visual artist & creator on JobHorizons.';
                       const location = profile?.location || profile?.address || selectedArtwork.artist?.location || 'Sri Lanka';
                       const category = (selectedArtwork as any).category || profile?.category || (profile?.role ? (profile.role.charAt(0).toUpperCase() + profile.role.slice(1)) : 'Visual Arts');

@@ -163,40 +163,71 @@ export function inferArtworkPricing(artwork: any): {
  * Deep fallback chain:
  * artwork.profiles?.artist_name || artwork.profiles?.full_name || artwork.artist_name || artwork.user_name || artwork.user?.full_name || artwork.user?.email?.split('@')[0] || 'Unknown Creator'
  */
+export function isGenericPlaceholderName(name?: string | null): boolean {
+  if (!name || typeof name !== 'string') return true;
+  const lower = name.trim().toLowerCase();
+  return (
+    !lower ||
+    lower === 'verified artist' ||
+    lower === 'verified artist & creator' ||
+    lower === 'verified artist and creator' ||
+    lower === 'artist' ||
+    lower === 'artist / creator' ||
+    lower === 'curator / admin' ||
+    lower === 'creator' ||
+    lower === 'admin'
+  );
+}
+
 export function extractArtistName(artwork: any, artistNameProp?: string): string {
-  // Requirement 2: Render artist full name dynamically
-  const dynamicArtistName =
-    artwork?.profiles?.full_name ||
-    artwork?.profiles?.display_name ||
-    artwork?.profiles?.username ||
-    artwork?.user_name;
+  const profile = artwork?.profiles || artwork?.profile || {};
 
-  if (dynamicArtistName && typeof dynamicArtistName === 'string' && dynamicArtistName.trim()) {
-    return dynamicArtistName.trim();
+  // 1. Dynamic artist name (first_name + last_name) from profiles table
+  const fName = (profile?.first_name || artwork?.first_name || artwork?.user?.first_name || '').toString().trim();
+  const lName = (profile?.last_name || artwork?.last_name || artwork?.user?.last_name || '').toString().trim();
+  const combinedFirstLast = [fName, lName].filter(Boolean).join(' ').trim();
+
+  if (combinedFirstLast && !isGenericPlaceholderName(combinedFirstLast)) {
+    return combinedFirstLast;
   }
 
-  if (artistNameProp && artistNameProp.trim() && artistNameProp !== 'Artist' && artistNameProp !== 'Artist / Creator' && artistNameProp !== 'Verified Artist') {
-    return artistNameProp.trim();
+  // 2. Fall back to username ONLY if first/last names are missing
+  const username = (profile?.username || artwork?.username || profile?.user_name || artwork?.user_name || '').toString().trim();
+  if (username && !isGenericPlaceholderName(username)) {
+    return username;
   }
 
-  const candidate =
-    artwork?.profiles?.artist_name ||
-    artwork?.artist_name ||
-    artwork?.user?.full_name ||
-    (artwork?.user?.email ? artwork.user.email.split('@')[0] : null) ||
-    artwork?.artist?.name ||
-    artwork?.artistName ||
-    artwork?.profiles?.first_name ||
-    artwork?.first_name;
-
-  if (candidate && typeof candidate === 'string') {
-    const trimmed = candidate.trim();
-    if (trimmed && trimmed !== 'Artist' && trimmed !== 'Artist / Creator' && trimmed !== 'Verified Artist') {
-      return trimmed;
+  // 3. Fall back to email prefix ONLY if first/last names & username are missing
+  const rawEmail = (profile?.email || artwork?.email || artwork?.user?.email || '').toString().trim();
+  if (rawEmail && rawEmail.includes('@')) {
+    const emailPrefix = rawEmail.split('@')[0].trim();
+    if (emailPrefix && !isGenericPlaceholderName(emailPrefix)) {
+      return emailPrefix;
     }
   }
 
-  return artwork?.profiles?.artist_name || artwork?.profiles?.full_name || 'Artist';
+  // 4. Fall back to full_name or display_name (if not a generic placeholder)
+  const candidateNames = [
+    profile?.full_name,
+    artwork?.full_name,
+    profile?.display_name,
+    artwork?.display_name,
+    profile?.artist_name,
+    artwork?.artist_name,
+    artwork?.artist?.name,
+    artistNameProp,
+  ];
+
+  for (const cand of candidateNames) {
+    if (cand && typeof cand === 'string') {
+      const trimmed = cand.trim();
+      if (trimmed && !isGenericPlaceholderName(trimmed)) {
+        return trimmed;
+      }
+    }
+  }
+
+  return 'Artist';
 }
 
 /**
@@ -234,7 +265,7 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles!artworks_artist_id_fkey(full_name, artist_name, avatar_url, bio)')
+        .select('*, profiles!artworks_artist_id_fkey(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)')
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {
@@ -248,7 +279,7 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles:artist_id(full_name, artist_name, avatar_url, bio)')
+        .select('*, profiles:artist_id(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)')
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {
@@ -262,7 +293,7 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles(full_name, artist_name, avatar_url, bio)')
+        .select('*, profiles(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)')
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {

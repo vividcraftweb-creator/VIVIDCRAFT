@@ -94,7 +94,7 @@ function LoginContent() {
     setLegacyError(false);
 
     // Direct Dev Admin condition check - redirects to home page (/)
-    if (email === 'vividcraftweb@gmail.com' && password === 'VividCraftAdmin#2026!') {
+    if ((email === 'vividcraftweb@gmail.com' || email === 'cinnamongallerysocial@gmail.com') && password === 'VividCraftAdmin#2026!') {
       document.cookie = "is_admin=true; path=/;";
       document.cookie = "mock_admin_session=true; path=/;";
       localStorage.setItem('user', JSON.stringify({ email, role: 'admin' }));
@@ -169,11 +169,17 @@ function LoginContent() {
           console.warn('Sign-in profiles sync notice:', syncErr);
         }
 
-        const isArtist = roleToUse === 'artist';
-        const dest = redirectTo || (isArtist ? '/dashboard' : '/freelancers');
+        const isAdminUser = cleanEmail === 'vividcraftweb@gmail.com' || cleanEmail === 'cinnamongallerysocial@gmail.com';
+        if (isAdminUser) {
+          document.cookie = "is_admin=true; path=/;";
+          localStorage.setItem('user', JSON.stringify({ email: cleanEmail, role: 'admin' }));
+        }
+
+        const isArtist = !isAdminUser && roleToUse === 'artist';
+        const dest = redirectTo || (isAdminUser ? '/admin' : isArtist ? '/dashboard' : '/freelancers');
 
         toast.success('Signed in successfully', {
-          description: isArtist ? 'Redirecting to artist dashboard...' : 'Redirecting to explore artists...',
+          description: isAdminUser ? 'Redirecting to admin panel...' : isArtist ? 'Redirecting to artist dashboard...' : 'Redirecting to explore artists...',
         });
 
         router.push(dest);
