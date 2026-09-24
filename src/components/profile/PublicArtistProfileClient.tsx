@@ -390,7 +390,7 @@ export default function PublicArtistProfileClient() {
       username: uName,
       avatarUrl: resolvedAvatar,
       title: rawProfile?.title || rawProfile?.professional_title || (Boolean(rawProfile?.is_verified || rawProfile?.verified) ? 'Verified Artist & Creator' : 'Artist & Creator'),
-      bio: rawProfile?.bio || rawProfile?.description || 'Professional artist and digital creator on Vivid Art.',
+      bio: rawProfile?.bio || rawProfile?.description || 'Professional artist and digital creator on Cinnamon Gallery.',
       location: rawProfile?.location || rawProfile?.address || '',
       skills: skillsList,
       artStyles: stylesList,

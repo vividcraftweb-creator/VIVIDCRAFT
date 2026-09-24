@@ -4,7 +4,7 @@ import AdminDashboard from '@/components/dashboard/AdminDashboard';
 
 export const metadata: Metadata = createAdminPageMetadata({
   title: 'Admin Dashboard',
-  description: 'Vivid Art admin dashboard - manage users, jobs, and platform settings.',
+  description: 'Cinnamon Gallery admin dashboard - manage users, jobs, and platform settings.',
 });
 
 export default function AdminPage() {

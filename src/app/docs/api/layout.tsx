@@ -3,10 +3,10 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'API Documentation',
-  description: 'Complete API reference for Vivid Art. Programmatically manage jobs, analytics, and more. Available for Business and Enterprise plans.',
+  description: 'Complete API reference for Cinnamon Gallery. Programmatically manage jobs, analytics, and more. Available for Business and Enterprise plans.',
   keywords: [
     'API documentation',
-    'Vivid Art API',
+    'Cinnamon Gallery API',
     'developer docs',
     'API integration',
     'REST API',

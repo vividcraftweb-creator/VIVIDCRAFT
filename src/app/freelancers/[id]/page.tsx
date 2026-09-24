@@ -47,9 +47,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!profile) {
     return {
       title: {
-        absolute: 'studio One - Verified Artist | Vivid Art',
+        absolute: 'studio One - Verified Artist | Cinnamon Gallery',
       },
-      description: 'View studio One\'s artist profile and creative portfolio on Vivid Art.',
+      description: 'View studio One\'s artist profile and creative portfolio on Cinnamon Gallery.',
     };
   }
 
@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const description = profile.bio
     ? (profile.bio.length > 160 ? `${profile.bio.slice(0, 157)}...` : profile.bio)
-    : `View ${name}'s artist profile and creative portfolio on Vivid Art.`;
+    : `View ${name}'s artist profile and creative portfolio on Cinnamon Gallery.`;
 
   return createDynamicMetadata({
     title: pageTitle,

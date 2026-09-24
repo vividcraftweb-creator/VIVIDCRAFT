@@ -1,4 +1,4 @@
-# 🌐 JobHorizons - Freelance Marketplace Platform
+# 🌐 Cinnamon Gallery - Freelance Marketplace Platform
 
 ![Next.js](https://img.shields.io/badge/Next.js-15.5.7-000000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.1.2-61DAFB?logo=react&logoColor=white)
@@ -29,7 +29,7 @@
 
 ## 🎯 Overview
 
-**JobHorizons** is a modern, full-stack freelance marketplace platform that connects talented freelancers with clients worldwide. Built with Next.js 15 and deployed on Vercel, the platform offers comprehensive job posting, proposal management, contract handling, milestone tracking, and team collaboration features.
+**Cinnamon Gallery** is a modern, full-stack freelance marketplace platform that connects talented freelancers with clients worldwide. Built with Next.js 15 and deployed on Vercel, the platform offers comprehensive job posting, proposal management, contract handling, milestone tracking, and team collaboration features.
 
 The platform serves three user types:
 - **Freelancers**: Find work, submit proposals, manage contracts

@@ -131,9 +131,9 @@ async function attemptWebhookDelivery(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-VividArt-Signature': `sha256=${signature}`,
-        'X-VividArt-Event': payload.event,
-        'User-Agent': 'VividArt-Webhooks/1.0'
+        'X-CinnamonGallery-Signature': `sha256=${signature}`,
+        'X-CinnamonGallery-Event': payload.event,
+        'User-Agent': 'CinnamonGallery-Webhooks/1.0'
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(10000) // 10 second timeout

@@ -367,13 +367,13 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     '@type': 'Person',
     name: displayName,
     jobTitle: profile?.title || (profile as any)?.professional_title || 'Artist',
-    description: profile?.bio || (profile as any)?.description || 'Professional artist on Vivid Art',
+    description: profile?.bio || (profile as any)?.description || 'Professional artist on Cinnamon Gallery',
     image: avatarUrl || undefined,
     url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/freelancers/${profile?.slug ?? resolvedParams.id}`,
     knowsAbout: formattedSkills,
     worksFor: {
       '@type': 'Organization',
-      name: 'Vivid Art',
+      name: 'Cinnamon Gallery',
     },
     address: (profile?.location || (profile as any)?.address)
       ? {
@@ -529,7 +529,7 @@ export default function FreelancerProfileClient({ params, initialProfile, initia
     const profileUrl = typeof window !== 'undefined' ? window.location.href : shareUrl;
 
     // Construct dynamic message
-    const message = `New Artist Inquiry via Vivid Art
+    const message = `New Artist Inquiry via Cinnamon Gallery
 
 Client Details:
 - Name: ${clientName}

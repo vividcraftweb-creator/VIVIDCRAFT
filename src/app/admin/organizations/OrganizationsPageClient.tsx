@@ -114,7 +114,7 @@ export default function AdminOrganizationsPage() {
   const handleContactOrganization = (user: typeof users[0]) => {
     const companyName = getCompanyName(user);
     setContactFormData({
-      subject: `Message from JobHorizons Admin`,
+      subject: `Message from Cinnamon Gallery Admin`,
       message: '',
       recipientEmail: user.email,
       recipientName: companyName !== 'N/A' ? companyName : user.email,

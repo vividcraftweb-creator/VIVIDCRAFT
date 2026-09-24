@@ -3,12 +3,12 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Support Center',
-  description: 'Get help with Vivid Art. Find answers to common questions, contact support, and access resources for freelancers and clients.',
+  description: 'Get help with Cinnamon Gallery. Find answers to common questions, contact support, and access resources for freelancers and clients.',
   keywords: [
     'support',
     'help center',
     'customer support',
-    'Vivid Art help',
+    'Cinnamon Gallery help',
     'contact support',
     'FAQs',
     'user guides',

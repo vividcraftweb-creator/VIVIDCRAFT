@@ -27,7 +27,7 @@ const PrivacyPage = () => {
               <h2 className="text-2xl font-bold text-foreground">Our Commitment</h2>
             </div>
             <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-              At JobHorizons, we are committed to protecting your privacy and ensuring transparency 
+              At Cinnamon Gallery, we are committed to protecting your privacy and ensuring transparency 
               about how we collect, use, and safeguard your personal information. This policy 
               explains our practices in clear, understandable terms.
             </p>

@@ -5,7 +5,7 @@ import { FeaturedCrew } from '@/components/FeaturedCrew';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Home',
-  description: 'Vivid Art connects talented freelancers with quality remote work opportunities. Discover verified projects, build your career, and work with trusted clients worldwide.',
+  description: 'Cinnamon Gallery connects talented freelancers with quality remote work opportunities. Discover verified projects, build your career, and work with trusted clients worldwide.',
   keywords: [
     'remote jobs',
     'freelance work',

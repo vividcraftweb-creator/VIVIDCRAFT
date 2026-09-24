@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!profile) {
     return {
       title: {
-        absolute: 'Profile Not Found | JobHorizons',
+        absolute: 'Profile Not Found | Cinnamon Gallery',
       },
       description: 'This user profile could not be found.',
       robots: { index: false, follow: false },
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = profile.title || 'Professional';
   const description = profile.bio
     ? profile.bio.slice(0, 160)
-    : `View ${fullName}'s professional profile on JobHorizons. ${title} available for hire.`;
+    : `View ${fullName}'s professional profile on Cinnamon Gallery. ${title} available for hire.`;
 
   return createDynamicMetadata({
     title: `${fullName} - ${title}`,

@@ -9,7 +9,7 @@ export function ThemeSwitcher() {
 
   React.useEffect(() => {
     // Check initial theme from localStorage or system on mount
-    const storedTheme = localStorage.getItem('vivid-art-theme');
+    const storedTheme = localStorage.getItem('cinnamon-gallery-theme');
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialTheme = storedTheme || (systemDark ? 'dark' : 'light');
     
@@ -32,7 +32,7 @@ export function ThemeSwitcher() {
     setTheme(nextTheme);
     
     // Persist in localStorage
-    localStorage.setItem('vivid-art-theme', nextTheme);
+    localStorage.setItem('cinnamon-gallery-theme', nextTheme);
     
     // Hard manipulate DOM instantly for Tailwind
     if (nextTheme === 'dark') {

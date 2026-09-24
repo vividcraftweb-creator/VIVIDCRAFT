@@ -3,7 +3,7 @@ import { createAuthPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createAuthPageMetadata({
   title: 'Edit Profile',
-  description: 'Update your JobHorizons profile, skills, rates, and portfolio information.',
+  description: 'Update your Cinnamon Gallery profile, skills, rates, and portfolio information.',
   noIndex: true,
 });
 

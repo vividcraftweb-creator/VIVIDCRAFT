@@ -10,7 +10,7 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 export const metadata: Metadata = createPageMetadata({
   title: 'Explore Art & Collections - Coming Soon',
   description:
-    'We are curating incredible new ways for you to discover art. This feature will be available soon on Vivid Art.',
+    'We are curating incredible new ways for you to discover art. This feature will be available soon on Cinnamon Gallery.',
 });
 
 export default function ExplorePage() {

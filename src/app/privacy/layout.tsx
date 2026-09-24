@@ -3,12 +3,12 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Privacy Policy',
-  description: 'Read Vivid Art privacy policy to understand how we collect, use, and protect your personal information. Your privacy is our priority.',
+  description: 'Read Cinnamon Gallery privacy policy to understand how we collect, use, and protect your personal information. Your privacy is our priority.',
   keywords: [
     'privacy policy',
     'data protection',
     'user privacy',
-    'Vivid Art privacy',
+    'Cinnamon Gallery privacy',
     'personal data',
     'GDPR compliance',
   ],

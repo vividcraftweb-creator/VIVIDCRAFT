@@ -113,7 +113,7 @@ export default function ClientVerificationForm({ onComplete }: ClientVerificatio
             name="companyName"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="e.g., JobHorizons"
+            placeholder="e.g., Cinnamon Gallery"
             required
             className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-12"
           />

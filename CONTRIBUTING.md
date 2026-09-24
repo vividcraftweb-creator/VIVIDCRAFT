@@ -1,4 +1,4 @@
-# Contributing to JobHorizons
+# Contributing to Cinnamon Gallery
 
 Thank you for your interest in contributing! Here's how to get started.
 

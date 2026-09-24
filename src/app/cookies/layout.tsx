@@ -3,12 +3,12 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Cookie Policy',
-  description: 'Learn about how Vivid Art uses cookies to improve your experience, analyze traffic, and personalize content on our platform.',
+  description: 'Learn about how Cinnamon Gallery uses cookies to improve your experience, analyze traffic, and personalize content on our platform.',
   keywords: [
     'cookie policy',
     'cookies',
     'tracking',
-    'Vivid Art cookies',
+    'Cinnamon Gallery cookies',
     'web cookies',
     'privacy preferences',
   ],

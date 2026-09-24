@@ -3,12 +3,12 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Terms of Service',
-  description: 'Review Vivid Art terms of service. Understand the rules, guidelines, and legal agreements for using our freelance marketplace platform.',
+  description: 'Review Cinnamon Gallery terms of service. Understand the rules, guidelines, and legal agreements for using our freelance marketplace platform.',
   keywords: [
     'terms of service',
     'user agreement',
     'terms and conditions',
-    'Vivid Art terms',
+    'Cinnamon Gallery terms',
     'platform guidelines',
     'legal terms',
   ],

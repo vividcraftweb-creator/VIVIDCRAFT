@@ -55,11 +55,11 @@ const HirePage = () => {
       </div>
 
       <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pb-24">
-        {/* Why Choose JobHorizons */}
+        {/* Why Choose Cinnamon Gallery */}
         <section className="mb-20">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Why Clients Choose <span className="text-gradient">JobHorizons</span>
+              Why Clients Choose <span className="text-gradient">Cinnamon Gallery</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Experience the difference of a curated marketplace built for quality
@@ -182,7 +182,7 @@ const HirePage = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-foreground mb-2">Transparent Agreements</h3>
-                  <p className="text-muted-foreground text-sm">Document milestones and settle payments externally while keeping everything coordinated in JobHorizons.</p>
+                  <p className="text-muted-foreground text-sm">Document milestones and settle payments externally while keeping everything coordinated in Cinnamon Gallery.</p>
                 </div>
               </div>
 
@@ -236,7 +236,7 @@ const HirePage = () => {
               Ready to Find Your Next <span className="text-gradient">Star Player</span>?
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join thousands of satisfied clients who have found their perfect freelancers on JobHorizons. 
+              Join thousands of satisfied clients who have found their perfect freelancers on Cinnamon Gallery. 
               Post your first job today and experience the difference quality makes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

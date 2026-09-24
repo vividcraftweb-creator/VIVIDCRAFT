@@ -18,10 +18,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://vividcraft.vercel.app'),
   title: {
-    default: 'Vivid Art | Online Art Marketplace - Buy Art & Discover Artists',
-    template: '%s | Vivid Art - Art Marketplace',
+    default: 'Cinnamon Gallery | Online Art Marketplace - Buy Art & Discover Artists',
+    template: '%s | Cinnamon Gallery - Art Marketplace',
   },
-  description: 'Vivid Art is the leading online art marketplace. Discover extraordinary artwork from independent artists, buy original art, and showcase your creative services. Join a vibrant community of artists and art collectors worldwide.',
+  description: 'Cinnamon Gallery is the leading online art marketplace. Discover extraordinary artwork from independent artists, buy original art, and showcase your creative services. Join a vibrant community of artists and art collectors worldwide.',
   keywords: [
     'buy art online',
     'art marketplace',
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
     'art prints',
     'creative marketplace',
   ],
-  authors: [{ name: 'Vivid Art' }],
-  creator: 'Vivid Art',
-  publisher: 'Vivid Art',
+  authors: [{ name: 'Cinnamon Gallery' }],
+  creator: 'Cinnamon Gallery',
+  publisher: 'Cinnamon Gallery',
   formatDetection: {
     email: false,
     address: false,
@@ -59,30 +59,30 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Vivid Art',
+    title: 'Cinnamon Gallery',
   },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
-    siteName: 'Vivid Art',
-    title: 'Vivid Art | Online Art Marketplace - Discover & Collect Art',
-    description: 'Discover extraordinary artwork from independent artists. Vivid Art connects collectors with talented artists worldwide.',
+    siteName: 'Cinnamon Gallery',
+    title: 'Cinnamon Gallery | Online Art Marketplace - Discover & Collect Art',
+    description: 'Discover extraordinary artwork from independent artists. Cinnamon Gallery connects collectors with talented artists worldwide.',
     images: [
       {
-        url: '/vivid-art-og-image.png',
+        url: '/cinnamon-gallery-og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Vivid Art - Online Art Marketplace',
+        alt: 'Cinnamon Gallery - Online Art Marketplace',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vivid Art | Online Art Marketplace - Discover & Collect Art',
+    title: 'Cinnamon Gallery | Online Art Marketplace - Discover & Collect Art',
     description: 'Discover extraordinary artwork from independent artists. Connect with talented artists worldwide.',
-    images: ['/vivid-art-og-image.png'],
-    creator: '@vividart',
+    images: ['/cinnamon-gallery-og-image.png'],
+    creator: '@cinnamongallery',
   },
   robots: {
     index: true,
@@ -102,8 +102,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
-    { media: '(prefers-color-scheme: dark)', color: '#0d0d14' },
+    { media: '(prefers-color-scheme: light)', color: '#F8F6F1' },
+    { media: '(prefers-color-scheme: dark)', color: '#1E1B18' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -136,7 +136,7 @@ export default async function RootLayout({
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Vivid Art',
+    name: 'Cinnamon Gallery',
     url: siteUrl,
     logo: {
       '@type': 'ImageObject',
@@ -144,7 +144,7 @@ export default async function RootLayout({
       width: 512,
       height: 512,
     },
-    description: 'Vivid Art is a leading online art marketplace connecting independent artists with art collectors worldwide.',
+    description: 'Cinnamon Gallery is a leading online art marketplace connecting independent artists with art collectors worldwide.',
     sameAs: [
       process.env.NEXT_PUBLIC_TWITTER_URL || '',
       process.env.NEXT_PUBLIC_LINKEDIN_URL || '',
@@ -160,7 +160,7 @@ export default async function RootLayout({
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Vivid Art',
+    name: 'Cinnamon Gallery',
     url: siteUrl,
     description: 'Online art marketplace for buying and selling artwork',
     potentialAction: {
@@ -181,7 +181,7 @@ export default async function RootLayout({
         '@type': 'SiteNavigationElement',
         position: 1,
         name: 'Get Started',
-        description: 'Sign up and start your art journey on Vivid Art',
+        description: 'Sign up and start your art journey on Cinnamon Gallery',
         url: `${siteUrl}/freelancers/getting-started`,
       },
       {
@@ -195,7 +195,7 @@ export default async function RootLayout({
         '@type': 'SiteNavigationElement',
         position: 3,
         name: 'How It Works',
-        description: 'Learn how Vivid Art connects artists with collectors',
+        description: 'Learn how Cinnamon Gallery connects artists with collectors',
         url: `${siteUrl}/how-it-works`,
       },
     ],
@@ -386,7 +386,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${plusJakartaSans.variable} font-sans antialiased min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 transition-colors duration-200`}
+        className={`${inter.variable} ${plusJakartaSans.variable} font-sans antialiased min-h-screen overflow-x-hidden bg-[#F8F6F1] dark:bg-[#1E1B18] text-slate-900 dark:text-slate-100 transition-colors duration-200`}
         suppressHydrationWarning
       >
         {/* JSON-LD structured data */}

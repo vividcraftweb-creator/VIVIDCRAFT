@@ -69,7 +69,7 @@ VALUES
     3
   ),
   (
-    'Join Vivid Art',
+    'Join Cinnamon Gallery',
     'Showcase Your Art & Sell to Global Collectors',
     'Join Sri Lanka’s premier digital art marketplace. Create your artist profile, upload artworks, and get discovered.',
     'Get Offer',

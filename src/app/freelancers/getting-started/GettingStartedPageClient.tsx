@@ -260,7 +260,7 @@ const GettingStartedPage = () => {
             Launch, win, and grow your freelance career with confidence.
           </h1>
           <p className="max-w-3xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            This guided walkthrough covers every moment of the JobHorizons freelancer experience, from setting up a
+            This guided walkthrough covers every moment of the Cinnamon Gallery freelancer experience, from setting up a
             standout profile to landing your first project and keeping momentum with repeat clients.
           </p>
           <div className="flex flex-col gap-4 sm:flex-row">
@@ -491,7 +491,7 @@ const GettingStartedPage = () => {
             <div className="max-w-3xl">
               <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Tools and support that keep you moving</h2>
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                You are never on your own. JobHorizons provides guidance, data, and safety net features so you can focus
+                You are never on your own. Cinnamon Gallery provides guidance, data, and safety net features so you can focus
                 on delivering great work.
               </p>
             </div>
@@ -521,7 +521,7 @@ const GettingStartedPage = () => {
         {/* CTA */}
         <section className="rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/20 via-background/60 to-chart-1/20 p-12 text-center shadow-2xl">
           <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">
-            Ready to craft your next win on JobHorizons?
+            Ready to craft your next win on Cinnamon Gallery?
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
             Publish your optimized profile, curate a list of dream projects, and use your weekly tokens to start real

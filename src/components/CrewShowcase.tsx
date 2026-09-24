@@ -152,7 +152,7 @@ export function CrewShowcase() {
             <span>Meet Our Curation Crew</span>
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-            The Visionaries Behind Vivid Art
+            The Visionaries Behind Cinnamon Gallery
           </h2>
           <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto">
             Click any crew member to explore their background, curatorial philosophy, and social channels.

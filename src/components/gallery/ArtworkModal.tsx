@@ -397,7 +397,7 @@ export function ArtworkModal({
                 artistProfile?.title ||
                 artwork.artist?.bio ||
                 artwork.artist?.title ||
-                'Creative artist & designer on JobHorizons.';
+                'Creative artist & designer on Cinnamon Gallery.';
               const artistLocation =
                 artistProfile?.location ||
                 artistProfile?.address ||

@@ -3,7 +3,7 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Browse Artists',
-  description: 'Browse and hire verified artists from around the world. Find skilled creative professionals for your projects on Vivid Art. View portfolios, styles, and ratings of top talent.',
+  description: 'Browse and hire verified artists from around the world. Find skilled creative professionals for your projects on Cinnamon Gallery. View portfolios, styles, and ratings of top talent.',
   keywords: [
     'hire artists',
     'find artists',

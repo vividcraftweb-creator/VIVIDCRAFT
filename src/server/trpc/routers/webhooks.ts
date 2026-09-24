@@ -186,7 +186,7 @@ export const webhooksRouter = router({
         event: 'webhook.test',
         timestamp: new Date().toISOString(),
         data: {
-          message: 'This is a test webhook from Vivid Art',
+          message: 'This is a test webhook from Cinnamon Gallery',
           webhook_id: webhook.id,
         },
       };
@@ -201,8 +201,8 @@ export const webhooksRouter = router({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-VividArt-Signature': `sha256=${signature}`,
-            'X-VividArt-Event': 'webhook.test',
+            'X-CinnamonGallery-Signature': `sha256=${signature}`,
+            'X-CinnamonGallery-Event': 'webhook.test',
           },
           body: JSON.stringify(testPayload),
           signal: AbortSignal.timeout(5000),

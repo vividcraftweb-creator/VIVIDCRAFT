@@ -12,7 +12,7 @@ const CookiesPage = () => {
             Cookie <span className="text-gradient">Policy</span>
           </h1>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            How we use cookies and similar technologies to enhance your experience on JobHorizons.
+            How we use cookies and similar technologies to enhance your experience on Cinnamon Gallery.
           </p>
         </div>
       </div>
@@ -29,7 +29,7 @@ const CookiesPage = () => {
             <p className="text-lg text-muted-foreground leading-relaxed mb-4">
               Cookies are small text files that websites place on your device to store information 
               about your preferences and activities. They help us provide you with a personalized 
-              and seamless experience on JobHorizons.
+              and seamless experience on Cinnamon Gallery.
             </p>
             <p className="text-muted-foreground">
               <strong>Last updated:</strong> January 2025
@@ -68,7 +68,7 @@ const CookiesPage = () => {
                 <p className="text-muted-foreground leading-relaxed">
                   These cookies enhance your experience by remembering your preferences, such as 
                   language settings, dashboard layouts, and notification preferences. They make 
-                  your interactions with JobHorizons more personalized and efficient.
+                  your interactions with Cinnamon Gallery more personalized and efficient.
                 </p>
               </div>
               

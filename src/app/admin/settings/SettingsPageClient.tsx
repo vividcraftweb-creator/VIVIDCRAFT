@@ -29,7 +29,7 @@ export default function AdminSettingsPage() {
   });
 
   // General Settings State
-  const [platformName, setPlatformName] = useState('Vivid Art');
+  const [platformName, setPlatformName] = useState('Cinnamon Gallery');
   const [supportEmail, setSupportEmail] = useState('');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [userRegistration, setUserRegistration] = useState(true);

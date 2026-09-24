@@ -73,7 +73,7 @@ export const adminAuctionsRouter = router({
             profile?.artist_name ||
             [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
             profile?.email ||
-            'Vivid Art House';
+            'Cinnamon Gallery House';
 
           const rawCode = art.art_code;
           const artCode =

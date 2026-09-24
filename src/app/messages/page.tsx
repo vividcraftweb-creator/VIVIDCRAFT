@@ -5,7 +5,7 @@ import MessagesClient from './MessagesClient';
 
 export const metadata: Metadata = createAuthPageMetadata({
   title: 'Messages',
-  description: 'View and manage your messages on JobHorizons.',
+  description: 'View and manage your messages on Cinnamon Gallery.',
 });
 
 export default function MessagesPage() {

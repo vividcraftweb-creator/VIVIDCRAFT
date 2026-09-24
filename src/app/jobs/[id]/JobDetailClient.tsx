@@ -361,7 +361,7 @@ function JobDetailClient() {
     description: job.description,
     identifier: {
       '@type': 'PropertyValue',
-      name: 'JobHorizons',
+      name: 'Cinnamon Gallery',
       value: job.id,
     },
     datePosted: new Date(job.createdAt).toISOString(),
@@ -369,7 +369,7 @@ function JobDetailClient() {
     employmentType: employmentLabel || 'CONTRACT',
     hiringOrganization: {
       '@type': 'Organization',
-      name: companyName || 'JobHorizons Client',
+      name: companyName || 'Cinnamon Gallery Client',
       sameAs: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com',
     },
     jobLocation: {
@@ -523,7 +523,7 @@ function JobDetailClient() {
                       onClick={() => {
                         const buyerName = session?.session?.user?.user_metadata?.firstName ? `${session.session.user.user_metadata.firstName} ${session.session.user.user_metadata.lastName}` : 'a buyer';
                         const artistName = job.companyName || 'the artist';
-                        const message = `Hi Vivid Art Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
+                        const message = `Hi Cinnamon Gallery Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
                         const rawPhone = '94783813833';
                         const cleanPhone = String(rawPhone).replace(/\D/g, '');
                         const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -834,7 +834,7 @@ function JobDetailClient() {
             onClick={() => {
               const buyerName = session?.session?.user?.user_metadata?.firstName ? `${session.session.user.user_metadata.firstName} ${session.session.user.user_metadata.lastName}` : 'a buyer';
               const artistName = job.companyName || 'the artist';
-              const message = `Hi Vivid Art Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
+              const message = `Hi Cinnamon Gallery Admin, I am ${buyerName}. I want to know about ${job.title} by ${artistName}.`;
               const rawPhone = '94783813833';
               const cleanPhone = String(rawPhone).replace(/\D/g, '');
               const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;

@@ -911,7 +911,7 @@ export default function GalleryPageClient() {
         review_count_text: uploadReviewCountText.trim() || '(1k+)',
         artist: {
           id: artistId,
-          name: uploadArtistName.trim() || 'Vivid Art Curation',
+          name: uploadArtistName.trim() || 'Cinnamon Gallery Curation',
           avatar_url: null,
           title: 'Curator / Admin',
           role: 'ADMIN',
@@ -1024,7 +1024,7 @@ export default function GalleryPageClient() {
         <div className="text-center max-w-xl mx-auto mb-6">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300 shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            Vivid Art Gallery
+            Cinnamon Gallery
           </div>
 
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
@@ -1645,7 +1645,7 @@ export default function GalleryPageClient() {
                     {(() => {
                       const profile = (selectedArtwork as any).profiles;
                       const name = extractArtistName(selectedArtwork);
-                      const bio = profile?.bio || profile?.headline || profile?.title || selectedArtwork.artist?.bio || selectedArtwork.artist?.title || 'Visual artist & creator on JobHorizons.';
+                      const bio = profile?.bio || profile?.headline || profile?.title || selectedArtwork.artist?.bio || selectedArtwork.artist?.title || 'Visual artist & creator on Cinnamon Gallery.';
                       const location = profile?.location || profile?.address || selectedArtwork.artist?.location || 'Sri Lanka';
                       const category = (selectedArtwork as any).category || profile?.category || (profile?.role ? (profile.role.charAt(0).toUpperCase() + profile.role.slice(1)) : 'Visual Arts');
 
@@ -2045,7 +2045,7 @@ export default function GalleryPageClient() {
                   </label>
                   <Input
                     id="art-artist"
-                    placeholder="e.g. Vivid Art Studio, Master Artist"
+                    placeholder="e.g. Cinnamon Gallery Studio, Master Artist"
                     value={uploadArtistName}
                     onChange={(e) => setUploadArtistName(e.target.value)}
                     className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm h-11 focus-visible:ring-amber-500"

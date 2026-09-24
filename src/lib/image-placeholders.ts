@@ -28,7 +28,7 @@ export const DEFAULT_ARTWORK_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIC
       <circle cx="0" cy="2" r="4" fill="#fbbf24"/>
     </g>
     <text x="400" y="360" fill="#f3e8ff" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="600" text-anchor="middle" letter-spacing="1">Artwork Preview</text>
-    <text x="400" y="390" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="14" text-anchor="middle">Original Piece on Vivid Art</text>
+    <text x="400" y="390" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="14" text-anchor="middle">Original Piece on Cinnamon Gallery</text>
   </svg>`
 )}`;
 

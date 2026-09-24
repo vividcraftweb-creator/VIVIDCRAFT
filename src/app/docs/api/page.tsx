@@ -232,7 +232,7 @@ api.post('/jobs', {
             <span className="text-sm font-medium text-primary">API Documentation v1</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            JobHorizons API
+            Cinnamon Gallery API
           </h1>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             Programmatic access to manage jobs and analytics. Available for Business and Enterprise plans.
@@ -255,7 +255,7 @@ api.post('/jobs', {
               Quick Start
             </CardTitle>
             <CardDescription className="text-slate-400">
-              Get started with the JobHorizons API in 3 simple steps
+              Get started with the Cinnamon Gallery API in 3 simple steps
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

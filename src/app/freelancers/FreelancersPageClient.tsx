@@ -528,7 +528,7 @@ export default function FreelancersPageClient({
         <div className="container mx-auto max-w-7xl">
           <div className="text-center">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
-              Vivid Art Marketplace
+              Cinnamon Gallery Marketplace
             </div>
             <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
               Discover <span className="text-primary">Top Artists &amp; Creators</span>

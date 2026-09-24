@@ -204,7 +204,7 @@ export default function WebhooksView() {
         </div>
         <ul className="list-disc pl-5 space-y-1 text-sm text-blue-200">
           <li>All webhook URLs must use HTTPS for security</li>
-          <li>Verify webhook signatures using the X-JobHorizons-Signature header (HMAC SHA-256)</li>
+          <li>Verify webhook signatures using the X-CinnamonGallery-Signature header (HMAC SHA-256)</li>
           <li>Your webhook secret is shown only once when creating a webhook</li>
           <li>Webhooks have automatic retry logic with exponential backoff</li>
         </ul>

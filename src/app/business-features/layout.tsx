@@ -3,13 +3,13 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Business Features',
-  description: 'Discover Vivid Art enterprise features for businesses. Team collaboration, advanced hiring tools, project management, and dedicated support for your organization.',
+  description: 'Discover Cinnamon Gallery enterprise features for businesses. Team collaboration, advanced hiring tools, project management, and dedicated support for your organization.',
   keywords: [
     'business features',
     'enterprise hiring',
     'team collaboration',
     'business plans',
-    'Vivid Art for business',
+    'Cinnamon Gallery for business',
     'corporate hiring platform',
     'freelance management',
     'enterprise solutions',

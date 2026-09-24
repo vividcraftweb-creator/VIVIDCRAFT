@@ -12,7 +12,7 @@ const TermsPage = () => {
             Terms of <span className="text-gradient">Service</span>
           </h1>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            The terms and conditions that govern your use of the JobHorizons platform.
+            The terms and conditions that govern your use of the Cinnamon Gallery platform.
           </p>
         </div>
       </div>
@@ -27,7 +27,7 @@ const TermsPage = () => {
               <h2 className="text-2xl font-bold text-foreground">Agreement Overview</h2>
             </div>
             <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-              By using JobHorizons, you agree to these terms of service. This agreement governs your 
+              By using Cinnamon Gallery, you agree to these terms of service. This agreement governs your 
               access to and use of our platform, including all features, services, and content we provide.
             </p>
             <p className="text-muted-foreground">
@@ -127,7 +127,7 @@ const TermsPage = () => {
               <div className="border-l-4 border-primary pl-4">
                 <h4 className="font-semibold text-foreground mb-2">Payment Arrangements</h4>
                 <p className="text-muted-foreground">
-                  JobHorizons does not operate an escrow or payout service. Clients and freelancers are responsible for
+                  Cinnamon Gallery does not operate an escrow or payout service. Clients and freelancers are responsible for
                   agreeing on payment terms, documenting milestones, and transferring funds via trusted third-party
                   providers such as PayPal or bank transfer.
                 </p>

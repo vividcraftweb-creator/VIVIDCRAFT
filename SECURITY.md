@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in JobHorizons, please **do not** open a public GitHub issue.
+If you discover a security vulnerability in Cinnamon Gallery, please **do not** open a public GitHub issue.
 
 Instead, please report it responsibly by emailing the maintainers directly. You can find contact information in the repository's profile or README.
 
@@ -16,7 +16,7 @@ You can expect an acknowledgement within 48 hours and a resolution timeline with
 
 ## Scope
 
-This policy applies to the JobHorizons codebase in this repository. It does not cover third-party services (Supabase, Braintree, Anthropic, etc.) — please report those directly to the respective vendors.
+This policy applies to the Cinnamon Gallery codebase in this repository. It does not cover third-party services (Supabase, Braintree, Anthropic, etc.) — please report those directly to the respective vendors.
 
 ## Security Best Practices for Deployers
 

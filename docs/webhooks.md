@@ -1,8 +1,8 @@
-# JobHorizons Webhooks Documentation
+# Cinnamon Gallery Webhooks Documentation
 
 ## Overview
 
-JobHorizons webhooks allow you to receive real-time notifications about events in your account. When an event occurs (like a new proposal or completed milestone), JobHorizons sends an HTTP POST request to the URL you've configured.
+Cinnamon Gallery webhooks allow you to receive real-time notifications about events in your account. When an event occurs (like a new proposal or completed milestone), Cinnamon Gallery sends an HTTP POST request to the URL you've configured.
 
 ## Table of Contents
 
@@ -35,7 +35,7 @@ All webhook URLs must use HTTPS. This ensures that the payload is encrypted in t
 
 ### Signature Verification
 
-Every webhook request includes an `X-JobHorizons-Signature` header containing an HMAC SHA-256 signature. **You must verify this signature** to ensure the request came from JobHorizons.
+Every webhook request includes an `X-Cinnamon Gallery-Signature` header containing an HMAC SHA-256 signature. **You must verify this signature** to ensure the request came from Cinnamon Gallery.
 
 The signature is calculated as:
 ```
@@ -58,7 +58,7 @@ See [Signature Verification](#signature-verification) section for code examples.
 
 ## Event Types
 
-JobHorizons sends webhooks for the following events:
+Cinnamon Gallery sends webhooks for the following events:
 
 | Event | Description | Who Receives It |
 |-------|-------------|-----------------|
@@ -349,10 +349,10 @@ function verifyWebhookSignature(
 }
 
 // Express.js example
-app.post('/webhooks/jobhorizons', (req, res) => {
-  const signature = req.headers['x-jobhorizons-signature'];
+app.post('/webhooks/Cinnamon Gallery', (req, res) => {
+  const signature = req.headers['x-Cinnamon Gallery-signature'];
   const payload = JSON.stringify(req.body);
-  const secret = process.env.JOBHORIZONS_WEBHOOK_SECRET;
+  const secret = process.env.Cinnamon Gallery_WEBHOOK_SECRET;
 
   if (!verifyWebhookSignature(payload, signature, secret)) {
     return res.status(401).send('Invalid signature');
@@ -390,11 +390,11 @@ def verify_webhook_signature(payload, signature, secret):
 
     return hmac.compare_digest(signature, expected_signature)
 
-@app.route('/webhooks/jobhorizons', methods=['POST'])
+@app.route('/webhooks/Cinnamon Gallery', methods=['POST'])
 def webhook():
-    signature = request.headers.get('X-JobHorizons-Signature')
+    signature = request.headers.get('X-Cinnamon Gallery-Signature')
     payload = request.get_data(as_text=True)
-    secret = os.getenv('JOBHORIZONS_WEBHOOK_SECRET')
+    secret = os.getenv('Cinnamon Gallery_WEBHOOK_SECRET')
 
     if not verify_webhook_signature(payload, signature, secret):
         return jsonify({'error': 'Invalid signature'}), 401
@@ -422,8 +422,8 @@ function verifyWebhookSignature($payload, $signature, $secret) {
 
 // Get raw POST body
 $payload = file_get_contents('php://input');
-$signature = $_SERVER['HTTP_X_JOBHORIZONS_SIGNATURE'] ?? '';
-$secret = getenv('JOBHORIZONS_WEBHOOK_SECRET');
+$signature = $_SERVER['HTTP_X_Cinnamon Gallery_SIGNATURE'] ?? '';
+$secret = getenv('Cinnamon Gallery_WEBHOOK_SECRET');
 
 if (!verifyWebhookSignature($payload, $signature, $secret)) {
     http_response_code(401);
@@ -463,10 +463,10 @@ end
 class WebhooksController < ApplicationController
   skip_before_action :verify_authenticity_token
 
-  def jobhorizons
+  def Cinnamon Gallery
     payload = request.raw_post
-    signature = request.headers['X-JobHorizons-Signature']
-    secret = ENV['JOBHORIZONS_WEBHOOK_SECRET']
+    signature = request.headers['X-Cinnamon Gallery-Signature']
+    secret = ENV['Cinnamon Gallery_WEBHOOK_SECRET']
 
     unless verify_webhook_signature(payload, signature, secret)
       return render json: { error: 'Invalid signature' }, status: :unauthorized
@@ -488,7 +488,7 @@ end
 
 ## Retry Policy
 
-JobHorizons automatically retries failed webhook deliveries using exponential backoff:
+Cinnamon Gallery automatically retries failed webhook deliveries using exponential backoff:
 
 | Attempt | Delay After Previous Attempt | Total Time Since First Attempt |
 |---------|------------------------------|--------------------------------|
@@ -593,7 +593,7 @@ app.post('/webhook', async (req, res) => {
     logId,
     event: req.body.event,
     timestamp: req.body.timestamp,
-    signature: req.headers['x-jobhorizons-signature']
+    signature: req.headers['x-Cinnamon Gallery-signature']
   });
 
   try {
@@ -664,7 +664,7 @@ Use the **Test** button in the dashboard to send a test webhook with sample data
 ngrok http 3000
 
 # Use the ngrok URL in your webhook configuration
-# https://abc123.ngrok.io/webhooks/jobhorizons
+# https://abc123.ngrok.io/webhooks/Cinnamon Gallery
 ```
 
 ### 3. Manual Curl Test
@@ -676,9 +676,9 @@ PAYLOAD='{"event":"job.created","timestamp":"2025-11-11T00:00:00Z","data":{"job_
 SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
 
 # Send test request
-curl -X POST https://your-domain.com/webhooks/jobhorizons \
+curl -X POST https://your-domain.com/webhooks/Cinnamon Gallery \
   -H "Content-Type: application/json" \
-  -H "X-JobHorizons-Signature: $SIGNATURE" \
+  -H "X-Cinnamon Gallery-Signature: $SIGNATURE" \
   -d "$PAYLOAD"
 ```
 

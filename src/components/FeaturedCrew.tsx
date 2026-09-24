@@ -217,7 +217,7 @@ export function FeaturedCrew() {
                 Featured Crew Showcase
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto mt-2">
-                Highlighting the exceptional individuals shaping art discovery and curation at Vivid Art.
+                Highlighting the exceptional individuals shaping art discovery and curation at Cinnamon Gallery.
               </p>
             </div>
 
@@ -373,7 +373,7 @@ export function FeaturedCrew() {
                 What Art Visionaries Say
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto mt-2">
-                Verified reviews from art collectors, architects, and patrons who trust Vivid Art.
+                Verified reviews from art collectors, architects, and patrons who trust Cinnamon Gallery.
               </p>
             </div>
 
@@ -488,7 +488,7 @@ export function FeaturedCrew() {
                   {selectedMember.full_story || selectedMember.short_bio}
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  At Vivid Art, {selectedMember.name} works directly with verified creators and world-class patrons, ensuring every commission and curated piece represents the pinnacle of artistic integrity.
+                  At Cinnamon Gallery, {selectedMember.name} works directly with verified creators and world-class patrons, ensuring every commission and curated piece represents the pinnacle of artistic integrity.
                 </p>
               </div>
 

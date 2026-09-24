@@ -10,7 +10,7 @@ import type { AppSession } from '@/types/session';
 
 export const metadata: Metadata = createAuthPageMetadata({
   title: 'Dashboard',
-  description: 'View your Vivid Art dashboard, manage your projects, and track your creative commissions.',
+  description: 'View your Cinnamon Gallery dashboard, manage your projects, and track your creative commissions.',
 });
 
 export default async function DashboardPage({

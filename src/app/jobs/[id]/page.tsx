@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!job) {
     return {
       title: {
-        absolute: 'Job Not Found | JobHorizons',
+        absolute: 'Job Not Found | Cinnamon Gallery',
       },
       description: 'This job posting could not be found.',
     };

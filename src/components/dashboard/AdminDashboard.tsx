@@ -684,11 +684,11 @@ export default function AdminDashboard() {
               <div className="space-y-2 text-xs text-slate-300 bg-slate-950/60 border border-slate-800/80 rounded-lg p-3">
                 <p className="font-semibold text-white">Manual Payment Invoicing</p>
                 <p>
-                  Vivid Art no longer holds funds or releases payouts. Remind clients and freelancers to settle invoices
+                  Cinnamon Gallery no longer holds funds or releases payouts. Remind clients and freelancers to settle invoices
                   directly using services such as PayPal, Wise, or traditional bank transfers.
                 </p>
                 <p>
-                  Encourage both parties to keep written confirmation of every payment inside their Vivid Art message
+                  Encourage both parties to keep written confirmation of every payment inside their Cinnamon Gallery message
                   thread for transparency.
                 </p>
                 <p className="text-xs text-slate-500">

@@ -107,7 +107,7 @@ export default function Step7CompanyDetails({ formData, updateFormData }: Props)
           id="companyName"
           value={formData.company_name}
           onChange={(e) => updateFormData({ company_name: e.target.value })}
-          placeholder="JobHorizons"
+          placeholder="Cinnamon Gallery"
           className="glass-card"
         />
       </div>

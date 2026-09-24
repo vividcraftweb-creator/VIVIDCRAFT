@@ -3,7 +3,7 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Browse Remote Jobs',
-  description: 'Find high-quality freelance jobs and remote work opportunities on Vivid Art. Browse verified job postings, apply with confidence, and start working from anywhere. New freelance gigs added daily.',
+  description: 'Find high-quality freelance jobs and remote work opportunities on Cinnamon Gallery. Browse verified job postings, apply with confidence, and start working from anywhere. New freelance gigs added daily.',
   keywords: [
     'freelance jobs',
     'remote work',

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -212,40 +211,9 @@ export default function AdminSidebar() {
     <div className="flex h-screen w-64 flex-col fixed left-0 top-0 z-40 border-r border-white/10 bg-slate-900">
       {/* Logo/Header */}
       <div className="flex h-16 items-center justify-center border-b border-white/10 px-6">
-        <Link href="/admin" className="flex items-center gap-2.5 group">
-          <svg
-            className="w-8 h-8 group-hover:scale-110 transition-transform duration-300"
-            viewBox="0 0 48 48"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <linearGradient id="adminSidebarLogoGrad1" x1="0" y1="0" x2="48" y2="48">
-                <stop offset="0%" stopColor="#8B5CF6" />
-                <stop offset="50%" stopColor="#EC4899" />
-                <stop offset="100%" stopColor="#F59E0B" />
-              </linearGradient>
-              <linearGradient id="adminSidebarLogoGrad2" x1="48" y1="0" x2="0" y2="48">
-                <stop offset="0%" stopColor="#06B6D4" />
-                <stop offset="100%" stopColor="#8B5CF6" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M24 4C13 4 6 14 10 24C14 34 20 38 24 44C28 38 34 34 38 24C42 14 35 4 24 4Z"
-              fill="url(#adminSidebarLogoGrad1)"
-              fillOpacity="0.9"
-            />
-            <path
-              d="M16 14L24 34L32 14"
-              stroke="white"
-              strokeWidth="3.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-            <circle cx="36" cy="12" r="3" fill="url(#adminSidebarLogoGrad2)" />
-          </svg>
-          <span className="font-bold text-xl tracking-tight text-white">
+        <Link href="/admin" className="text-xl font-bold flex items-center gap-3 group">
+          <img src="/vivid-art-logo.png" alt="Vivid Art Logo" className="w-8 h-8 object-contain" />
+          <span className="tracking-tight text-white">
             Vivid Art
           </span>
         </Link>

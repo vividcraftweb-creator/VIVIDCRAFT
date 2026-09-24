@@ -356,7 +356,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
                 <circle cx="36" cy="12" r="3" fill="url(#dashboardLogoGrad2)" />
               </svg>
               <span className="font-bold text-lg tracking-tight text-white">
-                Vivid Art
+                Cinnamon Gallery
               </span>
             </Link>
             <Button

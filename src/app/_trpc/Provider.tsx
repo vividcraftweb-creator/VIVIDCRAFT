@@ -68,7 +68,7 @@ export default function Provider({ children }: { children: React.ReactNode }) {
                               first_name: 'Artist',
                               last_name: '',
                               title: 'Artist',
-                              bio: 'Welcome to Vivid Art!',
+                              bio: 'Welcome to Cinnamon Gallery!',
                               isPublished: true,
                               is_published: true,
                             },

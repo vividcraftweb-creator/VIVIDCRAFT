@@ -3,17 +3,17 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Pricing Plans',
-  description: 'Choose the perfect plan for your needs. Flexible pricing for freelancers and clients on Vivid Art. Free plans available with premium features for Pro and Elite members.',
-  keywords: [
-    'freelance pricing',
-    'subscription plans',
-    'freelancer plans',
-    'client plans',
-    'Vivid Art pricing',
-    'remote work pricing',
-    'freelance marketplace pricing',
-    'affordable freelance platform',
-  ],
+  description: 'Choose the perfect plan for your needs. Flexible pricing for freelancers and clients on Cinnamon Gallery. Free plans available with premium features for Pro and Elite members.',
+    keywords: [
+      'freelance pricing',
+      'subscription plans',
+      'freelancer plans',
+      'client plans',
+      'Cinnamon Gallery pricing',
+      'remote work pricing',
+      'freelance marketplace pricing',
+      'affordable freelance platform',
+    ],
   canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'}/pricing`,
 });
 
@@ -68,7 +68,7 @@ const offerSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'Vivid Art Freelancer Pro Plan',
+    name: 'Cinnamon Gallery Freelancer Pro Plan',
     description: 'Premium plan for freelancers with enhanced features',
     offers: {
       '@type': 'Offer',
@@ -82,7 +82,7 @@ const offerSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'Vivid Art Freelancer Elite Plan',
+    name: 'Cinnamon Gallery Freelancer Elite Plan',
     description: 'Elite plan for top freelancers',
     offers: {
       '@type': 'Offer',
@@ -96,7 +96,7 @@ const offerSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'Vivid Art Client Business Plan',
+    name: 'Cinnamon Gallery Client Business Plan',
     description: 'Business plan for hiring teams',
     offers: {
       '@type': 'Offer',
@@ -110,7 +110,7 @@ const offerSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'Vivid Art Client Enterprise Plan',
+    name: 'Cinnamon Gallery Client Enterprise Plan',
     description: 'Enterprise plan with advanced features',
     offers: {
       '@type': 'Offer',

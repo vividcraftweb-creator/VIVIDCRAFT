@@ -211,7 +211,7 @@ function formatProfileData(profile: any) {
   }
 
   const titleVal = profile.title || profile.professional_title || profile.professionalTitle || 'Verified Artist & Creator';
-  const bioVal = profile.bio || profile.description || 'Professional artist and digital creator on Vivid Art.';
+  const bioVal = profile.bio || profile.description || 'Professional artist and digital creator on Cinnamon Gallery.';
   const locVal = profile.address || profile.location || '';
   let picVal = profile.avatar_url || profile.avatar || profile.image || profile.profile_picture || profile.profilePicture || '';
   if (picVal && typeof picVal === 'string' && !picVal.startsWith('http://') && !picVal.startsWith('https://') && !picVal.startsWith('data:') && !picVal.startsWith('blob:')) {
@@ -452,7 +452,7 @@ export const publicProfileRouter = router({
             fullName: 'studio One',
             name: 'studio One',
             username: 'studio1',
-            bio: 'Professional artist and digital creator on Vivid Art.',
+            bio: 'Professional artist and digital creator on Cinnamon Gallery.',
             title: 'Verified Artist & Creator',
             location: '',
             skills: 'Digital Art, Illustration, Graphic Design',
@@ -601,7 +601,7 @@ export const publicProfileRouter = router({
             fullName: 'studio One',
             name: 'studio One',
             username: 'studio1',
-            bio: 'Professional artist and digital creator on Vivid Art.',
+            bio: 'Professional artist and digital creator on Cinnamon Gallery.',
             title: 'Verified Artist & Creator',
             location: '',
             skills: 'Digital Art, Illustration, Graphic Design',
@@ -745,7 +745,7 @@ export const publicProfileRouter = router({
           avatar: '',
           image: '',
           profilePicture: '',
-          bio: 'Professional artist and digital creator on Vivid Art.',
+          bio: 'Professional artist and digital creator on Cinnamon Gallery.',
           title: 'Verified Artist & Creator',
           role: 'artist',
           isPublished: true,

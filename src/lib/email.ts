@@ -24,7 +24,7 @@ export interface EmailOptions {
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
     const mailOptions = {
-      from: `"Vivid Art" <${process.env.FROM_EMAIL}>`,
+      from: `"Cinnamon Gallery" <${process.env.FROM_EMAIL}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,

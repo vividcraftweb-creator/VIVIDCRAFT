@@ -6,7 +6,7 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z.string().url().optional().default('postgresql://postgres:postgres@localhost:5432/postgres'),
     NEXTAUTH_URL: z.string().url().optional().default('http://localhost:3000'),
-    NEXTAUTH_SECRET: z.string().min(1).optional().default('dev-secret-key-jobhorizons-freelancing-marketplace'),
+    NEXTAUTH_SECRET: z.string().min(1).optional().default('dev-secret-key-cinnamon-gallery-freelancing-marketplace'),
     SOCKET_PORT: z.coerce.number().default(3001),
     // Braintree Payment Configuration
     BRAINTREE_MERCHANT_ID: z.string().min(1).optional(),

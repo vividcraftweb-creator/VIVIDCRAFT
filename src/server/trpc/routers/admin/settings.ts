@@ -50,7 +50,7 @@ type Settings = z.infer<typeof settingsSchema>;
 // Default settings
 const defaultSettings: Settings = {
   general: {
-    platformName: 'Vivid Art',
+    platformName: 'Cinnamon Gallery',
     supportEmail: process.env.ADMIN_EMAIL || 'support@example.com',
     maintenanceMode: false,
     userRegistration: true,

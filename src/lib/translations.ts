@@ -36,7 +36,7 @@ export const translations = {
     'footer.terms': 'Terms of Service',
     'footer.privacy': 'Privacy Policy',
     'footer.cookies': 'Cookie Policy',
-    'footer.copyright': `© ${new Date().getFullYear()} Vivid Art. All rights reserved.`,
+    'footer.copyright': `© ${new Date().getFullYear()} Cinnamon Gallery. All rights reserved.`,
     'footer.tagline': 'Connecting artists with art lovers worldwide. Discover, collect, and celebrate creativity.',
 
     // Common
@@ -82,7 +82,7 @@ export const translations = {
     'footer.terms': 'සේවා නියමයන්',
     'footer.privacy': 'රහස්‍යතා ප්‍රතිපත්තිය',
     'footer.cookies': 'කුකී ප්‍රතිපත්තිය',
-    'footer.copyright': `© ${new Date().getFullYear()} Vivid Art. සියලු හිමිකම් ඇවිරිණි.`,
+    'footer.copyright': `© ${new Date().getFullYear()} Cinnamon Gallery. සියලු හිමිකම් ඇවිරිණි.`,
     'footer.tagline': 'ලොව පුරා කලාකරුවන් සහ කලා ලෝලීන් සම්බන්ධ කරමින්. සොයන්න, එකතු කරන්න, නිර්මාණශීලීත්වය සැමරන්න.',
 
     // Common
