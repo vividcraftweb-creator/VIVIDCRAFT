@@ -351,7 +351,7 @@ export function UploadArtworkModal({
                     onClick={() => setBadgeTitle(b)}
                     className={`text-[9px] px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer ${
                       badgeTitle === b
-                        ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                        ? 'bg-[#A2694E] text-white font-bold border-[#A2694E]'
                         : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-700'
                     }`}
                   >
@@ -615,16 +615,16 @@ export function UploadArtworkModal({
             <Button
               type="submit"
               disabled={isUploading || (!file && !imageUrl.trim()) || !title.trim()}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold gap-2 cursor-pointer shadow-md"
+              className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold gap-2 cursor-pointer shadow-md shadow-[#A2694E]/20"
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
                   <span>Publishing...</span>
                 </>
               ) : (
                 <>
-                  <UploadCloud className="w-4 h-4" />
+                  <UploadCloud className="w-4 h-4 text-white" />
                   <span>Publish Artwork</span>
                 </>
               )}

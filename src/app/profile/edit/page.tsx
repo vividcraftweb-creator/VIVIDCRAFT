@@ -441,7 +441,7 @@ export default function EditProfilePage() {
                     accept="image/jpeg,image/png,image/jpg,image/webp"
                     onChange={handleBannerUpload}
                     disabled={isUploadingBanner}
-                    className="cursor-pointer text-xs bg-slate-950/60 border-white/10 text-white file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400"
+                    className="cursor-pointer text-xs bg-slate-950/60 border-white/10 text-white file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#A2694E] file:text-white hover:file:bg-[#8B5A3C]"
                   />
                   {formData.bannerUrl && (
                     <Button
@@ -516,16 +516,16 @@ export default function EditProfilePage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto px-8 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-8 bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold shadow-lg shadow-[#A2694E]/20 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
                       <span>Saving changes...</span>
                     </>
                   ) : (
                     <>
-                      <Save className="h-4 w-4" />
+                      <Save className="h-4 w-4 text-white" />
                       <span>Save Changes</span>
                     </>
                   )}

@@ -87,7 +87,7 @@ export default function FreelancerRecommendationCard({
           <div className="flex items-center gap-3">
             <Avatar className="h-14 w-14">
               <AvatarImage src={avatarSrc} alt={freelancerName} />
-              <AvatarFallback className="bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 font-bold">
+              <AvatarFallback className="bg-gradient-to-br from-[#A2694E] to-[#8B5A3C] text-white font-bold">
                 {getInitials()}
               </AvatarFallback>
             </Avatar>

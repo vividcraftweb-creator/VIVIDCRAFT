@@ -468,17 +468,17 @@ export default function RegisterForm() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-11 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20"
+            className="w-full h-11 bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold rounded-xl shadow-lg shadow-[#A2694E]/20"
           >
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2 text-white" />
                 Registering Artist Account...
               </>
             ) : (
               <span className="flex items-center gap-2">
                 Create Artist Account
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-white" />
               </span>
             )}
           </Button>

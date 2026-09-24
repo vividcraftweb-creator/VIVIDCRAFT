@@ -855,7 +855,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                     accept="image/jpeg,image/png,image/jpg,image/webp"
                     onChange={handleBannerUpload}
                     disabled={isUploadingBanner}
-                    className="cursor-pointer text-xs file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400"
+                    className="cursor-pointer text-xs file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#A2694E] file:text-white hover:file:bg-[#8B5A3C]"
                   />
                   <p className="text-[11px] text-muted-foreground">
                     Direct upload to Supabase Storage (&apos;banners&apos; bucket). JPG, PNG, or WebP (Max 5MB). Recommended ratio: 3:1 or 16:9.

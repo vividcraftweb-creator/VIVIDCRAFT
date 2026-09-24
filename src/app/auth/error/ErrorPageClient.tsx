@@ -53,7 +53,7 @@ function AuthErrorContent() {
           </div>
           
           <div className="flex flex-col gap-3">
-            <Button asChild className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-500/20">
+            <Button asChild className="w-full bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold shadow-lg shadow-[#A2694E]/20">
               <Link href="/auth/signin">
                 Try Again
               </Link>

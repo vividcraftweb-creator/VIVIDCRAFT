@@ -240,7 +240,7 @@ export default function GalleryView() {
                     onClick={() => setBadgeTitle(b)}
                     className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
                       badgeTitle === b
-                        ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                        ? 'bg-[#A2694E] text-white font-bold border-[#A2694E]'
                         : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
                     }`}
                   >
@@ -449,15 +449,15 @@ export default function GalleryView() {
               <Button
                 asChild
                 disabled={isUploading || createArtwork.isPending || !title.trim()}
-                className={`bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold h-11 px-5 border-0 shadow-lg shadow-amber-500/20 ${
+                className={`bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold h-11 px-5 border-0 shadow-lg shadow-[#A2694E]/20 ${
                   !title.trim() || isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                 }`}
               >
                 <label htmlFor="artwork-file">
                   {isUploading || createArtwork.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-2 text-white" />
                   ) : (
-                    <UploadCloud className="h-4 w-4 mr-2" />
+                    <UploadCloud className="h-4 w-4 mr-2 text-white" />
                   )}
                   {isUploading ? 'Uploading to Storage...' : 'Upload Image File & Publish'}
                   <input

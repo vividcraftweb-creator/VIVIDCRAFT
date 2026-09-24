@@ -225,7 +225,7 @@ export default function OnboardingPage() {
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                   selectedRole === 'artist'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    ? 'bg-[#A2694E] text-white shadow-md shadow-[#A2694E]/30'
                     : 'border border-slate-700 bg-slate-900 text-transparent'
                 }`}
               >
@@ -341,13 +341,13 @@ export default function OnboardingPage() {
             onClick={handleConfirmRole}
             className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer ${
               selectedRole === 'artist'
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/30'
+                ? 'bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-[#A2694E]/30'
                 : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
                 <span>Saving role selection...</span>
               </>
             ) : (
@@ -355,7 +355,7 @@ export default function OnboardingPage() {
                 <span>
                   Continue as {selectedRole === 'artist' ? 'Artist / Creator' : 'Buyer / Collector'}
                 </span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-white" />
               </>
             )}
           </button>

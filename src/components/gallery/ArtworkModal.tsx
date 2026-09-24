@@ -506,7 +506,7 @@ export function ArtworkModal({
                               />
                             ) : null}
                             <div
-                              className="h-full w-full rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-[10px] font-bold text-slate-950 uppercase"
+                              className="h-full w-full rounded-full bg-gradient-to-tr from-[#A2694E] to-[#8B5A3C] flex items-center justify-center text-[10px] font-bold text-white uppercase"
                               style={{ display: (c.userAvatar && isValidImageUrl(c.userAvatar)) ? 'none' : 'flex' }}
                             >
                               {initial}
@@ -515,7 +515,7 @@ export function ArtworkModal({
                           <span className="text-xs font-semibold text-slate-900 dark:text-white">
                             {c.userName}
                             {isCurrentUser && (
-                              <span className="ml-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                              <span className="ml-1.5 text-[10px] text-[#A2694E] dark:text-[#C58B6F] font-normal">
                                 (You)
                               </span>
                             )}
@@ -572,7 +572,7 @@ export function ArtworkModal({
                   href={waUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-md shadow-[#A2694E]/20 transition-all cursor-pointer"
                 >
                   Ask Price (WhatsApp)
                 </a>
@@ -589,25 +589,25 @@ export function ArtworkModal({
                   placeholder="Leave a comment on this piece..."
                   maxLength={1000}
                   disabled={addCommentMutation.isPending}
-                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-500/60 transition-colors"
+                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#A2694E]/60 transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={addCommentMutation.isPending || !commentText.trim()}
-                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20 cursor-pointer shrink-0"
+                  className="px-3.5 py-2 rounded-xl bg-[#A2694E] hover:bg-[#8B5A3C] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shadow-md shadow-[#A2694E]/20 cursor-pointer shrink-0"
                 >
                   {addCommentMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
                   ) : (
                     <>
-                      <Send className="h-3.5 w-3.5" />
+                      <Send className="h-3.5 w-3.5 text-white" />
                       <span className="hidden sm:inline">Post</span>
                     </>
                   )}
                 </button>
               </form>
             ) : (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/20">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#A2694E]/5 dark:bg-[#A2694E]/10 border border-[#A2694E]/20 dark:border-[#A2694E]/25">
                 <p className="text-xs text-slate-700 dark:text-slate-300">
                   Sign in to leave a comment on this artwork
                 </p>
@@ -620,9 +620,9 @@ export function ArtworkModal({
                       )}`
                     );
                   }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#A2694E] hover:bg-[#8B5A3C] text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm shadow-[#A2694E]/20"
                 >
-                  <LogIn className="h-3.5 w-3.5" />
+                  <LogIn className="h-3.5 w-3.5 text-white" />
                   <span>Sign In</span>
                 </button>
               </div>

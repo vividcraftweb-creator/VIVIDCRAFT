@@ -608,7 +608,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 variant={role === 'FREELANCER' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => handleRoleChange('FREELANCER')}
-                className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'FREELANCER' ? 'bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
               >
                 Artists
               </Button>
@@ -616,7 +616,7 @@ export default function AdminUsersPage({ initialUsers = [] }: { initialUsers?: A
                 variant={role === 'ADMIN' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => handleRoleChange('ADMIN')}
-                className={`text-xs h-7 px-3 rounded-full ${role === 'ADMIN' ? 'bg-yellow-600 hover:bg-yellow-700' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                className={`text-xs h-7 px-3 rounded-full ${role === 'ADMIN' ? 'bg-[#8B9B88] hover:bg-[#72826F] text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
               >
                 Admins
               </Button>

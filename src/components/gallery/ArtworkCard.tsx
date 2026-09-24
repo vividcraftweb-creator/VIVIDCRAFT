@@ -459,7 +459,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
                     href={waUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
                     title="Ask about price or buy on WhatsApp"
                   >
                     Ask Price (WhatsApp)
@@ -472,7 +472,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
                 type="button"
                 onClick={() => startTransition(() => setIsZoomOpen(true))}
                 aria-label="View artwork details and comments"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-[#A2694E] dark:hover:text-[#C58B6F] bg-slate-100 dark:bg-slate-800 hover:bg-[#A2694E]/10 dark:hover:bg-[#A2694E]/20 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
               >
                 <ZoomIn className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                 <span>Details</span>

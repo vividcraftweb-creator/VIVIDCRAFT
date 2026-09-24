@@ -306,16 +306,16 @@ export function HomeHero() {
 
   return (
     <section
-      className="relative overflow-x-hidden bg-gradient-to-b from-background via-background/95 to-background pt-4 pb-16 sm:pt-6 sm:pb-20"
+      className="relative overflow-x-hidden bg-[#F8F6F1] dark:bg-[#1E1B18] pt-4 pb-16 sm:pt-6 sm:pb-20 transition-colors duration-500"
       suppressHydrationWarning
     >
       {/* Background atmospheric ambient gradients */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-50 dark:bg-[#09090e] transition-colors duration-500">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none bg-[#F8F6F1] dark:bg-[#1E1B18] transition-colors duration-500">
         <div
-          className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-amber-400/15 dark:bg-amber-600/10 blur-[130px] mix-blend-multiply dark:mix-blend-screen"
+          className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-[#A2694E]/5 dark:bg-[#A2694E]/10 blur-[130px]"
         />
         <div
-          className="absolute top-[15%] -right-[10%] w-[50%] h-[50%] rounded-full bg-yellow-300/15 dark:bg-amber-500/10 blur-[120px] mix-blend-multiply dark:mix-blend-screen"
+          className="absolute top-[15%] -right-[10%] w-[50%] h-[50%] rounded-full bg-[#8B9B88]/10 dark:bg-[#8B9B88]/10 blur-[120px]"
         />
       </div>
 
@@ -337,7 +337,7 @@ export function HomeHero() {
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search artworks by title, medium, style, or artist…"
-                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-2 pl-10 pr-3 text-sm text-foreground shadow-sm transition focus:border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 py-2 pl-10 pr-3 text-sm text-foreground shadow-sm transition focus:border-[#A2694E]/50 focus:outline-none focus:ring-2 focus:ring-[#A2694E]/30"
                   aria-label="Search artworks"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -346,7 +346,7 @@ export function HomeHero() {
               <Button
                 type="submit"
                 size="sm"
-                className="inline-flex items-center justify-center rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 px-6 py-2 text-sm font-semibold shadow-md shadow-amber-500/20 transition cursor-pointer"
+                className="inline-flex items-center justify-center rounded-xl bg-[#A2694E] text-white hover:bg-[#8B5A3C] px-6 py-2 text-sm font-semibold shadow-md shadow-[#A2694E]/20 transition cursor-pointer"
               >
                 Search
               </Button>
@@ -358,8 +358,8 @@ export function HomeHero() {
         <div className="w-full text-left">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
-                <Sparkles className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#A2694E] dark:text-[#C58B6F] mb-1">
+                <Sparkles className="h-3.5 w-3.5 text-[#8B9B88]" />
                 Featured Creators
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -390,7 +390,7 @@ export function HomeHero() {
               </Button>
               <Link
                 href="/artists"
-                className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 inline-flex items-center gap-1 ml-2 transition-colors"
+                className="text-xs sm:text-sm font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:text-[#8B5A3C] dark:hover:text-[#D4A389] inline-flex items-center gap-1 ml-2 transition-colors"
               >
                 View All <ArrowRight className="h-3.5 w-3.5" />
               </Link>
@@ -459,9 +459,9 @@ export function HomeHero() {
                     href={`/freelancers/${artistId}`}
                     className="group min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-shrink-0 snap-start block"
                   >
-                    <div className="h-full rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 dark:hover:border-amber-500/50 flex flex-col justify-between">
+                    <div className="h-full rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/50 flex flex-col justify-between">
                       {/* Profile Banner Header */}
-                      <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-gradient-to-r from-amber-500/20 via-primary/20 to-amber-600/20">
+                      <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-gradient-to-r from-[#A2694E]/20 via-[#8B9B88]/20 to-[#A2694E]/30">
                         {bannerUrl ? (
                           <img
                             src={bannerUrl}
@@ -472,14 +472,14 @@ export function HomeHero() {
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-amber-400/20 via-primary/15 to-amber-600/25 relative flex items-center justify-center">
-                            <div className="absolute inset-0 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px] opacity-20" />
+                          <div className="w-full h-full bg-gradient-to-br from-[#A2694E]/20 via-[#8B9B88]/15 to-[#A2694E]/25 relative flex items-center justify-center">
+                            <div className="absolute inset-0 bg-[radial-gradient(#A2694E_1px,transparent_1px)] [background-size:16px_16px] opacity-20" />
                           </div>
                         )}
 
                         {order < 999 && (
                           <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black/60 text-amber-300 border border-amber-400/40 backdrop-blur-md shadow-sm">
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black/60 text-[#F8F6F1] border border-[#A2694E]/40 backdrop-blur-md shadow-sm">
                               #{order}
                             </span>
                           </div>
@@ -487,7 +487,7 @@ export function HomeHero() {
                       </div>
 
                       {/* Artist Avatar overlapping banner */}
-                      <div className="relative -mt-10 sm:-mt-12 ml-5 w-20 h-20 sm:w-22 sm:h-22 rounded-full overflow-hidden border-4 border-white dark:border-slate-900 ring-2 ring-amber-400/30 shadow-md shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform z-10">
+                      <div className="relative -mt-10 sm:-mt-12 ml-5 w-20 h-20 sm:w-22 sm:h-22 rounded-full overflow-hidden border-4 border-white dark:border-slate-900 ring-2 ring-[#A2694E]/30 shadow-md shrink-0 bg-slate-100 dark:bg-slate-800 group-hover:scale-105 transition-transform z-10">
                         {avatar ? (
                           <img
                             src={avatar}
@@ -498,7 +498,7 @@ export function HomeHero() {
                             }}
                           />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-xl sm:text-2xl">
+                          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-[#A2694E] to-[#8B5A3C] text-white font-bold text-xl sm:text-2xl">
                             {name.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -508,7 +508,7 @@ export function HomeHero() {
                       <div className="px-5 pt-2 pb-5 flex flex-col flex-1 justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white truncate group-hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                            <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white truncate group-hover:text-[#A2694E] dark:hover:text-[#C58B6F] transition-colors">
                               {name}
                             </h3>
                             {isVerified && (
@@ -517,15 +517,15 @@ export function HomeHero() {
                           </div>
 
                           {title && (
-                            <p className="text-xs font-medium text-amber-600 dark:text-amber-400 truncate mt-0.5">
+                            <p className="text-xs font-medium text-[#A2694E] dark:text-[#C58B6F] truncate mt-0.5">
                               {title}
                             </p>
                           )}
 
                           {/* Dynamic Rating row: ONLY show when real reviews exist */}
                           {ratingInfo && ratingInfo.count > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs text-amber-500 mt-2">
-                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-xs text-[#A2694E] dark:text-[#C58B6F] mt-2">
+                              <Star className="w-3.5 h-3.5 fill-[#A2694E] text-[#A2694E] shrink-0" />
                               <span className="font-bold text-slate-900 dark:text-white text-xs">
                                 {ratingInfo.avgRating.toFixed(1)}
                               </span>
@@ -559,7 +559,7 @@ export function HomeHero() {
                           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                             Available for work
                           </span>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#A2694E] dark:text-[#C58B6F] group-hover:text-[#8B5A3C] group-hover:translate-x-0.5 transition-all">
                             View Profile <ArrowRight className="h-3.5 w-3.5" />
                           </span>
                         </div>
@@ -576,8 +576,8 @@ export function HomeHero() {
         <div className="w-full text-left">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
-                <TrendingUp className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#A2694E] dark:text-[#C58B6F] mb-1">
+                <TrendingUp className="h-3.5 w-3.5 text-[#8B9B88]" />
                 Curated Masterpieces
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -590,7 +590,7 @@ export function HomeHero() {
             <div>
               <Link
                 href="/gallery"
-                className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 inline-flex items-center gap-1 transition-colors"
+                className="text-xs sm:text-sm font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:text-[#8B5A3C] dark:hover:text-[#D4A389] inline-flex items-center gap-1 transition-colors"
               >
                 Explore Full Gallery <ArrowRight className="h-3.5 w-3.5" />
               </Link>

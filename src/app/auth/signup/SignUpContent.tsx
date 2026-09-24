@@ -758,11 +758,11 @@ export default function SignUpContent() {
                         onClick={() => toggleMedium(medium)}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                           isSelected
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                            ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
                             : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                         }`}
                       >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
                           {isSelected ? '✓' : ''}
                         </span>
                         {medium}
@@ -774,11 +774,11 @@ export default function SignUpContent() {
                     onClick={() => setShowOtherMedium(!showOtherMedium)}
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                       showOtherMedium
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                        ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
                         : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherMedium ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherMedium ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
                       {showOtherMedium ? '✓' : ''}
                     </span>
                     Other
@@ -817,11 +817,11 @@ export default function SignUpContent() {
                         onClick={() => toggleSpecialty(spec)}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                           isSelected
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                            ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
                             : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                         }`}
                       >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
                           {isSelected ? '✓' : ''}
                         </span>
                         {spec}
@@ -833,11 +833,11 @@ export default function SignUpContent() {
                     onClick={() => setShowOtherSpecialty(!showOtherSpecialty)}
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                       showOtherSpecialty
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                        ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
                         : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherSpecialty ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherSpecialty ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
                       {showOtherSpecialty ? '✓' : ''}
                     </span>
                     Other
@@ -876,11 +876,11 @@ export default function SignUpContent() {
                         onClick={() => toggleService(serv)}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                           isSelected
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                            ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
                             : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                         }`}
                       >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
                           {isSelected ? '✓' : ''}
                         </span>
                         {serv}
@@ -892,11 +892,11 @@ export default function SignUpContent() {
                     onClick={() => setShowOtherService(!showOtherService)}
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                       showOtherService
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/10'
+                        ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
                         : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherService ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold' : 'border-slate-700 bg-slate-800'}`}>
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherService ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
                       {showOtherService ? '✓' : ''}
                     </span>
                     Other
@@ -919,17 +919,17 @@ export default function SignUpContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 mt-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="w-full h-12 mt-2 bg-[#A2694E] hover:bg-[#8B5A3C] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-[#A2694E]/25 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
                   <span>Registering Artist Account...</span>
                 </>
               ) : (
                 <span className="flex items-center gap-2">
                   Create Artist Account
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 text-white" />
                 </span>
               )}
             </button>

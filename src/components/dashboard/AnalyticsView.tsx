@@ -96,7 +96,7 @@ export default function AnalyticsView() {
                   onClick={() => setDays(d)}
                   className={
                     days === d
-                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold'
+                      ? 'bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold'
                       : 'bg-white/5 hover:bg-white/10 border-white/10'
                   }
                 >
@@ -112,7 +112,7 @@ export default function AnalyticsView() {
       {isLoading && (
         <Card className="bg-white/5 border-white/10">
           <CardContent className="p-8 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-amber-400 mr-3" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#A2694E] mr-3" />
             <span className="text-slate-400">Loading analytics...</span>
           </CardContent>
         </Card>

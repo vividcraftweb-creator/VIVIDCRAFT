@@ -431,9 +431,9 @@ export default function AdminBannersTab() {
           <Button
             size="sm"
             onClick={handleOpenCreate}
-            className="h-8 text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-500/20"
+            className="h-8 text-xs bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold shadow-md shadow-[#A2694E]/20"
           >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            <Plus className="h-3.5 w-3.5 mr-1.5 text-white" />
             New Banner / Offer
           </Button>
         </div>
@@ -805,7 +805,7 @@ export default function AdminBannersTab() {
                 type="submit"
                 size="sm"
                 disabled={submitting}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold h-8 text-xs shadow-md shadow-amber-500/20"
+                className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold h-8 text-xs shadow-md shadow-[#A2694E]/20"
               >
                 {submitting ? 'Creating...' : 'Save Banner & Offer Code'}
               </Button>

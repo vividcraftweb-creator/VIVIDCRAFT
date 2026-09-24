@@ -270,12 +270,12 @@ const Header = () => {
             <div className="flex items-center gap-3">
               {/* Admin Moderation Active Badge (Header) */}
               {isAdmin && (
-                <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 dark:text-amber-300 text-xs font-semibold shadow-sm">
+                <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#A2694E]/10 border border-[#A2694E]/30 text-[#A2694E] dark:text-[#C58B6F] text-xs font-semibold shadow-sm">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#A2694E] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#A2694E]" />
                   </span>
-                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                  <Shield className="w-3.5 h-3.5 text-[#A2694E]" />
                   <span>Admin Moderation</span>
                 </div>
               )}
@@ -600,12 +600,12 @@ const Header = () => {
 
       {/* Floating Admin Moderation Active Indicator */}
       {isAdmin && (
-        <div className="fixed bottom-5 right-5 z-40 hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900/90 border border-amber-500/40 text-amber-300 text-xs font-semibold shadow-2xl backdrop-blur-md">
+        <div className="fixed bottom-5 right-5 z-40 hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900/90 border border-[#A2694E]/40 text-[#F8F6F1] text-xs font-semibold shadow-2xl backdrop-blur-md">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#A2694E] opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#A2694E]" />
           </span>
-          <Shield className="w-3.5 h-3.5 text-amber-400" />
+          <Shield className="w-3.5 h-3.5 text-[#A2694E]" />
           <span>Admin Moderation Active</span>
         </div>
       )}

@@ -327,9 +327,9 @@ export default function AdminAuctionsTab() {
           <Button
             onClick={() => setIsCreateOpen(true)}
             size="sm"
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold h-8 text-xs gap-1.5 shadow-md shadow-amber-500/20"
+            className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-semibold h-8 text-xs gap-1.5 shadow-md shadow-[#A2694E]/20"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 text-white" />
             Create Live Auction
           </Button>
         </div>
@@ -394,7 +394,7 @@ export default function AdminAuctionsTab() {
             onClick={() => setStatusFilter('ALL')}
             className={`h-7 text-xs ${
               statusFilter === 'ALL'
-                ? 'bg-amber-500 text-slate-950 font-bold hover:bg-amber-400'
+                ? 'bg-[#A2694E] text-white font-bold hover:bg-[#8B5A3C]'
                 : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800'
             }`}
           >
@@ -724,11 +724,11 @@ export default function AdminAuctionsTab() {
                 type="submit"
                 size="sm"
                 disabled={submitting || isUploadingImage}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs"
+                className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-semibold text-xs shadow-md shadow-[#A2694E]/20"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5 text-white" />
                     Creating...
                   </>
                 ) : (
@@ -857,11 +857,11 @@ export default function AdminAuctionsTab() {
                   type="submit"
                   size="sm"
                   disabled={submitting}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs"
+                  className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-semibold text-xs shadow-md shadow-[#A2694E]/20"
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5 text-white" />
                       Saving...
                     </>
                   ) : (

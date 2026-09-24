@@ -344,13 +344,13 @@ export default function ProfileEditView() {
             <Button
               type="submit"
               disabled={updateProfileMutation.isPending}
-              className="w-full h-12 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base shadow-lg shadow-amber-500/20"
+              className="w-full h-12 bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold text-base shadow-lg shadow-[#A2694E]/20"
             >
               {updateProfileMutation.isPending ? (
                 'Saving...'
               ) : (
                 <>
-                  <Save className="h-5 w-5 mr-2" />
+                  <Save className="h-5 w-5 mr-2 text-white" />
                   Save Changes
                 </>
               )}

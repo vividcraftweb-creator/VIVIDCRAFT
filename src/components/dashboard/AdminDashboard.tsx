@@ -426,10 +426,10 @@ export default function AdminDashboard() {
               <Button
                 asChild
                 size="sm"
-                className="w-full justify-start bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold h-8 text-xs shadow-md shadow-amber-500/20"
+                className="w-full justify-start bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold h-8 text-xs shadow-md shadow-[#A2694E]/20"
               >
                 <Link href="/admin/fraud-review">
-                  <Shield className="h-3.5 w-3.5 mr-2" />
+                  <Shield className="h-3.5 w-3.5 mr-2 text-white" />
                   Verification Queue
                   {pendingVerificationCount > 0 && (
                     <Badge className="ml-auto bg-red-500 text-white text-xs h-5">

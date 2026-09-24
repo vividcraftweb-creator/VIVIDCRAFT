@@ -999,9 +999,9 @@ export default function GalleryPageClient() {
               <Button
                 size="sm"
                 onClick={() => startTransition(() => setIsUploadOpen(true))}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs h-8 px-3 gap-1.5 shadow-md cursor-pointer"
+                className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold text-xs h-8 px-3 gap-1.5 shadow-md shadow-[#A2694E]/20 cursor-pointer"
               >
-                <UploadCloud className="w-3.5 h-3.5 text-slate-950" />
+                <UploadCloud className="w-3.5 h-3.5 text-white" />
                 <span>Upload Artwork</span>
               </Button>
               <Link href="/admin">
@@ -1059,9 +1059,9 @@ export default function GalleryPageClient() {
               {isAdmin && (
                 <Button
                   onClick={() => startTransition(() => setIsUploadOpen(true))}
-                  className="inline-flex items-center justify-center rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-4 py-2 text-sm shadow-md shadow-amber-500/20 transition flex-shrink-0 cursor-pointer"
+                  className="inline-flex items-center justify-center rounded-xl bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-semibold px-4 py-2 text-sm shadow-md shadow-[#A2694E]/20 transition flex-shrink-0 cursor-pointer"
                 >
-                  <UploadCloud className="w-4 h-4 mr-1.5" />
+                  <UploadCloud className="w-4 h-4 mr-1.5 text-white" />
                   <span>Upload</span>
                 </Button>
               )}
@@ -1078,7 +1078,7 @@ export default function GalleryPageClient() {
                 onClick={() => startTransition(() => setActiveSort('popular'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'popular'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    ? 'bg-[#A2694E] text-white shadow-md shadow-[#A2694E]/30'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
                 }`}
               >
@@ -1090,7 +1090,7 @@ export default function GalleryPageClient() {
                 onClick={() => startTransition(() => setActiveSort('highest_rated'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'highest_rated'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    ? 'bg-[#A2694E] text-white shadow-md shadow-[#A2694E]/30'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
                 }`}
               >
@@ -1102,7 +1102,7 @@ export default function GalleryPageClient() {
                 onClick={() => startTransition(() => setActiveSort('most_liked'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'most_liked'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    ? 'bg-[#A2694E] text-white shadow-md shadow-[#A2694E]/30'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
                 }`}
               >
@@ -1114,7 +1114,7 @@ export default function GalleryPageClient() {
                 onClick={() => startTransition(() => setActiveSort('newest'))}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
                   activeSort === 'newest'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    ? 'bg-[#A2694E] text-white shadow-md shadow-[#A2694E]/30'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/60'
                 }`}
               >
@@ -1162,8 +1162,8 @@ export default function GalleryPageClient() {
               onClick={() => startTransition(() => setActiveFilter('BIDDING'))}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
                 activeFilter === 'BIDDING'
-                  ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20'
-                  : 'text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50 hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:border-amber-400 dark:hover:border-amber-500'
+                  ? 'bg-[#A2694E] text-white border-[#A2694E] shadow-md shadow-[#A2694E]/20'
+                  : 'text-[#A2694E] dark:text-[#C58B6F] border-[#A2694E]/30 dark:border-[#A2694E]/40 hover:bg-[#A2694E]/10 dark:hover:bg-[#A2694E]/20 hover:border-[#A2694E]'
               }`}
             >
               <Gavel className="w-3.5 h-3.5" />
@@ -1185,7 +1185,7 @@ export default function GalleryPageClient() {
           {/* Row 3 — Medium Filter Bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs no-scrollbar pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 shrink-0">
-              <Palette className="w-3.5 h-3.5 text-amber-500" />
+              <Palette className="w-3.5 h-3.5 text-[#A2694E]" />
               <span>Medium:</span>
             </div>
 
@@ -1193,7 +1193,7 @@ export default function GalleryPageClient() {
               onClick={() => startTransition(() => setSelectedMedium('ALL'))}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer shrink-0 border ${
                 selectedMedium === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-sm'
+                  ? 'bg-[#A2694E] text-white font-bold border-[#A2694E] shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
@@ -1208,8 +1208,8 @@ export default function GalleryPageClient() {
                   onClick={() => startTransition(() => setSelectedMedium(isActive ? 'ALL' : med))}
                   className={`px-3 py-1 rounded-full text-xs transition-all duration-200 cursor-pointer shrink-0 border ${
                     isActive
-                      ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-amber-400/60 dark:hover:border-amber-500/50 hover:bg-amber-500/5'
+                      ? 'bg-[#A2694E] text-white font-bold border-[#A2694E] shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-[#A2694E]/60 dark:hover:border-[#A2694E]/50 hover:bg-[#A2694E]/10'
                   }`}
                 >
                   {med}
@@ -1268,9 +1268,9 @@ export default function GalleryPageClient() {
             {isAdmin && (
               <Button
                 onClick={() => setIsUploadOpen(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold gap-2"
+                className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold gap-2 cursor-pointer shadow-md shadow-[#A2694E]/20"
               >
-                <UploadCloud className="w-4 h-4 text-slate-950" />
+                <UploadCloud className="w-4 h-4 text-white" />
                 <span>Upload First Artwork</span>
               </Button>
             )}
@@ -1380,7 +1380,7 @@ export default function GalleryPageClient() {
                         e.stopPropagation();
                         setSelectedArtwork(artwork);
                       }}
-                      className="absolute bottom-2.5 right-2.5 z-30 w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-amber-500 hover:text-slate-950 hover:border-amber-400 cursor-pointer shadow-lg"
+                      className="absolute bottom-2.5 right-2.5 z-30 w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-[#A2694E] hover:text-white hover:border-[#A2694E] cursor-pointer shadow-lg"
                       title="View full screen"
                     >
                       <Maximize2 className="w-3.5 h-3.5" />
@@ -1515,7 +1515,7 @@ export default function GalleryPageClient() {
                               href={waUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
                               title="Ask about price or buy on WhatsApp"
                             >
                               Ask Price (WhatsApp)
@@ -1982,7 +1982,7 @@ export default function GalleryPageClient() {
                           onClick={() => setUploadBadgeTitle(b)}
                           className={`text-[9px] px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer ${
                             uploadBadgeTitle === b
-                              ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                              ? 'bg-[#A2694E] text-white font-bold border-[#A2694E]'
                               : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-700'
                           }`}
                         >
@@ -2271,16 +2271,16 @@ export default function GalleryPageClient() {
                   <Button
                     type="submit"
                     disabled={isUploading || (!uploadFile && !uploadImageUrl.trim()) || !uploadTitle.trim()}
-                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold gap-2 cursor-pointer shadow-md"
+                    className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold gap-2 cursor-pointer shadow-md shadow-[#A2694E]/20"
                   >
                     {isUploading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
                         <span>Publishing to Gallery...</span>
                       </>
                     ) : (
                       <>
-                        <UploadCloud className="w-4 h-4" />
+                        <UploadCloud className="w-4 h-4 text-white" />
                         <span>Publish Artwork</span>
                       </>
                     )}

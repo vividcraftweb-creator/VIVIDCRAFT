@@ -335,9 +335,9 @@ export default function AdminReviewsTab() {
 
         <Button
           onClick={openCreateModal}
-          className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl shadow-lg shadow-amber-950/40 transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+          className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-lg shadow-[#A2694E]/25 transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 text-white" />
           <span>Add Review</span>
         </Button>
       </div>
@@ -590,9 +590,9 @@ export default function AdminReviewsTab() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold"
+                className="bg-[#A2694E] hover:bg-[#8B5A3C] text-white text-xs font-bold shadow-md shadow-[#A2694E]/20"
               >
-                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1 text-white" /> : null}
                 {editingId ? 'Save Changes' : 'Publish Review'}
               </Button>
             </DialogFooter>

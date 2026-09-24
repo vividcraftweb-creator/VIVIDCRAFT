@@ -98,7 +98,7 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
             link_url: b.target_route || b.link_url || '/gallery',
             target_route: b.target_route || b.link_url || '/gallery',
             image_url: b.image_url || '',
-            accent: b.accent || 'from-amber-500/20 to-orange-500/10',
+            accent: b.accent || 'from-[#A2694E]/20 to-[#8B9B88]/10',
             offer_code: b.offer_code || 'OFFER-7842',
             is_active: b.is_active !== false,
             display_order: b.display_order ?? 0,
@@ -124,7 +124,7 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
                 link_url: b.target_route || b.link_url || '/gallery',
                 target_route: b.target_route || b.link_url || '/gallery',
                 image_url: b.image_url || '',
-                accent: b.accent || 'from-amber-500/20 to-orange-500/10',
+                accent: b.accent || 'from-[#A2694E]/20 to-[#8B9B88]/10',
                 offer_code: b.offer_code || 'OFFER-7842',
                 is_active: b.is_active !== false,
                 display_order: b.display_order ?? 0,
@@ -307,12 +307,12 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
             <button
               type="button"
               onClick={(e) => handleClaimOffer(e, single)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-black/40 transition-all duration-200 hover:scale-105 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-[#A2694E] hover:bg-[#8B5A3C] active:scale-95 text-white font-bold text-xs shadow-lg shadow-black/40 transition-all duration-200 hover:scale-105 cursor-pointer"
               aria-label={`Get Offer for ${single.offer_code}`}
             >
-              <MessageCircle className="w-3.5 h-3.5 fill-slate-950 text-transparent" />
+              <MessageCircle className="w-3.5 h-3.5 fill-white text-transparent" />
               <span>Get Offer</span>
-              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 text-white" />
             </button>
           </div>
         </div>
@@ -369,12 +369,12 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
                 <button
                   type="button"
                   onClick={(e) => handleClaimOffer(e, banner)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-black/40 transition-all duration-200 hover:scale-105 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-[#A2694E] hover:bg-[#8B5A3C] active:scale-95 text-white font-bold text-xs shadow-lg shadow-black/40 transition-all duration-200 hover:scale-105 cursor-pointer"
                   aria-label={`Get Offer for ${banner.offer_code}`}
                 >
-                  <MessageCircle className="w-3.5 h-3.5 fill-slate-950 text-transparent" />
+                  <MessageCircle className="w-3.5 h-3.5 fill-white text-transparent" />
                   <span>Get Offer</span>
-                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 text-white" />
                 </button>
               </div>
             </div>
@@ -427,8 +427,8 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
                 aria-label={`Go to slide ${dotIdx + 1}`}
                 className={`transition-all duration-300 rounded-full cursor-pointer ${
                   isDotActive
-                    ? 'w-6 h-1.5 bg-amber-500 shadow-sm shadow-amber-500/50'
-                    : 'w-1.5 h-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-500'
+                    ? 'w-6 h-1.5 bg-[#A2694E] shadow-sm shadow-[#A2694E]/50'
+                    : 'w-1.5 h-1.5 bg-[#E6E0D5] dark:bg-stone-700 hover:bg-stone-400 dark:hover:bg-stone-500'
                 }`}
               />
             );

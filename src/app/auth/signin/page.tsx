@@ -478,11 +478,11 @@ function SignInContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer bg-amber-500 hover:bg-amber-400 shadow-amber-500/25"
+              className="w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer bg-[#A2694E] hover:bg-[#8B5A3C] shadow-[#A2694E]/25"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
                   <span>Logging in...</span>
                 </>
               ) : (

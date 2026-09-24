@@ -55,11 +55,11 @@ function VerifyEmailContent() {
       <div className="space-y-3 pt-2">
         <Button
           asChild
-          className="w-full h-11 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer"
+          className="w-full h-11 bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold rounded-xl shadow-lg shadow-[#A2694E]/20 cursor-pointer"
         >
           <Link href="/dashboard" className="flex items-center justify-center gap-2">
             <span>Go to Dashboard</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 text-white" />
           </Link>
         </Button>
 

@@ -53,10 +53,10 @@ export default function ExplorePage() {
             <Link href="/gallery" className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="w-full sm:w-auto h-12 px-8 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-2xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 gap-2 cursor-pointer transition-all duration-200"
+                className="w-full sm:w-auto h-12 px-8 bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold rounded-2xl shadow-lg shadow-[#A2694E]/25 hover:shadow-[#A2694E]/40 gap-2 cursor-pointer transition-all duration-200"
               >
                 <span>Go to Gallery</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-white" />
               </Button>
             </Link>
             <Link href="/artists" className="w-full sm:w-auto">
