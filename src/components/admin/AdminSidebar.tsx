@@ -211,11 +211,8 @@ export default function AdminSidebar() {
     <div className="flex h-screen w-64 flex-col fixed left-0 top-0 z-40 border-r border-white/10 bg-slate-900">
       {/* Logo/Header */}
       <div className="flex h-16 items-center justify-center border-b border-white/10 px-6">
-        <Link href="/admin" className="text-xl font-bold flex items-center gap-3 group">
-          <img src="/cinnamon-gallery-logo.png" alt="Cinnamon Gallery Logo" className="w-auto h-9 object-contain" />
-          <span className="tracking-tight text-white">
-            Cinnamon Gallery
-          </span>
+        <Link href="/admin" className="flex items-center justify-center bg-transparent group" aria-label="Cinnamon Gallery">
+          <img src="/cinnamon-gallery-logo-dark.png" alt="Cinnamon Gallery Logo" className="w-auto h-9 object-contain bg-transparent" />
         </Link>
       </div>
 

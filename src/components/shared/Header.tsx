@@ -234,13 +234,19 @@ const Header = () => {
           visible ? 'top-0 translate-y-0' : '-top-32 -translate-y-full'
         }`}
       >
-        <nav className="mx-auto max-w-6xl rounded-full border border-slate-200/60 dark:border-white/20 bg-white/70 dark:bg-black/40 backdrop-blur-xl px-6 shadow-lg dark:shadow-none transition-all duration-300">
+        <nav className="mx-auto max-w-6xl rounded-full border border-[#E6E0D5] dark:border-white/20 bg-[#F8F6F1]/80 dark:bg-[#1E1B18]/80 backdrop-blur-xl px-6 shadow-lg dark:shadow-none transition-all duration-300">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="text-xl font-bold flex items-center gap-3 group">
-              <img src="/cinnamon-gallery-logo.png" alt="Cinnamon Gallery Logo" className="w-auto h-9 object-contain" />
-              <span className="tracking-tight text-slate-900 dark:text-white">
-                Cinnamon Gallery
-              </span>
+            <Link href="/" className="flex items-center bg-transparent group" aria-label="Cinnamon Gallery">
+              <img
+                src="/cinnamon-gallery-logo.png"
+                alt="Cinnamon Gallery Logo"
+                className="w-auto h-9 object-contain bg-transparent dark:hidden"
+              />
+              <img
+                src="/cinnamon-gallery-logo-dark.png"
+                alt="Cinnamon Gallery Logo"
+                className="w-auto h-9 object-contain bg-transparent hidden dark:block"
+              />
             </Link>
 
             {/* Navigation - Hidden on mobile */}

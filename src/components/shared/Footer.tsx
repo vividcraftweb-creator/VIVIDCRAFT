@@ -81,11 +81,17 @@ const Footer = () => {
           <div className="grid grid-cols-1 lg:grid-cols-6 gap-12">
             {/* Brand Section */}
             <div className="lg:col-span-2 space-y-6">
-              <Link href="/" className="text-xl font-bold flex items-center gap-3 group w-fit">
-                <img src="/cinnamon-gallery-logo.png" alt="Cinnamon Gallery Logo" className="w-8 h-8 object-contain" />
-                <span className="tracking-tight text-slate-900 dark:text-white">
-                  Cinnamon Gallery
-                </span>
+              <Link href="/" className="flex items-center bg-transparent group w-fit" aria-label="Cinnamon Gallery">
+                <img
+                  src="/cinnamon-gallery-logo.png"
+                  alt="Cinnamon Gallery Logo"
+                  className="w-auto h-8 object-contain bg-transparent dark:hidden"
+                />
+                <img
+                  src="/cinnamon-gallery-logo-dark.png"
+                  alt="Cinnamon Gallery Logo"
+                  className="w-auto h-8 object-contain bg-transparent hidden dark:block"
+                />
               </Link>
 
               <p className="text-muted-foreground leading-relaxed max-w-md pt-2">

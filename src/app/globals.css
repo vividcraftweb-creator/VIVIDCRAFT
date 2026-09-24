@@ -135,9 +135,9 @@ body > .skiptranslate {
   /* Card Borders: #E6E0D5 */
   --border: #E6E0D5;
   --input: #E6E0D5;
-  --ring: oklch(from #A2694E l c h / 60%);
-  --glass: oklch(from #F8F6F1 l c h / 40%);
-  --glass-border: oklch(from #E6E0D5 l c h / 50%);
+  --ring: #A2694E;
+  --glass: rgba(248, 246, 241, 0.70);
+  --glass-border: rgba(230, 224, 213, 0.80);
   --chart-1: #A2694E;
   --chart-2: #8B9B88;
   --chart-3: oklch(0.6 0.12 160);
@@ -150,7 +150,7 @@ body > .skiptranslate {
   --sidebar-accent: #E6E0D5;
   --sidebar-accent-foreground: #1E1B18;
   --sidebar-border: #E6E0D5;
-  --sidebar-ring: oklch(from #A2694E l c h / 60%);
+  --sidebar-ring: #A2694E;
 }
 
 /* Dark theme — Cinnamon Gallery Palette */
@@ -167,20 +167,20 @@ body > .skiptranslate {
   /* Primary Accent: #A2694E (Cinnamon Bronze) */
   --primary: #A2694E;
   --primary-foreground: #FFFFFF;
-  --secondary: #3A3530;
-  --secondary-foreground: #F8F6F1;
-  --muted: #3A3530;
+  /* Secondary Accent: #8B9B88 (Muted Sage Green) */
+  --secondary: #8B9B88;
+  --secondary-foreground: #1E1B18;
+  --muted: #2A2521;
   --muted-foreground: #A09A94;
-  /* Secondary Accents: #8B9B88 (Muted Sage Green) */
-  --accent: #3A3530;
+  --accent: #2A2521;
   --accent-foreground: #F8F6F1;
   --destructive: oklch(0.65 0.2 15);
   /* Borders: subtle #E6E0D5 */
   --border: rgba(230, 224, 213, 0.15);
-  --input: rgba(230, 224, 213, 0.12);
-  --ring: oklch(from #A2694E l c h / 60%);
-  --glass: rgba(30, 27, 24, 0.20);
-  --glass-border: rgba(230, 224, 213, 0.12);
+  --input: rgba(230, 224, 213, 0.15);
+  --ring: #A2694E;
+  --glass: rgba(30, 27, 24, 0.70);
+  --glass-border: rgba(230, 224, 213, 0.15);
   --chart-1: #B87A5E;
   --chart-2: #8B9B88;
   --chart-3: oklch(0.75 0.1 160);
@@ -190,10 +190,10 @@ body > .skiptranslate {
   --sidebar-foreground: #F8F6F1;
   --sidebar-primary: #A2694E;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #3A3530;
+  --sidebar-accent: #2A2521;
   --sidebar-accent-foreground: #F8F6F1;
   --sidebar-border: rgba(230, 224, 213, 0.15);
-  --sidebar-ring: oklch(from #A2694E l c h / 60%);
+  --sidebar-ring: #A2694E;
 }
 
 @layer base {
