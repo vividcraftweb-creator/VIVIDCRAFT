@@ -1,6 +1,6 @@
 {
-  "name": "Vivid Art - Online Art Marketplace",
-  "short_name": "Vivid Art",
+  "name": "Cinnamon Gallery - Online Art Marketplace",
+  "short_name": "Cinnamon Gallery",
   "description": "Discover extraordinary artwork from independent artists. Buy original art and showcase your creative services.",
   "icons": [
     {
@@ -16,8 +16,8 @@
       "purpose": "any maskable"
     }
   ],
-  "theme_color": "#fafafa",
-  "background_color": "#fafafa",
+  "theme_color": "#F8F6F1",
+  "background_color": "#F8F6F1",
   "display": "standalone",
   "start_url": "/",
   "scope": "/"

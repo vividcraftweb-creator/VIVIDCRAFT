@@ -9,7 +9,7 @@ export function ThemeSwitcher() {
 
   React.useEffect(() => {
     // Check initial theme from localStorage or system on mount
-    const storedTheme = localStorage.getItem('cinnamon-gallery-theme');
+    const storedTheme = localStorage.getItem('cinnamon-gallery-theme') || localStorage.getItem('vivid-art-theme');
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialTheme = storedTheme || (systemDark ? 'dark' : 'light');
     

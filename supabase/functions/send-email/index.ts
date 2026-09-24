@@ -65,7 +65,7 @@ function generateICS(data: {
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//JobHorizons//Interview Scheduler//EN',
+    'PRODID:-//Cinnamon Gallery//Interview Scheduler//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:REQUEST',
     'BEGIN:VEVENT',
@@ -95,14 +95,14 @@ function generateICS(data: {
 // Email templates - Clean, minimal design inspired by Cursor
 const templates = {
   welcome: (firstName?: string) => ({
-    subject: 'Welcome to JobHorizons',
+    subject: 'Welcome to Cinnamon Gallery',
     html: `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Welcome to JobHorizons</title>
+          <title>Welcome to Cinnamon Gallery</title>
           <style>
             body {
               margin: 0;
@@ -184,11 +184,11 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
-                <h1 class="heading">Welcome to JobHorizons${firstName ? `, ${firstName}` : ''}</h1>
+                <h1 class="heading">Welcome to Cinnamon Gallery${firstName ? `, ${firstName}` : ''}</h1>
 
                 <p class="description">
                   Your account has been created successfully. You can now access your dashboard and start connecting with opportunities.
@@ -205,7 +205,7 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Welcome to JobHorizons\n\nWelcome${firstName ? ` ${firstName}` : ''}!\n\nYour JobHorizons account has been created successfully...`
+    text: `Welcome to Cinnamon Gallery\n\nWelcome${firstName ? ` ${firstName}` : ''}!\n\nYour Cinnamon Gallery account has been created successfully...`
   }),
 
   verification: (verificationLink: string, firstName?: string) => ({
@@ -300,7 +300,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -325,11 +325,11 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Verify your email address\n\n${firstName ? `Hi ${firstName},\n\n` : ''}We need to verify your email address to complete your JobHorizons account setup.\n\nClick here to verify: ${verificationLink}\n\nThis link will expire in 24 hours.\n\nIf you didn't create this account, you can safely ignore this email.\n\nBest regards,\nThe JobHorizons Team`
+    text: `Verify your email address\n\n${firstName ? `Hi ${firstName},\n\n` : ''}We need to verify your email address to complete your Cinnamon Gallery account setup.\n\nClick here to verify: ${verificationLink}\n\nThis link will expire in 24 hours.\n\nIf you didn't create this account, you can safely ignore this email.\n\nBest regards,\nThe Cinnamon Gallery Team`
   }),
 
   passwordReset: (resetLink: string, firstName?: string) => ({
-    subject: 'Reset your JobHorizons password',
+    subject: 'Reset your Cinnamon Gallery password',
     html: `
       <!DOCTYPE html>
       <html>
@@ -418,14 +418,14 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
                 <h1 class="heading">Reset your password</h1>
 
                 <p class="description">
-                  ${firstName ? `Hi ${firstName}, y` : 'Y'}ou requested a password reset for your JobHorizons account. Click the button below to create a new password.
+                  ${firstName ? `Hi ${firstName}, y` : 'Y'}ou requested a password reset for your Cinnamon Gallery account. Click the button below to create a new password.
                 </p>
 
                 <a href="${resetLink}" class="button">Reset Password</a>
@@ -435,7 +435,7 @@ const templates = {
                 </p>
 
                 <p class="footer-text">
-                  If you didn't request this password reset, please reach out to JobHorizons support.
+                  If you didn't request this password reset, please reach out to Cinnamon Gallery support.
                 </p>
               </div>
             </div>
@@ -547,7 +547,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -667,7 +667,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -688,7 +688,7 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Payment Failed – Please Update Your Billing Information\n\nHi${firstName ? ` ${firstName}` : ''},\n\nWe were unable to process your subscription payment for ${planName} due to insufficient funds or a declined transaction.\n\nPlease update your payment method at ${Deno.env.get('NEXTAUTH_URL')}/dashboard/subscription\n\nThank you,\nJobHorizons Team`
+    text: `Payment Failed – Please Update Your Billing Information\n\nHi${firstName ? ` ${firstName}` : ''},\n\nWe were unable to process your subscription payment for ${planName} due to insufficient funds or a declined transaction.\n\nPlease update your payment method at ${Deno.env.get('NEXTAUTH_URL')}/dashboard/subscription\n\nThank you,\nCinnamon Gallery Team`
   }),
 
   subscriptionCancellation: (planName: string, endDate: string, firstName?: string) => ({
@@ -779,7 +779,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -803,7 +803,7 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Your Subscription Has Been Cancelled\n\nHi${firstName ? ` ${firstName}` : ''},\n\nYour ${planName} subscription has been cancelled successfully.\n\nYou'll continue to have access until ${endDate}. Recurring payments have been stopped.\n\nWe'd love to have you back anytime.\n\n– JobHorizons Team`
+    text: `Your Subscription Has Been Cancelled\n\nHi${firstName ? ` ${firstName}` : ''},\n\nYour ${planName} subscription has been cancelled successfully.\n\nYou'll continue to have access until ${endDate}. Recurring payments have been stopped.\n\nWe'd love to have you back anytime.\n\n– Cinnamon Gallery Team`
   }),
 
   subscriptionExpiringReminder: (planName: string, expirationDate: string, firstName?: string) => ({
@@ -904,7 +904,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -929,7 +929,7 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Your Subscription Expires Soon\n\nHi${firstName ? ` ${firstName}` : ''},\n\nYour ${planName} subscription will expire on ${expirationDate}.\n\nRenew now at ${Deno.env.get('NEXTAUTH_URL')}/dashboard?tab=subscription to keep your premium features.\n\nAfter expiration, you'll have a 3-day grace period before being downgraded to the free plan.\n\nThank you,\nJobHorizons Team`
+    text: `Your Subscription Expires Soon\n\nHi${firstName ? ` ${firstName}` : ''},\n\nYour ${planName} subscription will expire on ${expirationDate}.\n\nRenew now at ${Deno.env.get('NEXTAUTH_URL')}/dashboard?tab=subscription to keep your premium features.\n\nAfter expiration, you'll have a 3-day grace period before being downgraded to the free plan.\n\nThank you,\nCinnamon Gallery Team`
   }),
 
   supportTicketCreated: (ticketNumber: string, ticketSubject: string, firstName?: string) => ({
@@ -1023,7 +1023,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -1140,7 +1140,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -1252,14 +1252,14 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
                 <h1 class="heading">Account security alert</h1>
 
                 <p class="description">
-                  ${firstName ? `Hi ${firstName}, w` : 'W'}e've detected some unusual activity on your JobHorizons account.
+                  ${firstName ? `Hi ${firstName}, w` : 'W'}e've detected some unusual activity on your Cinnamon Gallery account.
                 </p>
 
                 <div class="alert-box">
@@ -1366,14 +1366,14 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
                 <h1 class="heading">Account Suspended</h1>
 
                 <p class="description">
-                  Your JobHorizons account has been temporarily suspended.
+                  Your Cinnamon Gallery account has been temporarily suspended.
                 </p>
 
                 ${reason ? `
@@ -1391,11 +1391,11 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Account Suspended\n\nYour JobHorizons account has been temporarily suspended.${reason ? `\n\nReason: ${reason}` : ''}\n\nTo appeal, contact ${Deno.env.get("SUPPORT_EMAIL") ?? "support@yourdomain.com"}`
+    text: `Account Suspended\n\nYour Cinnamon Gallery account has been temporarily suspended.${reason ? `\n\nReason: ${reason}` : ''}\n\nTo appeal, contact ${Deno.env.get("SUPPORT_EMAIL") ?? "support@yourdomain.com"}`
   }),
 
   accountRestored: () => ({
-    subject: 'Your JobHorizons Account Has Been Restored',
+    subject: 'Your Cinnamon Gallery Account Has Been Restored',
     html: `
       <!DOCTYPE html>
       <html>
@@ -1490,18 +1490,18 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
                 <h1 class="heading">Account Restored</h1>
 
                 <p class="description">
-                  Good news! Your JobHorizons account has been restored and you can now access all features.
+                  Good news! Your Cinnamon Gallery account has been restored and you can now access all features.
                 </p>
 
                 <div class="success-box">
-                  Your account suspension has been lifted. You can now sign in and use JobHorizons normally.
+                  Your account suspension has been lifted. You can now sign in and use Cinnamon Gallery normally.
                 </div>
 
                 <a href="${Deno.env.get('NEXTAUTH_URL')}/auth/signin" class="button">Sign In to Your Account</a>
@@ -1515,7 +1515,7 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Account Restored\n\nGood news! Your JobHorizons account has been restored and you can now access all features.\n\nSign in at: ${Deno.env.get('NEXTAUTH_URL')}/auth/signin\n\nIf you have any questions, contact ${Deno.env.get("SUPPORT_EMAIL") ?? "support@yourdomain.com"}`
+    text: `Account Restored\n\nGood news! Your Cinnamon Gallery account has been restored and you can now access all features.\n\nSign in at: ${Deno.env.get('NEXTAUTH_URL')}/auth/signin\n\nIf you have any questions, contact ${Deno.env.get("SUPPORT_EMAIL") ?? "support@yourdomain.com"}`
   }),
 
   adminFraudAlert: (userEmail: string, trustScore: number, flagReasons: string[]) => ({
@@ -1615,7 +1615,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -1742,7 +1742,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -1869,7 +1869,7 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
@@ -2061,7 +2061,7 @@ const templates = {
                 <div class="email-content">
                   <div class="logo-container">
                     <div class="logo-box">
-                      <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                      <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                     </div>
                   </div>
 
@@ -2115,7 +2115,7 @@ const templates = {
   },
 
   teamInvitation: (inviterName: string, role: string, invitationLink: string, organizationName?: string, firstName?: string) => ({
-    subject: `You've been invited to join ${organizationName || 'a team'} on JobHorizons`,
+    subject: `You've been invited to join ${organizationName || 'a team'} on Cinnamon Gallery`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -2227,14 +2227,14 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
                 <h1 class="heading">You've been invited to join a team</h1>
 
                 <p class="description">
-                  ${firstName ? `Hi ${firstName}, ` : ''}${inviterName} has invited you to join ${organizationName ? `<strong>${organizationName}</strong>` : 'their team'} on JobHorizons.
+                  ${firstName ? `Hi ${firstName}, ` : ''}${inviterName} has invited you to join ${organizationName ? `<strong>${organizationName}</strong>` : 'their team'} on Cinnamon Gallery.
                 </p>
 
                 <div class="info-box">
@@ -2266,7 +2266,7 @@ const templates = {
         </body>
       </html>
     `,
-    text: `Team Invitation\n\n${firstName ? `Hi ${firstName},\n\n` : ''}${inviterName} has invited you to join ${organizationName || 'their team'} on JobHorizons.\n\nYour role: ${role}\n\nAccept invitation: ${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you didn't expect this invitation, you can safely ignore this email.\n\nBest regards,\nThe JobHorizons Team`
+    text: `Team Invitation\n\n${firstName ? `Hi ${firstName},\n\n` : ''}${inviterName} has invited you to join ${organizationName || 'their team'} on Cinnamon Gallery.\n\nYour role: ${role}\n\nAccept invitation: ${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you didn't expect this invitation, you can safely ignore this email.\n\nBest regards,\nThe Cinnamon Gallery Team`
   }),
 
   newMessage: (senderName: string, messagePreview: string, conversationLink: string, receiverName?: string) => ({
@@ -2381,14 +2381,14 @@ const templates = {
               <div class="email-content">
                 <div class="logo-container">
                   <div class="logo-box">
-                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="JobHorizons" />
+                    <img src="${Deno.env.get("SITE_URL") ?? "https://yourdomain.com"}/email-logo.png" alt="Cinnamon Gallery" />
                   </div>
                 </div>
 
                 <h1 class="heading">New message from ${senderName}</h1>
 
                 <p class="description">
-                  ${receiverName ? `Hi ${receiverName}, ` : ''}You have received a new message on JobHorizons.
+                  ${receiverName ? `Hi ${receiverName}, ` : ''}You have received a new message on Cinnamon Gallery.
                 </p>
 
                 <div class="message-box">
@@ -2407,7 +2407,7 @@ const templates = {
         </body>
       </html>
     `,
-    text: `New message from ${senderName}\n\n${receiverName ? `Hi ${receiverName},\n\n` : ''}You have received a new message on JobHorizons.\n\nMessage Preview:\n${messagePreview}\n\nView and reply to this message: ${conversationLink}\n\nBest regards,\nThe JobHorizons Team`
+    text: `New message from ${senderName}\n\n${receiverName ? `Hi ${receiverName},\n\n` : ''}You have received a new message on Cinnamon Gallery.\n\nMessage Preview:\n${messagePreview}\n\nView and reply to this message: ${conversationLink}\n\nBest regards,\nThe Cinnamon Gallery Team`
   })
 }
 
@@ -2577,7 +2577,7 @@ serve(async (req) => {
 
     // Send email using Brevo REST API
     const emailData: any = {
-      sender: { email: FROM_EMAIL, name: "JobHorizons" },
+      sender: { email: FROM_EMAIL, name: "Cinnamon Gallery" },
       to: [{ email: emailRequest.to }],
       subject,
       htmlContent: html,

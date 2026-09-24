@@ -280,7 +280,7 @@ export async function POST(req: Request) {
       last_name: sanitizedLastName,
       role: metadataRole,
       title: sanitizedTitle || (metadataRole === 'artist' ? 'Artist' : 'Buyer'),
-      bio: sanitizedBio || (metadataRole === 'artist' ? 'Welcome to Vivid Art!' : ''),
+      bio: sanitizedBio || (metadataRole === 'artist' ? 'Welcome to Cinnamon Gallery!' : ''),
       email: email,
       address: sanitizedLocation,
       location: sanitizedLocation,

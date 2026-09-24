@@ -191,12 +191,12 @@ export async function runSubscriptionChecks(): Promise<SubscriptionCheckResults>
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <p>Your subscription has expired. Please renew or upgrade your plan to maintain full access.</p>
-            <p>You can continue using Vivid Art with limited features, or upgrade anytime to regain access to premium features.</p>
+            <p>You can continue using Cinnamon Gallery with limited features, or upgrade anytime to regain access to premium features.</p>
             <a href="${process.env.NEXTAUTH_URL}/dashboard?tab=subscription"
                style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0;">
               View Subscription Plans
             </a>
-            <p>Thank you for using Vivid Art!</p>
+            <p>Thank you for using Cinnamon Gallery!</p>
           </div>
         `,
       });

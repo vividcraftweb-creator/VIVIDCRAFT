@@ -237,7 +237,7 @@ const Header = () => {
         <nav className="mx-auto max-w-6xl rounded-full border border-slate-200/60 dark:border-white/20 bg-white/70 dark:bg-black/40 backdrop-blur-xl px-6 shadow-lg dark:shadow-none transition-all duration-300">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="text-xl font-bold flex items-center gap-3 group">
-              <img src="/cinnamon-gallery-logo.png" alt="Cinnamon Gallery Logo" className="w-9 h-9 object-contain" />
+              <img src="/cinnamon-gallery-logo.png" alt="Cinnamon Gallery Logo" className="w-auto h-9 object-contain" />
               <span className="tracking-tight text-slate-900 dark:text-white">
                 Cinnamon Gallery
               </span>
@@ -582,7 +582,7 @@ const Header = () => {
                 <Link
                   href="/auth/signup"
                   onClick={closeMobileMenu}
-                  className="block w-full text-center py-3 text-lg font-medium bg-white text-gray-900 hover:bg-white/90 rounded-full transition-all hover:scale-105"
+                  className="block w-full text-center py-3 text-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-full transition-all hover:scale-105"
                 >
                   Get Started
                 </Link>

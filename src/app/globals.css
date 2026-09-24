@@ -55,6 +55,17 @@ h1, h2, h3, h4, h5, h6 {
   --color-card: var(--card);
   --color-glass: var(--glass);
   --color-glass-border: var(--glass-border);
+  --color-canvas: #F8F6F1;
+  --color-soft-canvas: #F8F6F1;
+  --color-cinnamon: #A2694E;
+  --color-cinnamon-bronze: #A2694E;
+  --color-charcoal: #1E1B18;
+  --color-deep-charcoal: #1E1B18;
+  --color-sage: #8B9B88;
+  --color-muted-sage: #8B9B88;
+  --color-sand: #E6E0D5;
+  --color-warm-sand: #E6E0D5;
+  --color-linen: #E6E0D5;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

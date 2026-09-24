@@ -212,9 +212,9 @@ export default function AdminSidebar() {
       {/* Logo/Header */}
       <div className="flex h-16 items-center justify-center border-b border-white/10 px-6">
         <Link href="/admin" className="text-xl font-bold flex items-center gap-3 group">
-          <img src="/vivid-art-logo.png" alt="Vivid Art Logo" className="w-8 h-8 object-contain" />
+          <img src="/cinnamon-gallery-logo.png" alt="Cinnamon Gallery Logo" className="w-auto h-9 object-contain" />
           <span className="tracking-tight text-white">
-            Vivid Art
+            Cinnamon Gallery
           </span>
         </Link>
       </div>

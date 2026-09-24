@@ -15,8 +15,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const name = isStudio ? 'studio One' : 'Artist';
 
   return {
-    title: `${name} - Verified Artist & Creator | Vivid Art`,
-    description: `View ${name}'s creative artworks, portfolio, and commissions on Vivid Art.`,
+    title: `${name} - Verified Artist & Creator | Cinnamon Gallery`,
+    description: `View ${name}'s creative artworks, portfolio, and commissions on Cinnamon Gallery.`,
   };
 }
 

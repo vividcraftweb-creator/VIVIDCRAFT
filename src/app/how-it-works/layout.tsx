@@ -3,9 +3,9 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'How It Works',
-  description: 'Learn how Vivid Art connects freelancers with clients. Step-by-step guide to posting jobs, finding work, submitting proposals, and managing projects on our platform.',
+  description: 'Learn how Cinnamon Gallery connects freelancers with clients. Step-by-step guide to posting jobs, finding work, submitting proposals, and managing projects on our platform.',
   keywords: [
-    'how Vivid Art works',
+    'how Cinnamon Gallery works',
     'freelance platform guide',
     'hire freelancers guide',
     'find freelance work',
@@ -23,7 +23,7 @@ const faqSchema = {
   mainEntity: [
     {
       '@type': 'Question',
-      name: 'How does Vivid Art work for artists?',
+      name: 'How does Cinnamon Gallery work for artists?',
       acceptedAnswer: {
         '@type': 'Answer',
         text: 'Artists create a profile showcasing their skills and portfolio, browse curated job opportunities, and apply using token-based applications. Once a client selects you, you collaborate directly with them off-platform using your preferred tools.',
@@ -31,7 +31,7 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'How does Vivid Art work for clients?',
+      name: 'How does Cinnamon Gallery work for clients?',
       acceptedAnswer: {
         '@type': 'Answer',
         text: 'Clients post detailed project briefs with scope, budget, and expectations. Artists submit structured proposals which clients review in a centralized dashboard. After selecting the right artist, both parties move the relationship to their preferred collaboration tools.',
@@ -39,10 +39,10 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'Do I need to pay to use Vivid Art?',
+      name: 'Do I need to pay to use Cinnamon Gallery?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Vivid Art offers free plans for both artists and clients. Premium plans (Pro and Elite for artists, Business and Enterprise for clients) provide additional features like more application tokens, advanced analytics, and priority support.',
+        text: 'Cinnamon Gallery offers free plans for both artists and clients. Premium plans (Pro and Elite for artists, Business and Enterprise for clients) provide additional features like more application tokens, advanced analytics, and priority support.',
       },
     },
     {
@@ -58,20 +58,20 @@ const faqSchema = {
       name: 'What happens after I hire an artist or get hired?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'After both parties agree to work together, the relationship moves off-platform. You manage deliverables, contracts, and payments using your own preferred tools and systems. Vivid Art facilitates the connection, but doesn\'t handle ongoing project management.',
+        text: 'After both parties agree to work together, the relationship moves off-platform. You manage deliverables, contracts, and payments using your own preferred tools and systems. Cinnamon Gallery facilitates the connection, but doesn\'t handle ongoing project management.',
       },
     },
     {
       '@type': 'Question',
-      name: 'Are artists verified on Vivid Art?',
+      name: 'Are artists verified on Cinnamon Gallery?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes, Vivid Art offers ID verification for artists. Verified profiles display a badge, helping build trust with clients. The platform also includes fraud detection and reporting systems to maintain a professional community.',
+        text: 'Yes, Cinnamon Gallery offers ID verification for artists. Verified profiles display a badge, helping build trust with clients. The platform also includes fraud detection and reporting systems to maintain a professional community.',
       },
     },
     {
       '@type': 'Question',
-      name: 'How do I get started on Vivid Art?',
+      name: 'How do I get started on Cinnamon Gallery?',
       acceptedAnswer: {
         '@type': 'Answer',
         text: 'Getting started is easy. Sign up for a free account, complete your profile (for freelancers) or post your first job (for clients), and start connecting. The entire process takes just a few minutes.',

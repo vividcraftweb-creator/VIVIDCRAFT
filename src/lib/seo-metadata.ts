@@ -5,12 +5,12 @@ import { Metadata } from 'next';
  * Single source of truth for all SEO-related constants
  */
 export const SEO_CONFIG = {
-  siteName: 'Vivid Art',
+  siteName: 'Cinnamon Gallery',
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://vividcraft.vercel.app',
   tagline: 'Premier Art & Creative Talent Marketplace',
-  twitterHandle: '@vividart',
-  defaultOgImage: '/vivid-art-og-image.png',
-  description: 'Vivid Art is the premier marketplace for creative talent and artwork. Connect with verified artists, commission custom artworks, and hire top creators for your projects.',
+  twitterHandle: '@cinnamongallery',
+  defaultOgImage: '/cinnamon-gallery-og-image.png',
+  description: 'Cinnamon Gallery is the premier marketplace for creative talent and artwork. Connect with verified artists, commission custom artworks, and hire top creators for your projects.',
 } as const;
 
 /**
@@ -80,7 +80,7 @@ export function createPageMetadata(params: {
  * @example
  * export const metadata = createAuthPageMetadata({
  *   title: 'Dashboard',
- *   description: 'View your Vivid Art dashboard'
+ *   description: 'View your Cinnamon Gallery dashboard'
  * });
  */
 export function createAuthPageMetadata(params: {
@@ -108,7 +108,7 @@ export function createAuthPageMetadata(params: {
 
 /**
  * Create metadata for admin pages
- * Uses hierarchical title format: "Page Name | Admin | Vivid Art"
+ * Uses hierarchical title format: "Page Name | Admin | Cinnamon Gallery"
  * Always marked noindex to prevent search indexing
  *
  * @example
@@ -141,7 +141,7 @@ export function createAdminPageMetadata(params: {
 
 /**
  * Create metadata for dynamic routes (Jobs, Freelancers, etc.)
- * Uses hierarchical format: "Dynamic Title | Section | Vivid Art"
+ * Uses hierarchical format: "Dynamic Title | Section | Cinnamon Gallery"
  *
  * @example
  * return createDynamicMetadata({
@@ -198,7 +198,7 @@ export function createDynamicMetadata(params: {
 
 /**
  * Create metadata for settings subpages
- * Uses hierarchical format: "Page Name | Settings | Vivid Art"
+ * Uses hierarchical format: "Page Name | Settings | Cinnamon Gallery"
  *
  * @example
  * export const metadata = createSettingsPageMetadata({

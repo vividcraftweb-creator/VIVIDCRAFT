@@ -590,7 +590,7 @@ export default function SignUpPage() {
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold text-white mb-2">Choose Your Role</h2>
-        <p className="text-gray-400 text-sm">How do you plan to use Vivid Art?</p>
+        <p className="text-gray-400 text-sm">How do you plan to use Cinnamon Gallery?</p>
       </div>
 
       <div className="space-y-4">
@@ -944,7 +944,7 @@ export default function SignUpPage() {
               <circle cx="36" cy="12" r="3" fill="url(#signupLogoGrad2)" />
             </svg>
             <span className="font-bold text-2xl tracking-tight text-white">
-              Vivid Art
+              Cinnamon Gallery
             </span>
           </Link>
         </div>
@@ -952,7 +952,7 @@ export default function SignUpPage() {
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">Create account</h1>
-          <p className="text-sm sm:text-base text-gray-400">Get started with Vivid Art</p>
+          <p className="text-sm sm:text-base text-gray-400">Get started with Cinnamon Gallery</p>
         </div>
 
         {/* Progress Indicator */}
@@ -1062,7 +1062,7 @@ export default function SignUpPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-500 text-sm">
-          <p>© 2025 Vivid Art</p>
+          <p>© 2025 Cinnamon Gallery</p>
         </div>
       </div>
     </div>

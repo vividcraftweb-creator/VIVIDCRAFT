@@ -64,7 +64,7 @@ function generateSafeBatchFallback(req: Request) {
               full_name: '',
               name: '',
               title: 'Artist',
-              bio: 'Welcome to Vivid Art!',
+              bio: 'Welcome to Cinnamon Gallery!',
               isPublished: true,
               is_published: true,
             },

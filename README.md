@@ -280,7 +280,7 @@ flowchart TD
 1. **Clone the repository**
    ```bash
    git clone https://github.com/NiepresJohn/jobhorizons-freelancing-marketplace.git
-   cd jobhorizons
+   cd cinnamon-gallery
    ```
 
 2. **Install dependencies**
@@ -840,7 +840,7 @@ function verifyWebhookSignature(payload, signature, secret) {
 ## 📁 Project Structure
 
 ```
-jobhorizons/
+cinnamon-gallery/
 ├── src/
 │   ├── app/                        # Next.js App Router
 │   │   ├── (auth)/                 # Auth route group

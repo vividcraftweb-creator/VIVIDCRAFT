@@ -8,7 +8,7 @@ import FreelancersPageClient, { normalizeArtistProfile } from '../freelancers/Fr
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Discover Artists',
-  description: 'Discover and hire verified artists and creative professionals for your projects on Vivid Art.',
+  description: 'Discover and hire verified artists and creative professionals for your projects on Cinnamon Gallery.',
 });
 
 export default async function ArtistsPage(props: {

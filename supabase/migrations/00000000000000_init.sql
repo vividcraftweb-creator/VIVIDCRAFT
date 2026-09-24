@@ -1,7 +1,7 @@
 -- ============================================================================
--- JobHorizons - Initial Database Schema
+-- Cinnamon Gallery - Initial Database Schema
 -- ============================================================================
--- This migration sets up the complete database schema for JobHorizons.
+-- This migration sets up the complete database schema for Cinnamon Gallery.
 -- It includes all tables, indexes, RLS policies, functions, and triggers.
 -- 
 -- Run this ONCE on a fresh Supabase database to set up everything needed

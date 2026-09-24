@@ -386,7 +386,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${plusJakartaSans.variable} font-sans antialiased min-h-screen overflow-x-hidden bg-[#F8F6F1] dark:bg-[#1E1B18] text-slate-900 dark:text-slate-100 transition-colors duration-200`}
+        className={`${inter.variable} ${plusJakartaSans.variable} font-sans antialiased min-h-screen overflow-x-hidden bg-[#F8F6F1] dark:bg-[#1E1B18] text-[#1E1B18] dark:text-[#F8F6F1] transition-colors duration-200`}
         suppressHydrationWarning
       >
         {/* JSON-LD structured data */}

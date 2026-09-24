@@ -3,9 +3,9 @@ import { createPageMetadata } from '@/lib/seo-metadata';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'About Us',
-  description: 'Learn about Vivid Art mission to connect talented freelancers with quality remote opportunities. Discover our story, values, and commitment to the future of work.',
+  description: 'Learn about Cinnamon Gallery mission to connect talented artists and creators with quality opportunities. Discover our story, values, and commitment to the art community.',
   keywords: [
-    'about Vivid Art',
+    'about Cinnamon Gallery',
     'freelance marketplace',
     'remote work platform',
     'company mission',
