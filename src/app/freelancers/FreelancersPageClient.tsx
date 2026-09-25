@@ -7,6 +7,7 @@ import {
   Palette,
   Sparkles,
   Briefcase,
+  MapPin,
   ChevronDown,
   X,
   RotateCcw,
@@ -91,11 +92,14 @@ interface FilterContentProps {
   availableSpecialties: string[];
   selectedSpecialties: string[];
   toggleSpecialty: (val: string) => void;
+  availableLocations: string[];
+  selectedLocations: string[];
+  toggleLocation: (val: string) => void;
   availableServices: string[];
   selectedServices: string[];
   toggleService: (val: string) => void;
-  openSections: { styles: boolean; specialties: boolean; services: boolean };
-  toggleSection: (section: 'styles' | 'specialties' | 'services') => void;
+  openSections: { styles: boolean; specialties: boolean; locations: boolean; services: boolean };
+  toggleSection: (section: 'styles' | 'specialties' | 'locations' | 'services') => void;
   clearAllFilters: () => void;
   hasActiveFilters: boolean;
   totalActiveFilters: number;
@@ -108,6 +112,9 @@ function FilterContent({
   availableSpecialties,
   selectedSpecialties,
   toggleSpecialty,
+  availableLocations,
+  selectedLocations,
+  toggleLocation,
   availableServices,
   selectedServices,
   toggleService,
@@ -245,7 +252,60 @@ function FilterContent({
           )}
         </div>
 
-        {/* Category 3: Services Offered */}
+        {/* Category 3: Location */}
+        {availableLocations.length > 0 && (
+          <div className="py-4">
+            <button
+              type="button"
+              onClick={() => toggleSection('locations')}
+              className="flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 hover:text-foreground transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-[#A2694E]" />
+                <span>Location</span>
+                {selectedLocations.length > 0 && (
+                  <span className="rounded-full bg-[#A2694E]/10 px-1.5 py-0.2 text-[10px] font-bold text-[#A2694E]">
+                    {selectedLocations.length}
+                  </span>
+                )}
+              </div>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                  openSections.locations ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {openSections.locations && (
+              <div className="mt-3 max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                {availableLocations.map((item) => {
+                  const isChecked = selectedLocations.includes(item);
+                  return (
+                    <div
+                      key={item}
+                      onClick={() => toggleLocation(item)}
+                      className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 cursor-pointer transition select-none"
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        className="pointer-events-none data-[state=checked]:bg-[#A2694E] data-[state=checked]:border-[#A2694E]"
+                      />
+                      <span
+                        className={`text-xs flex-1 ${
+                          isChecked ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {item}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Category 4: Services Offered */}
         <div className="py-4">
           <button
             type="button"
@@ -320,16 +380,19 @@ export default function FreelancersPageClient({
   // Multi-select category filter states (immediately triggers re-filtering)
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   // Category accordion expand/collapse state in left sidebar
   const [openSections, setOpenSections] = useState<{
     styles: boolean;
     specialties: boolean;
+    locations: boolean;
     services: boolean;
   }>({
     styles: true,
     specialties: true,
+    locations: true,
     services: true,
   });
 
@@ -361,7 +424,7 @@ export default function FreelancersPageClient({
       try {
         const { data: artists, error } = await supabase
           .from('profiles')
-          .select('*, art_styles, art_specialties, services_offered')
+          .select('*, art_styles, art_specialties, services_offered, location, address')
           .or('role.eq.ARTIST,role.eq.artist')
           .order('display_order', { ascending: true });
 
@@ -405,6 +468,22 @@ export default function FreelancersPageClient({
     return Array.from(set);
   }, [profiles]);
 
+  const availableLocations = useMemo(() => {
+    const set = new Set<string>();
+    profiles.forEach((p) => {
+      const loc = p.location || p.address;
+      if (loc && typeof loc === 'string') {
+        const parts = loc.split(',').map((s) => s.trim()).filter(Boolean);
+        parts.forEach((part) => {
+          if (part.length > 2 && !part.match(/^\d+$/)) {
+            set.add(part);
+          }
+        });
+      }
+    });
+    return Array.from(set).sort();
+  }, [profiles]);
+
   const availableServices = useMemo(() => {
     const set = new Set<string>(ARTIST_SERVICES);
     profiles.forEach((p) => {
@@ -429,13 +508,19 @@ export default function FreelancersPageClient({
     );
   };
 
+  const toggleLocation = (val: string) => {
+    setSelectedLocations((prev) =>
+      prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
+    );
+  };
+
   const toggleService = (val: string) => {
     setSelectedServices((prev) =>
       prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
     );
   };
 
-  const toggleSection = (section: 'styles' | 'specialties' | 'services') => {
+  const toggleSection = (section: 'styles' | 'specialties' | 'locations' | 'services') => {
     setOpenSections((prev) => ({
       ...prev,
       [section]: !prev[section],
@@ -445,12 +530,13 @@ export default function FreelancersPageClient({
   const clearAllFilters = () => {
     setSelectedStyles([]);
     setSelectedSpecialties([]);
+    setSelectedLocations([]);
     setSelectedServices([]);
     setSearchQuery('');
   };
 
   const totalActiveFilters =
-    selectedStyles.length + selectedSpecialties.length + selectedServices.length;
+    selectedStyles.length + selectedSpecialties.length + selectedLocations.length + selectedServices.length;
   const hasActiveFilters = totalActiveFilters > 0;
 
   // 1. FORGIVING CLIENT-SIDE FILTERING LOGIC
@@ -505,6 +591,15 @@ export default function FreelancersPageClient({
           );
         });
 
+      // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED LOCATIONS
+      const matchLoc =
+        selectedLocations.length === 0 ||
+        selectedLocations.some((loc) => {
+          const target = loc.toLowerCase().trim();
+          const artistLoc = (artist.location || artist.address || '').toLowerCase().trim();
+          return artistLoc.includes(target) || target.includes(artistLoc);
+        });
+
       // MATCH IF ARTIST HAS AT LEAST ONE OF THE SELECTED SERVICES
       const matchServ =
         selectedServices.length === 0 ||
@@ -516,14 +611,14 @@ export default function FreelancersPageClient({
           );
         });
 
-      return matchStyle && matchSpec && matchServ;
+      return matchStyle && matchSpec && matchLoc && matchServ;
     });
 
     // 3. ABSOLUTE GUARDRAILS: Strictly leave display_order manual sorting untouched
     return result.sort(
       (a, b) => Number(a.display_order ?? 999) - Number(b.display_order ?? 999)
     );
-  }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedServices]);
+  }, [profiles, searchQuery, selectedStyles, selectedSpecialties, selectedLocations, selectedServices]);
 
   return (
     <div className="min-h-screen pb-20">
@@ -587,6 +682,9 @@ export default function FreelancersPageClient({
                 availableSpecialties={availableSpecialties}
                 selectedSpecialties={selectedSpecialties}
                 toggleSpecialty={toggleSpecialty}
+                availableLocations={availableLocations}
+                selectedLocations={selectedLocations}
+                toggleLocation={toggleLocation}
                 availableServices={availableServices}
                 selectedServices={selectedServices}
                 toggleService={toggleService}
@@ -662,6 +760,18 @@ export default function FreelancersPageClient({
                     className="inline-flex items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 transition group cursor-pointer"
                   >
                     <span>{spec}</span>
+                    <X className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                  </button>
+                ))}
+                {selectedLocations.map((loc) => (
+                  <button
+                    key={`chip-loc-${loc}`}
+                    type="button"
+                    onClick={() => toggleLocation(loc)}
+                    className="inline-flex items-center gap-1 rounded-full border border-[#A2694E]/40 bg-[#A2694E]/10 px-2.5 py-0.5 text-xs font-medium text-[#A2694E] dark:text-[#C48E72] hover:bg-[#A2694E]/20 transition group cursor-pointer"
+                  >
+                    <MapPin className="h-3 w-3 mr-0.5" />
+                    <span>{loc}</span>
                     <X className="h-3 w-3 group-hover:scale-110 transition-transform" />
                   </button>
                 ))}
@@ -778,6 +888,9 @@ export default function FreelancersPageClient({
                 availableSpecialties={availableSpecialties}
                 selectedSpecialties={selectedSpecialties}
                 toggleSpecialty={toggleSpecialty}
+                availableLocations={availableLocations}
+                selectedLocations={selectedLocations}
+                toggleLocation={toggleLocation}
                 availableServices={availableServices}
                 selectedServices={selectedServices}
                 toggleService={toggleService}

@@ -9,10 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { trpc } from '@/utils/trpc';
 import { toast } from 'sonner';
-import { Briefcase, MapPin, Edit, Save, X, Camera, Lightbulb, Upload, Palette, Check } from 'lucide-react';
+import { Briefcase, MapPin, Edit, Save, X, Camera, Lightbulb, Upload, Palette, Check, Sparkles } from 'lucide-react';
 import { type Profile } from '@/types/database.types';
 import { CharacterCount } from '@/components/ui/character-count';
 import { FIELD_LIMITS, ART_TITLE_EXAMPLES, ART_SKILLS, BIO_TIPS } from '@/types/profile-editor.types';
+import { ARTIST_MEDIUMS, ARTIST_SPECIALTIES, parseDisplayTags } from '@/lib/artist-categories';
+import { Switch } from '@/components/ui/switch';
 import { useFileDragDrop } from '@/hooks/useFileDragDrop';
 import { getProfilePictureUrl, getProfilePictureUrlWithTimestamp } from '@/lib/profile-helpers';
 import { createClient } from '@/lib/supabase/client';
@@ -37,10 +39,14 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     last_name?: string;
     title?: string;
     address?: string;
+    location?: string;
     skills?: string;
     bio?: string;
     avatar_url?: string;
     banner_url?: string;
+    mediums?: string[];
+    specialties?: string[];
+    available_for_commissions?: boolean;
   }>({});
   const [formData, setFormData] = useState({
     firstName: '',
@@ -51,9 +57,12 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     skills: '',
     profilePicture: '',
     bannerUrl: '',
+    availableForCommissions: true,
   });
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedMediums, setSelectedMediums] = useState<string[]>([]);
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [lastUploadTimestamp, setLastUploadTimestamp] = useState<number>(0);
   const profileInitials = (
     (profileData.first_name?.[0] || formData.firstName?.[0] || profile?.firstName?.[0] || '') + 
@@ -164,7 +173,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
 
           const titleVal = source.title || '';
           const bioVal = source.bio || source.description || '';
-          const locVal = source.address || source.location || '';
+          const locVal = source.location || source.address || '';
           const rawSkills = dbProfile?.art_styles || metadata.art_styles || source.art_styles || source.skills || '';
           let skillsArray: string[] = [];
           if (Array.isArray(rawSkills)) {
@@ -181,6 +190,15 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
               skillsArray = rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean);
             }
           }
+
+          const rawMediums = dbProfile?.mediums || metadata.mediums || source.mediums || dbProfile?.art_styles || metadata.art_styles || source.art_styles || '';
+          const mediumsArray = parseDisplayTags(rawMediums);
+
+          const rawSpecialties = dbProfile?.specialties || metadata.specialties || source.specialties || dbProfile?.art_specialties || metadata.art_specialties || source.art_specialties || '';
+          const specialtiesArray = parseDisplayTags(rawSpecialties);
+
+          const availableVal = dbProfile?.available_for_commissions !== undefined ? Boolean(dbProfile.available_for_commissions) : true;
+
           const skillsVal = skillsArray.join(', ');
           const picVal = source.avatar_url || source.avatarUrl || source.profile_picture || source.profilePicture || '';
           const bannerVal = source.banner_url || '';
@@ -192,10 +210,14 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             last_name: lName,
             title: titleVal,
             address: locVal,
+            location: locVal,
             skills: skillsVal,
             bio: bioVal,
             avatar_url: picVal,
             banner_url: bannerVal,
+            mediums: mediumsArray,
+            specialties: specialtiesArray,
+            available_for_commissions: availableVal,
           });
 
           setFormData({
@@ -207,9 +229,12 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             skills: skillsVal,
             profilePicture: picVal,
             bannerUrl: bannerVal,
+            availableForCommissions: availableVal,
           });
 
-          setSelectedSkills(skillsArray);
+          setSelectedSkills(skillsArray.length > 0 ? skillsArray : [...mediumsArray, ...specialtiesArray]);
+          setSelectedMediums(mediumsArray);
+          setSelectedSpecialties(specialtiesArray);
 
           if (picVal && !picVal.startsWith('data:') && picVal.length < 500) {
             const resolved = getProfilePictureUrl(user?.id || profile?.userId, picVal) || picVal;
@@ -257,7 +282,13 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     e.preventDefault();
     setIsSaving(true);
 
-    const skillsString = selectedSkills.length > 0 ? selectedSkills.join(', ') : (formData.skills || '');
+    const consolidatedSkills = [
+      ...selectedMediums,
+      ...selectedSpecialties,
+      ...selectedSkills,
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    const skillsString = consolidatedSkills.length > 0 ? consolidatedSkills.join(', ') : (formData.skills || '');
 
     try {
       const supabase = createClient();
@@ -295,8 +326,13 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         title: formData.title || null,
         bio: formData.bio ? (formData.bio.length > 500 ? formData.bio.slice(0, 500) : formData.bio) : null,
         address: formData.location || null,
+        location: formData.location || null,
         skills: skillsString ? (skillsString.length > 300 ? skillsString.slice(0, 300) : skillsString) : null,
-        art_styles: selectedSkills,
+        mediums: selectedMediums,
+        specialties: selectedSpecialties,
+        art_styles: selectedMediums,
+        art_specialties: selectedSpecialties,
+        available_for_commissions: formData.availableForCommissions,
       };
       if (cleanAvatarUrl) {
         metaPayload.avatar_url = cleanAvatarUrl;
@@ -313,14 +349,21 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         console.warn('Auth user metadata update notice:', authMetaErr);
       }
 
-      // Build payload matching lowercase profiles table schema:
-      // (id, first_name, last_name, address, avatar_url, banner_url, art_styles, updated_at)
+      // Build payload matching public.profiles table schema:
+      // (id, first_name, last_name, address, location, bio, title, mediums, specialties, art_styles, art_specialties, available_for_commissions, avatar_url, banner_url, updated_at)
       const profilesPayload: Record<string, any> = {
         id: user.id,
         first_name: formData.firstName || null,
         last_name: formData.lastName || null,
+        title: formData.title || null,
+        bio: formData.bio ? (formData.bio.length > 500 ? formData.bio.slice(0, 500) : formData.bio) : null,
         address: formData.location || null,
-        art_styles: selectedSkills,
+        location: formData.location || null,
+        mediums: selectedMediums,
+        specialties: selectedSpecialties,
+        art_styles: selectedMediums,
+        art_specialties: selectedSpecialties,
+        available_for_commissions: formData.availableForCommissions,
         updated_at: new Date().toISOString(),
       };
       if (cleanAvatarUrl) {
@@ -351,7 +394,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           bio: formData.bio,
           location: formData.location,
           skills: skillsString,
-          art_styles: selectedSkills,
+          art_styles: selectedMediums,
           profilePicture: cleanAvatarUrl || undefined,
           avatar_url: cleanAvatarUrl || undefined,
           banner_url: cleanBannerUrl || undefined,
@@ -365,8 +408,12 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         last_name: formData.lastName || '',
         title: formData.title || '',
         address: formData.location || '',
+        location: formData.location || '',
         skills: skillsString,
         bio: formData.bio || '',
+        mediums: selectedMediums,
+        specialties: selectedSpecialties,
+        available_for_commissions: formData.availableForCommissions,
         avatar_url: avatarUrl || formData.profilePicture || '',
         banner_url: cleanBannerUrl || '',
       });
@@ -707,24 +754,21 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
     if (profile) {
       const bUrl = (profile as any)?.banner_url || profileData.banner_url || '';
       setFormData({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        title: profile.title || '',
-        bio: profile.bio || '',
-        location: profile.location || '',
-        skills: profile.skills || '',
-        profilePicture: profile.profilePicture || '',
+        firstName: profileData.first_name || profile.firstName || '',
+        lastName: profileData.last_name || profile.lastName || '',
+        title: profileData.title || profile.title || '',
+        bio: profileData.bio || profile.bio || '',
+        location: profileData.location || profile.location || (profile as any)?.address || '',
+        skills: profileData.skills || profile.skills || '',
+        profilePicture: profileData.avatar_url || profile.profilePicture || '',
         bannerUrl: bUrl,
+        availableForCommissions: profileData.available_for_commissions !== false,
       });
       setBannerUrl(bUrl);
 
-      // Reset skills
-      if (profile.skills) {
-        const skillsArray = profile.skills.split(',').map(skill => skill.trim()).filter(Boolean);
-        setSelectedSkills(skillsArray);
-      } else {
-        setSelectedSkills([]);
-      }
+      setSelectedMediums(profileData.mediums || []);
+      setSelectedSpecialties(profileData.specialties || []);
+      setSelectedSkills(profileData.skills ? profileData.skills.split(',').map(skill => skill.trim()).filter(Boolean) : []);
     }
   };
 
@@ -1008,14 +1052,32 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             </div>
           </div>
 
-          {/* Address */}
+          {/* Commissions Availability Status */}
+          <div className="glass-card p-5 rounded-2xl flex items-center justify-between border border-primary/20">
+            <div className="space-y-0.5">
+              <Label htmlFor="available-commissions" className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-500" />
+                Available for Commissions
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Display the &ldquo;Available for commissions&rdquo; badge on your artist card.
+              </p>
+            </div>
+            <Switch
+              id="available-commissions"
+              checked={formData.availableForCommissions}
+              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, availableForCommissions: checked }))}
+            />
+          </div>
+
+          {/* Location / City */}
           <div className="glass-card p-5 rounded-2xl space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Address</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Location / City</h3>
 
             <div className="space-y-2">
               <Label htmlFor="location" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-chart-1" />
-                Address
+                <MapPin className="h-4 w-4 text-primary" />
+                Location
               </Label>
               <Input
                 id="location"
@@ -1024,60 +1086,95 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
                 placeholder="e.g., Colombo, Sri Lanka"
                 className="bg-background/50"
               />
+              <p className="text-xs text-muted-foreground">
+                Used to filter and discover your profile by location on the Discover page.
+              </p>
             </div>
           </div>
 
-          {/* Skills */}
+          {/* Mediums / Art Styles */}
           <div className="glass-card p-5 rounded-2xl space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Skills</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <Palette className="h-4 w-4 text-amber-500" />
+                Mediums / Art Styles
+              </h3>
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                {selectedMediums.length} selected
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Select the mediums and styles you create in (e.g., Digital Art, Oil Painting).
+            </p>
 
-            <div className="space-y-4">
-              <div>
-                <Label className="flex items-center gap-2">
-                  <Palette className="h-4 w-4 text-chart-2" />
-                  Select Your Skills
-                </Label>
-                <p className="text-xs text-muted-foreground mt-1">Select your art specialties.</p>
-              </div>
+            <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
+              {ARTIST_MEDIUMS.map((medium) => {
+                const isSelected = selectedMediums.includes(medium);
+                return (
+                  <button
+                    key={medium}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMediums((prev) =>
+                        prev.includes(medium) ? prev.filter((m) => m !== medium) : [...prev, medium]
+                      );
+                    }}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#A2694E] text-white border-[#A2694E] shadow-sm shadow-[#A2694E]/20'
+                        : 'bg-background/50 border-input hover:bg-accent/40 text-foreground'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${isSelected ? 'text-white font-bold' : 'text-transparent'}`}>
+                      ✓
+                    </span>
+                    {medium}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {ART_SKILLS.map((skill) => {
-                  const isSelected = selectedSkills.includes(skill);
-                  return (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => handleSkillToggle(skill)}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border text-sm font-medium transition-all text-left ${
-                        isSelected
-                          ? 'bg-primary/20 border-primary text-primary shadow-sm ring-1 ring-primary/30'
-                          : 'bg-background/50 border-input hover:bg-accent/40 text-foreground'
-                      }`}
-                    >
-                      <span>{skill}</span>
-                      <div
-                        className={`h-5 w-5 rounded-md flex items-center justify-center transition-colors shrink-0 ml-2 ${
-                          isSelected
-                            ? 'bg-primary text-primary-foreground'
-                            : 'border border-muted-foreground/40 bg-background/50'
-                        }`}
-                      >
-                        {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+          {/* Specialties / Art Types */}
+          <div className="glass-card p-5 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-indigo-500" />
+                Specialties / Art Types
+              </h3>
+              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                {selectedSpecialties.length} selected
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Select your specific creative focus (e.g., Character Design, Landscapes).
+            </p>
 
-              {/* Skills Counter and Validation */}
-              <div className="flex items-center justify-between text-sm mt-2">
-                <span className={selectedSkills.length === 0 ? 'text-destructive' : 'text-muted-foreground'}>
-                  {selectedSkills.length === 0
-                    ? 'Select at least 1 skill'
-                    : `${selectedSkills.length} skill${selectedSkills.length !== 1 ? 's' : ''} selected`}
-                </span>
-                <span className="text-muted-foreground">Select your art specialties</span>
-              </div>
+            <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
+              {ARTIST_SPECIALTIES.map((spec) => {
+                const isSelected = selectedSpecialties.includes(spec);
+                return (
+                  <button
+                    key={spec}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSpecialties((prev) =>
+                        prev.includes(spec) ? prev.filter((s) => s !== spec) : [...prev, spec]
+                      );
+                    }}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#A2694E] text-white border-[#A2694E] shadow-sm shadow-[#A2694E]/20'
+                        : 'bg-background/50 border-input hover:bg-accent/40 text-foreground'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${isSelected ? 'text-white font-bold' : 'text-transparent'}`}>
+                      ✓
+                    </span>
+                    {spec}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1177,50 +1274,79 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             </div>
           </div>
 
-          {/* Address */}
+          {/* Commissions Availability Status */}
+          <div className="glass-card p-5 rounded-2xl flex items-center justify-between border border-primary/20">
+            <div>
+              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-500" />
+                Commissions Availability
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Status shown to clients on your artist cards.
+              </p>
+            </div>
+            {(profileData.available_for_commissions !== false && formData.availableForCommissions) ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Available for commissions
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-zinc-500/10 text-zinc-500 border border-zinc-500/30">
+                Not taking commissions
+              </span>
+            )}
+          </div>
+
+          {/* Location / City */}
           <div className="glass-card p-5 rounded-2xl space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Address</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Location / City</h3>
             <div>
               <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-chart-1" />
-                Address
+                <MapPin className="h-4 w-4 text-primary" />
+                Location
               </p>
               <p className="font-medium mt-1">
-                {profileData.address || formData.location || (profile as any)?.address || profile?.location || 'Not set'}
+                {profileData.location || formData.location || (profile as any)?.location || profileData.address || (profile as any)?.address || 'Not set'}
               </p>
             </div>
           </div>
 
-          {/* Skills */}
+          {/* Mediums / Art Styles */}
           <div className="glass-card p-5 rounded-2xl space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Skills</h3>
-            <div>
-              <p className="text-sm text-muted-foreground flex items-center gap-2 mb-3">
-                <Palette className="h-4 w-4 text-chart-2" />
-                Art Specialties
-              </p>
-              {(selectedSkills.length > 0 || profileData.skills || formData.skills || profile?.skills) ? (
-                <div className="flex flex-wrap gap-2">
-                  {(selectedSkills.length > 0
-                    ? selectedSkills
-                    : profileData.skills
-                    ? profileData.skills.split(',').map(s => s.trim()).filter(Boolean)
-                    : formData.skills
-                    ? formData.skills.split(',').map(s => s.trim()).filter(Boolean)
-                    : (profile?.skills ? (Array.isArray(profile.skills) ? profile.skills : profile.skills.split(',').map((s: string) => s.trim()).filter(Boolean)) : [])
-                  ).map((skill, index) => (
-                    <div
-                      key={index}
-                      className="bg-primary/20 text-primary border border-primary/30 rounded-lg px-3 py-1 text-sm"
-                    >
-                      {skill}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No skills selected</p>
-              )}
-            </div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+              <Palette className="h-4 w-4 text-amber-500" />
+              Mediums / Art Styles
+            </h3>
+            {selectedMediums.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedMediums.map((m) => (
+                  <span key={m} className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-lg px-3 py-1 text-xs font-medium">
+                    {m}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No mediums selected</p>
+            )}
+          </div>
+
+          {/* Specialties / Art Types */}
+          <div className="glass-card p-5 rounded-2xl space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-500" />
+              Specialties / Art Types
+            </h3>
+            {selectedSpecialties.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedSpecialties.map((s) => (
+                  <span key={s} className="bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 rounded-lg px-3 py-1 text-xs font-medium">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No specialties selected</p>
+            )}
           </div>
         </div>
       )}

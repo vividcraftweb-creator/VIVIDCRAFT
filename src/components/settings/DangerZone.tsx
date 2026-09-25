@@ -79,21 +79,21 @@ export function DangerZone() {
 
   return (
     <>
-      <Card className="border border-red-500/30 bg-red-950/10 shadow-xl backdrop-blur-xl">
-        <CardHeader className="pb-3 border-b border-red-500/20">
-          <CardTitle className="text-lg font-semibold text-red-400 flex items-center gap-2">
+      <Card className="border border-red-200 dark:border-red-500/30 bg-red-50/40 dark:bg-red-950/10 shadow-lg backdrop-blur-xl">
+        <CardHeader className="pb-3 border-b border-red-100 dark:border-red-500/20">
+          <CardTitle className="text-lg font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
             <span>Danger Zone</span>
           </CardTitle>
-          <CardDescription className="text-slate-400 text-xs sm:text-sm">
+          <CardDescription className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
             Irreversible and destructive actions for your account.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-red-950/20 border border-red-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white dark:bg-red-950/20 border border-red-200 dark:border-red-500/20 shadow-sm">
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-white">Delete Account</h4>
-              <p className="text-xs text-slate-400">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Delete Account</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Permanently remove your account, profile, and all associated personal data.
               </p>
             </div>

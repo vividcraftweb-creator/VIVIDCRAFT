@@ -6,12 +6,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Mail, Lock, User, Eye, EyeOff, Loader2, Palette, ShoppingBag, Sparkles, ArrowRight, Check } from 'lucide-react';
-import {
-  ARTIST_MEDIUMS,
-  ARTIST_SPECIALTIES,
-  ARTIST_SERVICES,
-  validateArtistCategories,
-} from '@/lib/artist-categories';
 
 export default function SignUpContent() {
   const router = useRouter();
@@ -25,45 +19,12 @@ export default function SignUpContent() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Artist categories states
-  const [selectedMediums, setSelectedMediums] = useState<string[]>([]);
-  const [otherMedium, setOtherMedium] = useState<string>('');
-  const [showOtherMedium, setShowOtherMedium] = useState<boolean>(false);
-
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
-  const [otherSpecialty, setOtherSpecialty] = useState<string>('');
-  const [showOtherSpecialty, setShowOtherSpecialty] = useState<boolean>(false);
-
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [otherService, setOtherService] = useState<string>('');
-  const [showOtherService, setShowOtherService] = useState<boolean>(false);
-
-  const toggleMedium = (item: string) => {
-    setSelectedMediums((prev) =>
-      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
-    );
-  };
-
-  const toggleSpecialty = (item: string) => {
-    setSelectedSpecialties((prev) =>
-      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
-    );
-  };
-
-  const toggleService = (item: string) => {
-    setSelectedServices((prev) =>
-      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
-    );
-  };
-
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    title: '',
-    location: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -137,30 +98,6 @@ export default function SignUpContent() {
       return 'Passwords do not match';
     }
 
-    // Main category validations for Artist
-    if (selectedRole === 'artist') {
-      const catCheck = validateArtistCategories(
-        selectedMediums,
-        showOtherMedium ? otherMedium : '',
-        selectedSpecialties,
-        showOtherSpecialty ? otherSpecialty : '',
-        selectedServices,
-        showOtherService ? otherService : ''
-      );
-      if (!catCheck.isValid) {
-        return catCheck.error;
-      }
-      if (showOtherMedium && !otherMedium.trim()) {
-        return 'Please specify your custom Medium / Art Style in the input field, or uncheck Other.';
-      }
-      if (showOtherSpecialty && !otherSpecialty.trim()) {
-        return 'Please specify your custom Specialty / Art Type in the input field, or uncheck Other.';
-      }
-      if (showOtherService && !otherService.trim()) {
-        return 'Please specify your custom Service Offered in the input field, or uncheck Other.';
-      }
-    }
-
     return null;
   };
 
@@ -180,40 +117,7 @@ export default function SignUpContent() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const userCountry = formData.location?.trim() || 'Sri Lanka';
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
-
-    // Prepare consolidated category arrays
-    const finalMediums = [
-      ...selectedMediums,
-      ...(showOtherMedium && otherMedium.trim() ? [otherMedium.trim()] : []),
-    ];
-    const finalSpecialties = [
-      ...selectedSpecialties,
-      ...(showOtherSpecialty && otherSpecialty.trim() ? [otherSpecialty.trim()] : []),
-    ];
-    const finalServices = [
-      ...selectedServices,
-      ...(showOtherService && otherService.trim() ? [otherService.trim()] : []),
-    ];
-    const finalOtherCategories = [
-      ...(showOtherMedium && otherMedium.trim() ? [otherMedium.trim()] : []),
-      ...(showOtherSpecialty && otherSpecialty.trim() ? [otherSpecialty.trim()] : []),
-      ...(showOtherService && otherService.trim() ? [otherService.trim()] : []),
-    ];
-
-    // Store in localStorage for persistent WhatsApp verification flow
-    try {
-      localStorage.setItem('vividcraft_artist_categories', JSON.stringify({
-        art_styles: finalMediums,
-        art_specialties: finalSpecialties,
-        services_offered: finalServices,
-        mediums: finalMediums,
-        specialties: finalSpecialties,
-        services: finalServices,
-        other_categories: finalOtherCategories,
-      }));
-    } catch {}
 
     // Artist Sign-Up strictly uses 'artist' role
     const selectedRole = 'artist';
@@ -223,7 +127,7 @@ export default function SignUpContent() {
         ? window.location.origin
         : (process.env.NEXT_PUBLIC_APP_URL || 'https://vividcraft.vercel.app');
 
-      // STEP 1: Register with Supabase Auth — strictly passing selectedRole and categories in options.data
+      // STEP 1: Register with Supabase Auth — passing role and name in options.data
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
@@ -232,7 +136,7 @@ export default function SignUpContent() {
           data: {
             full_name: fullName,
             name: fullName,
-            role: selectedRole, // 'artist' or 'client'
+            role: selectedRole,
             first_name: formData.firstName.trim(),
             last_name: formData.lastName.trim(),
             firstName: formData.firstName.trim(),
@@ -241,15 +145,6 @@ export default function SignUpContent() {
             userRole: selectedRole,
             role_name: selectedRole,
             account_type: selectedRole,
-            location: userCountry,
-            country: userCountry,
-            art_styles: finalMediums,
-            art_specialties: finalSpecialties,
-            services_offered: finalServices,
-            mediums: finalMediums,
-            specialties: finalSpecialties,
-            services: finalServices,
-            other_categories: finalOtherCategories,
           },
         },
       });
@@ -293,16 +188,7 @@ export default function SignUpContent() {
                 role: selectedRole,
                 firstName: formData.firstName.trim(),
                 lastName: formData.lastName.trim(),
-                title: formData.title?.trim() || (selectedRole === 'artist' ? 'Artist' : 'Client'),
-                location: userCountry,
-                country: userCountry,
-                art_styles: finalMediums,
-                art_specialties: finalSpecialties,
-                services_offered: finalServices,
-                mediums: finalMediums,
-                specialties: finalSpecialties,
-                services: finalServices,
-                other_categories: finalOtherCategories,
+                title: 'Artist',
               }),
             });
           } catch {}
@@ -326,17 +212,7 @@ export default function SignUpContent() {
           role: selectedRole,
           first_name: formData.firstName.trim(),
           last_name: formData.lastName.trim(),
-          title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
-          bio: selectedRole === 'artist' ? 'Welcome to Cinnamon Gallery!' : '',
-          address: userCountry,
-          art_styles: finalMediums,
-          art_specialties: finalSpecialties,
-          services_offered: finalServices,
-          mediums: finalMediums,
-          specialties: finalSpecialties,
-          services: finalServices,
-          other_categories: finalOtherCategories,
-          skills: [...finalMediums, ...finalSpecialties],
+          title: 'Artist',
           updated_at: new Date().toISOString(),
         };
 
@@ -347,54 +223,14 @@ export default function SignUpContent() {
             .eq('id', activeUserId);
 
           if (profileUpdateErr) {
-            console.warn('[signup] Direct profile update notice, attempting upsert:', profileUpdateErr.message);
-            const { error: upsertErr } = await supabase.from('profiles').upsert({
+            await supabase.from('profiles').upsert({
               id: activeUserId,
               ...fullProfilePayload,
               email: formData.email.trim(),
             }, { onConflict: 'id' });
-
-            if (upsertErr) {
-              console.warn('[signup] Fallback to basic profile upsert without categories:', upsertErr.message);
-              await supabase.from('profiles').upsert({
-                id: activeUserId,
-                role: selectedRole,
-                email: formData.email.trim(),
-                first_name: formData.firstName.trim(),
-                last_name: formData.lastName.trim(),
-                title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
-                bio: selectedRole === 'artist' ? 'Welcome to Cinnamon Gallery!' : '',
-                address: userCountry,
-                art_styles: finalMediums,
-                art_specialties: finalSpecialties,
-                services_offered: finalServices,
-                mediums: finalMediums,
-                specialties: finalSpecialties,
-                services: finalServices,
-                skills: [...finalMediums, ...finalSpecialties],
-                updated_at: new Date().toISOString(),
-              }, { onConflict: 'id' });
-            }
           }
         } catch (profileErr: any) {
-          console.warn('[signup] Profile update catch, fallback to basic update:', profileErr);
-          try {
-            await supabase.from('profiles').update({
-              role: selectedRole,
-              first_name: formData.firstName.trim(),
-              last_name: formData.lastName.trim(),
-              title: selectedRole === 'artist' ? (formData.title?.trim() || 'Artist') : 'Client',
-              address: userCountry,
-              art_styles: finalMediums,
-              art_specialties: finalSpecialties,
-              services_offered: finalServices,
-              mediums: finalMediums,
-              specialties: finalSpecialties,
-              services: finalServices,
-              skills: [...finalMediums, ...finalSpecialties],
-              updated_at: new Date().toISOString(),
-            }).eq('id', activeUserId);
-          } catch {}
+          console.warn('[signup] Profile update catch:', profileErr);
         }
       }
 
@@ -407,16 +243,7 @@ export default function SignUpContent() {
             role: selectedRole,
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            title: formData.title?.trim() || (selectedRole === 'artist' ? 'Artist' : 'Client'),
-            location: userCountry,
-            country: userCountry,
-            art_styles: finalMediums,
-            art_specialties: finalSpecialties,
-            services_offered: finalServices,
-            mediums: finalMediums,
-            specialties: finalSpecialties,
-            services: finalServices,
-            other_categories: finalOtherCategories,
+            title: 'Artist',
           }),
         });
       } catch (provisionErr) {
@@ -425,13 +252,12 @@ export default function SignUpContent() {
 
       toast.success('Account created successfully!', {
         description: selectedRole === 'artist'
-          ? 'Welcome to Vivid Craft! Please verify your account via WhatsApp...'
+          ? 'Welcome to Vivid Craft! Redirecting to your dashboard setup...'
           : 'Welcome to Vivid Craft! Redirecting to explore artists...',
       });
 
-      // STEP 4: Hard redirect to destination.
-      // Artists must complete WhatsApp verification before accessing the dashboard.
-      const destination = selectedRole === 'artist' ? '/verify-whatsapp' : '/freelancers';
+      // STEP 4: Redirect to dashboard setup
+      const destination = selectedRole === 'artist' ? '/dashboard' : '/freelancers';
       window.location.replace(destination);
     } catch (err: any) {
       console.error('SIGNUP ERROR:', err?.message, err);
@@ -689,237 +515,14 @@ export default function SignUpContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label htmlFor="title" className="block text-slate-200 text-xs font-medium uppercase tracking-wider">
-                  Specialty / Title (Optional)
-                </label>
-                <input
-                  id="title"
-                  name="title"
-                  type="text"
-                  placeholder="Concept Artist & Painter"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="location" className="block text-slate-200 text-xs font-medium uppercase tracking-wider">
-                  Location (Optional)
-                </label>
-                <input
-                  id="location"
-                  name="location"
-                  type="text"
-                  placeholder="City, Country"
-                  value={formData.location}
-                  onChange={handleChange}
-                  className="w-full px-4 h-11 bg-slate-950/60 border border-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all rounded-xl text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Category Selections Section */}
-            <div className="space-y-4 pt-3 border-t border-slate-800">
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-amber-400" />
-                    Artist Categories & Services
-                  </h3>
-                  <span className="text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                    Required
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Select all that apply to help buyers discover your work. You can select unlimited items.
-                </p>
-              </div>
-
-              {/* 1. Medium / Art Style */}
-              <div className="space-y-2 p-3 bg-slate-950/40 rounded-xl border border-slate-800/80">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-200">
-                    1. Medium / Art Style <span className="text-amber-400">*</span>
-                  </label>
-                  <span className="text-[11px] text-slate-400">
-                    {selectedMediums.length + (showOtherMedium && otherMedium.trim() ? 1 : 0)} selected
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1">
-                  {ARTIST_MEDIUMS.map((medium) => {
-                    const isSelected = selectedMediums.includes(medium);
-                    return (
-                      <button
-                        type="button"
-                        key={medium}
-                        onClick={() => toggleMedium(medium)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
-                            : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
-                          {isSelected ? '✓' : ''}
-                        </span>
-                        {medium}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setShowOtherMedium(!showOtherMedium)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                      showOtherMedium
-                        ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
-                        : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherMedium ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
-                      {showOtherMedium ? '✓' : ''}
-                    </span>
-                    Other
-                  </button>
-                </div>
-                {showOtherMedium && (
-                  <div className="pt-1.5">
-                    <input
-                      type="text"
-                      placeholder="Specify custom medium / art style (e.g., Resin Art, Spray Paint)..."
-                      value={otherMedium}
-                      onChange={(e) => setOtherMedium(e.target.value)}
-                      className="w-full px-3 h-9 bg-slate-950 border border-amber-500/40 text-white placeholder:text-slate-500 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Specialty / Art Type */}
-              <div className="space-y-2 p-3 bg-slate-950/40 rounded-xl border border-slate-800/80">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-200">
-                    2. Specialty / Art Type <span className="text-amber-400">*</span>
-                  </label>
-                  <span className="text-[11px] text-slate-400">
-                    {selectedSpecialties.length + (showOtherSpecialty && otherSpecialty.trim() ? 1 : 0)} selected
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1">
-                  {ARTIST_SPECIALTIES.map((spec) => {
-                    const isSelected = selectedSpecialties.includes(spec);
-                    return (
-                      <button
-                        type="button"
-                        key={spec}
-                        onClick={() => toggleSpecialty(spec)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
-                            : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
-                          {isSelected ? '✓' : ''}
-                        </span>
-                        {spec}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setShowOtherSpecialty(!showOtherSpecialty)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                      showOtherSpecialty
-                        ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
-                        : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherSpecialty ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
-                      {showOtherSpecialty ? '✓' : ''}
-                    </span>
-                    Other
-                  </button>
-                </div>
-                {showOtherSpecialty && (
-                  <div className="pt-1.5">
-                    <input
-                      type="text"
-                      placeholder="Specify custom specialty / art type (e.g., Cyberpunk, Fantasy Portraits)..."
-                      value={otherSpecialty}
-                      onChange={(e) => setOtherSpecialty(e.target.value)}
-                      className="w-full px-3 h-9 bg-slate-950 border border-amber-500/40 text-white placeholder:text-slate-500 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* 3. Service Offered */}
-              <div className="space-y-2 p-3 bg-slate-950/40 rounded-xl border border-slate-800/80">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-200">
-                    3. Service Offered <span className="text-amber-400">*</span>
-                  </label>
-                  <span className="text-[11px] text-slate-400">
-                    {selectedServices.length + (showOtherService && otherService.trim() ? 1 : 0)} selected
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1">
-                  {ARTIST_SERVICES.map((serv) => {
-                    const isSelected = selectedServices.includes(serv);
-                    return (
-                      <button
-                        type="button"
-                        key={serv}
-                        onClick={() => toggleService(serv)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
-                            : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${isSelected ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
-                          {isSelected ? '✓' : ''}
-                        </span>
-                        {serv}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setShowOtherService(!showOtherService)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                      showOtherService
-                        ? 'bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] border border-[#A2694E]/50 shadow-sm shadow-[#A2694E]/10'
-                        : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] ${showOtherService ? 'bg-[#A2694E] border-[#A2694E] text-white font-bold' : 'border-slate-700 bg-slate-800'}`}>
-                      {showOtherService ? '✓' : ''}
-                    </span>
-                    Other
-                  </button>
-                </div>
-                {showOtherService && (
-                  <div className="pt-1.5">
-                    <input
-                      type="text"
-                      placeholder="Specify custom service offered (e.g., Album Art, Live Wedding Sketching)..."
-                      value={otherService}
-                      onChange={(e) => setOtherService(e.target.value)}
-                      className="w-full px-3 h-9 bg-slate-950 border border-amber-500/40 text-white placeholder:text-slate-500 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none transition-all"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <p className="text-xs text-slate-400 pt-1">
+              You will configure your artist mediums, specialties, location, and portfolio directly in your dashboard after registration.
+            </p>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 mt-2 bg-[#A2694E] hover:bg-[#8B5A3C] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-[#A2694E]/25 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="w-full h-12 mt-4 bg-[#A2694E] hover:bg-[#8B5A3C] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-[#A2694E]/25 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {isLoading ? (
                 <>
