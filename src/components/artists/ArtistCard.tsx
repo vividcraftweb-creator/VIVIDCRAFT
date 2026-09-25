@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MapPin, CheckCircle, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { getPublicUrl } from '@/lib/profile-helpers';
-import { normalizeTags as baseNormalizeTags } from '@/lib/artist-categories';
+import { normalizeTags as baseNormalizeTags, parseDisplayTags } from '@/lib/artist-categories';
 export { getPublicUrl };
 
 /**
@@ -17,12 +17,7 @@ export const normalizeTags = (tags: any): string[] => {
       return baseNormalizeTags(tags);
     } catch {}
   }
-  if (!tags) return [];
-  if (Array.isArray(tags)) return tags.map(String).filter(Boolean);
-  if (typeof tags === 'string') {
-    return tags.replace(/[\{\}\"\[\]]/g, '').split(',').map((t) => t.trim()).filter(Boolean);
-  }
-  return [];
+  return parseDisplayTags(tags);
 };
 
 export const parseTags = normalizeTags;
@@ -96,18 +91,26 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
   const professionalTitle = artist.title || artist.professional_title || '';
   const bio = artist.bio || artist.description || '';
 
-  const rawSkills = artist.skills;
-  const skills: string[] = Array.isArray(rawSkills)
-    ? rawSkills
-    : typeof rawSkills === 'string' && rawSkills.trim()
-    ? rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean)
-    : [];
+  const skills: string[] = parseDisplayTags(artist.skills);
+  const styles: string[] = parseDisplayTags(artist.art_styles);
+  const specialties: string[] = parseDisplayTags(artist.art_specialties || artist.specialties);
+  const services: string[] = parseDisplayTags(artist.services_offered || artist.services);
+  const mediums: string[] = parseDisplayTags(artist.mediums);
 
-  const styles: string[] = normalizeTags(artist.art_styles);
-  const specialties: string[] = normalizeTags(artist.art_specialties);
-  const services: string[] = normalizeTags(artist.services_offered);
+  // Combine categories cleanly preserving Title Casing
+  const seenTags = new Set<string>();
+  const categoryPills: string[] = [];
 
-  const hasCategories = styles.length > 0 || specialties.length > 0 || services.length > 0;
+  [...styles, ...skills, ...mediums, ...specialties, ...services].forEach((tag) => {
+    const cleanTag = tag.trim();
+    const lowerKey = cleanTag.toLowerCase();
+    if (cleanTag && !seenTags.has(lowerKey)) {
+      seenTags.add(lowerKey);
+      categoryPills.push(cleanTag);
+    }
+  });
+
+  const hasCategories = categoryPills.length > 0;
 
   const rawAvatar =
     discoveredAvatar ||
@@ -198,33 +201,17 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
 
           {hasCategories ? (
             <div className="flex flex-wrap gap-1.5">
-              {styles.slice(0, 3).map((item) => (
+              {categoryPills.slice(0, 4).map((item) => (
                 <span
-                  key={`style-${item}`}
-                  className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 capitalize"
+                  key={`pill-${item}`}
+                  className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200"
                 >
                   {item}
                 </span>
               ))}
-              {specialties.slice(0, 3).map((item) => (
-                <span
-                  key={`spec-${item}`}
-                  className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 capitalize"
-                >
-                  {item}
-                </span>
-              ))}
-              {services.slice(0, 2).map((item) => (
-                <span
-                  key={`srv-${item}`}
-                  className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 capitalize"
-                >
-                  {item}
-                </span>
-              ))}
-              {(styles.length + specialties.length + services.length > 8) && (
+              {categoryPills.length > 4 && (
                 <span className="rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  +{styles.length + specialties.length + services.length - 8} more
+                  +{categoryPills.length - 4} more
                 </span>
               )}
             </div>

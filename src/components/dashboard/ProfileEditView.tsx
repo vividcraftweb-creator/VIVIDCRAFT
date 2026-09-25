@@ -96,8 +96,13 @@ export default function ProfileEditView() {
         }
       });
 
+      const skillsArray = profile.skills
+        ? profile.skills.split(',').map((s) => s.trim()).filter(Boolean)
+        : undefined;
+
       await updateProfileMutation.mutateAsync({
         ...profileData,
+        art_styles: skillsArray,
         rate: profileData.rate ? Number(profileData.rate) : undefined,
       });
     } catch (error: unknown) {

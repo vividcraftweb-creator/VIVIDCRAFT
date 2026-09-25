@@ -21,7 +21,8 @@ const basicInfoSchema = z.object({
   title: z.string().optional(),
   bio: z.string().optional(),
   location: z.string().optional(),
-  skills: z.string().optional(),
+  skills: z.union([z.string(), z.array(z.string())]).optional(),
+  art_styles: z.array(z.string()).optional(),
   rate: z.number().positive().optional(),
   profilePicture: z.string().optional(),
   avatar_url: z.string().optional(),
@@ -241,7 +242,10 @@ function formatProfileData(profile: any) {
     description: bioVal,
     location: locVal,
     address: locVal,
-    skills: profile.skills || 'Digital Art, Illustration, Graphic Design',
+    art_styles: Array.isArray(profile.art_styles) ? profile.art_styles : [],
+    skills: (Array.isArray(profile.art_styles) && profile.art_styles.length > 0)
+      ? profile.art_styles.join(', ')
+      : (profile.skills || 'Digital Art, Illustration, Graphic Design'),
     profilePicture: picVal,
     profile_picture: picVal,
     avatar_url: picVal,
@@ -816,8 +820,24 @@ export const publicProfileRouter = router({
         bannerUrlString = rawBanner.trim();
       }
 
-      // Build payload matching lowercase profiles table schema PERFECTLY:
-      // (id, first_name, last_name, email, role, address, avatar_url, banner_url, updated_at)
+      // Extract art_styles / skills array
+      let artStylesArray: string[] | null = null;
+      if (input.art_styles && Array.isArray(input.art_styles)) {
+        artStylesArray = input.art_styles.map(String).map((s) => s.trim()).filter(Boolean);
+      } else if (input.skills) {
+        if (Array.isArray(input.skills)) {
+          artStylesArray = input.skills.map(String).map((s) => s.trim()).filter(Boolean);
+        } else if (typeof input.skills === 'string') {
+          artStylesArray = input.skills.split(',').map((s) => s.trim()).filter(Boolean);
+        }
+      } else if (existingProfile?.art_styles) {
+        artStylesArray = Array.isArray(existingProfile.art_styles)
+          ? existingProfile.art_styles
+          : [existingProfile.art_styles];
+      }
+
+      // Build payload matching lowercase profiles table schema:
+      // (id, first_name, last_name, email, role, address, avatar_url, banner_url, art_styles, updated_at)
       const profilesPayload: Record<string, any> = {
         id: userId,
         first_name: firstName || null,
@@ -827,6 +847,7 @@ export const publicProfileRouter = router({
         address: addressVal,
         avatar_url: avatarUrlString,
         banner_url: bannerUrlString,
+        art_styles: artStylesArray,
         updated_at: timestamp,
       };
 
@@ -864,7 +885,9 @@ export const publicProfileRouter = router({
       // 2. Persist extended profile fields (title, bio, skills, banner_url) and public avatar_url to Auth user_metadata
       const titleString = input.title !== undefined ? input.title : (existingProfile?.title || null);
       const bioString = input.bio !== undefined ? input.bio : (existingProfile?.bio || null);
-      const skillsString = input.skills !== undefined ? input.skills : (existingProfile?.skills || null);
+      const skillsString = input.skills !== undefined
+        ? (Array.isArray(input.skills) ? input.skills.join(', ') : input.skills)
+        : (existingProfile?.skills || (artStylesArray ? artStylesArray.join(', ') : null));
 
       try {
         const { data: userData } = await admin.auth.admin.getUserById(userId);
@@ -878,6 +901,7 @@ export const publicProfileRouter = router({
             title: titleString,
             bio: bioString,
             skills: skillsString,
+            art_styles: artStylesArray,
             address: addressVal,
             avatar_url: avatarUrlString,
             banner_url: bannerUrlString,
@@ -892,6 +916,7 @@ export const publicProfileRouter = router({
         title: titleString,
         bio: bioString,
         skills: skillsString,
+        art_styles: artStylesArray,
         location: addressVal,
         address: addressVal,
         avatar_url: avatarUrlString,

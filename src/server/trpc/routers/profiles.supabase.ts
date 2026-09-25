@@ -862,6 +862,7 @@ export const profilesRouter = router({
         gallery_images: z.array(z.string()).optional().nullable(),
         avatar_url: z.string().optional().nullable(),
         profilePicture: z.string().optional().nullable(),
+        art_styles: z.array(z.string()).optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -923,8 +924,12 @@ export const profilesRouter = router({
           ? (input.email || input.businessEmail)
           : (existingProfile?.email || existingProfile?.businessEmail || ctx.session?.user?.email || null);
 
-        // Build payload matching lowercase profiles table schema PERFECTLY:
-        // (id, first_name, last_name, email, role, address, whatsapp_number, avatar_url, updated_at)
+        const artStylesArray = input.art_styles !== undefined && input.art_styles !== null
+          ? input.art_styles
+          : (input.skills ? input.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : null);
+
+        // Build payload matching lowercase profiles table schema:
+        // (id, first_name, last_name, email, role, address, whatsapp_number, avatar_url, art_styles, updated_at)
         const cleanProfilesPayload: Record<string, any> = {
           id: userId,
           first_name: firstName || null,
@@ -934,6 +939,7 @@ export const profilesRouter = router({
           address: addressVal,
           whatsapp_number: whatsappVal,
           avatar_url: avatarUrlString || existingProfile?.avatar_url || null,
+          ...(artStylesArray ? { art_styles: artStylesArray } : {}),
           updated_at: timestamp,
         };
 
@@ -954,7 +960,7 @@ export const profilesRouter = router({
           console.warn('PROFILE UPDATE EXCEPTION:', err);
         }
 
-        // Persist extended profile fields (title, bio, skills) and public avatar_url to Auth user_metadata
+        // Persist extended profile fields (title, bio, skills, art_styles) and public avatar_url to Auth user_metadata
         try {
           const admin = createAdminClient();
           const { data: userData } = await admin.auth.admin.getUserById(userId);
@@ -967,7 +973,8 @@ export const profilesRouter = router({
               name: `${firstName || ''} ${lastName || ''}`.trim() || existingMeta.name,
               title: input.title !== undefined ? input.title : (existingMeta.title || null),
               bio: input.bio !== undefined ? input.bio : (existingMeta.bio || null),
-              skills: input.skills !== undefined ? input.skills : (existingMeta.skills || null),
+              skills: input.skills !== undefined ? input.skills : (existingMeta.skills || (artStylesArray ? artStylesArray.join(', ') : null)),
+              ...(artStylesArray ? { art_styles: artStylesArray } : {}),
               address: addressVal,
               avatar_url: cleanProfilesPayload.avatar_url,
             },
@@ -983,6 +990,7 @@ export const profilesRouter = router({
           title: input.title !== undefined ? input.title : existingProfile?.title,
           bio: input.bio !== undefined ? input.bio : existingProfile?.bio,
           skills: input.skills !== undefined ? input.skills : existingProfile?.skills,
+          art_styles: artStylesArray || existingProfile?.art_styles || [],
           location: addressVal,
           profilePicture: cleanProfilesPayload.avatar_url,
           profile_picture: cleanProfilesPayload.avatar_url,

@@ -39,12 +39,24 @@ export const ART_TITLE_EXAMPLES = [
 ] as const;
 
 export const ART_SKILLS = [
-  'Portrait',
-  'Wall Murals and wall arts',
-  '3D & Digital Art',
-  'Landscape painting',
-  'Abstract & Modern paintings',
-  'Traditional & Oil Painting',
+  'Digital Art & Illustration',
+  'Pencil & Charcoal Sketching',
+  'Oil Painting',
+  'Acrylic Painting',
+  'Watercolor Painting',
+  'Portrait Art',
+  'Landscape & Nature',
+  'Abstract & Modern',
+  'Wall Murals & Street Art',
+  'Traditional & Cultural Art',
+  'Concept Art & Character Design',
+  'Anime & Manga Art',
+  'Mixed Media & Collage',
+  'Ink & Line Art',
+  '3D Art & CGI',
+  'Sculptures & Ceramics',
+  'Fabric & Textile Art',
+  'Gouache Painting',
 ] as const;
 
 export const TITLE_EXAMPLES = {

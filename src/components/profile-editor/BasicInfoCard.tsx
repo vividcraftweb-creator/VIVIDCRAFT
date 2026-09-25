@@ -141,7 +141,8 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           title: metadata.title || dbProfile?.title || profile?.title || '',
           bio: metadata.bio || dbProfile?.bio || anyProfile?.description || profile?.bio || '',
           address: dbProfile?.address || metadata.address || anyProfile?.address || profile?.location || '',
-          skills: metadata.skills || dbProfile?.skills || profile?.skills || '',
+          skills: dbProfile?.art_styles || metadata.art_styles || metadata.skills || dbProfile?.skills || profile?.skills || '',
+          art_styles: dbProfile?.art_styles || metadata.art_styles || anyProfile?.art_styles || [],
           avatar_url: dbProfile?.avatar_url || metadata.avatar_url || anyProfile?.avatarUrl || anyProfile?.profile_picture || profile?.profilePicture || '',
           banner_url: dbProfile?.banner_url || metadata.banner_url || anyProfile?.banner_url || anyProfile?.bannerUrl || '',
         };
@@ -164,8 +165,23 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           const titleVal = source.title || '';
           const bioVal = source.bio || source.description || '';
           const locVal = source.address || source.location || '';
-          const rawSkills = source.skills || '';
-          const skillsVal = Array.isArray(rawSkills) ? rawSkills.join(', ') : rawSkills;
+          const rawSkills = dbProfile?.art_styles || metadata.art_styles || source.art_styles || source.skills || '';
+          let skillsArray: string[] = [];
+          if (Array.isArray(rawSkills)) {
+            skillsArray = rawSkills.map(String).map((s: string) => s.trim()).filter(Boolean);
+          } else if (typeof rawSkills === 'string' && rawSkills.trim()) {
+            if (rawSkills.startsWith('{') || rawSkills.startsWith('[')) {
+              try {
+                const parsed = JSON.parse(rawSkills.replace(/^{/, '[').replace(/}$/, ']'));
+                if (Array.isArray(parsed)) skillsArray = parsed.map(String).map((s: string) => s.trim()).filter(Boolean);
+              } catch {
+                skillsArray = rawSkills.replace(/[{}"[\]]/g, '').split(',').map((s: string) => s.trim()).filter(Boolean);
+              }
+            } else {
+              skillsArray = rawSkills.split(',').map((s: string) => s.trim()).filter(Boolean);
+            }
+          }
+          const skillsVal = skillsArray.join(', ');
           const picVal = source.avatar_url || source.avatarUrl || source.profile_picture || source.profilePicture || '';
           const bannerVal = source.banner_url || '';
 
@@ -193,12 +209,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
             bannerUrl: bannerVal,
           });
 
-          if (skillsVal) {
-            const skillsArray = skillsVal.split(',').map((s: string) => s.trim()).filter(Boolean);
-            setSelectedSkills(skillsArray);
-          } else {
-            setSelectedSkills([]);
-          }
+          setSelectedSkills(skillsArray);
 
           if (picVal && !picVal.startsWith('data:') && picVal.length < 500) {
             const resolved = getProfilePictureUrl(user?.id || profile?.userId, picVal) || picVal;
@@ -285,6 +296,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         bio: formData.bio ? (formData.bio.length > 500 ? formData.bio.slice(0, 500) : formData.bio) : null,
         address: formData.location || null,
         skills: skillsString ? (skillsString.length > 300 ? skillsString.slice(0, 300) : skillsString) : null,
+        art_styles: selectedSkills,
       };
       if (cleanAvatarUrl) {
         metaPayload.avatar_url = cleanAvatarUrl;
@@ -301,13 +313,14 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
         console.warn('Auth user metadata update notice:', authMetaErr);
       }
 
-      // Build payload matching lowercase profiles table schema PERFECTLY:
-      // (id, first_name, last_name, address, avatar_url, banner_url, updated_at)
+      // Build payload matching lowercase profiles table schema:
+      // (id, first_name, last_name, address, avatar_url, banner_url, art_styles, updated_at)
       const profilesPayload: Record<string, any> = {
         id: user.id,
         first_name: formData.firstName || null,
         last_name: formData.lastName || null,
         address: formData.location || null,
+        art_styles: selectedSkills,
         updated_at: new Date().toISOString(),
       };
       if (cleanAvatarUrl) {
@@ -338,6 +351,7 @@ export default function BasicInfoCard({ profile, onUpdate }: BasicInfoCardProps)
           bio: formData.bio,
           location: formData.location,
           skills: skillsString,
+          art_styles: selectedSkills,
           profilePicture: cleanAvatarUrl || undefined,
           avatar_url: cleanAvatarUrl || undefined,
           banner_url: cleanBannerUrl || undefined,

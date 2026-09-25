@@ -25,8 +25,9 @@ import {
   ARTIST_SERVICES,
   normalizeTags,
   parseTags,
+  parseDisplayTags,
 } from '@/lib/artist-categories';
-export { normalizeTags, parseTags };
+export { normalizeTags, parseTags, parseDisplayTags };
 
 export const dynamic = 'force-dynamic';
 
@@ -63,9 +64,12 @@ export function normalizeArtistProfile(p: any) {
   const key = p.id || p.userId || p.user_id;
   const avatar = p.avatar_url || p.profile_picture || p.profilePicture || p.avatar || p.image;
 
-  const stylesArr = normalizeTags(p.art_styles);
-  const specialtiesArr = normalizeTags(p.art_specialties);
-  const servicesArr = normalizeTags(p.services_offered);
+  const rawStyles = (p.art_styles && (Array.isArray(p.art_styles) ? p.art_styles.length > 0 : Boolean(p.art_styles)))
+    ? p.art_styles
+    : (p.skills || p.mediums);
+  const stylesArr = parseDisplayTags(rawStyles);
+  const specialtiesArr = parseDisplayTags(p.art_specialties || p.specialties);
+  const servicesArr = parseDisplayTags(p.services_offered || p.services);
 
   return {
     ...p,
