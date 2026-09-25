@@ -553,6 +553,16 @@ body > .skiptranslate {
     box-shadow: 0 0 20px oklch(0.65 0.15 264 / 20%);
   }
 
+  /* Hide scrollbar for horizontal scroll on mobile */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -747,114 +757,101 @@ body > .skiptranslate {
   color: #6b7280 !important;
 }
 
-@layer keyframes {
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(40px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-  
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-  
-  @keyframes gradient-shift {
-    0%, 100% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-  }
-  
-  @keyframes glow-pulse {
-    0%, 100% {
-      box-shadow: 
-        0 0 20px rgba(162, 105, 78, 0.20),
-        0 0 40px rgba(162, 105, 78, 0.10),
-        0 0 60px rgba(162, 105, 78, 0.05);
-    }
-    50% {
-      box-shadow: 
-        0 0 30px rgba(162, 105, 78, 0.30),
-        0 0 60px rgba(162, 105, 78, 0.15),
-        0 0 90px rgba(162, 105, 78, 0.08);
-    }
-  }
-  
-  @keyframes card-enter {
-    from {
-      opacity: 0;
-      transform: translateY(30px) scale(0.95);
-      filter: blur(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      filter: blur(0px);
-    }
-  }
-  
-  @keyframes breathe {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-    }
-  }
-  
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-    100% {
-      background-position: 1000px 0;
-    }
-  }
+}
 
-  /* Hide scrollbar for horizontal scroll on mobile */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
   }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
 
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(162, 105, 78, 0.20),
+      0 0 40px rgba(162, 105, 78, 0.10),
+      0 0 60px rgba(162, 105, 78, 0.05);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(162, 105, 78, 0.30),
+      0 0 60px rgba(162, 105, 78, 0.15),
+      0 0 90px rgba(162, 105, 78, 0.08);
+  }
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
 }
 
 /* Calendar dropdown styling for better contrast */
@@ -895,23 +892,23 @@ gmp-place-autocomplete input {
   height: 2.25rem !important; /* h-9 */
   padding: 0.25rem 0.75rem !important; /* py-1 px-3 */
   border-radius: 0.375rem !important; /* rounded-md */
-  border: 1px solid hsl(var(--input)) !important;
+  border: 1px solid var(--input) !important;
   background-color: transparent !important;
   font-size: 0.875rem !important; /* text-sm */
   line-height: 1.25rem !important;
-  color: hsl(var(--foreground)) !important;
+  color: var(--foreground) !important;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* shadow-xs */
   transition: color, box-shadow 150ms ease !important;
   outline: none !important;
 }
 
 gmp-place-autocomplete input::placeholder {
-  color: hsl(var(--muted-foreground)) !important;
+  color: var(--muted-foreground) !important;
 }
 
 gmp-place-autocomplete input:focus {
-  border-color: hsl(var(--ring)) !important;
-  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.5) !important;
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 3px rgba(162, 105, 78, 0.35) !important;
 }
 
 gmp-place-autocomplete input:disabled {
@@ -922,7 +919,7 @@ gmp-place-autocomplete input:disabled {
 
 /* Dark mode support */
 .dark gmp-place-autocomplete input {
-  background-color: hsl(var(--input) / 0.3) !important;
+  background-color: rgba(230, 224, 213, 0.1) !important;
 }
 
 /* Match custom classes passed via className prop */
