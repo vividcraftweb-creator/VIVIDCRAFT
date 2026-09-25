@@ -910,7 +910,7 @@ Hi, I would like to connect with this artist for a commission/project.`;
                     <p className="text-sm">Loading gallery artworks...</p>
                   </div>
                 ) : artworks.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
                     {artworks.map((art) => (
                       <ArtworkCard key={art.id} artwork={art} artistName={displayName} />
                     ))}

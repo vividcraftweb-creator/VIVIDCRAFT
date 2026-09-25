@@ -656,11 +656,11 @@ export function HomeHero() {
           </div>
 
           {trpcLoading && displayArtworks.length === 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-[340px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse"
+                  className="h-[180px] sm:h-[260px] rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 animate-pulse"
                 />
               ))}
             </div>
@@ -668,7 +668,7 @@ export function HomeHero() {
             <GalleryGrid
               artworks={displayArtworks}
               emptyMessage="No featured artworks found at this time."
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4"
             />
           )}
         </div>

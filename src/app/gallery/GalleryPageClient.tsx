@@ -1275,19 +1275,15 @@ export default function GalleryPageClient() {
 
         {/* Gallery Grid */}
         {isLoading && localArtworks.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div
                 key={i}
-                className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden animate-pulse shadow-sm"
+                className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-xl sm:rounded-2xl overflow-hidden animate-pulse shadow-sm"
               >
-                <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-800/60" />
-                <div className="p-4 space-y-3">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800" />
-                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
-                  </div>
+                <div className="h-32 sm:h-48 bg-slate-100 dark:bg-slate-800/60" />
+                <div className="p-2 sm:p-3 space-y-2">
+                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
                 </div>
               </div>
             ))}
@@ -1320,7 +1316,7 @@ export default function GalleryPageClient() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
             {displayedArtworks.map((artwork) => {
               const safeImg = getSafeArtworkUrl(artwork.image_url);
               const dynamicArtistName = extractArtistName(artwork);
@@ -1332,13 +1328,7 @@ export default function GalleryPageClient() {
                 .slice(0, 2)
                 .toUpperCase();
 
-              const activeHoverStar = hoveredRating[artwork.id] || 0;
               const artworkTitle = (artwork.title || 'Untitled Artwork').trim();
-              const hasRealRatings =
-                typeof artwork.ratingsCount === 'number' &&
-                artwork.ratingsCount > 0 &&
-                typeof artwork.averageRating === 'number' &&
-                artwork.averageRating > 0;
               const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
 
               const isCardExpanded = Boolean(expandedCardIds[artwork.id]);
@@ -1346,48 +1336,28 @@ export default function GalleryPageClient() {
               return (
                 <div
                   key={artwork.id}
-                  className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10 flex flex-col hover:-translate-y-1 self-start w-full"
+                  className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 rounded-xl sm:rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md dark:hover:shadow-amber-500/10 flex flex-col hover:-translate-y-0.5 self-start w-full"
                 >
-                  {/* Artwork Image Container with Smart Matte Framing */}
+                  {/* Artwork Image Container with Tight Compact Height & Crisp Image Framing */}
                   <div
                     onClick={() => setSelectedArtwork(artwork)}
-                    className="relative aspect-square w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
+                    className="relative w-full h-32 sm:h-48 overflow-hidden bg-slate-100 dark:bg-slate-900 cursor-pointer select-none rounded-t-lg"
                   >
-                    {/* Background blurred layer using the SAME artwork image URL */}
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={safeImg}
-                        alt=""
-                        aria-hidden="true"
-                        className="w-full h-full object-cover blur-xl scale-125 opacity-40 dark:opacity-50 pointer-events-none transition-transform duration-700 ease-out group-hover:scale-150"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.onerror = null;
-                          target.src = DEFAULT_ARTWORK_PLACEHOLDER;
-                        }}
-                      />
-                    </div>
-
-                    {/* Exhibition Inner Matte Border Wrapping Foreground Image */}
-                    <div className="relative z-10 w-full h-full p-2 flex items-center justify-center">
-                      <div className="relative w-full h-full flex items-center justify-center border border-slate-900/10 dark:border-white/10 rounded-md overflow-hidden bg-black/5 dark:bg-black/20">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={safeImg}
-                          alt={artworkTitle}
-                          className="object-contain w-full h-full relative z-10 p-1.5 filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            target.onerror = null;
-                            target.src = DEFAULT_ARTWORK_PLACEHOLDER;
-                          }}
-                        />
-                      </div>
-                    </div>
+                    {/* Crisp Foreground Artwork Image */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={safeImg}
+                      alt={artworkTitle}
+                      className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.src = DEFAULT_ARTWORK_PLACEHOLDER;
+                      }}
+                    />
 
                     {/* Top-Left Pricing Status Badge & Admin Delete Button */}
-                    <div className="absolute top-2.5 left-2.5 z-30 flex items-center gap-1.5 pointer-events-auto">
+                    <div className="absolute top-1.5 left-1.5 z-30 flex items-center gap-1 pointer-events-auto">
                       {isAdmin && (
                         <button
                           onClick={(e) => {
@@ -1395,26 +1365,26 @@ export default function GalleryPageClient() {
                             setDeletingArtwork(artwork);
                             setDeleteReason('');
                           }}
-                          className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-[10px] font-bold shadow-md backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
+                          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-600/90 hover:bg-rose-600 text-white text-[9px] font-bold shadow-md backdrop-blur-md transition-all duration-200 hover:scale-105 cursor-pointer"
                           title="Admin Moderation: Delete Post with Reason"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-2.5 h-2.5" />
                           <span>Delete</span>
                         </button>
                       )}
 
                       {badgeType === 'FOR_SALE' && (
-                        <span className="text-[10px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400/90 dark:bg-amber-500/25 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                        <span className="text-[9px] font-bold text-amber-950 dark:text-amber-300 bg-amber-400/95 dark:bg-amber-500/30 border border-amber-500/40 px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md">
                           {statusBadge}
                         </span>
                       )}
                       {badgeType === 'BIDDING' && (
-                        <span className="text-[10px] font-bold text-white bg-orange-500/90 dark:bg-orange-500/30 dark:text-orange-300 border border-orange-500/50 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                        <span className="text-[9px] font-bold text-white bg-orange-500/95 dark:bg-orange-500/35 dark:text-orange-300 border border-orange-500/50 px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md">
                           {statusBadge}
                         </span>
                       )}
                       {badgeType === 'NOT_FOR_SALE' && (
-                        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-md">
+                        <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300 bg-white/95 dark:bg-slate-800/95 border border-slate-300 dark:border-slate-700 px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md">
                           {statusBadge}
                         </span>
                       )}
@@ -1426,20 +1396,20 @@ export default function GalleryPageClient() {
                         e.stopPropagation();
                         setSelectedArtwork(artwork);
                       }}
-                      className="absolute bottom-2.5 right-2.5 z-30 w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-[#A2694E] hover:text-white hover:border-[#A2694E] cursor-pointer shadow-lg"
+                      className="absolute bottom-1.5 right-1.5 z-30 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center hover:bg-[#A2694E] hover:text-white hover:border-[#A2694E] cursor-pointer shadow-lg"
                       title="View full screen"
                     >
-                      <Maximize2 className="w-3.5 h-3.5" />
+                      <Maximize2 className="w-3 h-3" />
                     </button>
                   </div>
 
                   {/* Compact Default Bar: Likes counter on left, See More expand toggle on right */}
-                  <div className="px-3 py-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                  <div className="p-1.5 sm:p-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1 sm:gap-2">
                     {/* Interactive Like Action & Real Likes Count */}
                     <button
                       type="button"
                       onClick={(e) => handleToggleLike(artwork, e)}
-                      className={`inline-flex items-center gap-1.5 transition-colors cursor-pointer group/like select-none ${
+                      className={`inline-flex items-center gap-1 sm:gap-1.5 transition-colors cursor-pointer group/like select-none ${
                         artwork.isLiked
                           ? 'text-rose-600 dark:text-rose-400 font-semibold'
                           : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
@@ -1448,11 +1418,11 @@ export default function GalleryPageClient() {
                       aria-label={`${artwork.likesCount} likes`}
                     >
                       <Heart
-                        className={`w-3.5 h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
+                        className={`w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
                           artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500 group-hover/like:text-rose-500'
                         }`}
                       />
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-[10px] sm:text-xs">
                         {artwork.likesCount}
                       </span>
                     </button>
@@ -1467,33 +1437,33 @@ export default function GalleryPageClient() {
                           [artwork.id]: !prev[artwork.id],
                         }));
                       }}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:text-[#8B5A3C] dark:hover:text-[#DDA78D] transition-colors py-0.5 px-2 rounded hover:bg-[#A2694E]/10 cursor-pointer"
+                      className="inline-flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:text-[#8B5A3C] dark:hover:text-[#DDA78D] transition-colors py-0.5 px-1 sm:px-1.5 rounded hover:bg-[#A2694E]/10 cursor-pointer"
                       aria-label={isCardExpanded ? 'See Less' : 'See More'}
                       title={isCardExpanded ? 'Collapse details' : 'Expand details'}
                     >
-                      <span>{isCardExpanded ? 'See Less' : 'See More'}</span>
+                      <span>{isCardExpanded ? 'Less' : 'See More'}</span>
                       {isCardExpanded ? (
-                        <ChevronUp className="w-3.5 h-3.5 transition-transform" />
+                        <ChevronUp className="w-3 h-3 transition-transform" />
                       ) : (
-                        <ArrowRight className="w-3.5 h-3.5 transition-transform" />
+                        <ArrowRight className="w-3 h-3 transition-transform" />
                       )}
                     </button>
                   </div>
 
                   {/* Expandable Revealed Details Section */}
                   {isCardExpanded && (
-                    <div className="bg-slate-50/70 dark:bg-slate-900/90 border-t border-slate-100 dark:border-slate-800/80 p-3 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="bg-slate-50/70 dark:bg-slate-900/90 border-t border-slate-100 dark:border-slate-800/80 p-2 sm:p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                       {/* Artist Row: Avatar + Name */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <Link
                           href={`/freelancers/${artwork.artist_id}`}
                           className="flex-shrink-0 group/avatar"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Avatar className="w-6 h-6 ring-1 ring-amber-500/30 group-hover/avatar:ring-amber-400 transition-all">
+                          <Avatar className="w-5 h-5 sm:w-6 sm:h-6 ring-1 ring-amber-500/30 group-hover/avatar:ring-amber-400 transition-all">
                             {artistAvatar && <AvatarImage src={artistAvatar} alt={dynamicArtistName} />}
-                            <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200 text-[10px] font-semibold">
-                              {initials || <User className="w-3 h-3" />}
+                            <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200 text-[9px] font-semibold">
+                              {initials || <User className="w-2.5 h-2.5" />}
                             </AvatarFallback>
                           </Avatar>
                         </Link>
@@ -1501,7 +1471,7 @@ export default function GalleryPageClient() {
                         <Link
                           href={`/freelancers/${artwork.artist_id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs font-semibold text-slate-800 dark:text-slate-200 hover:text-amber-600 dark:hover:text-amber-400 truncate block transition-colors"
+                          className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 hover:text-amber-600 dark:hover:text-amber-400 truncate block transition-colors"
                         >
                           {dynamicArtistName}
                         </Link>
@@ -1510,26 +1480,26 @@ export default function GalleryPageClient() {
                       {/* Dynamic Artwork Title */}
                       <h3
                         onClick={() => setSelectedArtwork(artwork)}
-                        className="font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-1 cursor-pointer transition-colors leading-snug"
+                        className="font-semibold text-slate-900 dark:text-slate-100 text-[11px] sm:text-xs hover:text-amber-600 dark:hover:text-amber-400 line-clamp-1 cursor-pointer transition-colors leading-snug"
                         title={artworkTitle}
                       >
                         {artworkTitle}
                       </h3>
 
                       {/* Pricing & Actions Row */}
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
+                      <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-1.5">
                         <div>
-                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
+                          <span className="text-[9px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
                             {badgeType === 'FOR_SALE' ? 'Price' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Status'}
                           </span>
-                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                          <span className="text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white">
                             {badgeType === 'FOR_SALE'
                               ? `LKR ${displayPrice.toLocaleString()}`
                               : fallbackDisplayPrice}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1">
                           {/* Direct WhatsApp Action for For Sale & Bidding */}
                           {(() => {
                             if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
@@ -1553,10 +1523,10 @@ export default function GalleryPageClient() {
                                 href={waUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
                                 title="Ask about price or buy on WhatsApp"
                               >
-                                Ask Price (WhatsApp)
+                                WhatsApp
                               </a>
                             );
                           })()}
@@ -1565,9 +1535,9 @@ export default function GalleryPageClient() {
                           <button
                             type="button"
                             onClick={() => setSelectedArtwork(artwork)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-[#A2694E] dark:hover:text-[#C58B6F] bg-slate-100 dark:bg-slate-800 hover:bg-[#A2694E]/10 dark:hover:bg-[#A2694E]/20 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
+                            className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-[#A2694E] dark:hover:text-[#C58B6F] bg-slate-100 dark:bg-slate-800 hover:bg-[#A2694E]/10 dark:hover:bg-[#A2694E]/20 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
                           >
-                            <Maximize2 className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                            <Maximize2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-amber-600 dark:text-amber-400" />
                             <span>Details</span>
                           </button>
                         </div>
