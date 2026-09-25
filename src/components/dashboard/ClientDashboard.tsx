@@ -29,7 +29,6 @@ import ApiKeysView from './ApiKeysView';
 import ProfileEditView from './ProfileEditView';
 import ProfileView from './ProfileView';
 import SettingsView from './SettingsView';
-import RecommendationsSection from './RecommendationsSection';
 import AnalyticsView from './AnalyticsView';
 import SubscriptionView from './SubscriptionView';
 import { Badge } from '@/components/ui/badge';
@@ -409,9 +408,6 @@ export default function ClientDashboard() {
             </div>
           </div>
         </div>
-
-      {/* AI Recommendations Section */}
-      <RecommendationsSection />
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
