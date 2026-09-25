@@ -228,15 +228,15 @@ export function FeaturedCrew() {
               onMouseLeave={() => setIsSliderPaused(false)}
               onTouchStart={() => setIsSliderPaused(true)}
               onTouchEnd={() => setIsSliderPaused(false)}
-              className="flex md:grid md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory scrollbar-none pb-4 md:pb-0 px-2 sm:px-0 scroll-smooth max-w-4xl mx-auto items-stretch justify-start md:justify-items-center"
+              className="flex md:grid md:grid-cols-3 gap-4 sm:gap-4 md:gap-5 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory scrollbar-none pb-4 md:pb-0 px-2 sm:px-0 scroll-smooth max-w-3xl mx-auto items-stretch justify-start md:justify-center md:justify-items-center"
             >
               {displayedCrew.map((member) => (
                 <div
                   key={member.id}
-                  className="relative min-w-[260px] sm:min-w-[280px] max-w-[285px] md:max-w-xs w-full flex-shrink-0 md:flex-shrink rounded-2xl p-3.5 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/40 transition-colors flex flex-col justify-between snap-center"
+                  className="relative min-w-[260px] sm:min-w-[270px] max-w-[275px] w-full flex-shrink-0 md:flex-shrink rounded-2xl p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/40 transition-colors flex flex-col justify-between snap-center"
                 >
-                  {/* Compact Card Portrait Photo: h-44 sm:h-48 */}
-                  <div className="relative w-full h-44 sm:h-48 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-3 border border-slate-200/80 dark:border-slate-800">
+                  {/* Compact Card Portrait Photo: h-40 */}
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-2.5 border border-slate-200/80 dark:border-slate-800">
                     <img
                       src={member.image_url || member.avatar_url}
                       alt={member.name}
@@ -255,15 +255,15 @@ export function FeaturedCrew() {
                   {/* Card Content & Details */}
                   <div className="flex-1 flex flex-col justify-between space-y-2">
                     <div>
-                      <div className="text-[11px] font-semibold text-[#A2694E] dark:text-[#C58B6F] uppercase tracking-wider line-clamp-1 mb-0.5">
+                      <div className="text-xs font-semibold text-[#A2694E] dark:text-[#C58B6F] uppercase tracking-wider line-clamp-1 mb-0.5">
                         {member.position}
                       </div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight line-clamp-1">
                         {member.name}
                       </h3>
 
                       {member.short_bio && (
-                        <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs leading-relaxed line-clamp-2">
+                        <div className="mt-2 py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs leading-relaxed line-clamp-2">
                           <p className="italic text-slate-700 dark:text-slate-300">
                             &ldquo;{member.short_bio}&rdquo;
                           </p>
@@ -339,7 +339,7 @@ export function FeaturedCrew() {
                           setSelectedMember(member);
                           startTransition(() => setIsStoryModalOpen(true));
                         }}
-                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-bold text-xs transition-colors cursor-pointer shadow-sm shadow-[#A2694E]/20"
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer shadow-sm shadow-[#A2694E]/20"
                       >
                         <BookOpen className="w-3.5 h-3.5 text-white" />
                         <span>See More</span>
