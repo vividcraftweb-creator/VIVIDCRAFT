@@ -44,10 +44,7 @@ export function UploadArtworkModal({
   const [sellingMode, setSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('FIXED_PRICE');
   const [price, setPrice] = useState('');
   const [startingBid, setStartingBid] = useState('');
-  const [badgeTitle, setBadgeTitle] = useState('Top Rated');
   const [gigTitle, setGigTitle] = useState('');
-  const [baseRating, setBaseRating] = useState('4.9');
-  const [reviewCountText, setReviewCountText] = useState('(1k+)');
   const [isUploading, setIsUploading] = useState(false);
 
   if (!isOpen) return null;
@@ -145,10 +142,7 @@ export function UploadArtworkModal({
         price: priceVal,
         starting_bid: bidVal,
         art_code: artCode,
-        badge_title: badgeTitle.trim() || 'Top Rated',
         gig_title: gigTitle.trim() || null,
-        base_rating: baseRating ? parseFloat(baseRating) : 4.9,
-        review_count_text: reviewCountText.trim() || '(1k+)',
         ...(priceVal && priceVal > 0 ? { amount: priceVal } : {}),
       };
 
@@ -169,10 +163,7 @@ export function UploadArtworkModal({
         price: priceVal,
         starting_bid: bidVal,
         art_code: artCode,
-        badge_title: badgeTitle.trim() || 'Top Rated',
         gig_title: gigTitle.trim() || null,
-        base_rating: baseRating ? parseFloat(baseRating) : 4.9,
-        review_count_text: reviewCountText.trim() || '(1k+)',
       };
 
       // Candidate 3: Basic insert with pricing_type
@@ -186,10 +177,7 @@ export function UploadArtworkModal({
         pricing_type: sellingMode,
         price: priceVal,
         starting_bid: bidVal,
-        badge_title: badgeTitle.trim() || 'Top Rated',
         gig_title: gigTitle.trim() || null,
-        base_rating: baseRating ? parseFloat(baseRating) : 4.9,
-        review_count_text: reviewCountText.trim() || '(1k+)',
       };
 
       let insertError: any = null;
@@ -330,67 +318,6 @@ export function UploadArtworkModal({
             />
           </div>
 
-          {/* Gig Badge & Rating Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-100/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800">
-            <div className="space-y-1 sm:col-span-1">
-              <label htmlFor="modal-badge-title" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
-                Gig Badge
-              </label>
-              <Input
-                id="modal-badge-title"
-                placeholder='e.g. "Top Rated"'
-                value={badgeTitle}
-                onChange={(e) => setBadgeTitle(e.target.value)}
-                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
-              />
-              <div className="flex flex-wrap gap-1 pt-0.5">
-                {['Top Rated', 'Level 2', 'Level 1', 'Pro Seller'].map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setBadgeTitle(b)}
-                    className={`text-[9px] px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer ${
-                      badgeTitle === b
-                        ? 'bg-[#A2694E] text-white font-bold border-[#A2694E]'
-                        : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-700'
-                    }`}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1 sm:col-span-1">
-              <label htmlFor="modal-base-rating" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
-                Base Rating
-              </label>
-              <Input
-                id="modal-base-rating"
-                type="number"
-                step="0.1"
-                min="1"
-                max="5"
-                placeholder="4.9"
-                value={baseRating}
-                onChange={(e) => setBaseRating(e.target.value)}
-                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1 sm:col-span-1">
-              <label htmlFor="modal-review-count" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
-                Reviews Text
-              </label>
-              <Input
-                id="modal-review-count"
-                placeholder='e.g. "(1k+)"'
-                value={reviewCountText}
-                onChange={(e) => setReviewCountText(e.target.value)}
-                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
-              />
-            </div>
-          </div>
 
           {/* Description */}
           <div className="space-y-1">

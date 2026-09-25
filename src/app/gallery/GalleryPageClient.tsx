@@ -137,10 +137,7 @@ export default function GalleryPageClient() {
   const [uploadSellingMode, setUploadSellingMode] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('FIXED_PRICE');
   const [uploadPrice, setUploadPrice] = useState('');
   const [uploadStartingBid, setUploadStartingBid] = useState('');
-  const [uploadBadgeTitle, setUploadBadgeTitle] = useState('Top Rated');
   const [uploadGigTitle, setUploadGigTitle] = useState('');
-  const [uploadBaseRating, setUploadBaseRating] = useState('4.9');
-  const [uploadReviewCountText, setUploadReviewCountText] = useState('(1k+)');
   const [isUploading, setIsUploading] = useState(false);
 
   // Fetch current user and check admin status
@@ -840,10 +837,7 @@ export default function GalleryPageClient() {
           price,
           starting_bid: startingBid,
           art_code: artCode,
-          badge_title: uploadBadgeTitle.trim() || 'Top Rated',
           gig_title: uploadGigTitle.trim() || null,
-          base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
-          review_count_text: uploadReviewCountText.trim() || '(1k+)',
           ...(price && price > 0 ? { amount: price } : {}),
         });
 
@@ -867,10 +861,7 @@ export default function GalleryPageClient() {
             price,
             starting_bid: startingBid,
             art_code: artCode,
-            badge_title: uploadBadgeTitle.trim() || 'Top Rated',
             gig_title: uploadGigTitle.trim() || null,
-            base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
-            review_count_text: uploadReviewCountText.trim() || '(1k+)',
           });
         insertError = retry1.error;
       }
@@ -890,10 +881,7 @@ export default function GalleryPageClient() {
             price,
             starting_bid: startingBid,
             art_code: artCode,
-            badge_title: uploadBadgeTitle.trim() || 'Top Rated',
             gig_title: uploadGigTitle.trim() || null,
-            base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
-            review_count_text: uploadReviewCountText.trim() || '(1k+)',
           });
         insertError = retry2.error;
       }
@@ -910,10 +898,7 @@ export default function GalleryPageClient() {
           pricing_type: uploadSellingMode,
           price,
           starting_bid: startingBid,
-          badge_title: uploadBadgeTitle.trim() || 'Top Rated',
           gig_title: uploadGigTitle.trim() || null,
-          base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
-          review_count_text: uploadReviewCountText.trim() || '(1k+)',
         });
 
         if (retryBasic.error) {
@@ -928,10 +913,7 @@ export default function GalleryPageClient() {
             pricing_type: uploadSellingMode,
             amount: price,
             starting_bid: startingBid,
-            badge_title: uploadBadgeTitle.trim() || 'Top Rated',
             gig_title: uploadGigTitle.trim() || null,
-            base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
-            review_count_text: uploadReviewCountText.trim() || '(1k+)',
           });
 
           if (retryAmount.error) {
@@ -966,10 +948,10 @@ export default function GalleryPageClient() {
         price,
         starting_bid: startingBid,
         art_code: artCode,
-        badge_title: uploadBadgeTitle.trim() || 'Top Rated',
+        badge_title: null,
         gig_title: uploadGigTitle.trim() || null,
-        base_rating: uploadBaseRating ? parseFloat(uploadBaseRating) : 4.9,
-        review_count_text: uploadReviewCountText.trim() || '(1k+)',
+        base_rating: null,
+        review_count_text: null,
         artist: {
           id: artistId,
           name: uploadArtistName.trim() || 'Cinnamon Gallery Curation',
@@ -1003,10 +985,7 @@ export default function GalleryPageClient() {
       setUploadSellingMode('NOT_FOR_SALE');
       setUploadPrice('');
       setUploadStartingBid('');
-      setUploadBadgeTitle('Top Rated');
       setUploadGigTitle('');
-      setUploadBaseRating('4.9');
-      setUploadReviewCountText('(1k+)');
       setIsUploadOpen(false);
 
       utils.artworks.getAllArtworks.invalidate();
@@ -2023,67 +2002,7 @@ export default function GalleryPageClient() {
                   />
                 </div>
 
-                {/* Gig Badge & Rating Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800">
-                  <div className="space-y-1 sm:col-span-1">
-                    <label htmlFor="upload-badge-title" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
-                      Gig Badge
-                    </label>
-                    <Input
-                      id="upload-badge-title"
-                      placeholder='e.g. "Top Rated"'
-                      value={uploadBadgeTitle}
-                      onChange={(e) => setUploadBadgeTitle(e.target.value)}
-                      className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
-                    />
-                    <div className="flex flex-wrap gap-1 pt-0.5">
-                      {['Top Rated', 'Level 2', 'Level 1', 'Pro Seller'].map((b) => (
-                        <button
-                          key={b}
-                          type="button"
-                          onClick={() => setUploadBadgeTitle(b)}
-                          className={`text-[9px] px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer ${
-                            uploadBadgeTitle === b
-                              ? 'bg-[#A2694E] text-white font-bold border-[#A2694E]'
-                              : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-700'
-                          }`}
-                        >
-                          {b}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
 
-                  <div className="space-y-1 sm:col-span-1">
-                    <label htmlFor="upload-base-rating" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
-                      Base Rating
-                    </label>
-                    <Input
-                      id="upload-base-rating"
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="5"
-                      placeholder="4.9"
-                      value={uploadBaseRating}
-                      onChange={(e) => setUploadBaseRating(e.target.value)}
-                      className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1 sm:col-span-1">
-                    <label htmlFor="upload-review-count" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
-                      Review Count
-                    </label>
-                    <Input
-                      id="upload-review-count"
-                      placeholder='e.g. "(1k+)"'
-                      value={uploadReviewCountText}
-                      onChange={(e) => setUploadReviewCountText(e.target.value)}
-                      className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white h-8 text-xs"
-                    />
-                  </div>
-                </div>
 
                 {/* Artwork Description */}
                 <div className="space-y-1.5">

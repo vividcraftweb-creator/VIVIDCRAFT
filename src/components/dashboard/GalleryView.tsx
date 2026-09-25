@@ -21,10 +21,7 @@ export default function GalleryView() {
   const [pricing_type, setPricingType] = useState<'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE'>('FIXED_PRICE');
   const [price, setPrice] = useState('');
   const [startingBid, setStartingBid] = useState('');
-  const [badgeTitle, setBadgeTitle] = useState('Top Rated');
   const [gigTitle, setGigTitle] = useState('');
-  const [baseRating, setBaseRating] = useState('4.9');
-  const [reviewCountText, setReviewCountText] = useState('(1k+)');
   
   const utils = trpc.useUtils();
   const { data: artworks, isLoading } = trpc.artworks.getMyArtworks.useQuery();
@@ -45,10 +42,7 @@ export default function GalleryView() {
       setPrice('');
       setStartingBid('');
       setPricingType('FIXED_PRICE');
-      setBadgeTitle('Top Rated');
       setGigTitle('');
-      setBaseRating('4.9');
-      setReviewCountText('(1k+)');
     },
     onError: (error) => {
       toast.error(`Failed to add artwork: ${error.message}`);
@@ -126,14 +120,8 @@ export default function GalleryView() {
         amount: numericPrice,
         starting_bid: numericBid,
         startingBid: numericBid,
-        badge_title: badgeTitle.trim() || 'Top Rated',
-        badgeTitle: badgeTitle.trim() || 'Top Rated',
         gig_title: gigTitle.trim() || undefined,
         gigTitle: gigTitle.trim() || undefined,
-        base_rating: baseRating ? parseFloat(baseRating) : 4.9,
-        baseRating: baseRating ? parseFloat(baseRating) : 4.9,
-        review_count_text: reviewCountText.trim() || '(1k+)',
-        reviewCountText: reviewCountText.trim() || '(1k+)',
       });
 
     } catch (error: any) {
@@ -215,76 +203,6 @@ export default function GalleryView() {
             <p className="text-[11px] text-slate-400">
               Leave blank to automatically format as &quot;I will create {title || 'custom artwork'}&quot;.
             </p>
-          </div>
-
-          {/* Gig Badge, Base Rating & Review Count Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-            {/* Gig Badge Title */}
-            <div className="space-y-1.5 sm:col-span-1">
-              <label htmlFor="badge-title" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-                Gig Badge Title
-              </label>
-              <Input
-                id="badge-title"
-                name="badge-title"
-                placeholder='e.g. "Top Rated", "Level 2", "Pro Seller"'
-                value={badgeTitle}
-                onChange={(e) => setBadgeTitle(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-9 text-xs"
-              />
-              <div className="flex flex-wrap gap-1 pt-1">
-                {['Top Rated', 'Level 2', 'Level 1', 'Pro Seller'].map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setBadgeTitle(b)}
-                    className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
-                      badgeTitle === b
-                        ? 'bg-[#A2694E] text-white font-bold border-[#A2694E]'
-                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                    }`}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Base Rating */}
-            <div className="space-y-1.5 sm:col-span-1">
-              <label htmlFor="base-rating" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-                Base Rating (e.g. 4.9)
-              </label>
-              <Input
-                id="base-rating"
-                name="base-rating"
-                type="number"
-                step="0.1"
-                min="1"
-                max="5"
-                placeholder="4.9"
-                value={baseRating}
-                onChange={(e) => setBaseRating(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-9 text-xs"
-              />
-              <p className="text-[10px] text-slate-400">Default marketplace display rating</p>
-            </div>
-
-            {/* Review Count Text */}
-            <div className="space-y-1.5 sm:col-span-1">
-              <label htmlFor="review-count-text" className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-                Review Count Text
-              </label>
-              <Input
-                id="review-count-text"
-                name="review-count-text"
-                placeholder='e.g. "(1k+)", "(500)"'
-                value={reviewCountText}
-                onChange={(e) => setReviewCountText(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 h-9 text-xs"
-              />
-              <p className="text-[10px] text-slate-400">Marketplace reviews count pill</p>
-            </div>
           </div>
 
           {/* Description Textarea Field */}

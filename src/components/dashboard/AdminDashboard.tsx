@@ -629,7 +629,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
           <Tabs defaultValue="users" className="w-full">
-            <TabsList className="bg-slate-950/80 border border-slate-800 h-8 flex flex-wrap mb-4">
+            <TabsList className="bg-slate-950/80 border border-slate-800 p-1.5 rounded-xl flex flex-wrap gap-1.5 items-center mb-5 h-auto min-h-10 w-full">
               <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs">
                 Users
               </TabsTrigger>

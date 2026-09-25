@@ -131,27 +131,25 @@ export function ArtworkModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[99999] flex items-start justify-center bg-black/80 p-4 pt-24 md:pt-28 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-hidden animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[80vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] dark shadow-2xl border border-white/10 grid grid-cols-1 md:grid-cols-2"
+        className="relative w-full max-w-5xl h-[92vh] max-h-[820px] rounded-2xl bg-white dark:bg-[#1E1B18] shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col md:grid md:grid-cols-2"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Sticky Close Button pinned at the top */}
-        <div className="sticky top-0 z-50 col-span-full flex justify-end p-3 pointer-events-none h-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="pointer-events-auto p-2 rounded-full bg-black/70 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition-colors focus:outline-none cursor-pointer shadow-lg"
-            aria-label="Close artwork dialog"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        {/* Absolute Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-3 right-3 z-50 p-2 rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-md border border-white/20 transition-colors focus:outline-none cursor-pointer shadow-lg"
+          aria-label="Close artwork dialog"
+        >
+          <X className="h-5 w-5" />
+        </button>
 
-        {/* LEFT COLUMN: Modern Framed Artwork Preview with Matte Background */}
-        <div className="relative bg-zinc-950 flex items-center justify-center p-6 md:p-8 overflow-hidden min-h-[340px] md:min-h-[580px] h-full">
+        {/* LEFT COLUMN: Modern Framed Artwork Preview */}
+        <div className="relative bg-zinc-950 flex items-center justify-center p-4 sm:p-6 overflow-hidden h-[260px] sm:h-[320px] md:h-full w-full shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/10">
           {/* Subtle Ambient Glow */}
           <div
             className="absolute inset-0 opacity-20 blur-3xl scale-125 pointer-events-none"
@@ -163,12 +161,12 @@ export function ArtworkModal({
           />
 
           {/* Framed Image */}
-          <div className="relative z-10 max-h-full max-w-full flex items-center justify-center">
+          <div className="relative z-10 w-full h-full flex items-center justify-center p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={getSafeArtworkUrl(artwork.image_url)}
               alt={artwork.title || 'Artwork'}
-              className="max-h-[480px] w-auto max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-300"
+              className="max-h-full max-w-full w-auto h-auto object-contain rounded-xl shadow-2xl transition-transform duration-300 select-none"
               onError={(e) => {
                 const target = e.currentTarget;
                 target.onerror = null;
@@ -178,17 +176,17 @@ export function ArtworkModal({
           </div>
 
           {/* Original Artwork Badge */}
-          <div className="absolute bottom-4 left-4 z-20 pointer-events-none">
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-black/70 backdrop-blur-md text-white/90 border border-white/15 shadow-lg">
+          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 pointer-events-none">
+            <span className="px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-black/70 backdrop-blur-md text-white/90 border border-white/15 shadow-lg">
               Original Artwork
             </span>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Details, Metadata, Comments & WhatsApp Action Button */}
-        <div className="flex flex-col h-full md:max-h-[640px] bg-[#0f172a] md:overflow-hidden">
-          {/* Header Section: Status, Title, Artist, Ref ID, Date, Likes */}
-          <div className="p-5 sm:p-6 border-b border-white/10 space-y-3 shrink-0 bg-[#0f172a] overflow-y-auto max-h-[300px]">
+        {/* RIGHT COLUMN: Details, Metadata, Comments & CTA */}
+        <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#1E1B18] text-slate-900 dark:text-white">
+          {/* Scrollable details & comments container */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             {/* Status Badges & Likes Counter Row */}
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 flex-wrap">
@@ -197,17 +195,17 @@ export function ArtworkModal({
                   return (
                     <>
                       {badgeType === 'FOR_SALE' && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
                           {statusBadge}
                         </span>
                       )}
                       {badgeType === 'BIDDING' && (
-                        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                        <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 rounded-full">
                           {statusBadge}
                         </span>
                       )}
                       {badgeType === 'NOT_FOR_SALE' && (
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
+                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
                           {statusBadge}
                         </span>
                       )}
@@ -245,14 +243,14 @@ export function ArtworkModal({
               const displayPrice = Number(artwork.price || (artwork as any).amount || (artwork as any).price_amount || 0);
               const { badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
               return (
-                <>
+                <div>
                   {badgeType === 'FOR_SALE' && (
-                    <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                    <p className="text-lg font-extrabold text-[#A2694E] dark:text-[#C58B6F]">
                       Price: LKR {displayPrice.toLocaleString()}
                     </p>
                   )}
                   {badgeType === 'BIDDING' && (
-                    <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
+                    <p className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
                       {fallbackDisplayPrice}
                     </p>
                   )}
@@ -261,7 +259,7 @@ export function ArtworkModal({
                       {fallbackDisplayPrice}
                     </p>
                   )}
-                </>
+                </div>
               );
             })()}
 
@@ -320,69 +318,6 @@ export function ArtworkModal({
               )}
             </div>
 
-            {/* Artwork Description explicitly rendered below Title / Artist */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-              <span className="font-semibold block mb-1 text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                Artwork Story &amp; Description
-              </span>
-              {artwork.description ? (
-                <p className="whitespace-pre-line text-slate-800 dark:text-slate-200 text-xs leading-relaxed">
-                  {artwork.description}
-                </p>
-              ) : (
-                <p className="italic text-slate-400 dark:text-slate-500 text-xs">
-                  No description provided for this piece.
-                </p>
-              )}
-              {(artwork.category || artwork.medium || artwork.technique || (artwork.tags && (Array.isArray(artwork.tags) ? artwork.tags.length > 0 : String(artwork.tags).trim().length > 0))) && (
-                <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
-                  <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
-                    {artwork.category && (
-                      <span className="inline-flex items-center gap-1 font-medium">
-                        <Palette className="w-3 h-3 text-amber-500" />
-                        Category: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.category}</span>
-                      </span>
-                    )}
-                    {artwork.medium && (
-                      <span className="inline-flex items-center gap-1 font-medium">
-                        <Tag className="w-3 h-3 text-amber-500" />
-                        Medium: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.medium}</span>
-                      </span>
-                    )}
-                    {artwork.technique && (
-                      <span className="inline-flex items-center gap-1 font-medium">
-                        <Sparkles className="w-3 h-3 text-amber-500" />
-                        Technique: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.technique}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Artwork Tags */}
-                  {(() => {
-                    const rawTags = artwork.tags;
-                    const tagList = Array.isArray(rawTags)
-                      ? rawTags
-                      : typeof rawTags === 'string'
-                      ? rawTags.replace(/[\{\}\"\[\]]/g, '').split(',').map((t: string) => t.trim()).filter(Boolean)
-                      : [];
-                    if (tagList.length === 0) return null;
-                    return (
-                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                        {tagList.map((tag: string, idx: number) => (
-                          <span
-                            key={idx}
-                            className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-
             {/* Full Artist Profile Info Section */}
             {(() => {
               const artistProfile = artwork.profiles;
@@ -417,14 +352,14 @@ export function ArtworkModal({
               const avatar = artistProfile?.avatar_url || (artwork as any).avatar_url || artwork.artist?.avatar_url;
 
               return (
-                <div className="p-3 rounded-xl bg-[#A2694E]/5 dark:bg-[#1E1B18]/60 border border-[#A2694E]/20 dark:border-slate-800 space-y-2">
+                <div className="p-3.5 rounded-xl bg-[#A2694E]/5 dark:bg-white/5 border border-[#A2694E]/20 dark:border-white/10 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#A2694E] dark:text-[#C58B6F] flex items-center gap-1">
                       <User className="w-3 h-3 text-[#8B9B88]" />
                       Artist Profile
                     </span>
                     <Link
-                      href={`/freelancers/${artwork.artist_id}`}
+                      href={`/freelancers/${artwork.artist_id || artwork.user_id}`}
                       onClick={(e) => e.stopPropagation()}
                       className="text-[11px] font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:underline inline-flex items-center gap-1"
                     >
@@ -453,12 +388,12 @@ export function ArtworkModal({
                       </p>
                       <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
                         <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                          <MapPin className="w-2.5 h-2.5 text-[#A2694E] shrink-0" />
                           <span className="truncate">{artistLocation}</span>
                         </span>
                         <span>•</span>
                         <span className="inline-flex items-center gap-1">
-                          <Palette className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                          <Palette className="w-2.5 h-2.5 text-[#A2694E] shrink-0" />
                           <span className="truncate">{artistCategory}</span>
                         </span>
                       </div>
@@ -467,92 +402,155 @@ export function ArtworkModal({
                 </div>
               );
             })()}
-          </div>
 
-          {/* Comments Section (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 min-h-[140px] bg-white dark:bg-slate-900">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <MessageSquare className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
-                Comments &amp; Feedback ({comments?.length || 0})
-              </h3>
+            {/* Artwork Story & Description */}
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
+              <span className="font-semibold block text-[10px] uppercase tracking-wider text-[#A2694E] dark:text-[#C58B6F]">
+                Artwork Story &amp; Description
+              </span>
+              {artwork.description ? (
+                <p className="whitespace-pre-line text-slate-800 dark:text-slate-200 text-xs leading-relaxed">
+                  {artwork.description}
+                </p>
+              ) : (
+                <p className="italic text-slate-400 dark:text-slate-500 text-xs">
+                  No description provided for this piece.
+                </p>
+              )}
+              {(artwork.category || artwork.medium || artwork.technique || (artwork.tags && (Array.isArray(artwork.tags) ? artwork.tags.length > 0 : String(artwork.tags).trim().length > 0))) && (
+                <div className="pt-2 border-t border-slate-200/60 dark:border-white/10 space-y-2">
+                  <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+                    {artwork.category && (
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <Palette className="w-3 h-3 text-[#A2694E]" />
+                        Category: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.category}</span>
+                      </span>
+                    )}
+                    {artwork.medium && (
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <Tag className="w-3 h-3 text-[#A2694E]" />
+                        Medium: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.medium}</span>
+                      </span>
+                    )}
+                    {artwork.technique && (
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <Sparkles className="w-3 h-3 text-[#A2694E]" />
+                        Technique: <span className="text-slate-700 dark:text-slate-300 font-semibold">{artwork.technique}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Artwork Tags */}
+                  {(() => {
+                    const rawTags = artwork.tags;
+                    const tagList = Array.isArray(rawTags)
+                      ? rawTags
+                      : typeof rawTags === 'string'
+                      ? rawTags.replace(/[\{\}\"\[\]]/g, '').split(',').map((t: string) => t.trim()).filter(Boolean)
+                      : [];
+                    if (tagList.length === 0) return null;
+                    return (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        {tagList.map((tag: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#8B9B88]/15 text-[#8B9B88] border border-[#8B9B88]/30"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
-            {isLoadingComments ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
-                <Loader2 className="h-6 w-6 animate-spin text-amber-500 dark:text-amber-400 mb-2" />
-                <p className="text-xs">Loading comments...</p>
+            {/* Comments Section */}
+            <div className="pt-2 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-[#A2694E] dark:text-[#C58B6F]" />
+                  Comments &amp; Feedback ({comments?.length || 0})
+                </h3>
               </div>
-            ) : comments && comments.length > 0 ? (
-              <div className="space-y-3 bg-white dark:bg-slate-900">
-                {comments.map((c: any) => {
-                  const isCurrentUser = currentUserId && c.userId === currentUserId;
-                  const initial = (c.userName || 'A').charAt(0).toUpperCase();
 
-                  return (
-                    <div
-                      key={c.id}
-                      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1 hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="relative h-6 w-6 rounded-full overflow-hidden flex-shrink-0">
-                            {c.userAvatar && isValidImageUrl(c.userAvatar) ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={c.userAvatar}
-                                alt={c.userName}
-                                className="h-full w-full rounded-full object-cover border border-slate-200 dark:border-slate-700"
-                                onError={(e) => {
-                                  const target = e.currentTarget;
-                                  target.onerror = null;
-                                  target.style.display = 'none';
-                                  const fallback = target.nextElementSibling as HTMLElement | null;
-                                  if (fallback) fallback.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              className="h-full w-full rounded-full bg-gradient-to-tr from-[#A2694E] to-[#8B5A3C] flex items-center justify-center text-[10px] font-bold text-white uppercase"
-                              style={{ display: (c.userAvatar && isValidImageUrl(c.userAvatar)) ? 'none' : 'flex' }}
-                            >
-                              {initial}
+              {isLoadingComments ? (
+                <div className="flex flex-col items-center justify-center py-6 text-slate-500 dark:text-slate-400">
+                  <Loader2 className="h-5 w-5 animate-spin text-[#A2694E] mb-2" />
+                  <p className="text-xs">Loading comments...</p>
+                </div>
+              ) : comments && comments.length > 0 ? (
+                <div className="space-y-2.5">
+                  {comments.map((c: any) => {
+                    const isCurrentUser = currentUserId && c.userId === currentUserId;
+                    const initial = (c.userName || 'A').charAt(0).toUpperCase();
+
+                    return (
+                      <div
+                        key={c.id}
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1 hover:border-slate-300 dark:hover:border-white/20 transition-colors shadow-sm"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="relative h-6 w-6 rounded-full overflow-hidden flex-shrink-0">
+                              {c.userAvatar && isValidImageUrl(c.userAvatar) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={c.userAvatar}
+                                  alt={c.userName}
+                                  className="h-full w-full rounded-full object-cover border border-slate-200 dark:border-white/10"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    target.onerror = null;
+                                    target.style.display = 'none';
+                                    const fallback = target.nextElementSibling as HTMLElement | null;
+                                    if (fallback) fallback.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className="h-full w-full rounded-full bg-[#A2694E] flex items-center justify-center text-[10px] font-bold text-white uppercase"
+                                style={{ display: (c.userAvatar && isValidImageUrl(c.userAvatar)) ? 'none' : 'flex' }}
+                              >
+                                {initial}
+                              </div>
                             </div>
+                            <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                              {c.userName}
+                              {isCurrentUser && (
+                                <span className="ml-1.5 text-[10px] text-[#A2694E] dark:text-[#C58B6F] font-normal">
+                                  (You)
+                                </span>
+                              )}
+                            </span>
                           </div>
-                          <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                            {c.userName}
-                            {isCurrentUser && (
-                              <span className="ml-1.5 text-[10px] text-[#A2694E] dark:text-[#C58B6F] font-normal">
-                                (You)
-                              </span>
-                            )}
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400" suppressHydrationWarning>
+                            {formatCommentDate(c.createdAt)}
                           </span>
                         </div>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400" suppressHydrationWarning>
-                          {formatCommentDate(c.createdAt)}
-                        </span>
+                        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pl-8 break-words whitespace-pre-line">
+                          {c.comment}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pl-8 break-words whitespace-pre-line">
-                        {c.comment}
-                      </p>
-                    </div>
-                  );
-                })}
-                <div ref={commentsEndRef} />
-              </div>
-            ) : (
-              <div className="text-center py-8 px-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
-                <MessageSquare className="h-7 w-7 text-slate-400 dark:text-slate-600 mx-auto mb-1.5" />
-                <p className="text-xs font-medium text-slate-800 dark:text-slate-200">No comments yet</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Be the first to share your thoughts on this artwork!
-                </p>
-              </div>
-            )}
+                    );
+                  })}
+                  <div ref={commentsEndRef} />
+                </div>
+              ) : (
+                <div className="text-center py-6 px-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10">
+                  <MessageSquare className="h-6 w-6 text-slate-400 dark:text-slate-600 mx-auto mb-1.5" />
+                  <p className="text-xs font-medium text-slate-800 dark:text-slate-200">No comments yet</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Be the first to share your thoughts on this artwork!
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Bottom Area: WhatsApp Inquiry / Action Button & Comment Input */}
-          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shrink-0">
+          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#1E1B18] space-y-3 shrink-0">
             {/* WhatsApp Action Button */}
             {(() => {
               const { badgeType } = getArtworkPricingDisplay(artwork);
@@ -596,7 +594,7 @@ export function ArtworkModal({
                   placeholder="Leave a comment on this piece..."
                   maxLength={1000}
                   disabled={addCommentMutation.isPending}
-                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#A2694E]/60 transition-colors"
+                  className="flex-1 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#A2694E] transition-colors"
                 />
                 <button
                   type="submit"

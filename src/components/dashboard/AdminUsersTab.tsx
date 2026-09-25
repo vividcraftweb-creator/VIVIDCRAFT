@@ -64,7 +64,7 @@ export default function AdminUsersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 items-center mb-4 pt-1">
         {['ALL', 'CLIENT', 'FREELANCER', 'ADMIN'].map((r) => (
           <button
             key={r}
