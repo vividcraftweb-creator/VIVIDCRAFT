@@ -14,6 +14,9 @@ import {
   Plus,
   ArrowRight,
   Eye,
+  Sparkles,
+  Globe,
+  Palette,
 } from 'lucide-react';
 import TeamCollaboration from '../collaboration/TeamCollaboration';
 import EnhancedProjectManagement from '../project/EnhancedProjectManagement';
@@ -133,6 +136,50 @@ export default function ClientDashboard() {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     });
+  const { data: userProfile } = trpc.profiles.getMyProfile.useQuery({}, {
+    enabled: isAuthenticated,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  const userName = useMemo(() => {
+    // 1. Try first_name / last_name from profiles table
+    const p = userProfile as any;
+    const fName = p?.firstName || p?.first_name || '';
+    const lName = p?.lastName || p?.last_name || '';
+    const combined = [fName, lName].filter(Boolean).join(' ').trim();
+    if (combined && combined.toLowerCase() !== 'artist' && combined.toLowerCase() !== 'user') {
+      return combined;
+    }
+
+    // 2. Try full_name or display_name
+    const fullName = p?.full_name || p?.display_name || p?.name;
+    if (fullName && fullName.toLowerCase() !== 'artist' && fullName.toLowerCase() !== 'user') {
+      return fullName;
+    }
+
+    // 3. Try session user metadata or name
+    const sessionUser = (session as any)?.session?.user || (session as any)?.user;
+    const metaFullName = (sessionUser as any)?.user_metadata?.full_name || (sessionUser as any)?.user_metadata?.name;
+    if (metaFullName && metaFullName.toLowerCase() !== 'artist' && metaFullName.toLowerCase() !== 'user') {
+      return metaFullName;
+    }
+
+    if (sessionUser?.name && sessionUser.name.toLowerCase() !== 'artist' && sessionUser.name.toLowerCase() !== 'user') {
+      return sessionUser.name;
+    }
+
+    // 4. Try email prefix or fallback
+    if (sessionUser?.email) {
+      const emailPrefix = sessionUser.email.split('@')[0];
+      if (emailPrefix) {
+        return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+      }
+    }
+
+    return 'Collector';
+  }, [userProfile, session]);
 
   const [forceReady, setForceReady] = useState(false);
   useEffect(() => {
@@ -237,13 +284,15 @@ export default function ClientDashboard() {
     if (showSkeleton) {
       return (
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 animate-pulse">
-                <div className="h-4 bg-slate-800 rounded mb-2"></div>
-                <div className="h-8 bg-slate-800 rounded"></div>
-              </div>
-            ))}
+          <div className="rounded-2xl sm:rounded-3xl border border-[#E6E0D5] dark:border-white/10 bg-[#F8F6F1] dark:bg-[#1E1B18] p-6 sm:p-8 lg:p-10 animate-pulse">
+            <div className="h-6 w-52 bg-[#A2694E]/20 rounded-full mb-6" />
+            <div className="h-9 w-72 bg-slate-300 dark:bg-slate-800 rounded-xl mb-3" />
+            <div className="h-5 w-96 max-w-full bg-slate-200 dark:bg-slate-800/60 rounded-lg mb-8" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-[#E6E0D5] dark:border-white/10">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-28 bg-white/70 dark:bg-white/[0.03] rounded-2xl border border-[#E6E0D5] dark:border-white/10" />
+              ))}
+            </div>
           </div>
         </div>
       );
@@ -251,79 +300,114 @@ export default function ClientDashboard() {
 
     return (
       <>
-        {/* Stats Overview */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-blue-500/40 transition-all duration-300 group shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-200 text-sm font-medium uppercase tracking-wide">Commissions &amp; Projects Posted</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
-                {totalJobsCount}
-              </p>
-              <p className="text-blue-300 text-sm mt-1 flex items-center gap-1">
-                <Briefcase className="h-4 w-4" />
-                {openJobCount} open commissions live
-              </p>
-            </div>
-            <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
-              <Briefcase className="h-6 w-6 sm:h-8 sm:w-8 text-blue-300" />
-            </div>
-          </div>
-        </div>
+        {/* Prominent Trilingual Welcome Hero Banner */}
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-[#E6E0D5] dark:border-white/10 bg-gradient-to-br from-[#F8F6F1] via-[#FAF8F5] to-[#F1ECE1] dark:from-[#1E1B18] dark:via-[#1A1715] dark:to-[#241F1B] p-6 sm:p-8 lg:p-10 shadow-lg shadow-[#A2694E]/5 dark:shadow-none transition-all duration-300">
+          {/* Subtle Ambient Decorative Glows */}
+          <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#A2694E]/10 dark:bg-[#A2694E]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/10 dark:bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition-all duration-300 group shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-emerald-200 text-sm font-medium uppercase tracking-wide">Artist Proposals Received</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
-                {proposalsReceivedCount}
-              </p>
-              <p className="text-emerald-300 text-sm mt-1 flex items-center gap-1">
-                <Mail className="h-4 w-4" />
-                Across your active listings
-              </p>
+          {/* Top Row: Portal Badge & Quick Action Buttons */}
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#A2694E]/10 dark:bg-[#A2694E]/25 border border-[#A2694E]/30 text-[#A2694E] dark:text-[#E8B89B] text-xs font-semibold uppercase tracking-wider w-fit">
+              <Sparkles className="h-3.5 w-3.5 text-[#A2694E] dark:text-[#E8B89B]" />
+              <span>Cinnamon Gallery • Client Portal</span>
             </div>
-            <div className="p-2 sm:p-3 bg-emerald-500/20 rounded-xl group-hover:bg-emerald-500/30 transition-colors">
-              <Mail className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-300" />
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all duration-300 group shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-amber-200 text-sm font-medium uppercase tracking-wide">Pending Decisions</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
-                {pendingProposalsCount}
-              </p>
-              <p className="text-amber-300 text-sm mt-1 flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                Awaiting your review
-              </p>
-            </div>
-            <div className="p-2 sm:p-3 bg-amber-500/20 rounded-xl group-hover:bg-amber-500/30 transition-colors">
-              <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-amber-300" />
+            <div className="flex items-center gap-3">
+              <Link href="/gallery">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl border-[#E6E0D5] dark:border-white/15 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-slate-800 dark:text-white text-xs font-semibold px-3.5 py-2 shadow-sm flex items-center gap-1.5 transition-all"
+                >
+                  <Palette className="h-3.5 w-3.5 text-[#A2694E] dark:text-[#E8B89B]" />
+                  <span>Explore Gallery</span>
+                </Button>
+              </Link>
+              <Link href="/jobs/create">
+                <Button
+                  size="sm"
+                  className="rounded-xl bg-[#A2694E] hover:bg-[#8F5B42] text-white text-xs font-semibold px-3.5 py-2 shadow-sm shadow-[#A2694E]/25 flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Post Commission</span>
+                </Button>
+              </Link>
             </div>
           </div>
-        </div>
 
-        <div className="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all duration-300 group shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-amber-200 text-sm font-medium uppercase tracking-wide">Artist Consultations</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white mt-1 transition-all duration-500 group-hover:translate-y-0.5">
-                {interviewsInProgressCount}
-              </p>
-              <p className="text-amber-300 text-sm mt-1 flex items-center gap-1">
-                <UserCheck className="h-4 w-4" />
-                Active artist inquiries
-              </p>
+          {/* Main Hero Header */}
+          <div className="relative z-10 max-w-3xl mb-8">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+              Welcome back, <span className="text-[#A2694E] dark:text-[#E8B89B]">{userName}</span>!
+            </h2>
+            <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-300 font-medium">
+              Explore unique Sri Lankan artwork, connect with master creators, and manage your bespoke art commissions seamlessly.
+            </p>
+          </div>
+
+          {/* Trilingual Greeting Cards Grid */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-[#E6E0D5] dark:border-white/10">
+            {/* English Greeting Card */}
+            <div className="flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-[#1E1B18]/70 border border-[#E6E0D5] dark:border-white/10 hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/50 transition-all duration-300 shadow-sm group">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#A2694E]/10 dark:bg-[#A2694E]/20 text-[#A2694E] dark:text-[#E8B89B] border border-[#A2694E]/20 text-[11px] font-bold uppercase tracking-wider">
+                    <Globe className="h-3 w-3" />
+                    English
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-400">EN</span>
+                </div>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-relaxed">
+                  Welcome back, <span className="font-semibold text-slate-900 dark:text-white">{userName}</span>! Explore unique artwork &amp; manage your commissions.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center text-xs text-[#A2694E] dark:text-[#E8B89B] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                <span>View commissions</span>
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </div>
             </div>
-            <div className="p-2 sm:p-3 bg-amber-500/20 rounded-xl group-hover:bg-amber-500/30 transition-colors">
-              <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-amber-300" />
+
+            {/* Sinhala Greeting Card */}
+            <div className="flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-[#1E1B18]/70 border border-[#E6E0D5] dark:border-white/10 hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/50 transition-all duration-300 shadow-sm group">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#A2694E]/10 dark:bg-[#A2694E]/20 text-[#A2694E] dark:text-[#E8B89B] border border-[#A2694E]/20 text-[11px] font-bold uppercase tracking-wider">
+                    <Globe className="h-3 w-3" />
+                    සිංහල
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-400">SI</span>
+                </div>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-relaxed">
+                  සාදරයෙන් පිළිගනිමු, <span className="font-semibold text-slate-900 dark:text-white">{userName}</span>! අපගේ කලා නිර්මාණ නරඹන්න සහ ඔබගේ ඇණවුම් කළමනාකරණය කරන්න.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center text-xs text-[#A2694E] dark:text-[#E8B89B] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                <span>ඇණවුම් පරීක්ෂා කරන්න</span>
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </div>
+            </div>
+
+            {/* Tamil Greeting Card */}
+            <div className="flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-[#1E1B18]/70 border border-[#E6E0D5] dark:border-white/10 hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/50 transition-all duration-300 shadow-sm group">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#A2694E]/10 dark:bg-[#A2694E]/20 text-[#A2694E] dark:text-[#E8B89B] border border-[#A2694E]/20 text-[11px] font-bold uppercase tracking-wider">
+                    <Globe className="h-3 w-3" />
+                    தமிழ்
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-400">TA</span>
+                </div>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-relaxed">
+                  வரவேற்கிறோம், <span className="font-semibold text-slate-900 dark:text-white">{userName}</span>! கலைப் படைப்புகளை ஆராய்ந்து உங்கள் ஆர்டர்களை நிர்வகிக்கவும்.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center text-xs text-[#A2694E] dark:text-[#E8B89B] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                <span>ஆர்டர்களை நிர்வகிக்க</span>
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </div>
             </div>
           </div>
-        </div>
         </div>
 
       {/* AI Recommendations Section */}

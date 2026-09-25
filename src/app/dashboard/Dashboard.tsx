@@ -493,14 +493,25 @@ export default function Dashboard({ session }: { session: AppSession }) {
             {currentView !== 'messages' && (
               <div className="hidden lg:block mb-6 lg:mb-8 max-w-7xl mx-auto">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">
-                      {role === 'CLIENT' ? 'Client Dashboard' : 'Artist Dashboard'}
-                    </h1>
-                    <p className="text-slate-400 text-lg">
-                      Welcome back, {greetingName}
-                    </p>
-                  </div>
+                  {role === 'CLIENT' ? (
+                    <div>
+                      <h1 className="text-2xl font-bold text-white tracking-tight">
+                        Client Portal
+                      </h1>
+                      <p className="text-slate-400 text-sm">
+                        Curate, commission, and collect fine Sri Lankan art
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <h1 className="text-3xl font-bold text-white mb-2">
+                        Artist Dashboard
+                      </h1>
+                      <p className="text-slate-400 text-lg">
+                        Welcome back, {greetingName}
+                      </p>
+                    </div>
+                  )}
                   <NotificationDropdown />
                 </div>
               </div>
