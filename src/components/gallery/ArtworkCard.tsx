@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, memo, startTransition } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Heart, ZoomIn, Star, User, Trash2 } from 'lucide-react';
+import { Heart, ZoomIn, Star, User, Trash2, ArrowRight, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
@@ -157,6 +157,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   const [likesCount, setLikesCount] = useState<number>(initialLikesCount);
   const [isLiked, setIsLiked] = useState<boolean>(Boolean(artwork.isLiked));
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const utils = trpc.useUtils();
 
@@ -287,10 +288,10 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
 
   return (
     <>
-      <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10 flex flex-col">
+      <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10 flex flex-col self-start w-full">
         {/* Artwork Image Container */}
         <div
-          className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
+          className="relative aspect-square w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
           onClick={() => setIsZoomOpen(true)}
         >
           {/* Blurred Backdrop Layer */}
@@ -351,22 +352,80 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
           </div>
         </div>
 
-        {/* Clean Artwork Details Panel */}
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/60 p-3.5 flex flex-col flex-1 justify-between gap-2.5">
-          <div className="space-y-2">
+        {/* Compact Default Footer: Likes counter on left, See More expand toggle on right */}
+        <div className="px-3 py-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+          {/* Interactive Like Action & Real Likes Count */}
+          <button
+            type="button"
+            onClick={handleLikeClick}
+            className={`inline-flex items-center gap-1.5 transition-colors cursor-pointer group/like select-none ${
+              isLiked
+                ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
+            }`}
+            title={isLiked ? 'Unlike this artwork' : 'Like this artwork'}
+            aria-label={`${displayLikes} likes`}
+          >
+            <Heart
+              className={`w-3.5 h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
+                isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500 group-hover/like:text-rose-500'
+              }`}
+            />
+            <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+              {displayLikes}
+            </span>
+          </button>
+
+          {/* Action Row: Delete (if authorized) + See More Toggle */}
+          <div className="flex items-center gap-1.5">
+            {canDelete && (
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                aria-label="Delete Post"
+                title="Delete Post"
+                className="inline-flex items-center justify-center p-1 rounded-full text-xs font-medium text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 transition-colors cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded((prev) => !prev);
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:text-[#8B5A3C] dark:hover:text-[#DDA78D] transition-colors py-0.5 px-2 rounded hover:bg-[#A2694E]/10 cursor-pointer"
+              aria-label={isExpanded ? 'See Less' : 'See More'}
+              title={isExpanded ? 'Collapse details' : 'Expand details'}
+            >
+              <span>{isExpanded ? 'See Less' : 'See More'}</span>
+              {isExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 transition-transform" />
+              ) : (
+                <ArrowRight className="w-3.5 h-3.5 transition-transform" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Expandable Revealed Details Section */}
+        {isExpanded && (
+          <div className="bg-slate-50/70 dark:bg-slate-900/90 border-t border-slate-100 dark:border-slate-800/80 p-3 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
             {/* Real Artist Avatar + Artist Name */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               {showAvatarImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarUrl!}
                   alt={displayName}
-                  className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm"
+                  className="w-7 h-7 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm"
                   onError={() => setAvatarError(true)}
                 />
               ) : (
                 <div
-                  className="w-8 h-8 rounded-full bg-[#A2694E]/15 border border-[#A2694E]/30 flex items-center justify-center text-xs font-bold text-[#A2694E] dark:text-[#C58B6F] shrink-0 select-none"
+                  className="w-7 h-7 rounded-full bg-[#A2694E]/15 border border-[#A2694E]/30 flex items-center justify-center text-xs font-bold text-[#A2694E] dark:text-[#C58B6F] shrink-0 select-none"
                   aria-label={displayName}
                 >
                   {artistInitial}
@@ -383,139 +442,70 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
             {/* Dynamic Artwork Title */}
             <h3
               onClick={() => startTransition(() => setIsZoomOpen(true))}
-              className="font-semibold text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-1 cursor-pointer transition-colors leading-snug"
+              className="font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-1 cursor-pointer transition-colors leading-snug"
               title={artworkTitle}
             >
               {artworkTitle}
             </h3>
 
-            {/* Visible Metrics Row: Real Likes Count & Actual Total Reviews from Database */}
-            <div className="flex items-center gap-3 text-xs pt-1 select-none">
-              {/* Interactive Like Action & Real Likes Count */}
-              <button
-                type="button"
-                onClick={handleLikeClick}
-                className={`inline-flex items-center gap-1.5 transition-colors cursor-pointer group/like ${
-                  isLiked
-                    ? 'text-rose-600 dark:text-rose-400 font-semibold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
-                }`}
-                title={isLiked ? 'Unlike this artwork' : 'Like this artwork'}
-                aria-label={`${displayLikes} likes`}
-              >
-                <Heart
-                  className={`w-3.5 h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
-                    isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500 group-hover/like:text-rose-500'
-                  }`}
-                />
-                <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                  {displayLikes}
+            {/* Pricing & Actions Row */}
+            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
+                  {badgeType === 'FOR_SALE' ? 'Price' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Status'}
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {displayLikes === 1 ? 'like' : 'likes'}
+                <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {badgeType === 'FOR_SALE'
+                    ? `LKR ${displayPrice.toLocaleString()}`
+                    : fallbackDisplayPrice}
                 </span>
-              </button>
+              </div>
 
-              <span className="text-slate-300 dark:text-slate-700 font-light">•</span>
+              <div className="flex items-center gap-1.5">
+                {/* Direct WhatsApp Action for For Sale & Bidding */}
+                {(() => {
+                  if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
+                  const rawPhone = artwork.profiles?.phone || artwork.user?.phone || artwork.artist_phone || '94783813833';
+                  const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
 
-              {/* Dynamic Reviews Metric from Database */}
-              <div
-                className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400"
-                title={`${actualRatingsCount} total reviews`}
-              >
-                <Star
-                  className={`w-3.5 h-3.5 ${
-                    actualRatingsCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'
-                  }`}
-                />
-                {actualRatingsCount > 0 ? (
-                  <>
-                    <span className="font-bold text-slate-900 dark:text-white text-xs">
-                      {Number(actualAverageRating).toFixed(1)}
-                    </span>
-                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      ({actualRatingsCount} {actualRatingsCount === 1 ? 'review' : 'reviews'})
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-slate-400 dark:text-slate-500 text-[11px]">
-                    0 reviews
-                  </span>
-                )}
+                  const title = artworkTitle;
+                  const rawRef = artwork.ref_id || artwork.art_code || artwork.id || 'N/A';
+                  const refId = String(rawRef).replace(/^#/, '');
+                  const artistFullName = artistName;
+
+                  const rawPrice = Number(artwork.price || artwork.price_amount || artwork.amount || artwork.starting_bid || 0);
+                  const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
+
+                  const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${artistFullName}. Listed Price: ${priceDisplay}.`;
+                  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
+
+                  return (
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
+                      title="Ask about price or buy on WhatsApp"
+                    >
+                      Ask Price (WhatsApp)
+                    </a>
+                  );
+                })()}
+
+                {/* Details CTA */}
+                <button
+                  type="button"
+                  onClick={() => startTransition(() => setIsZoomOpen(true))}
+                  aria-label="View artwork details and comments"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-[#A2694E] dark:hover:text-[#C58B6F] bg-slate-100 dark:bg-slate-800 hover:bg-[#A2694E]/10 dark:hover:bg-[#A2694E]/20 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
+                >
+                  <ZoomIn className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                  <span>Details</span>
+                </button>
               </div>
             </div>
           </div>
-
-          {/* Pricing & Actions Footer */}
-          <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
-                {badgeType === 'FOR_SALE' ? 'Price' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Status'}
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                {badgeType === 'FOR_SALE'
-                  ? `LKR ${displayPrice.toLocaleString()}`
-                  : fallbackDisplayPrice}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              {/* Direct WhatsApp Action for For Sale & Bidding */}
-              {(() => {
-                if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
-                const rawPhone = artwork.profiles?.phone || artwork.user?.phone || artwork.artist_phone || '94783813833';
-                const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
-
-                const title = artworkTitle;
-                const rawRef = artwork.ref_id || artwork.art_code || artwork.id || 'N/A';
-                const refId = String(rawRef).replace(/^#/, '');
-                const artistFullName = artistName;
-
-                const rawPrice = Number(artwork.price || artwork.price_amount || artwork.amount || artwork.starting_bid || 0);
-                const priceDisplay = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
-
-                const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${artistFullName}. Listed Price: ${priceDisplay}.`;
-                const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
-
-                return (
-                  <a
-                    href={waUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
-                    title="Ask about price or buy on WhatsApp"
-                  >
-                    Ask Price (WhatsApp)
-                  </a>
-                );
-              })()}
-
-              {/* Expand / Details CTA */}
-              <button
-                type="button"
-                onClick={() => startTransition(() => setIsZoomOpen(true))}
-                aria-label="View artwork details and comments"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-[#A2694E] dark:hover:text-[#C58B6F] bg-slate-100 dark:bg-slate-800 hover:bg-[#A2694E]/10 dark:hover:bg-[#A2694E]/20 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
-              >
-                <ZoomIn className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                <span>Details</span>
-              </button>
-
-              {/* Owner / Admin Delete Button */}
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={handleDeleteClick}
-                  aria-label="Delete Post"
-                  title="Delete Post"
-                  className="inline-flex items-center justify-center p-1 rounded-full text-xs font-medium text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Lightbox / Expanded Artwork Modal with Comments */}

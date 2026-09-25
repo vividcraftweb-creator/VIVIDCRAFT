@@ -27,6 +27,8 @@ import {
   Gavel,
   Filter,
   Palette,
+  ArrowRight,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,6 +114,7 @@ export default function GalleryPageClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArtwork, setSelectedArtwork] = useState<RankedArtwork | null>(null);
   const [hoveredRating, setHoveredRating] = useState<{ [key: string]: number }>({});
+  const [expandedCardIds, setExpandedCardIds] = useState<Record<string, boolean>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -1338,15 +1341,17 @@ export default function GalleryPageClient() {
                 artwork.averageRating > 0;
               const { statusBadge, displayPrice, badgeType } = getArtworkPricingDisplay(artwork);
 
+              const isCardExpanded = Boolean(expandedCardIds[artwork.id]);
+
               return (
                 <div
                   key={artwork.id}
-                  className="group relative bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-2xl dark:hover:shadow-amber-500/10 flex flex-col hover:-translate-y-0.5"
+                  className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-400/80 dark:hover:border-amber-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-amber-500/10 flex flex-col hover:-translate-y-1 self-start w-full"
                 >
                   {/* Artwork Image Container with Smart Matte Framing */}
                   <div
                     onClick={() => setSelectedArtwork(artwork)}
-                    className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
+                    className="relative aspect-square w-full overflow-hidden bg-slate-900/5 dark:bg-slate-950 cursor-pointer select-none"
                   >
                     {/* Background blurred layer using the SAME artwork image URL */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1428,9 +1433,56 @@ export default function GalleryPageClient() {
                     </button>
                   </div>
 
-                  {/* Clean Artwork Details Panel */}
-                  <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/60 p-3.5 flex flex-col flex-1 justify-between gap-2.5">
-                    <div className="space-y-2">
+                  {/* Compact Default Bar: Likes counter on left, See More expand toggle on right */}
+                  <div className="px-3 py-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                    {/* Interactive Like Action & Real Likes Count */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleLike(artwork, e)}
+                      className={`inline-flex items-center gap-1.5 transition-colors cursor-pointer group/like select-none ${
+                        artwork.isLiked
+                          ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
+                      }`}
+                      title={artwork.isLiked ? 'Unlike this artwork' : 'Like this artwork'}
+                      aria-label={`${artwork.likesCount} likes`}
+                    >
+                      <Heart
+                        className={`w-3.5 h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
+                          artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500 group-hover/like:text-rose-500'
+                        }`}
+                      />
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                        {artwork.likesCount}
+                      </span>
+                    </button>
+
+                    {/* See More Toggle */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedCardIds((prev) => ({
+                          ...prev,
+                          [artwork.id]: !prev[artwork.id],
+                        }));
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:text-[#8B5A3C] dark:hover:text-[#DDA78D] transition-colors py-0.5 px-2 rounded hover:bg-[#A2694E]/10 cursor-pointer"
+                      aria-label={isCardExpanded ? 'See Less' : 'See More'}
+                      title={isCardExpanded ? 'Collapse details' : 'Expand details'}
+                    >
+                      <span>{isCardExpanded ? 'See Less' : 'See More'}</span>
+                      {isCardExpanded ? (
+                        <ChevronUp className="w-3.5 h-3.5 transition-transform" />
+                      ) : (
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Expandable Revealed Details Section */}
+                  {isCardExpanded && (
+                    <div className="bg-slate-50/70 dark:bg-slate-900/90 border-t border-slate-100 dark:border-slate-800/80 p-3 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
                       {/* Artist Row: Avatar + Name */}
                       <div className="flex items-center gap-2">
                         <Link
@@ -1458,124 +1510,70 @@ export default function GalleryPageClient() {
                       {/* Dynamic Artwork Title */}
                       <h3
                         onClick={() => setSelectedArtwork(artwork)}
-                        className="font-medium text-slate-900 dark:text-slate-100 text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-2 cursor-pointer transition-colors leading-snug"
+                        className="font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm hover:text-amber-600 dark:hover:text-amber-400 line-clamp-1 cursor-pointer transition-colors leading-snug"
                         title={artworkTitle}
                       >
                         {artworkTitle}
                       </h3>
 
-                      {/* Visible Metrics Row: Real Likes Count & Actual Total Reviews from Database */}
-                      <div className="flex items-center gap-3 text-xs pt-1 select-none">
-                        {/* Interactive Like Action & Real Likes Count */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleLike(artwork, e)}
-                          className={`inline-flex items-center gap-1.5 transition-colors cursor-pointer group/like ${
-                            artwork.isLiked
-                              ? 'text-rose-600 dark:text-rose-400 font-semibold'
-                              : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
-                          }`}
-                          title={artwork.isLiked ? 'Unlike this artwork' : 'Like this artwork'}
-                          aria-label={`${artwork.likesCount} likes`}
-                        >
-                          <Heart
-                            className={`w-3.5 h-3.5 transition-transform group-hover/like:scale-110 active:scale-125 ${
-                              artwork.isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 dark:text-slate-500 group-hover/like:text-rose-500'
-                            }`}
-                          />
-                          <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                            {artwork.likesCount}
+                      {/* Pricing & Actions Row */}
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
+                            {badgeType === 'FOR_SALE' ? 'Price' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Status'}
                           </span>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {artwork.likesCount === 1 ? 'like' : 'likes'}
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                            {badgeType === 'FOR_SALE'
+                              ? `LKR ${displayPrice.toLocaleString()}`
+                              : fallbackDisplayPrice}
                           </span>
-                        </button>
+                        </div>
 
-                        <span className="text-slate-300 dark:text-slate-700 font-light">•</span>
+                        <div className="flex items-center gap-1.5">
+                          {/* Direct WhatsApp Action for For Sale & Bidding */}
+                          {(() => {
+                            if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
 
-                        {/* Dynamic Reviews Metric from Database */}
-                        <div
-                          className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400"
-                          title={`${artwork.ratingsCount} total reviews`}
-                        >
-                          <Star
-                            className={`w-3.5 h-3.5 ${
-                              artwork.ratingsCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'
-                            }`}
-                          />
-                          {artwork.ratingsCount > 0 ? (
-                            <>
-                              <span className="font-bold text-slate-900 dark:text-white text-xs">
-                                {Number(artwork.averageRating).toFixed(1)}
-                              </span>
-                              <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                                ({artwork.ratingsCount} {artwork.ratingsCount === 1 ? 'review' : 'reviews'})
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-500 text-[11px]">
-                              0 reviews
-                            </span>
-                          )}
+                            const rawPhone = artwork.profiles?.phone || artwork.user?.phone || (artwork as any).artist_phone || '94783813833';
+                            const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
+
+                            const title = artwork.title || 'Artwork';
+                            const rawRef = (artwork as any).ref_id || (artwork as any).art_code || artwork.id || 'N/A';
+                            const refId = String(rawRef).replace(/^#/, '');
+                            const cardArtist = dynamicArtistName;
+
+                            const rawPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || (artwork as any).starting_bid || 0);
+                            const priceText = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
+
+                            const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${cardArtist}. Listed Price: ${priceText}.`;
+                            const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
+
+                            return (
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
+                                title="Ask about price or buy on WhatsApp"
+                              >
+                                Ask Price (WhatsApp)
+                              </a>
+                            );
+                          })()}
+
+                          {/* Details Modal CTA */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedArtwork(artwork)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-[#A2694E] dark:hover:text-[#C58B6F] bg-slate-100 dark:bg-slate-800 hover:bg-[#A2694E]/10 dark:hover:bg-[#A2694E]/20 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
+                          >
+                            <Maximize2 className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                            <span>Details</span>
+                          </button>
                         </div>
                       </div>
                     </div>
-
-                    {/* Bottom Row: Pricing & Actions */}
-                    <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block leading-tight">
-                          {badgeType === 'FOR_SALE' ? 'Starting at' : badgeType === 'BIDDING' ? 'Starting Bid' : 'Portfolio'}
-                        </span>
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          {displayPrice}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {/* WhatsApp Inquiry Action for Fixed Price & For Sale Artworks */}
-                        {(() => {
-                          if (badgeType !== 'FOR_SALE' && badgeType !== 'BIDDING') return null;
-
-                          const rawPhone = artwork.profiles?.phone || artwork.user?.phone || (artwork as any).artist_phone || '94783813833';
-                          const cleanPhone = String(rawPhone).replace(/\D/g, '') || '94783813833';
-
-                          const title = artwork.title || 'Artwork';
-                          const rawRef = (artwork as any).ref_id || (artwork as any).art_code || artwork.id || 'N/A';
-                          const refId = String(rawRef).replace(/^#/, '');
-                          const cardArtist = dynamicArtistName;
-
-                          const rawPrice = Number(artwork.price || (artwork as any).price_amount || (artwork as any).amount || (artwork as any).starting_bid || 0);
-                          const priceText = rawPrice > 0 ? `LKR ${rawPrice.toLocaleString()}` : 'Not For Sale / Contact for Price';
-
-                          const fullMessage = `Hi, I am interested in buying "${title}" (Ref ID: #${refId}) by ${cardArtist}. Listed Price: ${priceText}.`;
-                          const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(fullMessage)}`;
-
-                          return (
-                            <a
-                              href={waUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#A2694E] hover:bg-[#8B5A3C] text-white shadow-sm transition-colors cursor-pointer"
-                              title="Ask about price or buy on WhatsApp"
-                            >
-                              Ask Price (WhatsApp)
-                            </a>
-                          );
-                        })()}
-
-                        {/* Details Modal CTA */}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedArtwork(artwork)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer"
-                        >
-                          <Maximize2 className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                          <span>Details</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
