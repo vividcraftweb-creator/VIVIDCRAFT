@@ -301,8 +301,8 @@ const Header = () => {
                     <LanguageSwitcher />
                   </div>
 
-                  {/* Notification Dropdown (Desktop) */}
-                  <div className="hidden lg:block">
+                  {/* Notification Dropdown (Desktop & Mobile) */}
+                  <div className="flex items-center">
                     <NotificationDropdown />
                   </div>
 
@@ -408,13 +408,22 @@ const Header = () => {
                         )}
 
                         {isBuyerOrClient && (
-                          <DropdownMenuItem
-                            className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
-                            onClick={() => router.push('/profile')}
-                          >
-                            <UserIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                            <span>Profile</span>
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/dashboard/client')}
+                            >
+                              <Briefcase className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Dashboard</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-3 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-white"
+                              onClick={() => router.push('/profile')}
+                            >
+                              <UserIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                              <span>Profile</span>
+                            </DropdownMenuItem>
+                          </>
                         )}
 
                         <DropdownMenuSeparator className="bg-slate-200 dark:bg-white/20" />
@@ -543,14 +552,24 @@ const Header = () => {
                   )}
 
                   {isBuyerOrClient && (
-                    <Link
-                      href="/profile"
-                      onClick={closeMobileMenu}
-                      className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
-                    >
-                      <UserIcon className="h-5 w-5" />
-                      <span>Profile</span>
-                    </Link>
+                    <>
+                      <Link
+                        href="/dashboard/client"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
+                      >
+                        <Briefcase className="h-5 w-5" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <Link
+                        href="/profile"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3 text-xl font-medium text-white/70 hover:text-white transition-all hover:translate-x-2"
+                      >
+                        <UserIcon className="h-5 w-5" />
+                        <span>Profile</span>
+                      </Link>
+                    </>
                   )}
 
                   <Link

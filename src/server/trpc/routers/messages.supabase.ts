@@ -257,18 +257,52 @@ export const messagesRouter = router({
       // Create in-app notification
       try {
         const adminSupabase = createAdminClient();
-        const { data: sender } = await adminSupabase.from('User').select('Profile(firstName, lastName)').eq('id', ctx.session.user.id).single();
-        const senderProfile = Array.isArray(sender?.Profile) ? sender.Profile[0] : sender?.Profile;
-        const senderName = senderProfile
-          ? `${senderProfile.firstName || ''} ${senderProfile.lastName || ''}`.trim() || ctx.session.user.email || 'Someone'
-          : ctx.session.user.email || 'Someone';
-        await adminSupabase.from('Notification').insert({
+        let senderName = (ctx.session.user as any)?.name || ctx.session.user.email || 'Someone';
+
+        // Try getting sender name from profiles
+        try {
+          const { data: profile } = await adminSupabase
+            .from('profiles')
+            .select('first_name, last_name, full_name, artist_name')
+            .eq('id', ctx.session.user.id)
+            .maybeSingle();
+
+          if (profile) {
+            const resolved = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim() || profile.full_name || profile.artist_name;
+            if (resolved) senderName = resolved;
+          }
+        } catch {
+          // fallback to User table if profiles query fails
+          try {
+            const { data: sender } = await adminSupabase.from('User').select('Profile(firstName, lastName)').eq('id', ctx.session.user.id).single();
+            const senderProfile = Array.isArray(sender?.Profile) ? sender.Profile[0] : sender?.Profile;
+            if (senderProfile) {
+              const uName = `${senderProfile.firstName || ''} ${senderProfile.lastName || ''}`.trim();
+              if (uName) senderName = uName;
+            }
+          } catch {}
+        }
+
+        // Try PascalCase Notification table first
+        const notifPayload = {
           userId: input.receiverId,
           type: 'MESSAGE_RECEIVED',
           message: `New message from ${senderName}`,
           link: '/dashboard?tab=messages',
           read: false,
-        });
+        };
+        const { error: notifErr } = await adminSupabase.from('Notification').insert(notifPayload);
+
+        // Fallback to lowercase snake_case notifications table
+        if (notifErr) {
+          await adminSupabase.from('notifications').insert({
+            user_id: input.receiverId,
+            type: 'MESSAGE_RECEIVED',
+            message: `New message from ${senderName}`,
+            link: '/dashboard?tab=messages',
+            is_read: false,
+          });
+        }
       } catch (notificationError) {
         console.error('Failed to create message notification:', notificationError);
       }

@@ -33,6 +33,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     {
       enabled: isQueryEnabled,
       retry: false,
+      refetchInterval: 8000,
     }
   );
 
@@ -44,6 +45,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     {
       enabled: isQueryEnabled,
       retry: false,
+      refetchInterval: 8000,
     }
   );
 

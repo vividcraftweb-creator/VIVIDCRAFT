@@ -107,6 +107,47 @@ export const notificationsRouter = router({
               }
             } catch {}
           }
+          // Also fetch recent unread chat messages from 'messages' table
+          try {
+            const { data: unreadMsgs } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('receiver_id', userId)
+              .eq('is_read', false)
+              .order('created_at', { ascending: false })
+              .limit(limit);
+
+            if (unreadMsgs && unreadMsgs.length > 0) {
+              const senderIds = Array.from(new Set(unreadMsgs.map((m: any) => m.sender_id).filter(Boolean)));
+              const senderMap = new Map<string, any>();
+              if (senderIds.length > 0) {
+                const { data: senders } = await supabase
+                  .from('profiles')
+                  .select('id, first_name, last_name, full_name, artist_name, email')
+                  .in('id', senderIds);
+                (senders || []).forEach((s: any) => senderMap.set(s.id, s));
+              }
+
+              const chatNotifs = unreadMsgs.map((m: any) => {
+                const s = senderMap.get(m.sender_id);
+                const sName = [s?.first_name, s?.last_name].filter(Boolean).join(' ').trim() || s?.full_name || s?.artist_name || s?.email?.split('@')[0] || 'Someone';
+                const contentPreview = m.content && m.content.length > 70 ? m.content.substring(0, 70) + '...' : (m.content || 'New chat message');
+                return {
+                  id: `msg-${m.id}`,
+                  userId: userId,
+                  type: 'MESSAGE_RECEIVED' as const,
+                  message: `${sName}: ${contentPreview}`,
+                  link: '/dashboard?tab=messages',
+                  read: false,
+                  createdAt: m.created_at || new Date().toISOString(),
+                };
+              });
+
+              items = [...chatNotifs, ...items];
+            }
+          } catch (chatFetchErr) {
+            console.warn('Error fetching unread chat messages for notifications:', chatFetchErr);
+          }
         } catch (adminClientErr) {
           console.warn('Supabase client error in getNotifications:', adminClientErr);
         }
@@ -143,11 +184,27 @@ export const notificationsRouter = router({
         if (!userId) return { success: false };
         const supabase = createAdminClient();
 
+        if (input.notificationId.startsWith('msg-')) {
+          const msgId = input.notificationId.replace('msg-', '');
+          await supabase
+            .from('messages')
+            .update({ is_read: true })
+            .eq('id', msgId)
+            .eq('receiver_id', userId);
+          return { success: true };
+        }
+
         await supabase
           .from('Notification')
           .update({ read: true })
           .eq('id', input.notificationId)
           .eq('userId', userId);
+
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('id', input.notificationId)
+          .eq('user_id', userId);
 
         return { success: true };
       } catch (err) {
@@ -168,6 +225,18 @@ export const notificationsRouter = router({
         .eq('userId', userId)
         .eq('read', false);
 
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+
+      await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('receiver_id', userId)
+        .eq('is_read', false);
+
       return { success: true };
     } catch (err) {
       console.warn('markAllAsRead error handled gracefully:', err);
@@ -184,7 +253,8 @@ export const notificationsRouter = router({
           return { notifications: [], unreadCount: 0, count: 0 };
         }
 
-        let count = 0;
+        let notifCount = 0;
+        let msgCount = 0;
         try {
           const supabase = createAdminClient();
 
@@ -196,11 +266,11 @@ export const notificationsRouter = router({
               .eq('read', false);
 
             if (!error && typeof c === 'number') {
-              count = c;
+              notifCount = c;
             }
           } catch {}
 
-          if (count === 0) {
+          if (notifCount === 0) {
             try {
               const { count: c, error } = await supabase
                 .from('notifications')
@@ -209,15 +279,29 @@ export const notificationsRouter = router({
                 .eq('read', false);
 
               if (!error && typeof c === 'number') {
-                count = c;
+                notifCount = c;
               }
             } catch {}
           }
+
+          // Count unread chat messages
+          try {
+            const { count: mc, error } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('receiver_id', userId)
+              .eq('is_read', false);
+
+            if (!error && typeof mc === 'number') {
+              msgCount = mc;
+            }
+          } catch {}
         } catch (e) {
           console.warn('Supabase admin client error in getUnreadNotificationCount:', e);
         }
 
-        return { notifications: [], unreadCount: count, count };
+        const totalCount = notifCount + msgCount;
+        return { notifications: [], unreadCount: totalCount, count: totalCount };
       } catch (err) {
         console.error('getUnreadNotificationCount error caught gracefully:', err);
         return { notifications: [], unreadCount: 0, count: 0 };
@@ -233,7 +317,8 @@ export const notificationsRouter = router({
           return { notifications: [], unreadCount: 0, count: 0 };
         }
 
-        let count = 0;
+        let notifCount = 0;
+        let msgCount = 0;
         try {
           const supabase = createAdminClient();
 
@@ -245,11 +330,11 @@ export const notificationsRouter = router({
               .eq('read', false);
 
             if (!error && typeof c === 'number') {
-              count = c;
+              notifCount = c;
             }
           } catch {}
 
-          if (count === 0) {
+          if (notifCount === 0) {
             try {
               const { count: c, error } = await supabase
                 .from('notifications')
@@ -258,15 +343,29 @@ export const notificationsRouter = router({
                 .eq('read', false);
 
               if (!error && typeof c === 'number') {
-                count = c;
+                notifCount = c;
               }
             } catch {}
           }
+
+          // Count unread chat messages
+          try {
+            const { count: mc, error } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('receiver_id', userId)
+              .eq('is_read', false);
+
+            if (!error && typeof mc === 'number') {
+              msgCount = mc;
+            }
+          } catch {}
         } catch (e) {
           console.warn('Supabase admin client error in getUnreadCount:', e);
         }
 
-        return { notifications: [], unreadCount: count, count };
+        const totalCount = notifCount + msgCount;
+        return { notifications: [], unreadCount: totalCount, count: totalCount };
       } catch (err) {
         console.error('getUnreadCount error caught gracefully:', err);
         return { notifications: [], unreadCount: 0, count: 0 };
@@ -281,7 +380,19 @@ export const notificationsRouter = router({
         if (!userId) {
           return { notifications: [], unreadCount: 0, count: 0 };
         }
-        return { notifications: [], unreadCount: 0, count: 0 };
+        const supabase = createAdminClient();
+        let notifCount = 0;
+        let msgCount = 0;
+        try {
+          const { count: c } = await supabase.from('Notification').select('*', { count: 'exact', head: true }).eq('userId', userId).eq('read', false);
+          if (typeof c === 'number') notifCount = c;
+        } catch {}
+        try {
+          const { count: mc } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('receiver_id', userId).eq('is_read', false);
+          if (typeof mc === 'number') msgCount = mc;
+        } catch {}
+        const total = notifCount + msgCount;
+        return { notifications: [], unreadCount: total, count: total };
       } catch {
         return { notifications: [], unreadCount: 0, count: 0 };
       }

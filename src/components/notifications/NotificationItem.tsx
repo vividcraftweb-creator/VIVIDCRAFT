@@ -94,17 +94,17 @@ export function NotificationItem({
         onClick={handleClick}
         className={cn(
           'p-3 flex items-start gap-3 cursor-pointer transition-colors',
-          !notification.read && 'bg-blue-500/10',
-          !selectable && 'hover:bg-white/5'
+          !notification.read ? 'bg-[#A2694E]/10 dark:bg-[#A2694E]/20' : 'hover:bg-slate-100 dark:hover:bg-white/5',
+          selectable && 'hover:bg-slate-100 dark:hover:bg-white/5'
         )}
       >
         <NotificationIcon type={notification.type} size={20} className="flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white line-clamp-2">{notification.message}</p>
-          <p className="text-xs text-gray-400 mt-1">{timeAgo}</p>
+          <p className="text-sm font-medium text-slate-800 dark:text-slate-100 line-clamp-2">{notification.message}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{timeAgo}</p>
         </div>
         {!notification.read && (
-          <div className="h-2 w-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5" />
+          <div className="h-2 w-2 bg-[#A2694E] rounded-full flex-shrink-0 mt-1.5" />
         )}
       </div>
     );
