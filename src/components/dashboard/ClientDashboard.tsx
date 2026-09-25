@@ -18,19 +18,21 @@ import {
   Globe,
   Palette,
 } from 'lucide-react';
-import TeamCollaboration from '../collaboration/TeamCollaboration';
-import EnhancedProjectManagement from '../project/EnhancedProjectManagement';
-import PrioritySupport from '../support/PrioritySupport';
-import ProposalTrackingCRM from '../crm/ProposalTrackingCRM';
-import MyJobsView from './MyJobsView';
-import MessagesView from './MessagesView';
-import WebhooksView from './WebhooksView';
-import ApiKeysView from './ApiKeysView';
-import ProfileEditView from './ProfileEditView';
-import ProfileView from './ProfileView';
-import SettingsView from './SettingsView';
-import AnalyticsView from './AnalyticsView';
-import SubscriptionView from './SubscriptionView';
+import dynamic from 'next/dynamic';
+
+const TeamCollaboration = dynamic(() => import('../collaboration/TeamCollaboration'), { ssr: false });
+const EnhancedProjectManagement = dynamic(() => import('../project/EnhancedProjectManagement'), { ssr: false });
+const PrioritySupport = dynamic(() => import('../support/PrioritySupport'), { ssr: false });
+const ProposalTrackingCRM = dynamic(() => import('../crm/ProposalTrackingCRM'), { ssr: false });
+const MyJobsView = dynamic(() => import('./MyJobsView'), { ssr: false });
+const MessagesView = dynamic(() => import('./MessagesView'), { ssr: false });
+const WebhooksView = dynamic(() => import('./WebhooksView'), { ssr: false });
+const ApiKeysView = dynamic(() => import('./ApiKeysView'), { ssr: false });
+const ProfileEditView = dynamic(() => import('./ProfileEditView'), { ssr: false });
+const ProfileView = dynamic(() => import('./ProfileView'), { ssr: false });
+const SettingsView = dynamic(() => import('./SettingsView'), { ssr: false });
+const AnalyticsView = dynamic(() => import('./AnalyticsView'), { ssr: false });
+const SubscriptionView = dynamic(() => import('./SubscriptionView'), { ssr: false });
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';

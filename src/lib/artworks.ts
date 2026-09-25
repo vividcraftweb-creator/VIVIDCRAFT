@@ -247,6 +247,8 @@ export async function getArtworks(options?: {
 }): Promise<ArtworkWithProfile[]> {
   const supabase = options?.supabaseClient || createClient();
 
+  const ARTWORK_COLUMNS = 'id, artist_id, user_id, user_name, title, description, category, medium, technique, tags, image_url, created_at, selling_mode, pricing_type, price, amount, starting_bid, art_code, badge_title, gig_title, base_rating, review_count_text';
+
   let data: any[] | null = null;
 
   // 1. Primary: relational query joining profiles via artist_id foreign key constraint
@@ -254,7 +256,7 @@ export async function getArtworks(options?: {
     const res = await supabase
       .from('artworks')
       .select(`
-        *,
+        ${ARTWORK_COLUMNS},
         profiles:artist_id (
           id,
           first_name,
@@ -275,7 +277,7 @@ export async function getArtworks(options?: {
       const res = await supabase
         .from('artworks')
         .select(`
-          *,
+          ${ARTWORK_COLUMNS},
           profiles:user_id (
             id,
             first_name,
@@ -297,7 +299,7 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles(*)')
+        .select(`${ARTWORK_COLUMNS}, profiles(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)`)
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {
@@ -311,7 +313,7 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles!artworks_artist_id_fkey(id, first_name, last_name, avatar_url, full_name, display_name, username, email, artist_name, bio)')
+        .select(`${ARTWORK_COLUMNS}, profiles!artworks_artist_id_fkey(id, first_name, last_name, avatar_url, full_name, display_name, username, email, artist_name, bio)`)
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {
@@ -325,7 +327,7 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)')
+        .select(`${ARTWORK_COLUMNS}, profiles(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)`)
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {
@@ -338,7 +340,7 @@ export async function getArtworks(options?: {
   if (!data) {
     const { data: arts } = await supabase
       .from('artworks')
-      .select('*')
+      .select(ARTWORK_COLUMNS)
       .order('created_at', { ascending: false });
 
     if (!arts || arts.length === 0) return [];

@@ -84,7 +84,7 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
         const supabase = createClient();
         const { data, error } = await supabase
           .from('advertisements')
-          .select('*')
+          .select('id, badge, title, subtitle, cta_text, link_url, target_route, image_url, accent, offer_code, is_active, display_order, created_at')
           .order('created_at', { ascending: false });
 
         if (!error && Array.isArray(data) && isMounted) {
@@ -133,7 +133,7 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
           }
         }
       } catch (e) {
-        console.warn('Failed to load advertisements:', e);
+        // Fallback handled gracefully
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -301,7 +301,9 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
             src={single.image_url}
             alt={single.title || 'Special Offer'}
             className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
+            loading="eager"
+            fetchPriority="high"
+            decoding="sync"
           />
           <div className="absolute bottom-3 left-3 z-20">
             <button
@@ -361,7 +363,9 @@ export function HomeHeroSlider({ className = '' }: HomeHeroSliderProps) {
                 src={banner.image_url}
                 alt={banner.title || 'Special Offer'}
                 className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                loading="lazy"
+                loading={idx < 2 ? 'eager' : 'lazy'}
+                fetchPriority={idx < 2 ? 'high' : 'auto'}
+                decoding="async"
               />
 
               {/* Retain ONLY the neat "Get Offer →" button positioned at bottom-left */}

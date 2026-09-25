@@ -63,11 +63,9 @@ export function HomeHero() {
 
           if (!error && Array.isArray(data) && data.length > 0) {
             profilesData = data;
-          } else if (error) {
-            console.warn('HomeHero profiles select notice (handled):', error.message);
           }
         } catch (dbErr) {
-          console.warn('Direct profiles query error (handled):', dbErr);
+          // Handled gracefully
         }
 
         // 2. Fallback query via internal API if direct select returned no data or errored
@@ -81,7 +79,7 @@ export function HomeHero() {
               }
             }
           } catch (apiErr) {
-            console.warn('Fallback /api/admin/artists/order error (handled):', apiErr);
+            // Handled gracefully
           }
         }
 
@@ -97,7 +95,7 @@ export function HomeHero() {
               profilesData = data;
             }
           } catch (broadErr) {
-            console.warn('Broad profiles fallback error (handled):', broadErr);
+            // Handled gracefully
           }
         }
 
@@ -222,7 +220,7 @@ export function HomeHero() {
             const { data, error } = await supabase
               .from('artworks')
               .select(`
-                *,
+                id, artist_id, user_id, title, description, category, medium, technique, tags, image_url, created_at, likes_count, rating_score, pricing_type, price, amount,
                 profiles:artist_id (
                   id,
                   first_name,
@@ -243,7 +241,7 @@ export function HomeHero() {
               const { data, error } = await supabase
                 .from('artworks')
                 .select(`
-                  *,
+                  id, artist_id, user_id, title, description, category, medium, technique, tags, image_url, created_at, likes_count, rating_score, pricing_type, price, amount,
                   profiles:user_id (
                     id,
                     first_name,
@@ -264,7 +262,7 @@ export function HomeHero() {
             try {
               const { data, error } = await supabase
                 .from('artworks')
-                .select('*')
+                .select('id, artist_id, user_id, title, description, category, medium, technique, tags, image_url, created_at, likes_count, rating_score, pricing_type, price, amount')
                 .order('created_at', { ascending: false })
                 .limit(8);
               if (!error && data && data.length > 0) {
@@ -525,6 +523,8 @@ export function HomeHero() {
                             src={bannerUrl}
                             alt={`${name} banner`}
                             className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                            loading="lazy"
+                            decoding="async"
                             onError={(e) => {
                               (e.currentTarget as HTMLElement).style.display = 'none';
                             }}
@@ -551,6 +551,8 @@ export function HomeHero() {
                             src={avatar}
                             alt={name}
                             className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                             onError={(e) => {
                               (e.target as HTMLElement).style.display = 'none';
                             }}

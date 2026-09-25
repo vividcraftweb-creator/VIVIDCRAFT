@@ -130,7 +130,6 @@ export default function GalleryView() {
         try {
           const supabase = createClient();
           await supabase.storage.from('artworks').remove([uploadedFilePath]);
-          console.log('Cleaned up orphan storage file after upload error:', uploadedFilePath);
         } catch (cleanupErr) {
           console.error('Storage cleanup failure:', cleanupErr);
         }

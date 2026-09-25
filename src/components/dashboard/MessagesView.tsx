@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, MessageSquare, Clock, MoreHorizontal, RotateCw, Search, Copy, Check, CheckCheck, Tag, X, ArrowLeft } from 'lucide-react';
+import { Send, MessageSquare, MoreHorizontal, RotateCw, Search, Copy, Check, CheckCheck, Tag, X, ArrowLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,6 +111,8 @@ export default function MessagesView() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasManuallyClosedChatRef = useRef(false);
+  const prevRecipientIdRef = useRef<string | null>(recipientId);
 
   // Chat Code search & copy state
   const [chatCodeSearch, setChatCodeSearch] = useState('');
@@ -402,10 +404,40 @@ export default function MessagesView() {
     }
   }, [selectedUser, currentUserId]);
 
-  // Auto-select user from URL parameter or force auto-select first valid recipient for Client
+  // Handle mobile Back arrow click to return to conversation list
+  const handleBackToList = () => {
+    hasManuallyClosedChatRef.current = true;
+    setSelectedUser(null);
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('recipientId');
+        url.searchParams.delete('userId');
+        url.searchParams.delete('action');
+        window.history.replaceState({}, '', url.toString());
+      } catch (err) {
+        console.warn('Failed to clear search params:', err);
+      }
+    }
+  };
+
+  // Auto-select user from URL parameter or force auto-select first valid recipient for Client on desktop
   useEffect(() => {
+    // If URL recipientId changed externally to a new recipient, allow selection
+    if (recipientId && recipientId !== prevRecipientIdRef.current) {
+      hasManuallyClosedChatRef.current = false;
+      prevRecipientIdRef.current = recipientId;
+    } else if (!recipientId) {
+      prevRecipientIdRef.current = null;
+    }
+
     if (selectedUser && currentUserId && selectedUser.id === currentUserId) {
       setSelectedUser(null);
+      return;
+    }
+
+    // If user explicitly clicked back on mobile / closed the chat, do not auto-reopen
+    if (hasManuallyClosedChatRef.current) {
       return;
     }
 
@@ -434,7 +466,16 @@ export default function MessagesView() {
       }
     }
 
-    // When a Client opens Messages, force auto-select to the FIRST valid conversation recipient where recipient.id !== currentUser.id
+    // Determine if we are on a mobile viewport (< 768px)
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+
+    // On mobile screens, when no chat is explicitly selected (or on initial load with no recipient in URL),
+    // ensure the conversation list is visible, rather than automatically forcing open any conversation.
+    if (isMobile) {
+      return;
+    }
+
+    // On desktop screens, if no conversation is currently selected, auto-select the FIRST valid recipient
     if (!selectedUser || selectedUser.id === currentUserId) {
       if (allContacts.length > 0) {
         const firstValid = allContacts.find(c => c.id && c.id !== currentUserId);
@@ -454,6 +495,7 @@ export default function MessagesView() {
 
   // Explicit contact selection handler setting both activeRecipientId and activeRecipientProfile
   const handleSelectContact = async (contact: ContactForChat) => {
+    hasManuallyClosedChatRef.current = false;
     setSelectedUser(contact);
     const targetId = contact?.id;
     if (!targetId || targetId === currentUserId) return;
@@ -808,6 +850,26 @@ export default function MessagesView() {
     }
   };
 
+  const formatMessageTime = (dateString?: string | Date) => {
+    if (!dateString) return '';
+    try {
+      const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+      if (!date || isNaN(date.getTime())) return '';
+
+      if (isToday(date)) {
+        return format(date, 'h:mm a');
+      } else if (isYesterday(date)) {
+        return `Yesterday, ${format(date, 'h:mm a')}`;
+      } else if (isThisWeek(date)) {
+        return format(date, 'EEE, h:mm a');
+      } else {
+        return format(date, 'MMM d, h:mm a');
+      }
+    } catch {
+      return '';
+    }
+  };
+
   return (
     <div className="h-[calc(100dvh-130px)] sm:h-[calc(100vh-180px)] flex flex-col gap-2.5 sm:gap-4 min-h-0 overflow-hidden w-full">
       {/* 7-Day Retention Notice Banner */}
@@ -1014,11 +1076,11 @@ export default function MessagesView() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedUser(null)}
-                          className="md:hidden h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800 shrink-0"
+                          onClick={handleBackToList}
+                          className="md:hidden h-9 w-9 p-0 text-slate-300 hover:text-white hover:bg-slate-800 shrink-0 rounded-lg active:scale-95 transition-transform"
                           title="Back to conversations"
                         >
-                          <ArrowLeft className="h-4 w-4" />
+                          <ArrowLeft className="h-5 w-5" />
                         </Button>
 
                         <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/50 shrink-0">
@@ -1155,38 +1217,43 @@ export default function MessagesView() {
                       const isOwn = senderId === currentUserId;
                       const isPending = Boolean(chat.pending);
                       const timestamp = chat.created_at || chat.createdAt;
+                      const isRead = Boolean(chat.is_read || chat.isRead);
                       return (
                         <div
                           key={chat.id || index}
                           className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                         >
-                          <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                          <div className={`max-w-[80%] sm:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
                             <div
-                              className={`p-3 rounded-lg transition-all ${
+                              className={`p-3 rounded-2xl transition-all shadow-sm ${
                                 isOwn
-                                  ? 'bg-primary text-white'
-                                  : 'bg-slate-800 text-slate-100 border border-slate-700'
+                                  ? 'bg-primary text-white rounded-br-xs'
+                                  : 'bg-slate-800 text-slate-100 border border-slate-700/80 rounded-bl-xs'
                               } ${isPending ? 'opacity-70 ring-1 ring-white/20' : ''}`}
                             >
-                              <p className="break-words">{chat.content}</p>
+                              <p className="break-words text-sm sm:text-base leading-relaxed">{chat.content}</p>
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <div className={`flex items-center gap-1.5 text-xs text-slate-400 select-none ${isOwn ? 'justify-end pr-1' : 'justify-start pl-1'}`}>
                               {timestamp && (
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {formatTimestamp(timestamp)}
+                                <span>
+                                  {formatMessageTime(timestamp)}
                                 </span>
                               )}
-                              {isPending ? (
-                                <span className="text-[10px] text-amber-400 font-medium animate-pulse flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Sending...
-                                </span>
-                              ) : isOwn ? (
-                                <span className="flex items-center text-emerald-400 ml-0.5" title="Dispatched to Supabase">
-                                  <CheckCheck className="h-3.5 w-3.5" />
-                                </span>
-                              ) : null}
+                              {isOwn && (
+                                isPending ? (
+                                  <span className="text-[10px] text-amber-400 font-medium animate-pulse">
+                                    Sending...
+                                  </span>
+                                ) : isRead ? (
+                                  <span className="flex items-center text-emerald-400 ml-0.5" title="Read">
+                                    <CheckCheck className="h-3.5 w-3.5" />
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center text-slate-400 ml-0.5" title="Sent">
+                                    <Check className="h-3.5 w-3.5" />
+                                  </span>
+                                )
+                              )}
                             </div>
                           </div>
                         </div>

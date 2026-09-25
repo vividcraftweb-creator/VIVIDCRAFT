@@ -631,6 +631,8 @@ function JobDetailClient() {
                                   src={resolvedSrc}
                                   alt={`${job.title} - Project image ${index + 1}`}
                                   fill
+                                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
+                                  loading="lazy"
                                   className="object-cover transition duration-500 group-hover:scale-105"
                                 />
                               </div>

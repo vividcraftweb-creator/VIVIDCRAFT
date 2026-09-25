@@ -19,7 +19,7 @@ export const artworksRouter = router({
 
       const { data: artworks, error } = await supabase
         .from('artworks')
-        .select('*')
+        .select('id, artist_id, title, description, category, medium, technique, tags, image_url, created_at, badge_title, gig_title, base_rating, review_count_text, selling_mode, pricing_type, price, amount, starting_bid, art_code')
         .eq('artist_id', artistId)
         .order('created_at', { ascending: false });
 
@@ -49,7 +49,7 @@ export const artworksRouter = router({
       // Fetch artist profile
       const { data: myProfile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, full_name, artist_name, avatar_url, role')
         .eq('id', artistId)
         .maybeSingle();
 
@@ -460,7 +460,7 @@ export const artworksRouter = router({
 
         const { data: artworks, error } = await supabase
           .from('artworks')
-          .select('*')
+          .select('id, artist_id, title, description, category, medium, technique, tags, image_url, created_at, badge_title, gig_title, base_rating, review_count_text, selling_mode, pricing_type, price, amount, starting_bid, art_code')
           .eq('artist_id', artistId)
           .order('created_at', { ascending: false });
 
@@ -677,7 +677,7 @@ export const artworksRouter = router({
         if (!artworks || artworks.length === 0) {
           const fallbackRes = await supabase
             .from('artworks')
-            .select('*')
+            .select('id, artist_id, title, description, category, medium, technique, tags, image_url, created_at, badge_title, gig_title, base_rating, review_count_text, selling_mode, pricing_type, price, amount, starting_bid, art_code')
             .order('created_at', { ascending: false });
           if (fallbackRes.data && fallbackRes.data.length > 0) {
             artworks = fallbackRes.data;
@@ -689,7 +689,7 @@ export const artworksRouter = router({
           try {
             const fallback = await supabase
               .from('Artwork')
-              .select('*')
+              .select('id, artistId, title, imageUrl, createdAt, selling_mode, sellingMode, price, starting_bid, startingBid, art_code, artCode')
               .order('createdAt', { ascending: false });
             if (fallback.data && fallback.data.length > 0) {
               artworks = fallback.data.map((a: any) => ({
@@ -1066,7 +1066,7 @@ export const artworksRouter = router({
 
         const { data: comments, error } = await supabase
           .from('artwork_comments')
-          .select('*')
+          .select('id, artwork_id, user_id, content, created_at')
           .eq('artwork_id', artworkId)
           .order('created_at', { ascending: true });
 
@@ -1209,7 +1209,7 @@ export const artworksRouter = router({
         let reviewsData: any[] = [];
         const { data: reviews, error } = await supabase
           .from('reviews')
-          .select('*')
+          .select('id, artist_id, client_id, rating, comment, review_text, created_at')
           .eq('artist_id', artistId)
           .order('created_at', { ascending: false });
 
@@ -1219,7 +1219,7 @@ export const artworksRouter = router({
           // Fallback check on artist_reviews if reviews was empty
           const { data: fallbackReviews } = await supabase
             .from('artist_reviews')
-            .select('*')
+            .select('id, artist_id, client_id, rating, comment, review_text, created_at')
             .eq('artist_id', artistId)
             .order('created_at', { ascending: false });
           if (Array.isArray(fallbackReviews)) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, memo } from 'react';
 import {
   Search,
   Shield,
@@ -105,7 +105,7 @@ interface FilterContentProps {
   totalActiveFilters: number;
 }
 
-function FilterContent({
+const FilterContent = memo(function FilterContent({
   availableStyles,
   selectedStyles,
   toggleStyle,
@@ -358,7 +358,7 @@ function FilterContent({
       </div>
     </div>
   );
-}
+});
 
 export default function FreelancersPageClient({
   initialProfiles = [],
@@ -424,7 +424,7 @@ export default function FreelancersPageClient({
       try {
         const { data: artists, error } = await supabase
           .from('profiles')
-          .select('*, art_styles, art_specialties, services_offered, location, address')
+          .select('id, user_id, first_name, last_name, full_name, display_name, username, email, role, user_type, account_type, avatar_url, profile_picture, banner_url, title, professional_title, bio, description, skills, mediums, specialties, services, art_styles, art_specialties, services_offered, display_order, is_verified, is_featured, location, address, available_for_commissions, whatsapp_number, rating, reviews_count')
           .or('role.eq.ARTIST,role.eq.artist')
           .order('display_order', { ascending: true });
 
@@ -436,7 +436,7 @@ export default function FreelancersPageClient({
           setProfiles(mapped);
         }
       } catch (err) {
-        console.error('Error fetching profiles from client:', err);
+        // Handled gracefully
       } finally {
         setLoading(false);
       }
@@ -496,44 +496,44 @@ export default function FreelancersPageClient({
   }, [profiles]);
 
   // Category selection toggle handlers: immediately updates state arrays to trigger instant re-filtering
-  const toggleStyle = (val: string) => {
+  const toggleStyle = useCallback((val: string) => {
     setSelectedStyles((prev) =>
       prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
     );
-  };
+  }, []);
 
-  const toggleSpecialty = (val: string) => {
+  const toggleSpecialty = useCallback((val: string) => {
     setSelectedSpecialties((prev) =>
       prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
     );
-  };
+  }, []);
 
-  const toggleLocation = (val: string) => {
+  const toggleLocation = useCallback((val: string) => {
     setSelectedLocations((prev) =>
       prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
     );
-  };
+  }, []);
 
-  const toggleService = (val: string) => {
+  const toggleService = useCallback((val: string) => {
     setSelectedServices((prev) =>
       prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
     );
-  };
+  }, []);
 
-  const toggleSection = (section: 'styles' | 'specialties' | 'locations' | 'services') => {
+  const toggleSection = useCallback((section: 'styles' | 'specialties' | 'locations' | 'services') => {
     setOpenSections((prev) => ({
       ...prev,
       [section]: !prev[section],
     }));
-  };
+  }, []);
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setSelectedStyles([]);
     setSelectedSpecialties([]);
     setSelectedLocations([]);
     setSelectedServices([]);
     setSearchQuery('');
-  };
+  }, []);
 
   const totalActiveFilters =
     selectedStyles.length + selectedSpecialties.length + selectedLocations.length + selectedServices.length;

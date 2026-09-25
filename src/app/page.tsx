@@ -1,7 +1,12 @@
 import { Metadata } from 'next';
 import { createPageMetadata } from '@/lib/seo-metadata';
+import dynamic from 'next/dynamic';
 import { HomeHero } from '@/components/landing/HomeHero';
-import { FeaturedCrew } from '@/components/FeaturedCrew';
+
+const FeaturedCrew = dynamic(() => import('@/components/FeaturedCrew'), {
+  ssr: true,
+  loading: () => <div className="w-full py-16 bg-slate-50/70 dark:bg-slate-950 animate-pulse" />,
+});
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Home',

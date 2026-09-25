@@ -40,10 +40,20 @@ import { useRouter } from 'next/navigation';
 import type { AppSession } from '@/types/session';
 import { getProfilePictureUrl } from '@/lib/profile-helpers';
 
-import ArtistDashboard from '@/components/dashboard/ArtistDashboard';
-import ClientDashboard from '@/components/dashboard/ClientDashboard';
-import MessagesView from '@/components/dashboard/MessagesView';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardLayout';
+
+const ArtistDashboard = dynamic(() => import('@/components/dashboard/ArtistDashboard'), {
+  loading: () => <DashboardSkeleton />,
+  ssr: false,
+});
+const ClientDashboard = dynamic(() => import('@/components/dashboard/ClientDashboard'), {
+  loading: () => <DashboardSkeleton />,
+  ssr: false,
+});
+const MessagesView = dynamic(() => import('@/components/dashboard/MessagesView'), {
+  loading: () => <DashboardSkeleton />,
+  ssr: false,
+});
 const GalleryView = dynamic(() => import('@/components/dashboard/GalleryView'), {
   loading: () => <div className="text-white p-8 animate-pulse">Loading gallery...</div>,
   ssr: false,

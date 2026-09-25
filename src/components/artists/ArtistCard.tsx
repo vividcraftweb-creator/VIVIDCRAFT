@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { MapPin, CheckCircle, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -66,53 +66,56 @@ export interface ArtistCardProps {
   profile?: ArtistProfile;
 }
 
-export default function ArtistCard({ artist: propArtist, profile: propProfile }: ArtistCardProps) {
+export function ArtistCardComponent({ artist: propArtist, profile: propProfile }: ArtistCardProps) {
   const artist = propArtist || propProfile;
   const [imgError, setImgError] = useState(false);
   const [discoveredAvatar, setDiscoveredAvatar] = useState<string | null>(null);
 
-  if (!artist) return null;
+  const artistId = artist?.id || artist?.userId || '';
+  const firstName = artist?.first_name || artist?.firstName || '';
+  const lastName = artist?.last_name || artist?.lastName || '';
+  const email = artist?.email || artist?.businessEmail || artist?.business_email || '';
 
-  const artistId = artist.id || artist.userId || '';
-  const firstName = artist.first_name || artist.firstName || '';
-  const lastName = artist.last_name || artist.lastName || '';
-  const email = artist.email || artist.businessEmail || artist.business_email || '';
-
-  let displayName = [firstName, lastName].filter(Boolean).join(' ').trim();
-  if (
-    firstName.toLowerCase().includes('studio1') ||
-    email.toLowerCase().includes('studio1.foreignbusiness') ||
-    (firstName.toLowerCase().startsWith('studio') && !lastName)
-  ) {
-    displayName = 'studio One';
-  } else if (!displayName) {
-    displayName = artist.full_name || artist.name || artist.username || 'Artist';
-  }
-
-  const professionalTitle = artist.title || artist.professional_title || '';
-  const bio = artist.bio || artist.description || '';
-
-  const skills: string[] = parseDisplayTags(artist.skills);
-  const styles: string[] = parseDisplayTags(artist.art_styles);
-  const specialties: string[] = parseDisplayTags(artist.art_specialties || artist.specialties);
-  const services: string[] = parseDisplayTags(artist.services_offered || artist.services);
-  const mediums: string[] = parseDisplayTags(artist.mediums);
-
-  // Combine categories cleanly preserving Title Casing
-  const seenTags = new Set<string>();
-  const categoryPills: string[] = [];
-
-  [...styles, ...skills, ...mediums, ...specialties, ...services].forEach((tag) => {
-    const cleanTag = tag.trim();
-    const lowerKey = cleanTag.toLowerCase();
-    if (cleanTag && !seenTags.has(lowerKey)) {
-      seenTags.add(lowerKey);
-      categoryPills.push(cleanTag);
+  const displayName = useMemo(() => {
+    if (!artist) return 'Artist';
+    let name = [firstName, lastName].filter(Boolean).join(' ').trim();
+    if (
+      firstName.toLowerCase().includes('studio1') ||
+      email.toLowerCase().includes('studio1.foreignbusiness') ||
+      (firstName.toLowerCase().startsWith('studio') && !lastName)
+    ) {
+      return 'studio One';
+    } else if (!name) {
+      return artist.full_name || artist.name || artist.username || 'Artist';
     }
-  });
+    return name;
+  }, [artist, firstName, lastName, email]);
 
-  const hasCategories = categoryPills.length > 0;
-  const displayPills = hasCategories ? categoryPills : ['Visual Artist', 'Custom Art'];
+  const professionalTitle = artist?.title || artist?.professional_title || '';
+  const bio = artist?.bio || artist?.description || '';
+
+  const displayPills = useMemo(() => {
+    if (!artist) return ['Visual Artist', 'Custom Art'];
+    const skills: string[] = parseDisplayTags(artist.skills);
+    const styles: string[] = parseDisplayTags(artist.art_styles);
+    const specialties: string[] = parseDisplayTags(artist.art_specialties || artist.specialties);
+    const services: string[] = parseDisplayTags(artist.services_offered || artist.services);
+    const mediums: string[] = parseDisplayTags(artist.mediums);
+
+    const seenTags = new Set<string>();
+    const categoryPills: string[] = [];
+
+    [...styles, ...skills, ...mediums, ...specialties, ...services].forEach((tag) => {
+      const cleanTag = tag.trim();
+      const lowerKey = cleanTag.toLowerCase();
+      if (cleanTag && !seenTags.has(lowerKey)) {
+        seenTags.add(lowerKey);
+        categoryPills.push(cleanTag);
+      }
+    });
+
+    return categoryPills.length > 0 ? categoryPills : ['Visual Artist', 'Custom Art'];
+  }, [artist]);
 
   const rawAvatar =
     discoveredAvatar ||
@@ -171,6 +174,8 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
                     src={avatarSrc}
                     alt={`${displayName} profile picture`}
                     className="h-full w-full object-cover rounded-full"
+                    loading="lazy"
+                    decoding="async"
                     onError={() => setImgError(true)}
                   />
                 ) : (
@@ -248,3 +253,6 @@ export default function ArtistCard({ artist: propArtist, profile: propProfile }:
     </Link>
   );
 }
+
+export const ArtistCard = memo(ArtistCardComponent);
+export default ArtistCard;

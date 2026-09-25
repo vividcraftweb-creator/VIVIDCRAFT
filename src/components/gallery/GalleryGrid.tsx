@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useEffect, useCallback, memo, startTransition } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArtworkCard, type ArtworkItem } from './ArtworkCard';
 
@@ -20,19 +18,16 @@ export function GalleryGridComponent({
   onArtworkDeleted,
 }: GalleryGridProps) {
   const router = useRouter();
-  const [items, setItems] = useState<ArtworkItem[]>(artworks || []);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
 
-  // Synchronize when incoming artworks prop updates
-  useEffect(() => {
-    startTransition(() => {
-      setItems(artworks || []);
-    });
-  }, [artworks]);
+  const items = useMemo(() => {
+    if (!artworks || artworks.length === 0) return [];
+    if (deletedIds.size === 0) return artworks;
+    return artworks.filter((a) => !deletedIds.has(a.id));
+  }, [artworks, deletedIds]);
 
   const handleDelete = useCallback((deletedId: string) => {
-    startTransition(() => {
-      setItems((prev) => prev.filter((art) => art.id !== deletedId));
-    });
+    setDeletedIds((prev) => new Set(prev).add(deletedId));
     if (onArtworkDeleted) onArtworkDeleted(deletedId);
     startTransition(() => {
       router.refresh();

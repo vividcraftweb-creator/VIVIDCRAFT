@@ -1,16 +1,17 @@
-'use client';
-
-import { useState, useEffect, useCallback, memo, startTransition } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useCallback, useMemo, memo, startTransition } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { Heart, ZoomIn, Star, User, Trash2, ArrowRight, ChevronUp } from 'lucide-react';
+import { Heart, ZoomIn, Star, User, Trash2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
-import { ArtworkModal } from './ArtworkModal';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
 import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay, isGenericPlaceholderName } from '@/lib/artworks';
+
+const ArtworkModal = dynamic(() => import('./ArtworkModal').then((mod) => mod.ArtworkModal), {
+  ssr: false,
+});
 
 export interface ArtworkItem {
   id: string;
@@ -113,17 +114,22 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   // Retrieve price safely per user specification (preserved untouched)
   const displayPrice = Number(artwork.price || artwork.amount || artwork.price_amount || 0);
 
-  // Dynamic Pricing & Status Badge Evaluation (preserved untouched)
-  const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
+  // Dynamic Pricing & Status Badge Evaluation (memoized to prevent re-renders)
+  const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = useMemo(
+    () => getArtworkPricingDisplay(artwork),
+    [artwork.price, artwork.amount, artwork.price_amount, artwork.pricing_type, artwork.selling_mode, artwork.starting_bid]
+  );
 
-  // Requirement 2: Robust Name Resolution Logic in Card Component
+  // Requirement 2: Robust Name Resolution Logic in Card Component (memoized)
   const profile = artwork.profiles || (artwork as any).profile;
   const firstName = profile?.first_name || artwork.first_name || artwork.artist?.first_name || '';
   const lastName = profile?.last_name || artwork.last_name || artwork.artist?.last_name || '';
   const fullName = profile?.full_name || (artwork as any).full_name || artwork.artist?.name || '';
   
-  const rawCombined = `${firstName} ${lastName}`.trim();
-  const displayName = rawCombined || fullName || profile?.email || (artistNameProp && !isGenericPlaceholderName(artistNameProp) ? artistNameProp.trim() : '') || 'Artist';
+  const displayName = useMemo(() => {
+    const rawCombined = `${firstName} ${lastName}`.trim();
+    return rawCombined || fullName || profile?.email || (artistNameProp && !isGenericPlaceholderName(artistNameProp) ? artistNameProp.trim() : '') || 'Artist';
+  }, [firstName, lastName, fullName, profile?.email, artistNameProp]);
   const artistName = displayName;
 
   // Requirement 3: Avatar Display Fix
@@ -300,6 +306,8 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
             src={safeImg}
             alt={artworkTitle}
             className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
             onError={(e) => {
               const target = e.currentTarget;
               target.onerror = null;
@@ -488,16 +496,18 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
         )}
       </div>
 
-      {/* Lightbox / Expanded Artwork Modal with Comments */}
-      <ArtworkModal
-        isOpen={isZoomOpen}
-        onClose={() => startTransition(() => setIsZoomOpen(false))}
-        artwork={artwork}
-        artistName={artistName}
-        likesCount={likesCount}
-        isLiked={isLiked}
-        onToggleLike={handleLikeClick}
-      />
+      {/* Lightbox / Expanded Artwork Modal with Comments (Dynamically loaded on open) */}
+      {isZoomOpen && (
+        <ArtworkModal
+          isOpen={isZoomOpen}
+          onClose={() => startTransition(() => setIsZoomOpen(false))}
+          artwork={artwork}
+          artistName={artistName}
+          likesCount={likesCount}
+          isLiked={isLiked}
+          onToggleLike={handleLikeClick}
+        />
+      )}
     </>
   );
 }
