@@ -186,6 +186,7 @@ export default function Dashboard({ session }: { session: AppSession }) {
   const getNavigationItems = () => {
     if (role === 'ADMIN') {
       return [
+        { name: 'Back to Homepage', icon: ArrowLeft, href: '/' },
         { name: 'Dashboard', icon: Home, href: '/dashboard', view: 'dashboard' },
         { name: 'Admin Panel', icon: Shield, href: '/admin' },
         { name: 'User Management', icon: Users, href: '/admin/users' },
@@ -332,42 +333,12 @@ export default function Dashboard({ session }: { session: AppSession }) {
         <div className="flex h-full flex-col backdrop-blur-xl bg-slate-900/95 border-r border-slate-800">
           {/* Logo/Brand */}
           <div className="flex h-16 shrink-0 items-center px-6 border-b border-slate-800">
-            <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-              <svg
-                className="w-8 h-8"
-                viewBox="0 0 48 48"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <linearGradient id="dashboardLogoGrad1" x1="0" y1="0" x2="48" y2="48">
-                    <stop offset="0%" stopColor="#8B5CF6" />
-                    <stop offset="50%" stopColor="#EC4899" />
-                    <stop offset="100%" stopColor="#F59E0B" />
-                  </linearGradient>
-                  <linearGradient id="dashboardLogoGrad2" x1="48" y1="0" x2="0" y2="48">
-                    <stop offset="0%" stopColor="#06B6D4" />
-                    <stop offset="100%" stopColor="#8B5CF6" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M24 4C13 4 6 14 10 24C14 34 20 38 24 44C28 38 34 34 38 24C42 14 35 4 24 4Z"
-                  fill="url(#dashboardLogoGrad1)"
-                  fillOpacity="0.9"
-                />
-                <path
-                  d="M16 14L24 34L32 14"
-                  stroke="white"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-                <circle cx="36" cy="12" r="3" fill="url(#dashboardLogoGrad2)" />
-              </svg>
-              <span className="font-bold text-lg tracking-tight text-white">
-                Cinnamon Gallery
-              </span>
+            <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity" aria-label="Cinnamon Gallery">
+              <img
+                src="/cinnamon-gallery-logo-dark.png"
+                alt="Cinnamon Gallery Logo"
+                className="w-auto h-9 object-contain bg-transparent"
+              />
             </Link>
             <Button
               variant="ghost"
@@ -415,15 +386,20 @@ export default function Dashboard({ session }: { session: AppSession }) {
                   <Link
                     key={item.name}
                     href={item.href}
-                    onClick={() => {
+                    onClick={(e) => {
+                      if (item.href === '/') {
+                        setSidebarOpen(false);
+                        return;
+                      }
                       if ('view' in item && item.view) {
+                        e.preventDefault();
                         navigateToView(item.view as DashboardView);
                       }
                       setSidebarOpen(false);
                     }}
                     className={`flex items-center justify-between space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-blue-500/20 text-white border border-blue-500/30'
+                        ? 'bg-primary/20 text-white border border-primary/40'
                         : 'text-gray-300 hover:bg-white/5 hover:text-white'
                     }`}
                   >

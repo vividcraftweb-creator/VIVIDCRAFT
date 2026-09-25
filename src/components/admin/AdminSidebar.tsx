@@ -25,6 +25,7 @@ import {
   MessageSquareQuote,
   UserCheck,
   Sparkles,
+  ArrowLeft,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { trpc } from '@/utils/trpc';
@@ -85,6 +86,12 @@ export default function AdminSidebar() {
   }
 
   const navItems: NavItem[] = [
+    {
+      title: 'Back to Homepage',
+      href: '/',
+      icon: ArrowLeft,
+      description: 'Return to public site',
+    },
     {
       title: 'Dashboard',
       href: '/admin',

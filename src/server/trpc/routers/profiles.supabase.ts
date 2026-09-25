@@ -1049,7 +1049,39 @@ export const profilesRouter = router({
 
       const contactsMap = new Map<string, ContactUserSummary>();
 
-      // Add contract contacts
+      // Fetch profiles for ALL message partners directly from public.profiles
+      if (partnerIds.length > 0) {
+        try {
+          const { data: profilesData, error: profsErr } = await supabase
+            .from('profiles')
+            .select('id, email, first_name, last_name, full_name, display_name, avatar_url, role')
+            .in('id', partnerIds);
+
+          if (profilesData && !profsErr) {
+            profilesData.forEach((p: any) => {
+              const displayName = p.full_name || p.display_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email?.split('@')[0] || (p.role === 'artist' ? 'Artist' : 'User');
+              contactsMap.set(p.id, {
+                id: p.id,
+                email: p.email || null,
+                profile: {
+                  firstName: p.first_name || p.display_name || p.full_name || displayName,
+                  lastName: p.last_name || '',
+                  profilePicture: p.avatar_url || null,
+                  companyName: null,
+                  role: p.role || 'CLIENT',
+                  full_name: p.full_name || null,
+                  display_name: p.display_name || null,
+                  avatar_url: p.avatar_url || null,
+                },
+              });
+            });
+          }
+        } catch (e) {
+          console.warn('getContacts profiles fetch error:', e);
+        }
+      }
+
+      // Add contract contacts for any not already mapped
       (contracts ?? []).forEach((contract: any) => {
         if (contract.clientId !== userId && !contactsMap.has(contract.clientId)) {
           contactsMap.set(contract.clientId, contract.client);
@@ -1059,77 +1091,48 @@ export const profilesRouter = router({
         }
       });
 
-      // Fetch profiles for message partners not already in contactsMap
-      const missingIds = partnerIds.filter((id) => !contactsMap.has(id));
-      if (missingIds.length > 0) {
+      // Secondary fallback to User table for any still missing
+      const stillMissing = partnerIds.filter((id) => !contactsMap.has(id));
+      if (stillMissing.length > 0) {
         try {
-          const { data: profilesData, error: profsErr } = await supabase
-            .from('profiles')
-            .select('id, email, first_name, last_name, full_name, display_name, avatar_url, role')
-            .in('id', missingIds);
+          const { data: users } = await supabase
+            .from('User')
+            .select('id, email, Profile(firstName, lastName, profilePicture, companyName)')
+            .in('id', stillMissing);
 
-          if (profilesData && !profsErr) {
-            profilesData.forEach((p: any) => {
-              contactsMap.set(p.id, {
-                id: p.id,
-                email: p.email || null,
-                profile: {
-                  firstName: p.first_name || p.display_name || p.full_name || 'Client',
-                  lastName: p.last_name || '',
-                  profilePicture: p.avatar_url || null,
-                  companyName: null,
-                  role: p.role || 'CLIENT',
-                },
-              });
-            });
-          }
-        } catch (e) {
-          console.warn('getContacts profiles fetch error:', e);
-        }
-
-        // Secondary fallback to User table for any still missing
-        const stillMissing = missingIds.filter((id) => !contactsMap.has(id));
-        if (stillMissing.length > 0) {
-          try {
-            const { data: users } = await supabase
-              .from('User')
-              .select('id, email, Profile(firstName, lastName, profilePicture, companyName)')
-              .in('id', stillMissing);
-
-            (users ?? []).forEach((user: any) => {
-              const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
-              contactsMap.set(user.id, {
-                id: user.id,
-                email: user.email || null,
-                profile: profile ? {
-                  firstName: profile.firstName || null,
-                  lastName: profile.lastName || null,
-                  profilePicture: profile.profilePicture || null,
-                  companyName: profile.companyName || null,
-                  role: 'CLIENT',
-                } : null,
-              });
-            });
-          } catch {}
-        }
-
-        // Ultimate safety fallback: guarantee EVERY message partner has a contact entry
-        partnerIds.forEach((pid) => {
-          if (!contactsMap.has(pid)) {
-            contactsMap.set(pid, {
-              id: pid,
-              email: null,
-              profile: {
-                firstName: 'Client',
-                lastName: '',
-                profilePicture: null,
-                companyName: null,
+          (users ?? []).forEach((user: any) => {
+            const profile = Array.isArray(user.Profile) ? user.Profile[0] : user.Profile;
+            contactsMap.set(user.id, {
+              id: user.id,
+              email: user.email || null,
+              profile: profile ? {
+                firstName: profile.firstName || null,
+                lastName: profile.lastName || null,
+                profilePicture: profile.profilePicture || null,
+                companyName: profile.companyName || null,
                 role: 'CLIENT',
-              },
+              } : null,
             });
-          }
-        });
+          });
+        } catch {}
       }
+
+      // Ultimate safety fallback: guarantee EVERY message partner has a contact entry with email/User fallback
+      partnerIds.forEach((pid) => {
+        if (!contactsMap.has(pid)) {
+          contactsMap.set(pid, {
+            id: pid,
+            email: null,
+            profile: {
+              firstName: 'User',
+              lastName: '',
+              profilePicture: null,
+              companyName: null,
+              role: 'CLIENT',
+            },
+          });
+        }
+      });
 
       return Array.from(contactsMap.values());
     } catch (err) {

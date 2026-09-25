@@ -28,10 +28,14 @@ export const messagesRouter = router({
     }
 
     const typedMessages = (messages || []) as any[];
-    const conversationMap = new Map<string, { lastMessage: any; unreadCount: number }>();
+    const conversationMap = new Map<string, { lastMessage: any; unreadCount: number; profile?: any }>();
+    const partnerIds = new Set<string>();
 
     typedMessages.forEach((msg) => {
       const partnerId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+      if (partnerId && partnerId !== userId) {
+        partnerIds.add(partnerId);
+      }
       if (!conversationMap.has(partnerId)) {
         conversationMap.set(partnerId, {
           lastMessage: {
@@ -49,7 +53,26 @@ export const messagesRouter = router({
       }
     });
 
-    const result: Record<string, { lastMessage: any; unreadCount: number }> = {};
+    if (partnerIds.size > 0) {
+      try {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, first_name, last_name, display_name, email, avatar_url, role')
+          .in('id', Array.from(partnerIds));
+
+        if (profs) {
+          profs.forEach((p: any) => {
+            if (p?.id && conversationMap.has(p.id)) {
+              (conversationMap.get(p.id) as any).profile = p;
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to join profiles into conversation previews:', err);
+      }
+    }
+
+    const result: Record<string, { lastMessage: any; unreadCount: number; profile?: any }> = {};
     conversationMap.forEach((value, key) => { result[key] = value; });
     return result;
   }),

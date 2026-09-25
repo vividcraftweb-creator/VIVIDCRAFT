@@ -89,7 +89,26 @@ export default function MessagesView() {
     [key: string]: any;
   } | null>(null);
 
-  const [recipientProfilesMap, setRecipientProfilesMap] = useState<Record<string, any>>({});
+  const [recipientProfilesMap, setRecipientProfilesMap] = useState<Record<string, any>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('cinnamon_chat_profiles_cache');
+        if (cached) return JSON.parse(cached);
+      } catch (e) {
+        console.warn('Failed to parse cached chat profiles:', e);
+      }
+    }
+    return {};
+  });
+
+  // Sync recipientProfilesMap to sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && Object.keys(recipientProfilesMap).length > 0) {
+      try {
+        sessionStorage.setItem('cinnamon_chat_profiles_cache', JSON.stringify(recipientProfilesMap));
+      } catch (e) {}
+    }
+  }, [recipientProfilesMap]);
 
   const selectedUserRole =
     activeRecipientProfile?.role ||
@@ -160,30 +179,38 @@ export default function MessagesView() {
     const prof = customProfile || mappedProf || contact?.profile;
     const email = customProfile?.email || mappedProf?.email || contact?.email;
 
-    // 1. Check full_name
-    if (prof?.full_name?.trim()) return prof.full_name.trim();
-    if ((prof as any)?.fullName?.trim()) return (prof as any).fullName.trim();
+    const isMeaningful = (s?: string | null) => {
+      if (!s || typeof s !== 'string') return false;
+      const trimmed = s.trim();
+      const lower = trimmed.toLowerCase();
+      return trimmed.length > 0 && lower !== 'client' && lower !== 'user';
+    };
 
-    // 2. Check firstName + lastName or single firstName
+    // 1. Check full_name
+    if (isMeaningful(prof?.full_name)) return prof.full_name.trim();
+    if (isMeaningful((prof as any)?.fullName)) return (prof as any).fullName.trim();
+
+    // 2. Check displayName / display_name
+    if (isMeaningful(prof?.displayName)) return prof.displayName.trim();
+    if (isMeaningful(prof?.display_name)) return prof.display_name.trim();
+
+    // 3. Check firstName + lastName or single firstName
     const fName = (prof?.firstName || prof?.first_name || '').trim();
     const lName = (prof?.lastName || prof?.last_name || '').trim();
     const combined = `${fName} ${lName}`.trim();
-    if (combined) return combined;
+    if (isMeaningful(combined)) return combined;
+    if (isMeaningful(fName)) return fName;
 
-    // 3. Check displayName / display_name
-    if (prof?.displayName?.trim()) return prof.displayName.trim();
-    if (prof?.display_name?.trim()) return prof.display_name.trim();
+    // 4. Check artist_name / username
+    if (isMeaningful(prof?.artist_name)) return prof.artist_name.trim();
+    if (isMeaningful(prof?.username)) return prof.username.trim();
 
-    // 4. Fall back to email prefix before resorting to generic role strings
+    // 5. Fall back to email prefix before generic role strings
     if (email && typeof email === 'string' && email.includes('@')) {
       const emailPrefix = email.split('@')[0].trim();
       if (emailPrefix) return emailPrefix;
     }
     if (email && typeof email === 'string' && email.trim()) return email.trim();
-
-    // 5. Check artist_name / username
-    if (prof?.artist_name?.trim()) return prof.artist_name.trim();
-    if (prof?.username?.trim()) return prof.username.trim();
 
     // 6. Generic role fallback
     const role = prof?.role || (contact as any)?.role;
@@ -221,6 +248,22 @@ export default function MessagesView() {
     enabled: !!session,
     refetchInterval: 5000, // Refresh every 5 seconds for new messages
   });
+
+  // Merge profiles from conversationPreviews into recipientProfilesMap
+  useEffect(() => {
+    if (!conversationPreviews) return;
+    setRecipientProfilesMap((prev) => {
+      let updated = false;
+      const next = { ...prev };
+      Object.entries(conversationPreviews).forEach(([id, preview]: [string, any]) => {
+        if (preview?.profile && !next[id]) {
+          next[id] = preview.profile;
+          updated = true;
+        }
+      });
+      return updated ? next : prev;
+    });
+  }, [conversationPreviews]);
 
   // Fetch user by ID if provided in URL
   const { data: userById } = trpc.user.getUserById.useQuery(
@@ -326,23 +369,27 @@ export default function MessagesView() {
     if (conversationPreviews) {
       Object.keys(conversationPreviews).forEach((partnerId) => {
         if (partnerId && partnerId !== currentUserId && !contactsList.some((c) => c.id === partnerId)) {
+          const previewProf = (conversationPreviews as any)[partnerId]?.profile || recipientProfilesMap[partnerId];
           contactsList.push({
             id: partnerId,
-            email: null,
-            profile: {
-              firstName: 'Client',
-              lastName: '',
-              profilePicture: null,
+            email: previewProf?.email || null,
+            profile: previewProf ? {
+              firstName: previewProf.first_name || previewProf.full_name || previewProf.display_name || null,
+              lastName: previewProf.last_name || '',
+              profilePicture: previewProf.avatar_url || null,
               companyName: null,
-              role: 'CLIENT',
-            },
+              role: previewProf.role || 'CLIENT',
+              full_name: previewProf.full_name || null,
+              display_name: previewProf.display_name || null,
+              avatar_url: previewProf.avatar_url || null,
+            } : null,
           });
         }
       });
     }
 
     return contactsList;
-  }, [contacts, userById, currentUserId, isCurrentArtist, conversationPreviews]);
+  }, [contacts, userById, currentUserId, isCurrentArtist, conversationPreviews, recipientProfilesMap]);
 
   // Filter contacts by Chat Code or Name/Email
   const filteredContacts = useMemo(() => {
@@ -523,17 +570,41 @@ export default function MessagesView() {
 
   // Hydrate all contact recipient profiles from public.profiles table
   useEffect(() => {
-    if (!allContacts || allContacts.length === 0) return;
-    const targetIds = allContacts
-      .map((c) => c.id)
-      .filter((id) => id && id !== currentUserId && !recipientProfilesMap[id]);
-
-    if (targetIds.length === 0) return;
+    if (!currentUserId) return;
 
     let isSubscribed = true;
     const fetchProfiles = async () => {
       try {
         const supabase = createClient();
+
+        // 1. Gather all potential partner IDs from allContacts
+        const idsToFetch = new Set<string>();
+        (allContacts || []).forEach((c) => {
+          if (c.id && c.id !== currentUserId && !recipientProfilesMap[c.id]) {
+            idsToFetch.add(c.id);
+          }
+        });
+
+        // 2. Query messages table directly to discover recent conversation partners on mount/refresh
+        const { data: recentMsgs } = await supabase
+          .from('messages')
+          .select('sender_id, receiver_id')
+          .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (recentMsgs) {
+          recentMsgs.forEach((m: any) => {
+            const pid = m.sender_id === currentUserId ? m.receiver_id : m.sender_id;
+            if (pid && pid !== currentUserId && !recipientProfilesMap[pid]) {
+              idsToFetch.add(pid);
+            }
+          });
+        }
+
+        const targetIds = Array.from(idsToFetch);
+        if (targetIds.length === 0) return;
+
         const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, first_name, last_name, display_name, email, avatar_url, role')
@@ -985,7 +1056,17 @@ export default function MessagesView() {
                                 alt={displayName}
                               />
                               <AvatarFallback className="bg-primary/30 text-white font-bold">
-                                {displayName.charAt(0).toUpperCase() || 'U'}
+                                {(() => {
+                                  const name = displayName?.trim();
+                                  if (name && name.toLowerCase() !== 'client' && name.toLowerCase() !== 'user') {
+                                    return name.charAt(0).toUpperCase();
+                                  }
+                                  const em = contact?.email || contactProfile?.email;
+                                  if (em && typeof em === 'string' && em.trim()) {
+                                    return em.trim().charAt(0).toUpperCase();
+                                  }
+                                  return 'U';
+                                })()}
                               </AvatarFallback>
                             </Avatar>
                             {unreadCount > 0 && (
@@ -1094,7 +1175,17 @@ export default function MessagesView() {
                             alt={getRecipientDisplayName(selectedUser, activeRecipientProfile)}
                           />
                           <AvatarFallback className="bg-primary/30 text-white font-bold text-base sm:text-lg">
-                            {getRecipientDisplayName(selectedUser, activeRecipientProfile).charAt(0).toUpperCase() || 'U'}
+                            {(() => {
+                              const name = getRecipientDisplayName(selectedUser, activeRecipientProfile)?.trim();
+                              if (name && name.toLowerCase() !== 'client' && name.toLowerCase() !== 'user') {
+                                return name.charAt(0).toUpperCase();
+                              }
+                              const em = activeRecipientProfile?.email || selectedUser.email;
+                              if (em && typeof em === 'string' && em.trim()) {
+                                return em.trim().charAt(0).toUpperCase();
+                              }
+                              return 'U';
+                            })()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
