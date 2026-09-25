@@ -4,6 +4,8 @@ export type PricingType = 'FIXED_PRICE' | 'BIDDING' | 'NOT_FOR_SALE';
 
 export interface ArtworkProfile {
   id?: string;
+  first_name?: string | null;
+  last_name?: string | null;
   full_name?: string | null;
   display_name?: string | null;
   username?: string | null;
@@ -182,48 +184,47 @@ export function isGenericPlaceholderName(name?: string | null): boolean {
 export function extractArtistName(artwork: any, artistNameProp?: string): string {
   const profile = artwork?.profiles || artwork?.profile || {};
 
-  // 1. Dynamic artist name (first_name + last_name) from profiles table
-  const fName = (profile?.first_name || artwork?.first_name || artwork?.user?.first_name || '').toString().trim();
-  const lName = (profile?.last_name || artwork?.last_name || artwork?.user?.last_name || '').toString().trim();
+  // 1. Dynamic artist name (${first_name} ${last_name}) from profiles table
+  const fName = (profile?.first_name || artwork?.first_name || artwork?.artist?.first_name || artwork?.user?.first_name || '').toString().trim();
+  const lName = (profile?.last_name || artwork?.last_name || artwork?.artist?.last_name || artwork?.user?.last_name || '').toString().trim();
   const combinedFirstLast = [fName, lName].filter(Boolean).join(' ').trim();
 
   if (combinedFirstLast && !isGenericPlaceholderName(combinedFirstLast)) {
     return combinedFirstLast;
   }
 
-  // 2. Fall back to username ONLY if first/last names are missing
+  // 2. Fall back to full_name
+  const fullName = (profile?.full_name || artwork?.full_name || artwork?.artist?.name || '').toString().trim();
+  if (fullName && !isGenericPlaceholderName(fullName)) {
+    return fullName;
+  }
+
+  // 3. Fall back to display_name or artist_name
+  const displayName = (profile?.display_name || artwork?.display_name || profile?.artist_name || artwork?.artist_name || '').toString().trim();
+  if (displayName && !isGenericPlaceholderName(displayName)) {
+    return displayName;
+  }
+
+  // 4. Fall back to username
   const username = (profile?.username || artwork?.username || profile?.user_name || artwork?.user_name || '').toString().trim();
   if (username && !isGenericPlaceholderName(username)) {
     return username;
   }
 
-  // 3. Fall back to email prefix ONLY if first/last names & username are missing
+  // 5. Fall back to artistNameProp
+  if (artistNameProp && typeof artistNameProp === 'string') {
+    const trimmed = artistNameProp.trim();
+    if (trimmed && !isGenericPlaceholderName(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  // 6. Fall back to email prefix
   const rawEmail = (profile?.email || artwork?.email || artwork?.user?.email || '').toString().trim();
   if (rawEmail && rawEmail.includes('@')) {
     const emailPrefix = rawEmail.split('@')[0].trim();
     if (emailPrefix && !isGenericPlaceholderName(emailPrefix)) {
       return emailPrefix;
-    }
-  }
-
-  // 4. Fall back to full_name or display_name (if not a generic placeholder)
-  const candidateNames = [
-    profile?.full_name,
-    artwork?.full_name,
-    profile?.display_name,
-    artwork?.display_name,
-    profile?.artist_name,
-    artwork?.artist_name,
-    artwork?.artist?.name,
-    artistNameProp,
-  ];
-
-  for (const cand of candidateNames) {
-    if (cand && typeof cand === 'string') {
-      const trimmed = cand.trim();
-      if (trimmed && !isGenericPlaceholderName(trimmed)) {
-        return trimmed;
-      }
     }
   }
 
@@ -248,11 +249,11 @@ export async function getArtworks(options?: {
 
   let data: any[] | null = null;
 
-  // 1. Primary: explicit join on profiles table
+  // 1. Primary: relational query joining profiles via artist_id foreign key constraint
   try {
     const res = await supabase
       .from('artworks')
-      .select('*, profiles(*)')
+      .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, full_name, display_name, username, email, artist_name, bio)')
       .order('created_at', { ascending: false });
 
     if (!res.error && res.data && res.data.length > 0) {
@@ -260,12 +261,12 @@ export async function getArtworks(options?: {
     }
   } catch {}
 
-  // 2. Relational query joining profiles via artist_id foreign key constraint
+  // 2. Fallback: explicit join on profiles table
   if (!data) {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles!artworks_artist_id_fkey(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)')
+        .select('*, profiles(*)')
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {
@@ -274,12 +275,12 @@ export async function getArtworks(options?: {
     } catch {}
   }
 
-  // 2. Fallback: try column-based relational query joining profiles via artist_id
+  // 3. Fallback: relational constraint name join
   if (!data) {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles:artist_id(id, first_name, last_name, full_name, display_name, username, email, artist_name, avatar_url, bio)')
+        .select('*, profiles!artworks_artist_id_fkey(id, first_name, last_name, avatar_url, full_name, display_name, username, email, artist_name, bio)')
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {

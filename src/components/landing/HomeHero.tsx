@@ -221,13 +221,26 @@ export function HomeHero() {
           try {
             const { data, error } = await supabase
               .from('artworks')
-              .select('*')
+              .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
               .order('likes_count', { ascending: false })
               .limit(8);
             if (!error && data && data.length > 0) {
               arts = data;
             }
           } catch {}
+
+          if (!arts || arts.length === 0) {
+            try {
+              const { data, error } = await supabase
+                .from('artworks')
+                .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
+                .order('created_at', { ascending: false })
+                .limit(8);
+              if (!error && data && data.length > 0) {
+                arts = data;
+              }
+            } catch {}
+          }
 
           if (!arts || arts.length === 0) {
             try {
@@ -243,27 +256,53 @@ export function HomeHero() {
           }
 
           if (arts && arts.length > 0 && isMounted) {
-            const formatted = arts.map((art: any) => ({
-              id: art.id,
-              artist_id: art.artist_id || art.user_id,
-              title: art.title || 'Untitled Artwork',
-              description: art.description || null,
-              category: art.category || null,
-              medium: art.medium || null,
-              technique: art.technique || null,
-              tags: art.tags || [],
-              image_url: art.image_url,
-              created_at: art.created_at,
-              likesCount: art.likes_count || 0,
-              isLiked: false,
-              ratingsCount: 0,
-              averageRating: art.rating_score || 0,
-              userRating: null,
-              pricing_type: art.pricing_type || 'FIXED_PRICE',
-              selling_mode: art.pricing_type || 'FIXED_PRICE',
-              price: art.price ?? art.amount ?? null,
-              amount: art.amount ?? art.price ?? null,
-            }));
+            const artistIds = Array.from(new Set(arts.map((a: any) => a.artist_id || a.user_id).filter(Boolean)));
+            let profMap: Record<string, any> = {};
+            if (artistIds.length > 0) {
+              try {
+                const { data: profs } = await supabase
+                  .from('profiles')
+                  .select('id, first_name, last_name, avatar_url, full_name')
+                  .in('id', artistIds);
+                if (profs) {
+                  profs.forEach((p: any) => {
+                    profMap[p.id] = p;
+                  });
+                }
+              } catch {}
+            }
+
+            const formatted = arts.map((art: any) => {
+              const prof = profMap[art.artist_id || art.user_id] || art.profiles || null;
+              return {
+                id: art.id,
+                artist_id: art.artist_id || art.user_id,
+                title: art.title || 'Untitled Artwork',
+                description: art.description || null,
+                category: art.category || null,
+                medium: art.medium || null,
+                technique: art.technique || null,
+                tags: art.tags || [],
+                image_url: art.image_url,
+                created_at: art.created_at,
+                likesCount: art.likes_count || 0,
+                isLiked: false,
+                ratingsCount: 0,
+                averageRating: art.rating_score || 0,
+                userRating: null,
+                pricing_type: art.pricing_type || 'FIXED_PRICE',
+                selling_mode: art.pricing_type || 'FIXED_PRICE',
+                price: art.price ?? art.amount ?? null,
+                amount: art.amount ?? art.price ?? null,
+                profiles: prof ? {
+                  id: prof.id,
+                  first_name: prof.first_name || null,
+                  last_name: prof.last_name || null,
+                  avatar_url: prof.avatar_url || null,
+                  full_name: prof.full_name || null,
+                } : null,
+              };
+            });
             setFallbackArtworks(formatted);
           }
         } catch (e) {

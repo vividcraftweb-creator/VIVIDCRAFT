@@ -276,6 +276,9 @@ export default async function FreelancerPublicProfilePage({ params }: PageProps)
             starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
             art_code: artCode,
             profiles: {
+              id: pId,
+              first_name: fName || null,
+              last_name: lName || null,
               full_name: profile.full_name || `${fName} ${lName}`.trim(),
               artist_name: profile.artist_name || null,
               avatar_url: picVal || null,

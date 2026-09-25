@@ -10,7 +10,7 @@ import { trpc } from '@/utils/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { type ArtworkItem } from './ArtworkCard';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER, isValidImageUrl } from '@/lib/image-placeholders';
-import { getArtworkPricingDisplay } from '@/lib/artworks';
+import { getArtworkPricingDisplay, isGenericPlaceholderName } from '@/lib/artworks';
 
 interface ArtworkModalProps {
   isOpen: boolean;
@@ -385,12 +385,18 @@ export function ArtworkModal({
             {/* Full Artist Profile Info Section */}
             {(() => {
               const artistProfile = artwork.profiles;
+              const fName = (artistProfile?.first_name || (artwork as any).first_name || artwork.artist?.first_name || '').toString().trim();
+              const lName = (artistProfile?.last_name || (artwork as any).last_name || artwork.artist?.last_name || '').toString().trim();
+              const combinedModalName = [fName, lName].filter(Boolean).join(' ').trim();
               const artistNameResolved =
-                artistProfile?.artist_name ||
-                artistProfile?.full_name ||
-                artistName ||
-                artwork.artist?.name ||
-                'Artist';
+                (combinedModalName && !isGenericPlaceholderName(combinedModalName))
+                  ? combinedModalName
+                  : (artistProfile?.full_name && !isGenericPlaceholderName(artistProfile.full_name))
+                  ? artistProfile.full_name
+                  : artistName ||
+                    artistProfile?.artist_name ||
+                    artwork.artist?.name ||
+                    'Artist';
               const artistBio =
                 artistProfile?.bio ||
                 artistProfile?.headline ||
@@ -407,26 +413,26 @@ export function ArtworkModal({
                 artwork.category ||
                 artistProfile?.category ||
                 (artistProfile?.role ? (artistProfile.role.charAt(0).toUpperCase() + artistProfile.role.slice(1)) : 'Visual Arts');
-              const avatar = artistProfile?.avatar_url || artwork.artist?.avatar_url;
+              const avatar = artistProfile?.avatar_url || (artwork as any).avatar_url || artwork.artist?.avatar_url;
 
               return (
-                <div className="p-3 rounded-xl bg-gradient-to-r from-amber-50/70 to-orange-50/50 dark:from-slate-800/90 dark:to-slate-800/60 border border-amber-200/60 dark:border-slate-700/80 space-y-2">
+                <div className="p-3 rounded-xl bg-[#A2694E]/5 dark:bg-[#1E1B18]/60 border border-[#A2694E]/20 dark:border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                      <User className="w-3 h-3" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#A2694E] dark:text-[#C58B6F] flex items-center gap-1">
+                      <User className="w-3 h-3 text-[#8B9B88]" />
                       Artist Profile
                     </span>
                     <Link
                       href={`/freelancers/${artwork.artist_id}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1"
+                      className="text-[11px] font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:underline inline-flex items-center gap-1"
                     >
                       <span>Full Profile</span>
                       <ExternalLink className="w-2.5 h-2.5" />
                     </Link>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <div className="relative h-9 w-9 rounded-full overflow-hidden shrink-0 border border-amber-300 dark:border-amber-500/40 bg-amber-100 dark:bg-amber-950 flex items-center justify-center font-bold text-amber-900 dark:text-amber-200 text-xs">
+                    <div className="relative h-9 w-9 rounded-full overflow-hidden shrink-0 border border-[#A2694E]/30 bg-[#A2694E]/15 flex items-center justify-center font-bold text-[#A2694E] dark:text-[#C58B6F] text-xs">
                       {avatar && isValidImageUrl(avatar) ? (
                         <img
                           src={avatar}

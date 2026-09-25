@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ArtworkModal } from './ArtworkModal';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeArtworkUrl, DEFAULT_ARTWORK_PLACEHOLDER } from '@/lib/image-placeholders';
-import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay } from '@/lib/artworks';
+import { inferArtworkPricing, extractArtistName, getArtworkPricingDisplay, isGenericPlaceholderName } from '@/lib/artworks';
 
 export interface ArtworkItem {
   id: string;
@@ -41,7 +41,13 @@ export interface ArtworkItem {
   base_rating?: number | null;
   review_count_text?: string | null;
   user_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  avatar_url?: string | null;
   profiles?: {
+    id?: string;
+    first_name?: string | null;
+    last_name?: string | null;
     full_name?: string | null;
     display_name?: string | null;
     username?: string | null;
@@ -60,6 +66,8 @@ export interface ArtworkItem {
   artist?: {
     id: string;
     name: string;
+    first_name?: string | null;
+    last_name?: string | null;
     avatar_url: string | null;
     title?: string;
     role?: string;
@@ -108,13 +116,38 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   // Dynamic Pricing & Status Badge Evaluation (preserved untouched)
   const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
 
-  // Requirement 1: Render artist dynamic name strictly per user specification
-  const artistName = extractArtistName(artwork, artistNameProp);
+  // Priority: 1. Combined ${first_name} ${last_name}, 2. full_name fallback, 3. extractArtistName fallback
+  const artistProfile = artwork.profiles || (artwork as any).profile || {};
+  const firstName = (artistProfile?.first_name || artwork.first_name || artwork.artist?.first_name || '').toString().trim();
+  const lastName = (artistProfile?.last_name || artwork.last_name || artwork.artist?.last_name || '').toString().trim();
+  const combinedName = [firstName, lastName].filter(Boolean).join(' ').trim();
+  const fullNameFallback = (artistProfile?.full_name || (artwork as any).full_name || artwork.artist?.name || '').toString().trim();
+
+  let artistName = combinedName;
+  if (!artistName && fullNameFallback && !isGenericPlaceholderName(fullNameFallback)) {
+    artistName = fullNameFallback;
+  }
+  if (!artistName) {
+    artistName = extractArtistName(artwork, artistNameProp);
+  }
+  if (!artistName || isGenericPlaceholderName(artistName)) {
+    artistName = fullNameFallback || 'Artist';
+  }
 
   const artistAvatarUrl =
     artwork.profiles?.avatar_url ||
+    artwork.avatar_url ||
+    (artwork as any).profile?.avatar_url ||
     artwork.artist?.avatar_url ||
     null;
+
+  const [avatarError, setAvatarError] = useState(false);
+  useEffect(() => {
+    setAvatarError(false);
+  }, [artistAvatarUrl]);
+
+  const showAvatarImage = Boolean(artistAvatarUrl && !avatarError);
+  const artistInitial = (artistName && artistName.trim().length > 0 ? artistName.trim().charAt(0) : 'A').toUpperCase();
 
   const router = useRouter();
   const { data: session, status } = useAuth();
@@ -334,19 +367,20 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
           <div className="space-y-2">
             {/* Real Artist Avatar + Artist Name */}
             <div className="flex items-center gap-2.5">
-              {artistAvatarUrl ? (
+              {showAvatarImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={artistAvatarUrl}
+                  src={artistAvatarUrl!}
                   alt={artistName}
                   className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
+                  onError={() => setAvatarError(true)}
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xs font-bold text-amber-700 dark:text-amber-300 shrink-0">
-                  {artistName.charAt(0).toUpperCase()}
+                <div
+                  className="w-8 h-8 rounded-full bg-[#A2694E]/15 border border-[#A2694E]/30 flex items-center justify-center text-xs font-bold text-[#A2694E] dark:text-[#C58B6F] shrink-0 select-none"
+                  aria-label={artistName}
+                >
+                  {artistInitial}
                 </div>
               )}
 

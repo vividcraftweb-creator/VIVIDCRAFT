@@ -82,6 +82,9 @@ interface RankedArtwork {
   base_rating?: number | null;
   review_count_text?: string | null;
   profiles?: {
+    id?: string;
+    first_name?: string | null;
+    last_name?: string | null;
     full_name?: string | null;
     display_name?: string | null;
     username?: string | null;
@@ -310,10 +313,24 @@ export default function GalleryPageClient() {
       const supabase = createClient();
       async function fetchDirect() {
         try {
-          const { data: arts } = await supabase
-            .from('artworks')
-            .select('*')
-            .order('created_at', { ascending: false });
+          let arts: any[] | null = null;
+          try {
+            const res = await supabase
+              .from('artworks')
+              .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
+              .order('created_at', { ascending: false });
+            if (!res.error && res.data && res.data.length > 0) {
+              arts = res.data;
+            }
+          } catch {}
+
+          if (!arts || arts.length === 0) {
+            const { data } = await supabase
+              .from('artworks')
+              .select('*')
+              .order('created_at', { ascending: false });
+            arts = data || [];
+          }
 
           if (arts && arts.length > 0) {
             const artIds = arts.map((a: any) => a.id);
@@ -389,18 +406,29 @@ export default function GalleryPageClient() {
                 starting_bid: art.starting_bid !== undefined && art.starting_bid !== null ? Number(art.starting_bid) : null,
                 art_code: artCode,
                 profiles: prof ? {
+                  id: prof.id,
+                  first_name: prof.first_name || null,
+                  last_name: prof.last_name || null,
                   full_name: profileFullName || null,
                   display_name: profileDisplayName || null,
                   username: profileUsername || null,
                   artist_name: artistNameField || null,
                   avatar_url: prof?.avatar_url || null,
                   role: prof?.role || 'artist',
-                } : null,
+                } : (art.profiles ? {
+                  id: art.profiles.id,
+                  first_name: art.profiles.first_name || null,
+                  last_name: art.profiles.last_name || null,
+                  full_name: art.profiles.full_name || null,
+                  avatar_url: art.profiles.avatar_url || null,
+                } : null),
                 user_name: art.user_name || artistName,
                 artist: {
                   id: art.artist_id,
                   name: artistName,
-                  avatar_url: prof?.avatar_url || null,
+                  first_name: prof?.first_name || art.profiles?.first_name || null,
+                  last_name: prof?.last_name || art.profiles?.last_name || null,
+                  avatar_url: prof?.avatar_url || art.profiles?.avatar_url || null,
                   title: prof?.title || 'Verified Artist',
                   role: prof?.role || 'artist',
                   bio: prof?.bio || null,

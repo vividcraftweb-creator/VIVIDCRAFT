@@ -106,6 +106,9 @@ export const artworksRouter = router({
           status: art.status || 'LIVE',
           art_code: artCode,
           profiles: myProfile ? {
+            id: myProfile.id,
+            first_name: myProfile.first_name || null,
+            last_name: myProfile.last_name || null,
             full_name: profileFullName || null,
             display_name: (myProfile as any).display_name || profileFullName || artistNameField || null,
             username: (myProfile as any).username || null,
@@ -114,6 +117,8 @@ export const artworksRouter = router({
             avatar_url: myProfile.avatar_url || null,
             role: myProfile.role || 'artist',
           } : null,
+          first_name: myProfile?.first_name || null,
+          last_name: myProfile?.last_name || null,
           user_name: (myProfile as any)?.user_name || (myProfile as any)?.username || profileFullName || artistNameField || null,
         };
       });
@@ -563,6 +568,9 @@ export const artworksRouter = router({
             status: art.status || 'LIVE',
             art_code: artCode,
             profiles: (artistProf || art.profiles) ? {
+              id: artistProf?.id || (art.profiles as any)?.id || artistId,
+              first_name: artistProf?.first_name || (art.profiles as any)?.first_name || null,
+              last_name: artistProf?.last_name || (art.profiles as any)?.last_name || null,
               full_name: artistProf?.full_name || (art.profiles as any)?.full_name || null,
               display_name: (artistProf as any)?.display_name || (art.profiles as any)?.display_name || artistProf?.artist_name || artistProf?.full_name || null,
               username: (artistProf as any)?.username || (art.profiles as any)?.username || null,
@@ -571,10 +579,14 @@ export const artworksRouter = router({
               avatar_url: artistProf?.avatar_url || (art.profiles as any)?.avatar_url || null,
               role: artistProf?.role || (art.profiles as any)?.role || 'artist',
             } : null,
+            first_name: artistProf?.first_name || (art.profiles as any)?.first_name || null,
+            last_name: artistProf?.last_name || (art.profiles as any)?.last_name || null,
             user_name: (artistProf as any)?.user_name || (art.profiles as any)?.user_name || (artistProf as any)?.username || artistProf?.full_name || artistProf?.artist_name || null,
             artist: {
               id: artistId,
               name: artistName,
+              first_name: artistProf?.first_name || (art.profiles as any)?.first_name || null,
+              last_name: artistProf?.last_name || (art.profiles as any)?.last_name || null,
               avatar_url: artistProf?.avatar_url || null,
               title: artistProf?.title || 'Verified Artist',
               role: artistProf?.role || 'artist',
@@ -602,14 +614,14 @@ export const artworksRouter = router({
         const supabase = await getAuthenticatedClient(ctx);
         const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
 
-        // 1. Fetch all artworks explicitly joining profiles
+        // 1. Fetch all artworks explicitly joining profiles:artist_id (id, first_name, last_name, avatar_url, full_name)
         let artworks: any[] | null = null;
         let queryError: any = null;
 
         try {
           const res = await supabase
             .from('artworks')
-            .select('*, profiles(*)')
+            .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
             .order('created_at', { ascending: false });
           if (!res.error && res.data && res.data.length > 0) {
             artworks = res.data;
@@ -618,6 +630,18 @@ export const artworksRouter = router({
           }
         } catch (e) {
           queryError = e;
+        }
+
+        if (!artworks || artworks.length === 0) {
+          try {
+            const res = await supabase
+              .from('artworks')
+              .select('*, profiles(*)')
+              .order('created_at', { ascending: false });
+            if (!res.error && res.data && res.data.length > 0) {
+              artworks = res.data;
+            }
+          } catch {}
         }
 
         if (!artworks || artworks.length === 0) {
@@ -780,7 +804,9 @@ export const artworksRouter = router({
             artist: {
               id: art.artist_id,
               name: artistName,
-              avatar_url: artistProfile?.avatar_url || null,
+              first_name: artistProfile?.first_name || (art.profiles as any)?.first_name || null,
+              last_name: artistProfile?.last_name || (art.profiles as any)?.last_name || null,
+              avatar_url: artistProfile?.avatar_url || (art.profiles as any)?.avatar_url || null,
               title: artistProfile?.title || 'Verified Artist',
               role: artistProfile?.role || 'artist',
               bio: artistProfile?.bio || null,
@@ -789,6 +815,9 @@ export const artworksRouter = router({
               whatsapp_number: artistProfile?.whatsapp_number || artistProfile?.phone || null,
             },
             profiles: (artistProfile || art.profiles) ? {
+              id: artistProfile?.id || (art.profiles as any)?.id || art.artist_id,
+              first_name: artistProfile?.first_name || (art.profiles as any)?.first_name || null,
+              last_name: artistProfile?.last_name || (art.profiles as any)?.last_name || null,
               full_name: profileFullName || (art.profiles as any)?.full_name || null,
               display_name: (artistProfile as any)?.display_name || (art.profiles as any)?.display_name || profileFullName || artistNameField || null,
               username: (artistProfile as any)?.username || (art.profiles as any)?.username || null,
@@ -797,6 +826,8 @@ export const artworksRouter = router({
               avatar_url: artistProfile?.avatar_url || (art.profiles as any)?.avatar_url || null,
               role: artistProfile?.role || (art.profiles as any)?.role || 'artist',
             } : null,
+            first_name: artistProfile?.first_name || (art.profiles as any)?.first_name || null,
+            last_name: artistProfile?.last_name || (art.profiles as any)?.last_name || null,
             user_name: (artistProfile as any)?.user_name || (art.profiles as any)?.user_name || (artistProfile as any)?.username || profileFullName || artistNameField || null,
           };
         });
