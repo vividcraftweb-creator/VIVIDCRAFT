@@ -317,7 +317,16 @@ export default function GalleryPageClient() {
           try {
             const res = await supabase
               .from('artworks')
-              .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
+              .select(`
+                *,
+                profiles:artist_id (
+                  id,
+                  first_name,
+                  last_name,
+                  full_name,
+                  avatar_url
+                )
+              `)
               .order('created_at', { ascending: false });
             if (!res.error && res.data && res.data.length > 0) {
               arts = res.data;
@@ -328,7 +337,16 @@ export default function GalleryPageClient() {
             try {
               const res = await supabase
                 .from('artworks')
-                .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+                .select(`
+                  *,
+                  profiles:user_id (
+                    id,
+                    first_name,
+                    last_name,
+                    full_name,
+                    avatar_url
+                  )
+                `)
                 .order('created_at', { ascending: false });
               if (!res.error && res.data && res.data.length > 0) {
                 arts = res.data;
@@ -346,13 +364,13 @@ export default function GalleryPageClient() {
 
           if (arts && arts.length > 0) {
             const artIds = arts.map((a: any) => a.id);
-            const artistIds = Array.from(new Set(arts.map((a: any) => a.user_id || a.artist_id).filter(Boolean)));
+            const artistIds = Array.from(new Set(arts.map((a: any) => a.artist_id || a.user_id).filter(Boolean)));
 
             const [likesRes, ratingsRes, profilesRes] = await Promise.all([
               supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artIds),
               supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artIds),
               artistIds.length > 0
-                ? supabase.from('profiles').select('id, first_name, last_name, full_name, display_name, username, artist_name, avatar_url, role, title, bio, location, phone, whatsapp_number, email').in('id', artistIds)
+                ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, email, whatsapp_number, artist_name, title, professional_title').in('id', artistIds)
                 : Promise.resolve({ data: [] }),
             ]);
 
@@ -370,8 +388,14 @@ export default function GalleryPageClient() {
 
               const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
               const avg = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
-              const prof = pMap.get(art.user_id) || pMap.get(art.artist_id) || art.profiles;
-              const artistName = extractArtistName({ ...art, profiles: prof });
+              const prof = pMap.get(art.artist_id) || pMap.get(art.user_id) || art.profiles;
+              const fName = (prof?.first_name || art.profiles?.first_name || '').toString().trim();
+              const lName = (prof?.last_name || art.profiles?.last_name || '').toString().trim();
+              const profileFullName = (prof?.full_name || art.profiles?.full_name || '').toString().trim();
+              const combinedFirstLast = [fName, lName].filter(Boolean).join(' ').trim();
+              const artistNameField = (prof?.artist_name || art.profiles?.artist_name || '').trim();
+              const emailPrefix = prof?.email ? prof.email.split('@')[0] : '';
+              const artistName = combinedFirstLast || profileFullName || emailPrefix || artistNameField || 'Artist';
 
 
               const rawArtCode = art.art_code;
@@ -422,8 +446,6 @@ export default function GalleryPageClient() {
                   first_name: prof.first_name || null,
                   last_name: prof.last_name || null,
                   full_name: profileFullName || null,
-                  display_name: profileDisplayName || null,
-                  username: profileUsername || null,
                   artist_name: artistNameField || null,
                   avatar_url: prof?.avatar_url || null,
                   role: prof?.role || 'artist',

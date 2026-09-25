@@ -116,53 +116,27 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   // Dynamic Pricing & Status Badge Evaluation (preserved untouched)
   const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
 
-  // Requirement 2: Dynamically resolve artist name from profiles (first_name, last_name) or fallback
-  const artistProfile = artwork.profiles || (artwork as any).profile || null;
-  const firstName = (artistProfile?.first_name || artwork.first_name || artwork.artist?.first_name || '').toString().trim();
-  const lastName = (artistProfile?.last_name || artwork.last_name || artwork.artist?.last_name || '').toString().trim();
-  const combinedName = [firstName, lastName].filter(Boolean).join(' ').trim();
-  const fullNameFallback = (artistProfile?.full_name || (artwork as any).full_name || artwork.artist?.name || '').toString().trim();
+  // Requirement 2: Robust Name Resolution Logic in Card Component
+  const profile = artwork.profiles || (artwork as any).profile;
+  const firstName = profile?.first_name || artwork.first_name || artwork.artist?.first_name || '';
+  const lastName = profile?.last_name || artwork.last_name || artwork.artist?.last_name || '';
+  const fullName = profile?.full_name || (artwork as any).full_name || artwork.artist?.name || '';
+  
+  const rawCombined = `${firstName} ${lastName}`.trim();
+  const displayName = rawCombined || fullName || profile?.email || (artistNameProp && !isGenericPlaceholderName(artistNameProp) ? artistNameProp.trim() : '') || 'Artist';
+  const artistName = displayName;
 
-  // Dynamic artistName: prioritize ${first_name} ${last_name}, then full_name, never use generic 'Artist'
-  let artistName = combinedName;
-  if (!artistName && fullNameFallback && !isGenericPlaceholderName(fullNameFallback)) {
-    artistName = fullNameFallback;
-  }
-  if (!artistName && artistNameProp && !isGenericPlaceholderName(artistNameProp)) {
-    artistName = artistNameProp.trim();
-  }
-  if (!artistName) {
-    const extracted = extractArtistName(artwork, artistNameProp);
-    if (extracted && !isGenericPlaceholderName(extracted) && extracted !== 'Artist') {
-      artistName = extracted;
-    }
-  }
-  if (!artistName || isGenericPlaceholderName(artistName) || artistName === 'Artist') {
-    artistName = fullNameFallback || (artistProfile ? `${firstName} ${lastName}`.trim() : '') || 'Unknown Artist';
-  }
-  if (!artistName || artistName === 'Artist') {
-    artistName = 'Unknown Artist';
-  }
-
-  // Requirement 3: Dynamic avatar rendering with first letter of first_name fallback
-  const artistAvatarUrl =
-    artwork.profiles?.avatar_url ||
-    artwork.avatar_url ||
-    (artwork as any).profile?.avatar_url ||
-    artwork.artist?.avatar_url ||
-    null;
+  // Requirement 3: Avatar Display Fix
+  const avatarUrl = profile?.avatar_url || artwork.avatar_url || (artwork as any).profile?.avatar_url || artwork.artist?.avatar_url || null;
+  const artistAvatarUrl = avatarUrl;
 
   const [avatarError, setAvatarError] = useState(false);
   useEffect(() => {
     setAvatarError(false);
-  }, [artistAvatarUrl]);
+  }, [avatarUrl]);
 
-  const showAvatarImage = Boolean(artistAvatarUrl && !avatarError);
-  const artistInitial = (
-    (artistProfile?.first_name || firstName || artistName || 'A')
-      .trim()
-      .charAt(0) || 'A'
-  ).toUpperCase();
+  const showAvatarImage = Boolean(avatarUrl && !avatarError);
+  const artistInitial = (displayName.trim().charAt(0) || 'A').toUpperCase();
 
   const router = useRouter();
   const { data: session, status } = useAuth();
@@ -385,15 +359,15 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
               {showAvatarImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={artistAvatarUrl!}
-                  alt={artistName}
+                  src={avatarUrl!}
+                  alt={displayName}
                   className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm"
                   onError={() => setAvatarError(true)}
                 />
               ) : (
                 <div
                   className="w-8 h-8 rounded-full bg-[#A2694E]/15 border border-[#A2694E]/30 flex items-center justify-center text-xs font-bold text-[#A2694E] dark:text-[#C58B6F] shrink-0 select-none"
-                  aria-label={artistName}
+                  aria-label={displayName}
                 >
                   {artistInitial}
                 </div>
@@ -401,7 +375,7 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
 
               <div className="min-w-0 flex-1">
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate block">
-                  {artistName}
+                  {displayName}
                 </span>
               </div>
             </div>

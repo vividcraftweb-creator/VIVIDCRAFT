@@ -268,21 +268,13 @@ export function ArtworkModal({
             {/* Artist Link, Ref ID: #ART-XXX, and Date */}
             <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap pt-0.5">
               {(() => {
-                const fName = (artwork.profiles?.first_name || artwork.first_name || artwork.artist?.first_name || '').toString().trim();
-                const lName = (artwork.profiles?.last_name || artwork.last_name || artwork.artist?.last_name || '').toString().trim();
-                const combined = [fName, lName].filter(Boolean).join(' ').trim();
-                const resolvedArtist =
-                  combined ||
-                  artwork.profiles?.full_name ||
-                  artwork.profiles?.display_name ||
-                  artwork.profiles?.username ||
-                  artwork.user_name ||
-                  artwork.profiles?.artist_name ||
-                  artistName ||
-                  artwork.artist?.name ||
-                  'Unknown Artist';
-                const avatar = artwork.profiles?.avatar_url || artwork.avatar_url || artwork.artist?.avatar_url;
-                const initial = ((artwork.profiles?.first_name || fName || resolvedArtist || 'A').trim().charAt(0) || 'A').toUpperCase();
+                const profile = artwork.profiles;
+                const firstName = profile?.first_name || artwork.first_name || artwork.artist?.first_name || '';
+                const lastName = profile?.last_name || artwork.last_name || artwork.artist?.last_name || '';
+                const fullName = profile?.full_name || artwork.artist?.name || '';
+                const displayName = `${firstName} ${lastName}`.trim() || fullName || profile?.email || artistName || 'Artist';
+                const avatar = profile?.avatar_url || artwork.avatar_url || artwork.artist?.avatar_url;
+                const initial = (displayName.trim().charAt(0) || 'A').toUpperCase();
                 return (
                   <span className="inline-flex items-center gap-2 flex-wrap">
                     <span className="inline-flex items-center gap-1.5">
@@ -290,7 +282,7 @@ export function ArtworkModal({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={avatar}
-                          alt={resolvedArtist}
+                          alt={displayName}
                           className="w-4 h-4 rounded-full object-cover border border-[#A2694E]/60 shrink-0"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
@@ -307,7 +299,7 @@ export function ArtworkModal({
                         onClick={(e) => e.stopPropagation()}
                         className="font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:underline"
                       >
-                        {resolvedArtist}
+                        {displayName}
                       </Link>
                     </span>
                     <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-1.5 py-0.5 rounded-md">

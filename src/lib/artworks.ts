@@ -249,11 +249,20 @@ export async function getArtworks(options?: {
 
   let data: any[] | null = null;
 
-  // 1. Primary: relational query joining profiles via user_id or artist_id foreign key constraint
+  // 1. Primary: relational query joining profiles via artist_id foreign key constraint
   try {
     const res = await supabase
       .from('artworks')
-      .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
+      .select(`
+        *,
+        profiles:artist_id (
+          id,
+          first_name,
+          last_name,
+          full_name,
+          avatar_url
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (!res.error && res.data && res.data.length > 0) {
@@ -265,7 +274,16 @@ export async function getArtworks(options?: {
     try {
       const res = await supabase
         .from('artworks')
-        .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            first_name,
+            last_name,
+            full_name,
+            avatar_url
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (!res.error && res.data && res.data.length > 0) {

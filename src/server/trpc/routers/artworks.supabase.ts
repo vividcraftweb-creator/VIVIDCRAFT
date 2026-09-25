@@ -614,14 +614,23 @@ export const artworksRouter = router({
         const supabase = await getAuthenticatedClient(ctx);
         const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
 
-        // 1. Fetch all artworks explicitly joining profiles:user_id or profiles:artist_id (id, first_name, last_name, avatar_url, role)
+        // 1. Fetch all artworks explicitly joining profiles:artist_id (id, first_name, last_name, full_name, avatar_url)
         let artworks: any[] | null = null;
         let queryError: any = null;
 
         try {
           const res = await supabase
             .from('artworks')
-            .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
+            .select(`
+              *,
+              profiles:artist_id (
+                id,
+                first_name,
+                last_name,
+                full_name,
+                avatar_url
+              )
+            `)
             .order('created_at', { ascending: false });
           if (!res.error && res.data && res.data.length > 0) {
             artworks = res.data;
@@ -636,7 +645,16 @@ export const artworksRouter = router({
           try {
             const res = await supabase
               .from('artworks')
-              .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+              .select(`
+                *,
+                profiles:user_id (
+                  id,
+                  first_name,
+                  last_name,
+                  full_name,
+                  avatar_url
+                )
+              `)
               .order('created_at', { ascending: false });
             if (!res.error && res.data && res.data.length > 0) {
               artworks = res.data;
@@ -701,7 +719,7 @@ export const artworksRouter = router({
           supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artworkIds),
           supabase.from('artwork_ratings').select('artwork_id, user_id, rating').in('artwork_id', artworkIds),
           artistIds.length > 0
-            ? supabase.from('profiles').select('id, first_name, last_name, full_name, display_name, username, artist_name, avatar_url, role, title, location, bio, phone, whatsapp_number, email').in('id', artistIds)
+            ? supabase.from('profiles').select('id, first_name, last_name, full_name, avatar_url, role, email, whatsapp_number, artist_name, title, professional_title').in('id', artistIds)
             : Promise.resolve({ data: [] }),
         ]);
 
@@ -732,28 +750,16 @@ export const artworksRouter = router({
             avgRating * Math.log2(ratingsCount + 2) * 4 +
             (avgRating > 0 ? avgRating * 2 : 0);
 
-          // Real Artist Profile Details via user_id or artist_id
-          const artistProfile = profilesMap.get(art.user_id) || profilesMap.get(art.artist_id) || art.profiles;
+          // Real Artist Profile Details via artist_id or user_id
+          const artistProfile = profilesMap.get(art.artist_id) || profilesMap.get(art.user_id) || art.profiles;
+          const firstName = (artistProfile?.first_name || (art.profiles as any)?.first_name || '').toString().trim();
+          const lastName = (artistProfile?.last_name || (art.profiles as any)?.last_name || '').toString().trim();
+          const profileFullName = (artistProfile?.full_name || (art.profiles as any)?.full_name || '').toString().trim();
+          const combinedFirstLast = [firstName, lastName].filter(Boolean).join(' ').trim();
           const artistNameField = (artistProfile?.artist_name || '').trim();
-          const profileFullName = (artistProfile?.full_name || '').trim();
-          const profileDisplayName = (artistProfile?.display_name || '').trim();
-          const profileUsername = (artistProfile?.username || '').trim();
-          const combinedFirstLast = [artistProfile?.first_name, artistProfile?.last_name].filter(Boolean).join(' ').trim();
           const emailPrefix = artistProfile?.email ? artistProfile.email.split('@')[0] : '';
-          const isGeneric = (str?: string | null) => !str || ['verified artist', 'verified artist & creator', 'artist', 'creator'].includes(str.toLowerCase().trim());
-          const artistName = (!isGeneric(combinedFirstLast) && combinedFirstLast)
-            ? combinedFirstLast
-            : (!isGeneric(profileFullName) && profileFullName)
-            ? profileFullName
-            : (!isGeneric(profileDisplayName) && profileDisplayName)
-            ? profileDisplayName
-            : (!isGeneric(artistProfile?.username) && artistProfile?.username)
-            ? artistProfile.username
-            : (!isGeneric(emailPrefix) && emailPrefix)
-            ? emailPrefix
-            : (!isGeneric(artistNameField) && artistNameField)
-            ? artistNameField
-            : 'Unknown Artist';
+          
+          const artistName = combinedFirstLast || profileFullName || emailPrefix || artistNameField || 'Artist';
 
           // Formatted Artwork ID (e.g. #ART-104)
           const rawArtCode = art.art_code;

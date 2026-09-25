@@ -221,7 +221,16 @@ export function HomeHero() {
           try {
             const { data, error } = await supabase
               .from('artworks')
-              .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
+              .select(`
+                *,
+                profiles:artist_id (
+                  id,
+                  first_name,
+                  last_name,
+                  full_name,
+                  avatar_url
+                )
+              `)
               .order('likes_count', { ascending: false })
               .limit(8);
             if (!error && data && data.length > 0) {
@@ -233,7 +242,16 @@ export function HomeHero() {
             try {
               const { data, error } = await supabase
                 .from('artworks')
-                .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+                .select(`
+                  *,
+                  profiles:user_id (
+                    id,
+                    first_name,
+                    last_name,
+                    full_name,
+                    avatar_url
+                  )
+                `)
                 .order('likes_count', { ascending: false })
                 .limit(8);
               if (!error && data && data.length > 0) {
