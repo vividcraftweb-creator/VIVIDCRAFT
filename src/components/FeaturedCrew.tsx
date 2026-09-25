@@ -221,130 +221,67 @@ export function FeaturedCrew() {
               </p>
             </div>
 
-            {/* Responsive Compact 3-Card Grid (Desktop) / Auto-moving Horizontal Carousel (Mobile) */}
+            {/* Responsive Ultra-Minimal 3-Card Grid (Desktop) / Horizontal Carousel (Mobile) */}
             <div
               ref={crewSliderRef}
               onMouseEnter={() => setIsSliderPaused(true)}
               onMouseLeave={() => setIsSliderPaused(false)}
               onTouchStart={() => setIsSliderPaused(true)}
               onTouchEnd={() => setIsSliderPaused(false)}
-              className="flex md:grid md:grid-cols-3 gap-4 sm:gap-4 md:gap-5 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory scrollbar-none pb-4 md:pb-0 px-2 sm:px-0 scroll-smooth max-w-3xl mx-auto items-stretch justify-start md:justify-center md:justify-items-center"
+              className="flex md:grid md:grid-cols-3 gap-3 sm:gap-4 md:gap-4.5 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory scrollbar-none pb-4 md:pb-0 px-2 sm:px-0 scroll-smooth max-w-xl mx-auto items-stretch justify-start md:justify-center md:justify-items-center"
             >
               {displayedCrew.map((member) => (
                 <div
                   key={member.id}
-                  className="relative min-w-[260px] sm:min-w-[270px] max-w-[275px] w-full flex-shrink-0 md:flex-shrink rounded-2xl p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/40 transition-colors flex flex-col justify-between snap-center"
+                  className="relative w-[180px] sm:w-[190px] md:w-[195px] max-w-[200px] flex-shrink-0 md:flex-shrink rounded-xl p-2.5 sm:p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-[#A2694E]/50 dark:hover:border-[#A2694E]/40 transition-all flex flex-col justify-between snap-center text-center group"
                 >
-                  {/* Compact Card Portrait Photo: h-40 */}
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-2.5 border border-slate-200/80 dark:border-slate-800">
+                  {/* Compact Card Portrait Photo: h-28 sm:h-32 */}
+                  <div
+                    onClick={() => {
+                      setSelectedMember(member);
+                      startTransition(() => setIsStoryModalOpen(true));
+                    }}
+                    className="relative w-full h-28 sm:h-32 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 mb-2 border border-slate-200/80 dark:border-slate-800 cursor-pointer"
+                  >
                     <img
                       src={member.image_url || member.avatar_url}
                       alt={member.name}
-                      className="w-full h-full object-cover object-top"
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                     />
                     {member.is_featured && (
-                      <div className="absolute top-2 left-2">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-[#A2694E] text-white shadow-sm">
-                          <Award className="w-3 h-3" />
+                      <div className="absolute top-1.5 left-1.5">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#A2694E] text-white shadow-sm">
+                          <Award className="w-2.5 h-2.5" />
                           Featured
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Card Content & Details */}
-                  <div className="flex-1 flex flex-col justify-between space-y-2">
+                  {/* Essential Info Only: Designation & Name */}
+                  <div className="flex-1 flex flex-col justify-between">
                     <div>
-                      <div className="text-xs font-semibold text-[#A2694E] dark:text-[#C58B6F] uppercase tracking-wider line-clamp-1 mb-0.5">
+                      <div className="text-[10px] font-semibold text-[#A2694E] dark:text-[#C58B6F] uppercase tracking-wider line-clamp-1">
                         {member.position}
                       </div>
-                      <h3 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight line-clamp-1">
+                      <h3 className="text-xs font-semibold text-slate-900 dark:text-white tracking-tight line-clamp-1 mt-0.5">
                         {member.name}
                       </h3>
-
-                      {member.short_bio && (
-                        <div className="mt-2 py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs leading-relaxed line-clamp-2">
-                          <p className="italic text-slate-700 dark:text-slate-300">
-                            &ldquo;{member.short_bio}&rdquo;
-                          </p>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Active Social Media Icons (only rendered if links exist) */}
-                    {Boolean(
-                      member.linkedin_url ||
-                      member.instagram_url ||
-                      member.facebook_url ||
-                      member.twitter_url ||
-                      member.x_url
-                    ) && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                        {member.linkedin_url && (
-                          <a
-                            href={member.linkedin_url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 transition-colors"
-                            aria-label={`${member.name} on LinkedIn`}
-                            title="LinkedIn"
-                          >
-                            <IconBrandLinkedin className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                        {member.instagram_url && (
-                          <a
-                            href={member.instagram_url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700 transition-colors"
-                            aria-label={`${member.name} on Instagram`}
-                            title="Instagram"
-                          >
-                            <IconBrandInstagram className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                        {member.facebook_url && (
-                          <a
-                            href={member.facebook_url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-700 transition-colors"
-                            aria-label={`${member.name} on Facebook`}
-                            title="Facebook"
-                          >
-                            <IconBrandFacebook className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                        {(member.twitter_url || member.x_url) && (
-                          <a
-                            href={member.twitter_url || member.x_url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors"
-                            aria-label={`${member.name} on X (Twitter)`}
-                            title="X (Twitter)"
-                          >
-                            <IconBrandX className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Compact See More Button */}
-                    <div className="pt-1.5">
-                      <Button
+                    {/* Minimal 'See More' Button */}
+                    <div className="pt-2">
+                      <button
                         type="button"
                         onClick={() => {
                           setSelectedMember(member);
                           startTransition(() => setIsStoryModalOpen(true));
                         }}
-                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#A2694E] hover:bg-[#8B5A3C] text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer shadow-sm shadow-[#A2694E]/20"
+                        className="w-full inline-flex items-center justify-center gap-1 py-1 px-2 rounded-md bg-[#A2694E]/10 hover:bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] hover:text-[#8B5A3C] dark:hover:text-[#DDA78D] font-semibold text-[11px] transition-colors cursor-pointer"
                       >
-                        <BookOpen className="w-3.5 h-3.5 text-white" />
                         <span>See More</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-white" />
-                      </Button>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -484,6 +421,12 @@ export function FeaturedCrew() {
                   <BookOpen className="w-4 h-4 text-[#A2694E] dark:text-[#C58B6F]" />
                   Creative Journey &amp; Impact
                 </h4>
+                {selectedMember.short_bio && (
+                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs sm:text-sm italic flex items-start gap-2">
+                    <Quote className="w-4 h-4 text-[#A2694E] dark:text-[#C58B6F] shrink-0 mt-0.5" />
+                    <p>&ldquo;{selectedMember.short_bio}&rdquo;</p>
+                  </div>
+                )}
                 <p className="whitespace-pre-line">
                   {selectedMember.full_story || selectedMember.short_bio}
                 </p>
