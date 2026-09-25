@@ -228,7 +228,7 @@ export function extractArtistName(artwork: any, artistNameProp?: string): string
     }
   }
 
-  return 'Artist';
+  return 'Unknown Artist';
 }
 
 /**
@@ -249,17 +249,30 @@ export async function getArtworks(options?: {
 
   let data: any[] | null = null;
 
-  // 1. Primary: relational query joining profiles via artist_id foreign key constraint
+  // 1. Primary: relational query joining profiles via user_id or artist_id foreign key constraint
   try {
     const res = await supabase
       .from('artworks')
-      .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, full_name, display_name, username, email, artist_name, bio)')
+      .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
       .order('created_at', { ascending: false });
 
     if (!res.error && res.data && res.data.length > 0) {
       data = res.data;
     }
   } catch {}
+
+  if (!data) {
+    try {
+      const res = await supabase
+        .from('artworks')
+        .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+        .order('created_at', { ascending: false });
+
+      if (!res.error && res.data && res.data.length > 0) {
+        data = res.data;
+      }
+    } catch {}
+  }
 
   // 2. Fallback: explicit join on profiles table
   if (!data) {

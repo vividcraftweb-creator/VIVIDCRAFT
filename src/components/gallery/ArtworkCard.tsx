@@ -116,24 +116,35 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   // Dynamic Pricing & Status Badge Evaluation (preserved untouched)
   const { statusBadge, badgeType, displayPrice: fallbackDisplayPrice } = getArtworkPricingDisplay(artwork);
 
-  // Priority: 1. Combined ${first_name} ${last_name}, 2. full_name fallback, 3. extractArtistName fallback
-  const artistProfile = artwork.profiles || (artwork as any).profile || {};
+  // Requirement 2: Dynamically resolve artist name from profiles (first_name, last_name) or fallback
+  const artistProfile = artwork.profiles || (artwork as any).profile || null;
   const firstName = (artistProfile?.first_name || artwork.first_name || artwork.artist?.first_name || '').toString().trim();
   const lastName = (artistProfile?.last_name || artwork.last_name || artwork.artist?.last_name || '').toString().trim();
   const combinedName = [firstName, lastName].filter(Boolean).join(' ').trim();
   const fullNameFallback = (artistProfile?.full_name || (artwork as any).full_name || artwork.artist?.name || '').toString().trim();
 
+  // Dynamic artistName: prioritize ${first_name} ${last_name}, then full_name, never use generic 'Artist'
   let artistName = combinedName;
   if (!artistName && fullNameFallback && !isGenericPlaceholderName(fullNameFallback)) {
     artistName = fullNameFallback;
   }
-  if (!artistName) {
-    artistName = extractArtistName(artwork, artistNameProp);
+  if (!artistName && artistNameProp && !isGenericPlaceholderName(artistNameProp)) {
+    artistName = artistNameProp.trim();
   }
-  if (!artistName || isGenericPlaceholderName(artistName)) {
-    artistName = fullNameFallback || 'Artist';
+  if (!artistName) {
+    const extracted = extractArtistName(artwork, artistNameProp);
+    if (extracted && !isGenericPlaceholderName(extracted) && extracted !== 'Artist') {
+      artistName = extracted;
+    }
+  }
+  if (!artistName || isGenericPlaceholderName(artistName) || artistName === 'Artist') {
+    artistName = fullNameFallback || (artistProfile ? `${firstName} ${lastName}`.trim() : '') || 'Unknown Artist';
+  }
+  if (!artistName || artistName === 'Artist') {
+    artistName = 'Unknown Artist';
   }
 
+  // Requirement 3: Dynamic avatar rendering with first letter of first_name fallback
   const artistAvatarUrl =
     artwork.profiles?.avatar_url ||
     artwork.avatar_url ||
@@ -147,7 +158,11 @@ export function ArtworkCardComponent({ artwork, artistName: artistNameProp, onDe
   }, [artistAvatarUrl]);
 
   const showAvatarImage = Boolean(artistAvatarUrl && !avatarError);
-  const artistInitial = (artistName && artistName.trim().length > 0 ? artistName.trim().charAt(0) : 'A').toUpperCase();
+  const artistInitial = (
+    (artistProfile?.first_name || firstName || artistName || 'A')
+      .trim()
+      .charAt(0) || 'A'
+  ).toUpperCase();
 
   const router = useRouter();
   const { data: session, status } = useAuth();

@@ -317,12 +317,24 @@ export default function GalleryPageClient() {
           try {
             const res = await supabase
               .from('artworks')
-              .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
+              .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
               .order('created_at', { ascending: false });
             if (!res.error && res.data && res.data.length > 0) {
               arts = res.data;
             }
           } catch {}
+
+          if (!arts || arts.length === 0) {
+            try {
+              const res = await supabase
+                .from('artworks')
+                .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+                .order('created_at', { ascending: false });
+              if (!res.error && res.data && res.data.length > 0) {
+                arts = res.data;
+              }
+            } catch {}
+          }
 
           if (!arts || arts.length === 0) {
             const { data } = await supabase
@@ -334,7 +346,7 @@ export default function GalleryPageClient() {
 
           if (arts && arts.length > 0) {
             const artIds = arts.map((a: any) => a.id);
-            const artistIds = Array.from(new Set(arts.map((a: any) => a.artist_id).filter(Boolean)));
+            const artistIds = Array.from(new Set(arts.map((a: any) => a.user_id || a.artist_id).filter(Boolean)));
 
             const [likesRes, ratingsRes, profilesRes] = await Promise.all([
               supabase.from('artwork_likes').select('artwork_id, user_id').in('artwork_id', artIds),
@@ -358,7 +370,7 @@ export default function GalleryPageClient() {
 
               const ratingsSum = artRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
               const avg = artRatings.length > 0 ? Math.round((ratingsSum / artRatings.length) * 10) / 10 : 0;
-              const prof = pMap.get(art.artist_id);
+              const prof = pMap.get(art.user_id) || pMap.get(art.artist_id) || art.profiles;
               const artistName = extractArtistName({ ...art, profiles: prof });
 
 
@@ -424,7 +436,7 @@ export default function GalleryPageClient() {
                 } : null),
                 user_name: art.user_name || artistName,
                 artist: {
-                  id: art.artist_id,
+                  id: art.artist_id || art.user_id,
                   name: artistName,
                   first_name: prof?.first_name || art.profiles?.first_name || null,
                   last_name: prof?.last_name || art.profiles?.last_name || null,

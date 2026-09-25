@@ -614,14 +614,14 @@ export const artworksRouter = router({
         const supabase = await getAuthenticatedClient(ctx);
         const viewerId = ctx.session?.user?.id || (ctx as any).user?.id || null;
 
-        // 1. Fetch all artworks explicitly joining profiles:artist_id (id, first_name, last_name, avatar_url, full_name)
+        // 1. Fetch all artworks explicitly joining profiles:user_id or profiles:artist_id (id, first_name, last_name, avatar_url, role)
         let artworks: any[] | null = null;
         let queryError: any = null;
 
         try {
           const res = await supabase
             .from('artworks')
-            .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
+            .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
             .order('created_at', { ascending: false });
           if (!res.error && res.data && res.data.length > 0) {
             artworks = res.data;
@@ -630,6 +630,18 @@ export const artworksRouter = router({
           }
         } catch (e) {
           queryError = e;
+        }
+
+        if (!artworks || artworks.length === 0) {
+          try {
+            const res = await supabase
+              .from('artworks')
+              .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+              .order('created_at', { ascending: false });
+            if (!res.error && res.data && res.data.length > 0) {
+              artworks = res.data;
+            }
+          } catch {}
         }
 
         if (!artworks || artworks.length === 0) {
@@ -682,7 +694,7 @@ export const artworksRouter = router({
         }
 
         const artworkIds = artworks.map((a: any) => a.id);
-        const artistIds = Array.from(new Set(artworks.map((a: any) => a.artist_id).filter(Boolean)));
+        const artistIds = Array.from(new Set(artworks.map((a: any) => a.user_id || a.artist_id).filter(Boolean)));
 
         // 2. Fetch likes, ratings, and real artist profiles in parallel
         const [likesRes, ratingsRes, profilesRes] = await Promise.all([
@@ -720,8 +732,8 @@ export const artworksRouter = router({
             avgRating * Math.log2(ratingsCount + 2) * 4 +
             (avgRating > 0 ? avgRating * 2 : 0);
 
-          // Real Artist Profile Details
-          const artistProfile = profilesMap.get(art.artist_id);
+          // Real Artist Profile Details via user_id or artist_id
+          const artistProfile = profilesMap.get(art.user_id) || profilesMap.get(art.artist_id) || art.profiles;
           const artistNameField = (artistProfile?.artist_name || '').trim();
           const profileFullName = (artistProfile?.full_name || '').trim();
           const profileDisplayName = (artistProfile?.display_name || '').trim();
@@ -731,17 +743,17 @@ export const artworksRouter = router({
           const isGeneric = (str?: string | null) => !str || ['verified artist', 'verified artist & creator', 'artist', 'creator'].includes(str.toLowerCase().trim());
           const artistName = (!isGeneric(combinedFirstLast) && combinedFirstLast)
             ? combinedFirstLast
-            : (!isGeneric(artistProfile?.username) && artistProfile?.username)
-            ? artistProfile.username
-            : (!isGeneric(emailPrefix) && emailPrefix)
-            ? emailPrefix
             : (!isGeneric(profileFullName) && profileFullName)
             ? profileFullName
             : (!isGeneric(profileDisplayName) && profileDisplayName)
             ? profileDisplayName
+            : (!isGeneric(artistProfile?.username) && artistProfile?.username)
+            ? artistProfile.username
+            : (!isGeneric(emailPrefix) && emailPrefix)
+            ? emailPrefix
             : (!isGeneric(artistNameField) && artistNameField)
             ? artistNameField
-            : 'Artist';
+            : 'Unknown Artist';
 
           // Formatted Artwork ID (e.g. #ART-104)
           const rawArtCode = art.art_code;
@@ -802,7 +814,7 @@ export const artworksRouter = router({
             status: art.status || 'LIVE',
             art_code: artCode,
             artist: {
-              id: art.artist_id,
+              id: art.artist_id || art.user_id,
               name: artistName,
               first_name: artistProfile?.first_name || (art.profiles as any)?.first_name || null,
               last_name: artistProfile?.last_name || (art.profiles as any)?.last_name || null,

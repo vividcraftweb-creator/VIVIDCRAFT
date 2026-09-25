@@ -268,7 +268,11 @@ export function ArtworkModal({
             {/* Artist Link, Ref ID: #ART-XXX, and Date */}
             <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap pt-0.5">
               {(() => {
+                const fName = (artwork.profiles?.first_name || artwork.first_name || artwork.artist?.first_name || '').toString().trim();
+                const lName = (artwork.profiles?.last_name || artwork.last_name || artwork.artist?.last_name || '').toString().trim();
+                const combined = [fName, lName].filter(Boolean).join(' ').trim();
                 const resolvedArtist =
+                  combined ||
                   artwork.profiles?.full_name ||
                   artwork.profiles?.display_name ||
                   artwork.profiles?.username ||
@@ -276,27 +280,32 @@ export function ArtworkModal({
                   artwork.profiles?.artist_name ||
                   artistName ||
                   artwork.artist?.name ||
-                  'Artist';
-                const avatar = artwork.profiles?.avatar_url || artwork.artist?.avatar_url;
+                  'Unknown Artist';
+                const avatar = artwork.profiles?.avatar_url || artwork.avatar_url || artwork.artist?.avatar_url;
+                const initial = ((artwork.profiles?.first_name || fName || resolvedArtist || 'A').trim().charAt(0) || 'A').toUpperCase();
                 return (
                   <span className="inline-flex items-center gap-2 flex-wrap">
                     <span className="inline-flex items-center gap-1.5">
-                      {avatar && (
+                      {avatar ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={avatar}
                           alt={resolvedArtist}
-                          className="w-4 h-4 rounded-full object-cover border border-amber-300/60 shrink-0"
+                          className="w-4 h-4 rounded-full object-cover border border-[#A2694E]/60 shrink-0"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
                           }}
                         />
+                      ) : (
+                        <span className="w-4 h-4 rounded-full bg-[#A2694E]/20 text-[#A2694E] dark:text-[#C58B6F] flex items-center justify-center text-[9px] font-bold shrink-0">
+                          {initial}
+                        </span>
                       )}
                       By{' '}
                       <Link
-                        href={`/freelancers/${artwork.artist_id}`}
+                        href={`/freelancers/${artwork.artist_id || artwork.user_id}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                        className="font-semibold text-[#A2694E] dark:text-[#C58B6F] hover:underline"
                       >
                         {resolvedArtist}
                       </Link>

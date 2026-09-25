@@ -221,7 +221,7 @@ export function HomeHero() {
           try {
             const { data, error } = await supabase
               .from('artworks')
-              .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
+              .select('*, profiles:user_id(id, first_name, last_name, avatar_url, role)')
               .order('likes_count', { ascending: false })
               .limit(8);
             if (!error && data && data.length > 0) {
@@ -233,8 +233,8 @@ export function HomeHero() {
             try {
               const { data, error } = await supabase
                 .from('artworks')
-                .select('*, profiles:artist_id (id, first_name, last_name, avatar_url, full_name)')
-                .order('created_at', { ascending: false })
+                .select('*, profiles:artist_id(id, first_name, last_name, avatar_url, role)')
+                .order('likes_count', { ascending: false })
                 .limit(8);
               if (!error && data && data.length > 0) {
                 arts = data;
@@ -262,7 +262,7 @@ export function HomeHero() {
               try {
                 const { data: profs } = await supabase
                   .from('profiles')
-                  .select('id, first_name, last_name, avatar_url, full_name')
+                  .select('id, first_name, last_name, avatar_url, full_name, role')
                   .in('id', artistIds);
                 if (profs) {
                   profs.forEach((p: any) => {
@@ -300,6 +300,7 @@ export function HomeHero() {
                   last_name: prof.last_name || null,
                   avatar_url: prof.avatar_url || null,
                   full_name: prof.full_name || null,
+                  role: prof.role || 'artist',
                 } : null,
               };
             });
