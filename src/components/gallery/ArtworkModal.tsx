@@ -79,6 +79,7 @@ export function ArtworkModal({
   // Lock body scroll when modal is open and handle ESC key
   useEffect(() => {
     if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -87,7 +88,7 @@ export function ArtworkModal({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = originalOverflow || 'unset';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -131,11 +132,11 @@ export function ArtworkModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl h-[92vh] max-h-[820px] rounded-2xl bg-white dark:bg-[#1E1B18] shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col md:grid md:grid-cols-2"
+        className="relative z-10 w-full max-w-5xl h-[92vh] max-h-[88vh] rounded-2xl bg-[#0f172a] shadow-2xl border border-slate-700/60 overflow-hidden flex flex-col md:grid md:grid-cols-2 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Absolute Close Button */}

@@ -44,7 +44,7 @@ export default function GalleryArtworkDetailsModal({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = originalOverflow || 'unset';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, artwork, onClose]);
@@ -53,11 +53,11 @@ export default function GalleryArtworkDetailsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl max-h-[90vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] shadow-2xl border border-white/10 p-4 sm:p-6 flex flex-col gap-4 text-white"
+        className="relative z-10 w-full max-w-3xl max-h-[88vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] border border-slate-700/60 shadow-2xl p-6 flex flex-col gap-4 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 1. Modal Header */}
