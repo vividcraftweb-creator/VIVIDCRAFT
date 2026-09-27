@@ -132,11 +132,11 @@ export function ArtworkModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative z-10 w-full max-w-5xl h-[92vh] max-h-[88vh] rounded-2xl bg-[#0f172a] shadow-2xl border border-slate-700/60 overflow-hidden flex flex-col md:grid md:grid-cols-2 text-white"
+        className="relative z-10 w-full max-w-5xl max-h-[90vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] shadow-2xl border border-slate-700/60 p-6 flex flex-col md:grid md:grid-cols-2 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Absolute Close Button */}

@@ -53,11 +53,11 @@ export default function GalleryArtworkDetailsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative z-10 w-full max-w-3xl max-h-[88vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] border border-slate-700/60 shadow-2xl p-6 flex flex-col gap-4 text-white"
+        className="relative z-10 w-full max-w-3xl max-h-[90vh] my-auto overflow-y-auto rounded-2xl bg-[#0f172a] border border-slate-700/60 p-6 shadow-2xl flex flex-col gap-4 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 1. Modal Header */}
