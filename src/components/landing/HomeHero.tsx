@@ -408,6 +408,36 @@ export function HomeHero() {
               </Button>
             </form>
           </div>
+
+          {/* Trilingual Mobile/Tablet Artist Directory CTA Button (block md:hidden / lg:hidden) */}
+          <div className="mt-2.5 sm:mt-3 block lg:hidden w-full">
+            <Link
+              href="/artists"
+              className="group relative flex w-full items-center justify-between gap-2.5 sm:gap-3 rounded-2xl border border-[#A2694E]/40 bg-gradient-to-r from-[#A2694E]/10 via-[#A2694E]/5 to-[#A2694E]/10 dark:border-[#A2694E]/50 dark:from-[#A2694E]/20 dark:via-[#A2694E]/10 dark:to-[#A2694E]/20 hover:border-[#A2694E] hover:from-[#A2694E]/15 hover:to-[#A2694E]/15 px-3 py-2 sm:px-4 sm:py-2.5 shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.99] cursor-pointer"
+              aria-label="Connect with your Artist now | ඔබගේ ආටිස්ට්ව දැන්ම සම්බන්ධ කරගන්න | ඔබේ ශිල්පියෙයි ඉප්පොදේ තොඩර්බු කොල්ලුංගල්"
+              title="Connect with your Artist now | ඔබගේ ආටිස්ට්ව දැන්ම සම්බන්ධ කරගන්න | ඔබේ ශිල්පියෙයි ඉප්පොදේ තොඩර්බු කොල්ලුංගල්"
+            >
+              <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl bg-[#A2694E] text-white shadow-sm shadow-[#A2694E]/30 transition-transform duration-200 group-hover:scale-105">
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </div>
+
+              <div className="flex flex-1 flex-col sm:flex-row items-center justify-center text-center min-w-0 sm:gap-1.5">
+                <span className="text-xs sm:text-sm font-bold text-[#A2694E] dark:text-[#E2A78C] tracking-wide whitespace-nowrap">
+                  Connect with your Artist now
+                </span>
+                <span className="hidden sm:inline text-[#A2694E]/60 dark:text-[#E2A78C]/60 font-semibold">|</span>
+                <span className="text-[10px] sm:text-xs text-zinc-600 dark:text-zinc-300 font-medium leading-tight">
+                  <span>ඔබගේ ආටිස්ට්ව දැන්ම සම්බන්ධ කරගන්න</span>
+                  <span className="mx-1 text-[#A2694E]/60 dark:text-[#E2A78C]/60 font-semibold">|</span>
+                  <span>ඔබේ ශිල්පියෙයි ඉප්පොදේ තොඩර්බු කොල්ලුංගල්</span>
+                </span>
+              </div>
+
+              <div className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg bg-[#A2694E]/10 text-[#A2694E] transition-all duration-200 group-hover:bg-[#A2694E] group-hover:text-white dark:bg-[#A2694E]/20 dark:text-[#E2A78C] dark:group-hover:bg-[#A2694E] dark:group-hover:text-white">
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </div>
+            </Link>
+          </div>
         </div>
 
         {/* FEATURED TOP ARTISTS SECTION (Horizontal Slider / Row) */}
