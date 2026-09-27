@@ -422,14 +422,42 @@ export default function FreelancersPageClient({
     async function fetchInitialProfiles() {
       setLoading(true);
       try {
+        let artistsData: any[] | null = null;
+
+        // 1. Primary query: select valid columns with proper .order() syntax
         const { data: artists, error } = await supabase
           .from('profiles')
-          .select('id, user_id, first_name, last_name, full_name, display_name, username, email, role, user_type, account_type, avatar_url, profile_picture, banner_url, title, professional_title, bio, description, skills, mediums, specialties, services, art_styles, art_specialties, services_offered, display_order, is_verified, is_featured, location, address, available_for_commissions, whatsapp_number, rating, reviews_count')
-          .or('role.eq.ARTIST,role.eq.artist')
+          .select('id, first_name, last_name, full_name, artist_name, email, role, avatar_url, banner_url, title, professional_title, address, whatsapp_number, art_styles, art_specialties, services_offered, display_order, is_verified, created_at, updated_at')
+          .or('role.ilike.artist,role.eq.ARTIST,role.eq.artist')
           .order('display_order', { ascending: true });
 
-        if (!error && artists && Array.isArray(artists) && artists.length > 0) {
-          const mapped = artists
+        if (!error && artists && Array.isArray(artists)) {
+          artistsData = artists;
+        } else {
+          // 2. Fallback query: select valid columns where role = 'artist'
+          const fallback = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, full_name, artist_name, email, role, avatar_url, banner_url, title, professional_title, address, whatsapp_number, is_verified, created_at')
+            .eq('role', 'artist')
+            .order('created_at', { ascending: false });
+
+          if (!fallback.error && Array.isArray(fallback.data)) {
+            artistsData = fallback.data;
+          } else {
+            // 3. Resilient minimal fallback
+            const minimal = await supabase
+              .from('profiles')
+              .select('id, first_name, last_name, email, role, avatar_url, title, address, created_at')
+              .eq('role', 'artist');
+
+            if (!minimal.error && Array.isArray(minimal.data)) {
+              artistsData = minimal.data;
+            }
+          }
+        }
+
+        if (artistsData && Array.isArray(artistsData) && artistsData.length > 0) {
+          const mapped = artistsData
             .filter(isValidArtist)
             .map(normalizeArtistProfile)
             .filter(Boolean);

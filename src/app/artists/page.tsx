@@ -18,19 +18,46 @@ export default async function ArtistsPage(props: {
   try {
     const supabase = await createClient();
 
-    // Explicitly include array columns and handle role variations
+    let artistsData: any[] | null = null;
+
+    // 1. Primary query: select valid columns with proper .order() syntax
     const { data: artists, error } = await supabase
       .from('profiles')
-      .select('id, user_id, first_name, last_name, full_name, display_name, username, email, role, user_type, account_type, avatar_url, profile_picture, banner_url, title, professional_title, bio, description, skills, mediums, specialties, services, art_styles, art_specialties, services_offered, display_order, is_verified, is_featured, location, available_for_commissions, whatsapp_number, rating, reviews_count')
-      .or('role.eq.ARTIST,role.eq.artist')
+      .select('id, first_name, last_name, full_name, artist_name, email, role, avatar_url, banner_url, title, professional_title, address, whatsapp_number, art_styles, art_specialties, services_offered, display_order, is_verified, created_at, updated_at')
+      .or('role.ilike.artist,role.eq.ARTIST,role.eq.artist')
       .order('display_order', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching artists from profiles:', error);
+    if (!error && Array.isArray(artists)) {
+      artistsData = artists;
+    } else {
+      console.warn('Primary artists query in artists page failed, falling back:', error?.message);
+
+      // 2. Fallback query: select valid columns where role = 'artist'
+      const fallback = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, full_name, artist_name, email, role, avatar_url, banner_url, title, professional_title, address, whatsapp_number, is_verified, created_at')
+        .eq('role', 'artist')
+        .order('created_at', { ascending: false });
+
+      if (!fallback.error && Array.isArray(fallback.data)) {
+        artistsData = fallback.data;
+      } else {
+        // 3. Resilient minimal fallback
+        const minimal = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email, role, avatar_url, title, address, created_at')
+          .eq('role', 'artist');
+
+        if (!minimal.error && Array.isArray(minimal.data)) {
+          artistsData = minimal.data;
+        } else {
+          console.error('All artist query fallbacks failed in artists page:', minimal.error || fallback.error);
+        }
+      }
     }
 
-    if (artists && Array.isArray(artists)) {
-      profiles = artists.map(normalizeArtistProfile).filter(Boolean);
+    if (artistsData && Array.isArray(artistsData)) {
+      profiles = artistsData.map(normalizeArtistProfile).filter(Boolean);
     }
   } catch (err) {
     console.error('Error fetching profiles:', err);
